@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Disclaimer Test</title>
+    <link rel="stylesheet" href="/css/ping-identity.css">
+    <script src="/js/modules/disclaimer-banner.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-content {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .status {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-content">
+        <h1>Disclaimer Banner Test</h1>
+        <p>This page tests the Ping Identity-style disclaimer banner functionality.</p>
+        
+        <div class="status">
+            <h3>Test Controls</h3>
+            <button class="test-button" onclick="resetBanner()">Reset Banner</button>
+            <button class="test-button" onclick="forceShow()">Force Show</button>
+            <button class="test-button" onclick="checkStatus()">Check Status</button>
+            <button class="test-button" onclick="clearStorage()">Clear Storage</button>
+        </div>
+        
+        <div class="status">
+            <h3>Expected Behavior</h3>
+            <ul>
+                <li>Banner should appear at bottom of page on first visit</li>
+                <li>Banner should slide up with smooth animation</li>
+                <li>Clicking "I Understand" should dismiss banner</li>
+                <li>Banner should auto-hide after 30 seconds</li>
+                <li>Dismissal should be remembered in localStorage</li>
+                <li>Banner should not show on subsequent visits</li>
+            </ul>
+        </div>
+        
+        <div class="status">
+            <h3>Status</h3>
+            <div id="status-display">Click "Check Status" to see current state</div>
+        </div>
+        
+        <div class="status">
+            <h3>Test Content</h3>
+            <p>This is test content to ensure the banner doesn't interfere with page content. The banner should appear at the bottom of the page and not obstruct any important UI elements.</p>
+            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+        </div>
+    </div>
+
+    <script>
+        function updateStatus(message) {
+            document.getElementById('status-display').innerHTML = `
+                <p><strong>Status:</strong> ${message}</p>
+                <p><small>Time: ${new Date().toLocaleTimeString()}</small></p>
+            `;
+        }
+
+        function resetBanner() {
+            if (window.pingDisclaimerBanner) {
+                window.pingDisclaimerBanner.reset();
+                updateStatus('Banner reset - should appear now');
+            } else {
+                updateStatus('Banner not initialized');
+            }
+        }
+
+        function forceShow() {
+            if (window.pingDisclaimerBanner) {
+                window.pingDisclaimerBanner.forceShow();
+                updateStatus('Banner forced to show');
+            } else {
+                updateStatus('Banner not initialized');
+            }
+        }
+
+        function checkStatus() {
+            if (window.pingDisclaimerBanner) {
+                const dismissed = window.pingDisclaimerBanner.getDismissalStatus();
+                const isVisible = window.pingDisclaimerBanner.isVisible;
+                updateStatus(`Dismissed: ${dismissed}, Visible: ${isVisible}`);
+            } else {
+                updateStatus('Banner not initialized');
+            }
+        }
+
+        function clearStorage() {
+            try {
+                localStorage.removeItem('ping-disclaimer-dismissed');
+                updateStatus('localStorage cleared');
+                if (window.pingDisclaimerBanner) {
+                    window.pingDisclaimerBanner.reset();
+                }
+            } catch (error) {
+                updateStatus('Error clearing localStorage: ' + error.message);
+            }
+        }
+
+        // Check status after page loads
+        setTimeout(() => {
+            checkStatus();
+        }, 1000);
+    </script>
+</body>
+</html> 

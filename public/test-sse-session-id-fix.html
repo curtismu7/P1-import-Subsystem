@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Session ID Fix Test - PingOne Import Tool</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css">
+    <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/css/styles-fixed.css">
+    <link rel="stylesheet" href="/css/progress-ui.css">
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .test-section h3 {
+            color: #495057;
+            margin-bottom: 15px;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-button.success {
+            background: #28a745;
+        }
+        .test-button.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .test-button.danger {
+            background: #dc3545;
+        }
+        .log-output {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background: #28a745; }
+        .status-warning { background: #ffc107; }
+        .status-error { background: #dc3545; }
+        .status-info { background: #17a2b8; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>SSE Session ID Fix Test</h1>
+        <p>This page tests the fix for the "No session ID provided for SSE connection" warning.</p>
+
+        <div class="test-section">
+            <h3>Test Progress Manager Initialization</h3>
+            <p>Test the progress manager with different session ID scenarios:</p>
+            
+            <button class="test-button" onclick="testProgressManagerInit()">Test Progress Manager Init</button>
+            <button class="test-button" onclick="testStartOperationNoSession()">Test Start Operation (No Session ID)</button>
+            <button class="test-button" onclick="testStartOperationWithSession()">Test Start Operation (With Session ID)</button>
+            <button class="test-button" onclick="testUpdateSessionId()">Test Update Session ID</button>
+            <button class="test-button" onclick="testSSEConnection()">Test SSE Connection</button>
+            
+            <div class="log-output" id="test-log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Results</h3>
+            <div id="test-results">
+                <p><span class="status-indicator status-info"></span>Ready to run tests</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>Expected Behavior</h3>
+            <ul>
+                <li><span class="status-indicator status-success"></span>No more "No session ID provided for SSE connection" warnings</li>
+                <li><span class="status-indicator status-success"></span>Progress manager should handle missing session ID gracefully</li>
+                <li><span class="status-indicator status-success"></span>Session ID should be updated when received from backend</li>
+                <li><span class="status-indicator status-success"></span>SSE connection should be established when session ID is available</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="/js/bundle.js"></script>
+    <script>
+        let testResults = [];
+        let logOutput = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] [${type.toUpperCase()}] ${message}`;
+            logOutput.push(logEntry);
+            
+            const logElement = document.getElementById('test-log');
+            if (logElement) {
+                logElement.innerHTML = logOutput.join('\n');
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            
+            console.log(logEntry);
+        }
+
+        function updateTestResults() {
+            const resultsElement = document.getElementById('test-results');
+            if (resultsElement) {
+                resultsElement.innerHTML = testResults.map(result => 
+                    `<p><span class="status-indicator status-${result.status}"></span>${result.message}</p>`
+                ).join('');
+            }
+        }
+
+        function addTestResult(message, status = 'info') {
+            testResults.push({ message, status });
+            updateTestResults();
+        }
+
+        function testProgressManagerInit() {
+            log('Testing progress manager initialization...');
+            
+            try {
+                // Check if progress manager is available
+                if (typeof window.progressManager === 'undefined') {
+                    log('Progress manager not available - checking app initialization', 'warning');
+                    
+                    if (window.app && window.app.progressManager) {
+                        log('Progress manager found in app object', 'success');
+                        addTestResult('Progress manager available in app object', 'success');
+                    } else {
+                        log('Progress manager not found', 'error');
+                        addTestResult('Progress manager not found', 'error');
+                        return;
+                    }
+                } else {
+                    log('Progress manager available globally', 'success');
+                    addTestResult('Progress manager available globally', 'success');
+                }
+                
+                log('Progress manager initialization test completed', 'success');
+                
+            } catch (error) {
+                log(`Error testing progress manager initialization: ${error.message}`, 'error');
+                addTestResult(`Error testing progress manager initialization: ${error.message}`, 'error');
+            }
+        }
+
+        function testStartOperationNoSession() {
+            log('Testing start operation without session ID...');
+            
+            try {
+                const progressManager = window.progressManager || (window.app && window.app.progressManager);
+                
+                if (!progressManager) {
+                    log('Progress manager not available', 'error');
+                    addTestResult('Progress manager not available for testing', 'error');
+                    return;
+                }
+
+                // Test starting operation without session ID
+                progressManager.startOperation('import', {
+                    total: 100,
+                    populationName: 'Test Population',
+                    populationId: 'test-population-id',
+                    fileName: 'test.csv'
+                });
+
+                log('Operation started without session ID - should not show warning', 'success');
+                addTestResult('Operation started without session ID gracefully', 'success');
+                
+            } catch (error) {
+                log(`Error testing start operation without session ID: ${error.message}`, 'error');
+                addTestResult(`Error testing start operation without session ID: ${error.message}`, 'error');
+            }
+        }
+
+        function testStartOperationWithSession() {
+            log('Testing start operation with session ID...');
+            
+            try {
+                const progressManager = window.progressManager || (window.app && window.app.progressManager);
+                
+                if (!progressManager) {
+                    log('Progress manager not available', 'error');
+                    addTestResult('Progress manager not available for testing', 'error');
+                    return;
+                }
+
+                // Test starting operation with session ID
+                const sessionId = 'test-session-id-' + Date.now();
+                progressManager.startOperation('import', {
+                    sessionId: sessionId,
+                    total: 100,
+                    populationName: 'Test Population',
+                    populationId: 'test-population-id',
+                    fileName: 'test.csv'
+                });
+
+                log(`Operation started with session ID: ${sessionId}`, 'success');
+                addTestResult('Operation started with session ID successfully', 'success');
+                
+            } catch (error) {
+                log(`Error testing start operation with session ID: ${error.message}`, 'error');
+                addTestResult(`Error testing start operation with session ID: ${error.message}`, 'error');
+            }
+        }
+
+        function testUpdateSessionId() {
+            log('Testing update session ID...');
+            
+            try {
+                const progressManager = window.progressManager || (window.app && window.app.progressManager);
+                
+                if (!progressManager) {
+                    log('Progress manager not available', 'error');
+                    addTestResult('Progress manager not available for testing', 'error');
+                    return;
+                }
+
+                // Test updating session ID
+                const sessionId = 'updated-session-id-' + Date.now();
+                progressManager.updateSessionId(sessionId);
+
+                log(`Session ID updated: ${sessionId}`, 'success');
+                addTestResult('Session ID updated successfully', 'success');
+                
+            } catch (error) {
+                log(`Error testing update session ID: ${error.message}`, 'error');
+                addTestResult(`Error testing update session ID: ${error.message}`, 'error');
+            }
+        }
+
+        function testSSEConnection() {
+            log('Testing SSE connection...');
+            
+            try {
+                const progressManager = window.progressManager || (window.app && window.app.progressManager);
+                
+                if (!progressManager) {
+                    log('Progress manager not available', 'error');
+                    addTestResult('Progress manager not available for testing', 'error');
+                    return;
+                }
+
+                // Test SSE connection initialization
+                const sessionId = 'sse-test-session-id-' + Date.now();
+                
+                // Test without session ID first
+                progressManager.initializeSSEConnection(null);
+                log('SSE connection initialized without session ID - should show info message', 'info');
+                
+                // Test with session ID
+                progressManager.initializeSSEConnection(sessionId);
+                log(`SSE connection initialized with session ID: ${sessionId}`, 'success');
+                
+                addTestResult('SSE connection tests completed', 'success');
+                
+            } catch (error) {
+                log(`Error testing SSE connection: ${error.message}`, 'error');
+                addTestResult(`Error testing SSE connection: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize test environment
+        document.addEventListener('DOMContentLoaded', function() {
+            log('SSE Session ID Fix Test page loaded');
+            log('Waiting for app initialization...');
+            
+            // Wait for app to be available
+            const checkApp = setInterval(() => {
+                if (window.app) {
+                    clearInterval(checkApp);
+                    log('App initialized successfully', 'success');
+                    addTestResult('App initialized successfully', 'success');
+                }
+            }, 100);
+            
+            // Timeout after 10 seconds
+            setTimeout(() => {
+                clearInterval(checkApp);
+                if (!window.app) {
+                    log('App initialization timeout', 'warning');
+                    addTestResult('App initialization timeout', 'warning');
+                }
+            }, 10000);
+        });
+    </script>
+</body>
+</html> 

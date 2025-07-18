@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive UI Verification Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-item {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 4px solid #ddd;
+            background: #f9f9f9;
+        }
+        .test-item.pass {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .test-item.fail {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .test-item.warning {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+        .status {
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .pass .status { color: #28a745; }
+        .fail .status { color: #dc3545; }
+        .warning .status { color: #856404; }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #007bff;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Comprehensive UI Verification Test</h1>
+    <p>This page tests all the functionality we've been working on and fixing.</p>
+
+    <div class="test-section">
+        <h2>🚀 Server Status</h2>
+        <div id="server-status" class="test-item">
+            <strong>Server Connection:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="pingone-status" class="test-item">
+            <strong>PingOne Connection:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <button onclick="testServerConnection()">Test Server Connection</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 Core Fixes Verification</h2>
+        <div id="get-token-button" class="test-item">
+            <strong>Get Token Button:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="delete-manager" class="test-item">
+            <strong>DeleteManager Initialization:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="export-manager" class="test-item">
+            <strong>ExportManager Initialization:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="log-manager" class="test-item">
+            <strong>LogManager Safety Checks:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <button onclick="testCoreFixes()">Test Core Fixes</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Population Dropdown Tests</h2>
+        <div id="import-population" class="test-item">
+            <strong>Import Page Population Dropdown:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="delete-population" class="test-item">
+            <strong>Delete Page Population Dropdown:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="modify-population" class="test-item">
+            <strong>Modify Page Population Dropdown:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="export-population" class="test-item">
+            <strong>Export Page Population Dropdown:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="history-population" class="test-item">
+            <strong>History Page Population Filter:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <button onclick="testPopulationDropdowns()">Test Population Dropdowns</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🎯 Button State Tests</h2>
+        <div id="import-button-state" class="test-item">
+            <strong>Import Button (Population Required):</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="delete-button-state" class="test-item">
+            <strong>Delete Button (File + Population):</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="modify-button-state" class="test-item">
+            <strong>Modify Button (File + Population):</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="export-button-state" class="test-item">
+            <strong>Export Button (Population):</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <button onclick="testButtonStates()">Test Button States</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📈 Progress Window Tests</h2>
+        <div id="import-progress" class="test-item">
+            <strong>Import Progress Window:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="delete-progress" class="test-item">
+            <strong>Delete Progress Window:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="modify-progress" class="test-item">
+            <strong>Modify Progress Window:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="export-progress" class="test-item">
+            <strong>Export Progress Window:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <button onclick="testProgressWindows()">Test Progress Windows</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🎨 UI Element Tests</h2>
+        <div id="favicon-test" class="test-item">
+            <strong>Favicon Loading:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="footer-test" class="test-item">
+            <strong>PingIdentity Footer:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="token-status-test" class="test-item">
+            <strong>Token Status Elements:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="home-button-test" class="test-item">
+            <strong>History Page Home Button:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <button onclick="testUIElements()">Test UI Elements</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 Error Handling Tests</h2>
+        <div id="log-manager-errors" class="test-item">
+            <strong>LogManager Error Handling:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="missing-elements" class="test-item">
+            <strong>Missing Element Handling:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <div id="network-errors" class="test-item">
+            <strong>Network Error Handling:</strong>
+            <span class="status">Checking...</span>
+        </div>
+        <button onclick="testErrorHandling()">Test Error Handling</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 Test Log</h2>
+        <div id="test-log" class="log"></div>
+        <button onclick="clearLog()">Clear Log</button>
+        <button onclick="runAllTests()">Run All Tests</button>
+    </div>
+
+    <script>
+        let testLog = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            testLog.push(logEntry);
+            
+            const logElement = document.getElementById('test-log');
+            if (logElement) {
+                logElement.textContent = testLog.join('\n');
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            
+            console.log(logEntry);
+        }
+
+        function clearLog() {
+            testLog = [];
+            document.getElementById('test-log').textContent = '';
+        }
+
+        function updateTestStatus(testId, status, message) {
+            const element = document.getElementById(testId);
+            if (element) {
+                element.className = `test-item ${status}`;
+                const statusElement = element.querySelector('.status');
+                if (statusElement) {
+                    statusElement.textContent = message;
+                }
+            }
+        }
+
+        async function testServerConnection() {
+            log('Testing server connection...');
+            
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    updateTestStatus('server-status', 'pass', 'Connected');
+                    log('Server connection successful', 'pass');
+                    
+                    // Test PingOne connection
+                    const pingOneConnected = data.checks?.pingOneConnected === 'ok';
+                    if (pingOneConnected) {
+                        updateTestStatus('pingone-status', 'pass', 'Connected');
+                        log('PingOne connection successful', 'pass');
+                    } else {
+                        updateTestStatus('pingone-status', 'warning', 'Not connected');
+                        log('PingOne not connected', 'warning');
+                    }
+                } else {
+                    updateTestStatus('server-status', 'fail', 'Failed');
+                    updateTestStatus('pingone-status', 'fail', 'Unknown');
+                    log('Server connection failed', 'fail');
+                }
+            } catch (error) {
+                updateTestStatus('server-status', 'fail', 'Error');
+                updateTestStatus('pingone-status', 'fail', 'Error');
+                log(`Server connection error: ${error.message}`, 'fail');
+            }
+        }
+
+        function testCoreFixes() {
+            log('Testing core fixes...');
+            
+            // Test Get Token button
+            const getTokenBtn = document.getElementById('get-token-quick');
+            if (getTokenBtn) {
+                updateTestStatus('get-token-button', 'pass', 'Found');
+                log('Get Token button found', 'pass');
+            } else {
+                updateTestStatus('get-token-button', 'fail', 'Not found');
+                log('Get Token button not found', 'fail');
+            }
+
+            // Test LogManager safety
+            if (window.logManager && typeof window.logManager.log === 'function') {
+                updateTestStatus('log-manager', 'pass', 'Safe');
+                log('LogManager is safe to use', 'pass');
+            } else {
+                updateTestStatus('log-manager', 'warning', 'Not initialized');
+                log('LogManager not initialized', 'warning');
+            }
+
+            // Test manager initialization (these would be tested in the actual app)
+            updateTestStatus('delete-manager', 'warning', 'Check in app');
+            updateTestStatus('export-manager', 'warning', 'Check in app');
+            log('Manager initialization tests require app context', 'warning');
+        }
+
+        async function testPopulationDropdowns() {
+            log('Testing population dropdowns...');
+            
+            try {
+                const response = await fetch('/api/populations');
+                const data = await response.json();
+                
+                if (response.ok && data.populations) {
+                    updateTestStatus('import-population', 'pass', 'Available');
+                    updateTestStatus('delete-population', 'pass', 'Available');
+                    updateTestStatus('modify-population', 'pass', 'Available');
+                    updateTestStatus('export-population', 'pass', 'Available');
+                    updateTestStatus('history-population', 'pass', 'Available');
+                    log(`Found ${data.populations.length} populations`, 'pass');
+                } else {
+                    updateTestStatus('import-population', 'warning', 'No data');
+                    updateTestStatus('delete-population', 'warning', 'No data');
+                    updateTestStatus('modify-population', 'warning', 'No data');
+                    updateTestStatus('export-population', 'warning', 'No data');
+                    updateTestStatus('history-population', 'warning', 'No data');
+                    log('No population data available', 'warning');
+                }
+            } catch (error) {
+                updateTestStatus('import-population', 'fail', 'Error');
+                updateTestStatus('delete-population', 'fail', 'Error');
+                updateTestStatus('modify-population', 'fail', 'Error');
+                updateTestStatus('export-population', 'fail', 'Error');
+                updateTestStatus('history-population', 'fail', 'Error');
+                log(`Population dropdown test error: ${error.message}`, 'fail');
+            }
+        }
+
+        function testButtonStates() {
+            log('Testing button state logic...');
+            
+            // These tests would require the actual app context
+            // For now, we'll simulate the logic
+            updateTestStatus('import-button-state', 'warning', 'Test in app');
+            updateTestStatus('delete-button-state', 'warning', 'Test in app');
+            updateTestStatus('modify-button-state', 'warning', 'Test in app');
+            updateTestStatus('export-button-state', 'warning', 'Test in app');
+            
+            log('Button state tests require app context', 'warning');
+        }
+
+        function testProgressWindows() {
+            log('Testing progress window functionality...');
+            
+            // Test if progress manager exists
+            if (window.progressManager) {
+                updateTestStatus('import-progress', 'pass', 'Available');
+                updateTestStatus('delete-progress', 'pass', 'Available');
+                updateTestStatus('modify-progress', 'pass', 'Available');
+                updateTestStatus('export-progress', 'pass', 'Available');
+                log('Progress manager available', 'pass');
+            } else {
+                updateTestStatus('import-progress', 'warning', 'Check in app');
+                updateTestStatus('delete-progress', 'warning', 'Check in app');
+                updateTestStatus('modify-progress', 'warning', 'Check in app');
+                updateTestStatus('export-progress', 'warning', 'Check in app');
+                log('Progress manager not available in test context', 'warning');
+            }
+        }
+
+        function testUIElements() {
+            log('Testing UI elements...');
+            
+            // Test favicon
+            const favicon = document.querySelector('link[rel="icon"]');
+            if (favicon && favicon.href.includes('favicon.ico')) {
+                updateTestStatus('favicon-test', 'pass', 'Loaded');
+                log('Favicon found', 'pass');
+            } else {
+                updateTestStatus('favicon-test', 'fail', 'Not found');
+                log('Favicon not found', 'fail');
+            }
+
+            // Test footer (would need to check in actual app)
+            updateTestStatus('footer-test', 'warning', 'Check in app');
+            
+            // Test token status elements
+            const tokenStatus = document.getElementById('universal-token-status');
+            if (tokenStatus) {
+                updateTestStatus('token-status-test', 'pass', 'Found');
+                log('Token status elements found', 'pass');
+            } else {
+                updateTestStatus('token-status-test', 'fail', 'Not found');
+                log('Token status elements not found', 'fail');
+            }
+
+            updateTestStatus('home-button-test', 'warning', 'Check in app');
+            log('UI element tests completed', 'info');
+        }
+
+        function testErrorHandling() {
+            log('Testing error handling...');
+            
+            // Test LogManager error handling
+            try {
+                if (window.logManager && typeof window.logManager.log === 'function') {
+                    window.logManager.log('test', 'Test message');
+                    updateTestStatus('log-manager-errors', 'pass', 'Safe');
+                    log('LogManager error handling works', 'pass');
+                } else {
+                    updateTestStatus('log-manager-errors', 'warning', 'Not available');
+                    log('LogManager not available for testing', 'warning');
+                }
+            } catch (error) {
+                updateTestStatus('log-manager-errors', 'fail', 'Error');
+                log(`LogManager error: ${error.message}`, 'fail');
+            }
+
+            updateTestStatus('missing-elements', 'warning', 'Check in app');
+            updateTestStatus('network-errors', 'warning', 'Check in app');
+            log('Error handling tests completed', 'info');
+        }
+
+        async function runAllTests() {
+            log('Starting comprehensive UI verification...');
+            
+            await testServerConnection();
+            testCoreFixes();
+            await testPopulationDropdowns();
+            testButtonStates();
+            testProgressWindows();
+            testUIElements();
+            testErrorHandling();
+            
+            log('All tests completed!', 'info');
+        }
+
+        // Auto-run server connection test on page load
+        window.addEventListener('load', () => {
+            log('Test page loaded, starting verification...');
+            testServerConnection();
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Swagger Modify Debug Test</title>
+  <link rel="stylesheet" type="text/css" href="/swagger/swagger-ui.css" />
+  <style>
+    body { margin: 0; background: #f8f9fa; }
+    #swagger-ui { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .debug-panel {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .error-log {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      border-radius: 4px;
+      padding: 10px;
+      margin: 10px 0;
+      color: #721c24;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="debug-panel">
+    <h3>Swagger Modify Debug Test</h3>
+    <p>This page tests the Swagger UI modify endpoint with enhanced error handling.</p>
+    <div id="error-log" class="error-log" style="display:none;"></div>
+    <button onclick="testModifyEndpoint()">Test Modify Endpoint</button>
+    <button onclick="testServerHealth()">Test Server Health</button>
+    <button onclick="clearErrors()">Clear Errors</button>
+  </div>
+  
+  <div id="swagger-ui"></div>
+  <script src="/swagger/swagger-ui-bundle.js"></script>
+  <script src="/swagger/swagger-ui-standalone-preset.js"></script>
+  <script>
+    let errorLog = [];
+    
+    function logError(message, error = null) {
+      const timestamp = new Date().toISOString();
+      const errorEntry = `[${timestamp}] ${message}${error ? '\n' + error.stack : ''}`;
+      errorLog.push(errorEntry);
+      
+      const errorLogEl = document.getElementById('error-log');
+      errorLogEl.style.display = 'block';
+      errorLogEl.textContent = errorLog.join('\n\n');
+    }
+    
+    function clearErrors() {
+      errorLog = [];
+      document.getElementById('error-log').style.display = 'none';
+    }
+    
+    async function testServerHealth() {
+      try {
+        const response = await fetch('/api/health');
+        const data = await response.json();
+        logError(`Server Health Check: ${response.status} - ${JSON.stringify(data, null, 2)}`);
+      } catch (error) {
+        logError('Server Health Check Failed', error);
+      }
+    }
+    
+    async function testModifyEndpoint() {
+      try {
+        // Test the modify endpoint directly
+        const formData = new FormData();
+        const testFile = new File(['username,email\njohn.doe,john@example.com'], 'test.csv', { type: 'text/csv' });
+        formData.append('file', testFile);
+        formData.append('createIfNotExists', 'false');
+        
+        const response = await fetch('/api/modify', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const data = await response.json();
+        logError(`Modify Endpoint Test: ${response.status} - ${JSON.stringify(data, null, 2)}`);
+      } catch (error) {
+        logError('Modify Endpoint Test Failed', error);
+      }
+    }
+    
+    // Enhanced error handling for Swagger UI
+    window.addEventListener('error', function(event) {
+      logError(`Global Error: ${event.message}`, event.error);
+    });
+    
+    window.addEventListener('unhandledrejection', function(event) {
+      logError(`Unhandled Promise Rejection: ${event.reason}`, event.reason);
+    });
+    
+    // Initialize Swagger UI with enhanced error handling
+    window.onload = function() {
+      try {
+        const ui = SwaggerUIBundle({
+          url: '/swagger.json',
+          dom_id: '#swagger-ui',
+          deepLinking: true,
+          presets: [
+            SwaggerUIBundle.presets.apis,
+            SwaggerUIStandalonePreset
+          ],
+          layout: 'StandaloneLayout',
+          requestInterceptor: (req) => {
+            try {
+              logError(`Request Interceptor: ${req.method} ${req.url}`);
+              return req;
+            } catch (error) {
+              logError('Request Interceptor Error', error);
+              return req;
+            }
+          },
+          responseInterceptor: (res) => {
+            try {
+              logError(`Response Interceptor: ${res.status} ${res.url}`);
+              return res;
+            } catch (error) {
+              logError('Response Interceptor Error', error);
+              return res;
+            }
+          },
+          onComplete: function() {
+            logError('Swagger UI loaded successfully');
+          },
+          onFailure: function(data) {
+            logError('Swagger UI failed to load', data);
+          }
+        });
+        
+        window.ui = ui;
+        
+        // Add error handling to Swagger UI components
+        if (ui && ui.getSystem) {
+          const system = ui.getSystem();
+          if (system && system.getIn) {
+            try {
+              const spec = system.getIn(['spec', 'selectors', 'spec']);
+              logError('Swagger spec loaded successfully');
+            } catch (error) {
+              logError('Error accessing Swagger spec', error);
+            }
+          }
+        }
+        
+      } catch (error) {
+        logError('Swagger UI Initialization Error', error);
+      }
+    };
+  </script>
+</body>
+</html> 

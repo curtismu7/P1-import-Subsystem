@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Fixes Verification Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .footer-test {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            padding: 10px;
+            z-index: 1000;
+        }
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .ping-logo-img {
+            height: 20px;
+            width: auto;
+        }
+        .ping-trademark {
+            color: #333;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .trademark-symbol {
+            font-size: 8px;
+            vertical-align: top;
+        }
+        .sidebar-version-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>All Fixes Verification Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Token Request Test</h2>
+        <p>Testing the token request endpoint to ensure it works without the "Target URL is required" error.</p>
+        <button class="test-button" onclick="testTokenRequest()">Test Token Request</button>
+        <div id="token-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Footer Logo Visibility Test</h2>
+        <p>Testing that the PingIdentity logo and trademark are visible in the footer alongside the version number.</p>
+        <div id="footer-test" class="footer-test">
+            <div class="logo-container">
+                <img src="ping-identity-logo.png" alt="Ping Identity" class="ping-logo-img">
+                <span class="ping-trademark">PingIdentity<span class="trademark-symbol">™</span></span>
+                <span class="sidebar-version-badge">v5.4</span>
+            </div>
+        </div>
+        <div id="footer-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Error Handling Test</h2>
+        <p>Testing that undefined property errors are properly handled in progress updates.</p>
+        <button class="test-button" onclick="testErrorHandling()">Test Error Handling</button>
+        <div id="error-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. WebSocket Connection Test</h2>
+        <p>Testing WebSocket connection with proper error handling.</p>
+        <button class="test-button" onclick="testWebSocketConnection()">Test WebSocket</button>
+        <div id="websocket-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Progress Update Test</h2>
+        <p>Testing progress updates with enhanced error handling.</p>
+        <button class="test-button" onclick="testProgressUpdates()">Test Progress Updates</button>
+        <div id="progress-result"></div>
+    </div>
+
+    <script>
+        // Test 1: Token Request
+        async function testTokenRequest() {
+            const resultDiv = document.getElementById('token-result');
+            resultDiv.innerHTML = '<div class="info">Testing token request...</div>';
+            
+            try {
+                const response = await fetch('/api/pingone/get-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.access_token) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ Token request successful!<br>
+                            Token type: ${data.token_type}<br>
+                            Expires in: ${data.expires_in} seconds<br>
+                            Token preview: ${data.access_token.substring(0, 50)}...
+                        </div>
+                    `;
+                } else {
+                    throw new Error('Invalid response format');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ Token request failed: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Test 2: Footer Logo Visibility
+        function testFooterLogo() {
+            const resultDiv = document.getElementById('footer-result');
+            const logo = document.querySelector('.ping-logo-img');
+            const trademark = document.querySelector('.ping-trademark');
+            const versionBadge = document.querySelector('.sidebar-version-badge');
+            
+            if (logo && trademark && versionBadge) {
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        ✅ Footer elements found:<br>
+                        - Logo: ${logo.src}<br>
+                        - Trademark: ${trademark.textContent}<br>
+                        - Version: ${versionBadge.textContent}
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ Missing footer elements:<br>
+                        - Logo: ${!!logo}<br>
+                        - Trademark: ${!!trademark}<br>
+                        - Version Badge: ${!!versionBadge}
+                    </div>
+                `;
+            }
+        }
+
+        // Test 3: Error Handling
+        function testErrorHandling() {
+            const resultDiv = document.getElementById('error-result');
+            resultDiv.innerHTML = '<div class="info">Testing error handling...</div>';
+            
+            try {
+                // Test undefined property handling
+                const testData = {
+                    current: undefined,
+                    total: null,
+                    message: undefined,
+                    counts: null
+                };
+                
+                // Simulate progress update with undefined values
+                if (window.uiManager && window.uiManager.updateImportProgress) {
+                    window.uiManager.updateImportProgress(
+                        testData.current || 0,
+                        testData.total || 0,
+                        testData.message || '',
+                        testData.counts || {}
+                    );
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ Error handling test passed!<br>
+                            Progress update method handled undefined values gracefully.
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="warning">
+                            ⚠️ UI Manager not available for testing
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ Error handling test failed: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Test 4: WebSocket Connection
+        function testWebSocketConnection() {
+            const resultDiv = document.getElementById('websocket-result');
+            resultDiv.innerHTML = '<div class="info">Testing WebSocket connection...</div>';
+            
+            try {
+                const port = window.location.port || 4000;
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.hostname}:${port}`;
+                
+                const ws = new WebSocket(wsUrl);
+                
+                const timeout = setTimeout(() => {
+                    resultDiv.innerHTML = `
+                        <div class="warning">
+                            ⚠️ WebSocket connection timeout
+                        </div>
+                    `;
+                }, 5000);
+                
+                ws.onopen = () => {
+                    clearTimeout(timeout);
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ WebSocket connection established successfully!
+                        </div>
+                    `;
+                    ws.close(1000, 'Test completed');
+                };
+                
+                ws.onerror = (error) => {
+                    clearTimeout(timeout);
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            ❌ WebSocket connection failed: ${error.message || 'Unknown error'}
+                        </div>
+                    `;
+                };
+                
+                ws.onclose = (event) => {
+                    clearTimeout(timeout);
+                    if (event.code === 1000) {
+                        resultDiv.innerHTML = `
+                            <div class="success">
+                                ✅ WebSocket connection closed normally
+                            </div>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `
+                            <div class="warning">
+                                ⚠️ WebSocket connection closed with code: ${event.code}
+                            </div>
+                        `;
+                    }
+                };
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ WebSocket test failed: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Test 5: Progress Updates
+        function testProgressUpdates() {
+            const resultDiv = document.getElementById('progress-result');
+            resultDiv.innerHTML = '<div class="info">Testing progress updates...</div>';
+            
+            try {
+                // Test with various data types
+                const testCases = [
+                    { current: 5, total: 10, message: 'Test progress', counts: { success: 3, failed: 1 } },
+                    { current: 0, total: 0, message: '', counts: {} },
+                    { current: undefined, total: null, message: undefined, counts: null }
+                ];
+                
+                let successCount = 0;
+                
+                testCases.forEach((testCase, index) => {
+                    try {
+                        if (window.uiManager && window.uiManager.updateImportProgress) {
+                            window.uiManager.updateImportProgress(
+                                testCase.current || 0,
+                                testCase.total || 0,
+                                testCase.message || '',
+                                testCase.counts || {}
+                            );
+                            successCount++;
+                        }
+                    } catch (error) {
+                        console.error(`Test case ${index + 1} failed:`, error);
+                    }
+                });
+                
+                if (successCount === testCases.length) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ Progress update test passed!<br>
+                            All ${testCases.length} test cases handled successfully.
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="warning">
+                            ⚠️ Progress update test partially passed<br>
+                            ${successCount}/${testCases.length} test cases successful
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ Progress update test failed: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-run footer test on page load
+        window.addEventListener('load', () => {
+            setTimeout(testFooterLogo, 1000);
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Spinner Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Import Button Spinner Fix Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Import Button State</h2>
+        <p>This test checks if the import button is properly enabled/disabled and if the isImporting flag is correctly managed.</p>
+        
+        <button id="check-btn" class="test-button">Check Import Button State</button>
+        <button id="fix-btn" class="test-button">Fix Import Button State</button>
+        <button id="test-import-btn" class="test-button">Test Import (Will Fail)</button>
+        
+        <div id="status" class="status info">Click to check import button state</div>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+
+        document.getElementById('check-btn').addEventListener('click', function() {
+            log('Checking import button state...');
+            
+            try {
+                if (typeof window.app !== 'undefined') {
+                    log(`✅ App object found`);
+                    log(`isImporting: ${window.app.isImporting}`);
+                    log(`isExporting: ${window.app.isExporting}`);
+                    log(`isDeleting: ${window.app.isDeleting}`);
+                    log(`isModifying: ${window.app.isModifying}`);
+                    
+                    const importBtn = document.getElementById('start-import');
+                    if (importBtn) {
+                        log(`✅ Import button found`);
+                        log(`Disabled: ${importBtn.disabled}`);
+                        log(`Classes: ${importBtn.className}`);
+                        
+                        if (window.app.isImporting && !importBtn.disabled) {
+                            updateStatus('WARNING: isImporting is true but button is not disabled!', 'error');
+                        } else if (window.app.isImporting && importBtn.disabled) {
+                            updateStatus('Button is correctly disabled during import', 'info');
+                        } else if (!window.app.isImporting && importBtn.disabled) {
+                            updateStatus('WARNING: Button is disabled but isImporting is false!', 'error');
+                        } else {
+                            updateStatus('Button state looks normal', 'success');
+                        }
+                    } else {
+                        log(`❌ Import button not found`);
+                        updateStatus('Import button not found', 'error');
+                    }
+                } else {
+                    log(`❌ App object not found`);
+                    updateStatus('App not loaded', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error checking state: ${error.message}`);
+                updateStatus('Error checking state', 'error');
+            }
+        });
+
+        document.getElementById('fix-btn').addEventListener('click', function() {
+            log('Attempting to fix import button state...');
+            
+            try {
+                if (typeof window.app !== 'undefined') {
+                    // Reset all operation flags
+                    window.app.isImporting = false;
+                    window.app.isExporting = false;
+                    window.app.isDeleting = false;
+                    window.app.isModifying = false;
+                    
+                    // Reset any import abort controller
+                    if (window.app.importAbortController) {
+                        window.app.importAbortController = null;
+                    }
+                    
+                    // Update button states
+                    if (typeof window.app.updateImportButtonState === 'function') {
+                        window.app.updateImportButtonState();
+                    }
+                    
+                    log(`✅ App state reset`);
+                    log(`isImporting: ${window.app.isImporting}`);
+                    updateStatus('App state fixed', 'success');
+                } else {
+                    log(`❌ App object not found`);
+                    updateStatus('App not loaded', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error fixing state: ${error.message}`);
+                updateStatus('Error fixing state', 'error');
+            }
+        });
+
+        document.getElementById('test-import-btn').addEventListener('click', function() {
+            log('Testing import process (will fail)...');
+            
+            try {
+                if (typeof window.app !== 'undefined' && typeof window.app.startImport === 'function') {
+                    // This will trigger the import process which should fail due to missing file/population
+                    // but should properly reset the isImporting flag
+                    window.app.startImport().then(() => {
+                        log('Import process completed');
+                        updateStatus('Import process completed', 'success');
+                    }).catch((error) => {
+                        log(`Import process failed: ${error.message}`);
+                        updateStatus('Import process failed (expected)', 'info');
+                    });
+                } else {
+                    log(`❌ App or startImport method not found`);
+                    updateStatus('App not loaded or startImport not available', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error testing import: ${error.message}`);
+                updateStatus('Error testing import', 'error');
+            }
+        });
+
+        // Auto-check on load
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                document.getElementById('check-btn').click();
+            }, 1000);
+        });
+    </script>
+</body>
+</html> 

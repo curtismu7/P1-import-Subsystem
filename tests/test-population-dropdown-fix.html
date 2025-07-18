@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Population Dropdown Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .manual-test {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Population Dropdown Loading Test</h1>
+    
+    <div class="manual-test">
+        <h3>Manual Test Instructions</h3>
+        <p>1. Open the main application at <a href="http://localhost:4000" target="_blank">http://localhost:4000</a></p>
+        <p>2. Navigate to the "Import" tab</p>
+        <p>3. Check the browser console for population loading logs</p>
+        <p>4. Verify that the "Import Population" dropdown is populated</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Controls</h2>
+        <button id="test-load-populations">Test Load Populations</button>
+        <button id="test-populate-dropdown">Test Populate Dropdown</button>
+        <button id="test-change-listener">Test Change Listener</button>
+        <button id="test-app-integration">Test App Integration</button>
+        <button id="clear-log">Clear Log</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Population Dropdown</h2>
+        <label for="import-population-select">Import Population:</label>
+        <select id="import-population-select" class="form-control">
+            <option value="">Loading populations...</option>
+        </select>
+        <div id="dropdown-status" class="status info">Dropdown ready for testing</div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Debug Log</h2>
+        <div id="debug-log" class="log"></div>
+    </div>
+
+    <script>
+        // Debug logging function
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // Test results display
+        function showResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `status ${type}`;
+            resultDiv.textContent = message;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        // Test load populations function
+        async function testLoadPopulations() {
+            log('Starting population load test...');
+            showResult('Testing population loading...', 'info');
+            
+            try {
+                const response = await fetch('/api/pingone/populations');
+                log(`API Response status: ${response.status}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const populations = await response.json();
+                log(`Received ${populations.length} populations`);
+                
+                if (Array.isArray(populations)) {
+                    showResult(`✅ Successfully loaded ${populations.length} populations`, 'success');
+                    log('Populations data:', populations);
+                    return populations;
+                } else {
+                    throw new Error('Response is not an array');
+                }
+            } catch (error) {
+                log(`Error loading populations: ${error.message}`, 'error');
+                showResult(`❌ Failed to load populations: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        // Test populate dropdown function
+        function testPopulateDropdown(populations) {
+            log('Testing dropdown population...');
+            showResult('Testing dropdown population...', 'info');
+            
+            const populationSelect = document.getElementById('import-population-select');
+            if (!populationSelect) {
+                log('Population select element not found', 'error');
+                showResult('❌ Population select element not found', 'error');
+                return false;
+            }
+            
+            try {
+                // Clear existing options
+                populationSelect.innerHTML = '';
+                
+                // Add default option
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'Select a population...';
+                populationSelect.appendChild(defaultOption);
+                
+                // Add population options
+                populations.forEach(population => {
+                    const option = document.createElement('option');
+                    option.value = population.id;
+                    option.textContent = population.name;
+                    populationSelect.appendChild(option);
+                });
+                
+                log(`Dropdown populated with ${populations.length} populations`);
+                showResult(`✅ Dropdown populated with ${populations.length} populations`, 'success');
+                
+                // Enable the select element
+                populationSelect.disabled = false;
+                
+                return true;
+            } catch (error) {
+                log(`Error populating dropdown: ${error.message}`, 'error');
+                showResult(`❌ Failed to populate dropdown: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Test change listener function
+        function testChangeListener() {
+            log('Testing change listener...');
+            showResult('Testing change listener...', 'info');
+            
+            const populationSelect = document.getElementById('import-population-select');
+            if (!populationSelect) {
+                log('Population select element not found', 'error');
+                showResult('❌ Population select element not found', 'error');
+                return false;
+            }
+            
+            try {
+                // Remove existing listener to prevent duplicates
+                populationSelect.removeEventListener('change', handlePopulationChange);
+                
+                // Add the change listener
+                populationSelect.addEventListener('change', handlePopulationChange);
+                
+                log('Change listener attached successfully');
+                showResult('✅ Change listener attached successfully', 'success');
+                
+                return true;
+            } catch (error) {
+                log(`Error attaching change listener: ${error.message}`, 'error');
+                showResult(`❌ Failed to attach change listener: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Test app integration
+        function testAppIntegration() {
+            log('Testing app integration...');
+            showResult('Testing app integration...', 'info');
+            
+            // Check if app is available
+            if (window.app) {
+                log('App is available in window.app');
+                showResult('✅ App is available', 'success');
+                
+                // Test if loadPopulations method exists
+                if (typeof window.app.loadPopulations === 'function') {
+                    log('loadPopulations method exists');
+                    showResult('✅ loadPopulations method exists', 'success');
+                    
+                    // Test if populatePopulationDropdown method exists
+                    if (typeof window.app.populatePopulationDropdown === 'function') {
+                        log('populatePopulationDropdown method exists');
+                        showResult('✅ populatePopulationDropdown method exists', 'success');
+                        
+                        // Test if attachPopulationChangeListener method exists
+                        if (typeof window.app.attachPopulationChangeListener === 'function') {
+                            log('attachPopulationChangeListener method exists');
+                            showResult('✅ attachPopulationChangeListener method exists', 'success');
+                            
+                            return true;
+                        } else {
+                            log('attachPopulationChangeListener method does not exist', 'error');
+                            showResult('❌ attachPopulationChangeListener method does not exist', 'error');
+                        }
+                    } else {
+                        log('populatePopulationDropdown method does not exist', 'error');
+                        showResult('❌ populatePopulationDropdown method does not exist', 'error');
+                    }
+                } else {
+                    log('loadPopulations method does not exist', 'error');
+                    showResult('❌ loadPopulations method does not exist', 'error');
+                }
+            } else {
+                log('App is not available in window.app', 'error');
+                showResult('❌ App is not available', 'error');
+            }
+            
+            return false;
+        }
+
+        // Population change handler
+        function handlePopulationChange(e) {
+            const populationSelectEl = e.target;
+            const selectedId = populationSelectEl.value;
+            const selectedName = populationSelectEl.selectedOptions[0]?.text || '';
+            
+            log(`Population changed: ${selectedName} (${selectedId})`);
+            showResult(`Population selected: ${selectedName}`, 'success');
+            
+            // Update status display
+            const statusDiv = document.getElementById('dropdown-status');
+            if (statusDiv) {
+                statusDiv.textContent = `Selected: ${selectedName} (${selectedId})`;
+                statusDiv.className = 'status success';
+            }
+        }
+
+        // Event listeners
+        document.getElementById('test-load-populations').addEventListener('click', async () => {
+            const populations = await testLoadPopulations();
+            if (populations) {
+                testPopulateDropdown(populations);
+            }
+        });
+
+        document.getElementById('test-populate-dropdown').addEventListener('click', async () => {
+            const populations = await testLoadPopulations();
+            if (populations) {
+                testPopulateDropdown(populations);
+            }
+        });
+
+        document.getElementById('test-change-listener').addEventListener('click', () => {
+            testChangeListener();
+        });
+
+        document.getElementById('test-app-integration').addEventListener('click', () => {
+            testAppIntegration();
+        });
+
+        document.getElementById('clear-log').addEventListener('click', () => {
+            document.getElementById('debug-log').innerHTML = '';
+            document.getElementById('test-results').innerHTML = '';
+        });
+
+        // Auto-test on page load
+        window.addEventListener('load', async () => {
+            log('Page loaded, starting auto-test...');
+            showResult('Starting auto-test...', 'info');
+            
+            // Test 1: Load populations
+            const populations = await testLoadPopulations();
+            
+            if (populations) {
+                // Test 2: Populate dropdown
+                const dropdownSuccess = testPopulateDropdown(populations);
+                
+                if (dropdownSuccess) {
+                    // Test 3: Attach change listener
+                    testChangeListener();
+                    
+                    showResult('✅ All tests completed successfully!', 'success');
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

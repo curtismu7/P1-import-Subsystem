@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Startup Screen Test</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/ping-identity.css">
+    <link rel="stylesheet" href="/css/disclaimer-modal.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="ping-identity-theme">
+    <!-- Startup Wait Screen -->
+    <div id="startup-wait-screen" class="startup-wait-screen">
+        <div class="startup-wait-content">
+            <div class="startup-spinner">
+                <div class="spinner"></div>
+            </div>
+            <div class="startup-text">
+                <h2>Please wait</h2>
+                <p>Initializing application...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="app-container">
+        <h1>Startup Screen Test</h1>
+        <p>This page tests the startup screen functionality.</p>
+        
+        <button onclick="showStartupScreen()">Show Startup Screen</button>
+        <button onclick="hideStartupScreen()">Hide Startup Screen</button>
+        <button onclick="testDisclaimer()">Test Disclaimer</button>
+        
+        <div id="test-results"></div>
+    </div>
+
+    <script>
+        function showStartupScreen() {
+            const startupScreen = document.getElementById('startup-wait-screen');
+            if (startupScreen) {
+                startupScreen.style.display = 'flex';
+                logTest('Startup screen shown', 'success');
+            } else {
+                logTest('Startup screen element not found', 'error');
+            }
+        }
+        
+        function hideStartupScreen() {
+            const startupScreen = document.getElementById('startup-wait-screen');
+            if (startupScreen) {
+                startupScreen.classList.add('fade-out');
+                setTimeout(() => {
+                    startupScreen.style.display = 'none';
+                    startupScreen.classList.remove('fade-out');
+                }, 500);
+                logTest('Startup screen hidden', 'success');
+            } else {
+                logTest('Startup screen element not found', 'error');
+            }
+        }
+        
+        function testDisclaimer() {
+            // Reset disclaimer acceptance
+            localStorage.removeItem('disclaimerAccepted');
+            localStorage.removeItem('disclaimerAcceptedAt');
+            sessionStorage.removeItem('disclaimerAccepted');
+            
+            logTest('Disclaimer acceptance reset', 'info');
+            logTest('Reload page to test disclaimer flow', 'warning');
+        }
+        
+        function logTest(message, type = 'info') {
+            const results = document.getElementById('test-results');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> <span class="log-${type}">${message}</span>`;
+            results.appendChild(logEntry);
+            console.log(`[TEST] ${message}`);
+        }
+        
+        // Test on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            logTest('Page loaded, testing startup screen visibility', 'info');
+            const startupScreen = document.getElementById('startup-wait-screen');
+            if (startupScreen) {
+                logTest('Startup screen element found', 'success');
+                logTest(`Startup screen display: ${startupScreen.style.display}`, 'info');
+            } else {
+                logTest('Startup screen element not found', 'error');
+            }
+        });
+    </script>
+</body>
+</html> 

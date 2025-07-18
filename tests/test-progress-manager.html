@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Manager Test</title>
+    <link rel="stylesheet" href="public/css/progress-ui.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Progress Manager Test</h1>
+        
+        <div class="test-section">
+            <h3>Import Operation Test</h3>
+            <button class="test-button" onclick="testImport()">Start Import Test</button>
+            <button class="test-button" onclick="testImportWithDuplicates()">Test with Duplicates</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Export Operation Test</h3>
+            <button class="test-button" onclick="testExport()">Start Export Test</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Delete Operation Test</h3>
+            <button class="test-button" onclick="testDelete()">Start Delete Test</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Modify Operation Test</h3>
+            <button class="test-button" onclick="testModify()">Start Modify Test</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Progress Manager Controls</h3>
+            <button class="test-button" onclick="hideProgress()">Hide Progress</button>
+            <button class="test-button" onclick="showProgress()">Show Progress</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { progressManager } from './public/js/modules/progress-manager.js';
+        
+        // Make progressManager available globally for testing
+        window.progressManager = progressManager;
+        
+        // Test functions
+        window.testImport = function() {
+            progressManager.startOperation('import', {
+                total: 100,
+                populationName: 'Test Population',
+                populationId: 'test-123',
+                fileName: 'test-users.csv'
+            });
+            
+            // Simulate progress updates
+            let current = 0;
+            const interval = setInterval(() => {
+                current += 10;
+                progressManager.updateProgress(current, 100, `Processing user ${current} of 100`);
+                
+                if (current >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        progressManager.completeOperation({
+                            success: 95,
+                            failed: 3,
+                            skipped: 2
+                        });
+                    }, 1000);
+                }
+            }, 500);
+        };
+        
+        window.testImportWithDuplicates = function() {
+            progressManager.startOperation('import', {
+                total: 50,
+                populationName: 'Test Population',
+                populationId: 'test-123'
+            });
+            
+            // Simulate finding duplicates
+            setTimeout(() => {
+                const duplicates = [
+                    { username: 'user1', email: 'user1@test.com', reason: 'Already exists' },
+                    { username: 'user2', email: 'user2@test.com', reason: 'Email already in use' }
+                ];
+                
+                progressManager.handleDuplicates(duplicates, (mode, duplicates) => {
+                    console.log('User chose mode:', mode);
+                    console.log('Duplicates:', duplicates);
+                    
+                    // Continue with the chosen mode
+                    progressManager.updateProgress(50, 50, 'Import completed');
+                    progressManager.completeOperation({
+                        success: 48,
+                        failed: 0,
+                        skipped: 2,
+                        duplicates: 2
+                    });
+                });
+            }, 2000);
+        };
+        
+        window.testExport = function() {
+            progressManager.startOperation('export', {
+                total: 200,
+                populationName: 'Export Population'
+            });
+            
+            let current = 0;
+            const interval = setInterval(() => {
+                current += 20;
+                progressManager.updateProgress(current, 200, `Exporting user ${current} of 200`);
+                
+                if (current >= 200) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        progressManager.completeOperation({
+                            success: 200,
+                            failed: 0
+                        });
+                    }, 1000);
+                }
+            }, 300);
+        };
+        
+        window.testDelete = function() {
+            progressManager.startOperation('delete', {
+                total: 25,
+                fileName: 'delete-users.csv'
+            });
+            
+            let current = 0;
+            const interval = setInterval(() => {
+                current += 5;
+                progressManager.updateProgress(current, 25, `Deleting user ${current} of 25`);
+                
+                if (current >= 25) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        progressManager.completeOperation({
+                            success: 23,
+                            failed: 2
+                        });
+                    }, 1000);
+                }
+            }, 400);
+        };
+        
+        window.testModify = function() {
+            progressManager.startOperation('modify', {
+                total: 75,
+                fileName: 'modify-users.csv'
+            });
+            
+            let current = 0;
+            const interval = setInterval(() => {
+                current += 15;
+                progressManager.updateProgress(current, 75, `Modifying user ${current} of 75`);
+                
+                if (current >= 75) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        progressManager.completeOperation({
+                            success: 72,
+                            failed: 3
+                        });
+                    }, 1000);
+                }
+            }, 350);
+        };
+        
+        window.hideProgress = function() {
+            progressManager.hideProgress();
+        };
+        
+        window.showProgress = function() {
+            progressManager.showProgress();
+        };
+        
+        console.log('Progress Manager Test loaded successfully');
+    </script>
+</body>
+</html> 

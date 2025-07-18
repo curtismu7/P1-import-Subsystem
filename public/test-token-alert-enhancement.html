@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Alert Enhancement Test - PingOne Import Tool</title>
+    <link rel="stylesheet" href="/css/ping-identity.css">
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-button.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .test-button.danger {
+            background: #dc3545;
+        }
+        .test-results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔐 Token Alert Enhancement Test</h1>
+        <p>This page tests the enhanced token alert modal with the "Go to Settings" button.</p>
+
+        <div class="test-section">
+            <h3>Test Cases</h3>
+            <p>Click the buttons below to test different scenarios:</p>
+            
+            <button class="test-button" onclick="testTokenAlert('import')">
+                Test Import Operation
+            </button>
+            
+            <button class="test-button" onclick="testTokenAlert('export')">
+                Test Export Operation
+            </button>
+            
+            <button class="test-button" onclick="testTokenAlert('delete')">
+                Test Delete Operation
+            </button>
+            
+            <button class="test-button" onclick="testTokenAlert('modify')">
+                Test Modify Operation
+            </button>
+            
+            <button class="test-button warning" onclick="testTokenAlertWithExpiry()">
+                Test with Expired Token
+            </button>
+            
+            <button class="test-button danger" onclick="clearTokenSession()">
+                Clear Session Flag
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>Expected Behavior</h3>
+            <ul>
+                <li>✅ Modal should appear with prominent "Go to Settings" button</li>
+                <li>✅ Modal should remain visible until user clicks button or close button</li>
+                <li>✅ Modal should not close on outside click or escape key</li>
+                <li>✅ Modal should show operation-specific message</li>
+                <li>✅ Modal should display token status and expiry information</li>
+                <li>✅ "Go to Settings" button should navigate to settings page</li>
+                <li>✅ Modal should only show once per session (use "Clear Session Flag" to test again)</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Results</h3>
+            <div id="test-results" class="test-results">
+                No tests run yet. Click a test button above to start testing.
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { showTokenAlertModal, clearTokenAlertSession } from '/js/modules/token-alert-modal.js';
+
+        // Make functions available globally for testing
+        window.testTokenAlert = function(operation) {
+            console.log(`Testing token alert for operation: ${operation}`);
+            
+            showTokenAlertModal({
+                tokenStatus: 'Not Available',
+                expiry: '',
+                operation: operation
+            });
+            
+            updateTestResults(`✅ Token alert modal shown for ${operation} operation`);
+        };
+
+        window.testTokenAlertWithExpiry = function() {
+            console.log('Testing token alert with expired token');
+            
+            showTokenAlertModal({
+                tokenStatus: 'Expired',
+                expiry: new Date().toLocaleString(),
+                operation: 'export'
+            });
+            
+            updateTestResults('✅ Token alert modal shown with expired token information');
+        };
+
+        window.clearTokenSession = function() {
+            console.log('Clearing token alert session flag');
+            
+            clearTokenAlertSession();
+            
+            updateTestResults('✅ Token alert session flag cleared. You can now test the modal again.');
+        };
+
+        function updateTestResults(message) {
+            const resultsDiv = document.getElementById('test-results');
+            const timestamp = new Date().toLocaleTimeString();
+            resultsDiv.innerHTML += `\n[${timestamp}] ${message}`;
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        // Initialize test results
+        updateTestResults('🚀 Token Alert Enhancement Test initialized');
+        updateTestResults('📋 Ready to test enhanced token alert modal functionality');
+    </script>
+</body>
+</html> 

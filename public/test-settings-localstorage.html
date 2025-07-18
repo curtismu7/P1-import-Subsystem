@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings localStorage Test - PingOne Import Tool</title>
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css">
+    <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/styles-fixed.css">
+    <link rel="stylesheet" href="/css/ping-identity.css">
+    <link rel="stylesheet" href="/css/token-status-indicator.css">
+    <link rel="stylesheet" href="/css/progress-ui.css">
+    <link rel="stylesheet" href="/css/disclaimer-modal.css">
+    <style>
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .test-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .test-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .test-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .test-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+    </style>
+</head>
+<body class="ping-identity-theme">
+    <div class="container">
+        <h1>Settings localStorage Test</h1>
+        <p>This page tests the localStorage functionality for the Settings page.</p>
+
+        <!-- Test Controls -->
+        <div class="test-section">
+            <h3>Test Controls</h3>
+            <button id="test-save" class="btn btn-primary">Test Save Settings</button>
+            <button id="test-load" class="btn btn-secondary">Test Load Settings</button>
+            <button id="test-clear" class="btn btn-danger">Clear localStorage</button>
+            <button id="test-inspect" class="btn btn-success">Inspect localStorage</button>
+        </div>
+
+        <!-- Settings Form -->
+        <div class="test-section">
+            <h3>Settings Form</h3>
+            <form id="settings-form" class="settings-section">
+                <div class="form-group">
+                    <label for="environment-id">Environment ID:</label>
+                    <input type="text" id="environment-id" name="environment-id" class="form-control" placeholder="Enter your PingOne environment ID">
+                </div>
+                
+                <div class="form-group">
+                    <label for="api-client-id">API Client ID:</label>
+                    <input type="text" id="api-client-id" name="api-client-id" class="form-control" placeholder="Enter your PingOne API client ID">
+                </div>
+                
+                <div class="form-group">
+                    <label for="api-secret">API Secret:</label>
+                    <div class="input-group">
+                        <input type="password" id="api-secret" name="api-secret" class="form-control" placeholder="Enter your PingOne API secret">
+                        <button type="button" id="toggle-api-secret-visibility" class="btn btn-outline-secondary">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="region">Region:</label>
+                    <select id="region" name="region" class="form-control">
+                        <option value="NorthAmerica">North America</option>
+                        <option value="Canada">Canada</option>
+                        <option value="Europe">European Union</option>
+                        <option value="Australia">Australia</option>
+                        <option value="Asia">Asia-Pacific</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="rate-limit">Rate Limit:</label>
+                    <input type="number" id="rate-limit" name="rate-limit" class="form-control" value="90" min="1" max="1000">
+                </div>
+                
+                <div class="form-group">
+                    <label for="population-id">Population ID:</label>
+                    <input type="text" id="population-id" name="population-id" class="form-control" placeholder="Enter population ID">
+                </div>
+                
+                <div class="form-actions">
+                    <button id="save-settings" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Test Results -->
+        <div class="test-section">
+            <h3>Test Results</h3>
+            <div id="test-results"></div>
+        </div>
+
+        <!-- Debug Information -->
+        <div class="test-section">
+            <h3>Debug Information</h3>
+            <div id="debug-info" class="debug-info"></div>
+        </div>
+    </div>
+
+    <script>
+        // Test results container
+        const testResults = document.getElementById('test-results');
+        const debugInfo = document.getElementById('debug-info');
+
+        function addTestResult(message, type = 'info') {
+            const result = document.createElement('div');
+            result.className = `test-result test-${type}`;
+            result.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            testResults.appendChild(result);
+            testResults.scrollTop = testResults.scrollHeight;
+        }
+
+        function updateDebugInfo() {
+            const storageKey = 'pingone-import-settings';
+            const storedData = localStorage.getItem(storageKey);
+            
+            debugInfo.innerHTML = `
+                <strong>localStorage Key:</strong> ${storageKey}<br>
+                <strong>Stored Data:</strong> ${storedData ? 'Present' : 'Not found'}<br>
+                <strong>Data Length:</strong> ${storedData ? storedData.length : 0} characters<br>
+                <strong>Form Values:</strong><br>
+                - Environment ID: ${document.getElementById('environment-id').value}<br>
+                - API Client ID: ${document.getElementById('api-client-id').value}<br>
+                - API Secret: ${document.getElementById('api-secret').value ? '***' : 'Empty'}<br>
+                - Region: ${document.getElementById('region').value}<br>
+                - Rate Limit: ${document.getElementById('rate-limit').value}<br>
+                - Population ID: ${document.getElementById('population-id').value}<br>
+                <strong>localStorage Available:</strong> ${typeof localStorage !== 'undefined' ? 'Yes' : 'No'}<br>
+                <strong>Raw localStorage Data:</strong><br>
+                <pre>${storedData || 'No data'}</pre>
+            `;
+        }
+
+        // Test Save Settings
+        document.getElementById('test-save').addEventListener('click', async () => {
+            try {
+                addTestResult('Testing save settings...', 'info');
+                
+                // Get form data
+                const formData = new FormData(document.getElementById('settings-form'));
+                const settings = {
+                    environmentId: formData.get('environment-id'),
+                    apiClientId: formData.get('api-client-id'),
+                    apiSecret: formData.get('api-secret'),
+                    populationId: formData.get('population-id'),
+                    region: formData.get('region'),
+                    rateLimit: parseInt(formData.get('rate-limit')) || 90
+                };
+
+                // Simulate the save process
+                const storageKey = 'pingone-import-settings';
+                const jsonData = JSON.stringify(settings);
+                localStorage.setItem(storageKey, jsonData);
+                
+                addTestResult(`Settings saved to localStorage with key: ${storageKey}`, 'success');
+                addTestResult(`Data saved: ${jsonData}`, 'info');
+                
+                updateDebugInfo();
+            } catch (error) {
+                addTestResult(`Error saving settings: ${error.message}`, 'error');
+            }
+        });
+
+        // Test Load Settings
+        document.getElementById('test-load').addEventListener('click', async () => {
+            try {
+                addTestResult('Testing load settings...', 'info');
+                
+                const storageKey = 'pingone-import-settings';
+                const storedData = localStorage.getItem(storageKey);
+                
+                if (!storedData) {
+                    addTestResult('No settings found in localStorage', 'warning');
+                    return;
+                }
+                
+                const settings = JSON.parse(storedData);
+                
+                // Populate form
+                document.getElementById('environment-id').value = settings.environmentId || '';
+                document.getElementById('api-client-id').value = settings.apiClientId || '';
+                document.getElementById('api-secret').value = settings.apiSecret || '';
+                document.getElementById('population-id').value = settings.populationId || '';
+                document.getElementById('region').value = settings.region || 'NorthAmerica';
+                document.getElementById('rate-limit').value = settings.rateLimit || 90;
+                
+                addTestResult('Settings loaded from localStorage and populated into form', 'success');
+                addTestResult(`Loaded settings: ${JSON.stringify(settings, null, 2)}`, 'info');
+                
+                updateDebugInfo();
+            } catch (error) {
+                addTestResult(`Error loading settings: ${error.message}`, 'error');
+            }
+        });
+
+        // Test Clear localStorage
+        document.getElementById('test-clear').addEventListener('click', () => {
+            try {
+                addTestResult('Clearing localStorage...', 'info');
+                
+                const storageKey = 'pingone-import-settings';
+                localStorage.removeItem(storageKey);
+                
+                addTestResult('localStorage cleared successfully', 'success');
+                updateDebugInfo();
+            } catch (error) {
+                addTestResult(`Error clearing localStorage: ${error.message}`, 'error');
+            }
+        });
+
+        // Test Inspect localStorage
+        document.getElementById('test-inspect').addEventListener('click', () => {
+            try {
+                addTestResult('Inspecting localStorage...', 'info');
+                
+                const storageKey = 'pingone-import-settings';
+                const storedData = localStorage.getItem(storageKey);
+                
+                if (storedData) {
+                    try {
+                        const parsed = JSON.parse(storedData);
+                        addTestResult('localStorage data parsed successfully', 'success');
+                        addTestResult(`Parsed data: ${JSON.stringify(parsed, null, 2)}`, 'info');
+                    } catch (parseError) {
+                        addTestResult(`Error parsing localStorage data: ${parseError.message}`, 'error');
+                        addTestResult(`Raw data: ${storedData}`, 'info');
+                    }
+                } else {
+                    addTestResult('No data found in localStorage', 'warning');
+                }
+                
+                updateDebugInfo();
+            } catch (error) {
+                addTestResult(`Error inspecting localStorage: ${error.message}`, 'error');
+            }
+        });
+
+        // Save Settings Button (simulates the actual app behavior)
+        document.getElementById('save-settings').addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            try {
+                addTestResult('Save Settings button clicked...', 'info');
+                
+                // Get form data
+                const formData = new FormData(document.getElementById('settings-form'));
+                const settings = {
+                    environmentId: formData.get('environment-id'),
+                    apiClientId: formData.get('api-client-id'),
+                    apiSecret: formData.get('api-secret'),
+                    populationId: formData.get('population-id'),
+                    region: formData.get('region'),
+                    rateLimit: parseInt(formData.get('rate-limit')) || 90
+                };
+
+                // Save to localStorage
+                const storageKey = 'pingone-import-settings';
+                const jsonData = JSON.stringify(settings);
+                localStorage.setItem(storageKey, jsonData);
+                
+                addTestResult('Settings saved successfully via Save Settings button', 'success');
+                addTestResult(`Saved data: ${jsonData}`, 'info');
+                
+                updateDebugInfo();
+            } catch (error) {
+                addTestResult(`Error saving settings via button: ${error.message}`, 'error');
+            }
+        });
+
+        // Secret field toggle functionality
+        const secretToggle = document.getElementById('toggle-api-secret-visibility');
+        const secretInput = document.getElementById('api-secret');
+        let isSecretVisible = false;
+
+        secretToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            isSecretVisible = !isSecretVisible;
+            
+            if (isSecretVisible) {
+                secretInput.type = 'text';
+                secretToggle.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            } else {
+                secretInput.type = 'password';
+                secretToggle.innerHTML = '<i class="fas fa-eye"></i>';
+            }
+            
+            addTestResult(`Secret field visibility toggled: ${isSecretVisible ? 'Visible' : 'Hidden'}`, 'info');
+        });
+
+        // Initialize debug info
+        updateDebugInfo();
+        
+        // Update debug info periodically
+        setInterval(updateDebugInfo, 2000);
+        
+        addTestResult('Test page loaded successfully', 'success');
+        addTestResult('Ready to test localStorage functionality', 'info');
+    </script>
+</body>
+</html> 

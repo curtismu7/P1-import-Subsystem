@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Error Handling Test</title>
+    <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .test-button {
+            margin: 5px;
+            min-width: 120px;
+        }
+        .test-results {
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        .test-success {
+            border-left-color: #28a745;
+        }
+        .test-error {
+            border-left-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <img src="https://raw.githubusercontent.com/curtismu7/CDN/fd81b602d8c3635a8ca40aab169c83b86eae2dc0/Ping%20Identity_idEzgMTpXK_1.svg" alt="Ping Identity" class="logo">
+            </div>
+            <ul class="nav-links">
+                <li class="nav-item active" data-view="test">
+                    <i class="fas fa-vial"></i>
+                    <span>Error Tests</span>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Persistent Animated Status Bar -->
+            <div id="status-bar" class="status-bar"></div>
+            
+            <div class="container-fluid">
+                <h1>Production Error Handling Test Suite</h1>
+                <p class="lead">Test all error handling flows to ensure users are never left confused</p>
+                
+                <!-- Status Bar Tests -->
+                <div class="test-section">
+                    <h3>Status Bar Tests</h3>
+                    <p>Test the persistent animated status bar with different message types</p>
+                    
+                    <button class="btn btn-info test-button" onclick="testStatusBar('info', 'This is an info message')">
+                        <i class="fas fa-info-circle"></i> Info
+                    </button>
+                    <button class="btn btn-success test-button" onclick="testStatusBar('success', 'Operation completed successfully!')">
+                        <i class="fas fa-check-circle"></i> Success
+                    </button>
+                    <button class="btn btn-warning test-button" onclick="testStatusBar('warning', 'Please check your input and try again')">
+                        <i class="fas fa-exclamation-triangle"></i> Warning
+                    </button>
+                    <button class="btn btn-danger test-button" onclick="testStatusBar('error', 'An error occurred while processing your request')">
+                        <i class="fas fa-times-circle"></i> Error
+                    </button>
+                    <button class="btn btn-secondary test-button" onclick="clearStatusBar()">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                    
+                    <div id="status-bar-results" class="test-results" style="display: none;"></div>
+                </div>
+                
+                <!-- API Error Tests -->
+                <div class="test-section">
+                    <h3>API Error Tests</h3>
+                    <p>Test different types of API errors and their user-friendly messages</p>
+                    
+                    <button class="btn btn-outline-danger test-button" onclick="testAPIError(401, 'UNAUTHORIZED')">
+                        <i class="fas fa-user-times"></i> Auth Error
+                    </button>
+                    <button class="btn btn-outline-danger test-button" onclick="testAPIError(403, 'FORBIDDEN')">
+                        <i class="fas fa-ban"></i> Forbidden
+                    </button>
+                    <button class="btn btn-outline-danger test-button" onclick="testAPIError(404, 'NOT_FOUND')">
+                        <i class="fas fa-search"></i> Not Found
+                    </button>
+                    <button class="btn btn-outline-danger test-button" onclick="testAPIError(429, 'RATE_LIMIT')">
+                        <i class="fas fa-clock"></i> Rate Limit
+                    </button>
+                    <button class="btn btn-outline-danger test-button" onclick="testAPIError(500, 'INTERNAL_ERROR')">
+                        <i class="fas fa-exclamation-triangle"></i> Server Error
+                    </button>
+                    <button class="btn btn-outline-danger test-button" onclick="testNetworkError()">
+                        <i class="fas fa-wifi"></i> Network Error
+                    </button>
+                    <button class="btn btn-outline-danger test-button" onclick="testTimeoutError()">
+                        <i class="fas fa-hourglass-half"></i> Timeout
+                    </button>
+                    
+                    <div id="api-error-results" class="test-results" style="display: none;"></div>
+                </div>
+                
+                <!-- Form Validation Tests -->
+                <div class="test-section">
+                    <h3>Form Validation Tests</h3>
+                    <p>Test input validation with status bar feedback</p>
+                    
+                    <div class="form-group">
+                        <label for="test-email">Email Address:</label>
+                        <input type="email" id="test-email" class="form-control" placeholder="Enter email">
+                    </div>
+                    <div class="form-group">
+                        <label for="test-url">URL:</label>
+                        <input type="url" id="test-url" class="form-control" placeholder="Enter URL">
+                    </div>
+                    <div class="form-group">
+                        <label for="test-required">Required Field:</label>
+                        <input type="text" id="test-required" class="form-control" placeholder="This field is required">
+                    </div>
+                    
+                    <button class="btn btn-primary test-button" onclick="testFormValidation()">
+                        <i class="fas fa-check"></i> Validate Form
+                    </button>
+                    
+                    <div id="validation-results" class="test-results" style="display: none;"></div>
+                </div>
+                
+                <!-- Fallback UI Tests -->
+                <div class="test-section">
+                    <h3>Fallback UI Tests</h3>
+                    <p>Test critical error scenarios with fallback UI</p>
+                    
+                    <button class="btn btn-outline-warning test-button" onclick="testFallbackUI('404')">
+                        <i class="fas fa-search"></i> 404 Error
+                    </button>
+                    <button class="btn btn-outline-danger test-button" onclick="testFallbackUI('500')">
+                        <i class="fas fa-exclamation-triangle"></i> 500 Error
+                    </button>
+                    <button class="btn btn-outline-info test-button" onclick="testFallbackUI('maintenance')">
+                        <i class="fas fa-tools"></i> Maintenance
+                    </button>
+                    <button class="btn btn-outline-danger test-button" onclick="testFallbackUI('network')">
+                        <i class="fas fa-wifi"></i> Network Error
+                    </button>
+                    <button class="btn btn-outline-warning test-button" onclick="testFallbackUI('timeout')">
+                        <i class="fas fa-hourglass-half"></i> Timeout
+                    </button>
+                    
+                    <div id="fallback-results" class="test-results" style="display: none;"></div>
+                </div>
+                
+                <!-- Real API Tests -->
+                <div class="test-section">
+                    <h3>Real API Tests</h3>
+                    <p>Test actual API endpoints with error handling</p>
+                    
+                    <button class="btn btn-outline-primary test-button" onclick="testHealthEndpoint()">
+                        <i class="fas fa-heartbeat"></i> Health Check
+                    </button>
+                    <button class="btn btn-outline-primary test-button" onclick="testInvalidEndpoint()">
+                        <i class="fas fa-exclamation"></i> Invalid Endpoint
+                    </button>
+                    <button class="btn btn-outline-primary test-button" onclick="testSettingsEndpoint()">
+                        <i class="fas fa-cog"></i> Settings
+                    </button>
+                    
+                    <div id="real-api-results" class="test-results" style="display: none;"></div>
+                </div>
+                
+                <!-- Test Results Summary -->
+                <div class="test-section">
+                    <h3>Test Results</h3>
+                    <div id="test-summary" class="test-results">
+                        <p>Run tests to see results here...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Test functions
+        let testResults = [];
+        
+        function logTestResult(testName, success, message) {
+            const result = { testName, success, message, timestamp: new Date().toISOString() };
+            testResults.push(result);
+            updateTestSummary();
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${success ? 'test-success' : 'test-error'}`;
+            resultDiv.innerHTML = `
+                <strong>${testName}:</strong> ${success ? '✅ PASS' : '❌ FAIL'}
+                <br><small>${message}</small>
+            `;
+            
+            // Find the appropriate results container
+            const containerId = testName.toLowerCase().replace(/\s+/g, '-') + '-results';
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'block';
+                container.appendChild(resultDiv);
+            }
+        }
+        
+        function updateTestSummary() {
+            const summary = document.getElementById('test-summary');
+            const passed = testResults.filter(r => r.success).length;
+            const total = testResults.length;
+            
+            summary.innerHTML = `
+                <h4>Test Summary</h4>
+                <p>Passed: ${passed} / ${total}</p>
+                <div class="test-results-list">
+                    ${testResults.map(r => `
+                        <div class="${r.success ? 'test-success' : 'test-error'}">
+                            <strong>${r.testName}:</strong> ${r.success ? '✅ PASS' : '❌ FAIL'}
+                            <br><small>${r.message}</small>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        // Status Bar Tests
+        function testStatusBar(type, message) {
+            try {
+                const ui = window.app && window.app.uiManager;
+                if (ui) {
+                    ui.showStatusBar(message, type);
+                    logTestResult('Status Bar ' + type.charAt(0).toUpperCase() + type.slice(1), true, `Successfully showed ${type} message`);
+                } else {
+                    logTestResult('Status Bar ' + type.charAt(0).toUpperCase() + type.slice(1), false, 'UI Manager not available');
+                }
+            } catch (error) {
+                logTestResult('Status Bar ' + type.charAt(0).toUpperCase() + type.slice(1), false, error.message);
+            }
+        }
+        
+        function clearStatusBar() {
+            try {
+                const ui = window.app && window.app.uiManager;
+                if (ui) {
+                    ui.clearStatusBar();
+                    logTestResult('Clear Status Bar', true, 'Successfully cleared status bar');
+                } else {
+                    logTestResult('Clear Status Bar', false, 'UI Manager not available');
+                }
+            } catch (error) {
+                logTestResult('Clear Status Bar', false, error.message);
+            }
+        }
+        
+        // API Error Tests
+        function testAPIError(status, code) {
+            try {
+                // Simulate API error
+                const error = new Error('Test error');
+                error.response = { status };
+                error.code = code;
+                
+                if (typeof handleAppError === 'function') {
+                    handleAppError(error);
+                    logTestResult(`API Error ${status}`, true, `Successfully handled ${code} error`);
+                } else {
+                    logTestResult(`API Error ${status}`, false, 'handleAppError function not available');
+                }
+            } catch (error) {
+                logTestResult(`API Error ${status}`, false, error.message);
+            }
+        }
+        
+        function testNetworkError() {
+            try {
+                const error = new Error('Network error');
+                error.message = 'Failed to fetch';
+                
+                if (typeof handleAppError === 'function') {
+                    handleAppError(error);
+                    logTestResult('Network Error', true, 'Successfully handled network error');
+                } else {
+                    logTestResult('Network Error', false, 'handleAppError function not available');
+                }
+            } catch (error) {
+                logTestResult('Network Error', false, error.message);
+            }
+        }
+        
+        function testTimeoutError() {
+            try {
+                const error = new Error('Request timeout');
+                error.message = 'timeout';
+                
+                if (typeof handleAppError === 'function') {
+                    handleAppError(error);
+                    logTestResult('Timeout Error', true, 'Successfully handled timeout error');
+                } else {
+                    logTestResult('Timeout Error', false, 'handleAppError function not available');
+                }
+            } catch (error) {
+                logTestResult('Timeout Error', false, error.message);
+            }
+        }
+        
+        // Form Validation Tests
+        function testFormValidation() {
+            try {
+                const emailInput = document.getElementById('test-email');
+                const urlInput = document.getElementById('test-url');
+                const requiredInput = document.getElementById('test-required');
+                
+                let allValid = true;
+                let messages = [];
+                
+                // Test email validation
+                if (emailInput.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value)) {
+                    allValid = false;
+                    messages.push('Invalid email format');
+                }
+                
+                // Test URL validation
+                if (urlInput.value) {
+                    try {
+                        new URL(urlInput.value);
+                    } catch {
+                        allValid = false;
+                        messages.push('Invalid URL format');
+                    }
+                }
+                
+                // Test required field
+                if (!requiredInput.value.trim()) {
+                    allValid = false;
+                    messages.push('Required field is empty');
+                }
+                
+                if (typeof validateInput === 'function') {
+                    const emailValid = validateInput(emailInput, { email: true });
+                    const urlValid = validateInput(urlInput, { url: true });
+                    const requiredValid = validateInput(requiredInput, { required: true });
+                    
+                    logTestResult('Form Validation', allValid, messages.length > 0 ? messages.join(', ') : 'All fields valid');
+                } else {
+                    logTestResult('Form Validation', allValid, 'validateInput function not available');
+                }
+            } catch (error) {
+                logTestResult('Form Validation', false, error.message);
+            }
+        }
+        
+        // Fallback UI Tests
+        function testFallbackUI(type) {
+            try {
+                if (typeof showFallbackUI === 'function') {
+                    showFallbackUI(type);
+                    logTestResult(`Fallback UI ${type}`, true, `Successfully showed ${type} fallback UI`);
+                } else {
+                    logTestResult(`Fallback UI ${type}`, false, 'showFallbackUI function not available');
+                }
+            } catch (error) {
+                logTestResult(`Fallback UI ${type}`, false, error.message);
+            }
+        }
+        
+        // Real API Tests
+        async function testHealthEndpoint() {
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'ok') {
+                    logTestResult('Health Endpoint', true, 'Health check successful');
+                } else {
+                    logTestResult('Health Endpoint', false, 'Health check failed');
+                }
+            } catch (error) {
+                logTestResult('Health Endpoint', false, error.message);
+            }
+        }
+        
+        async function testInvalidEndpoint() {
+            try {
+                const response = await fetch('/api/invalid-endpoint');
+                
+                if (response.status === 404) {
+                    logTestResult('Invalid Endpoint', true, 'Correctly returned 404 for invalid endpoint');
+                } else {
+                    logTestResult('Invalid Endpoint', false, `Expected 404, got ${response.status}`);
+                }
+            } catch (error) {
+                logTestResult('Invalid Endpoint', false, error.message);
+            }
+        }
+        
+        async function testSettingsEndpoint() {
+            try {
+                const response = await fetch('/api/settings');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    logTestResult('Settings Endpoint', true, 'Settings endpoint accessible');
+                } else {
+                    logTestResult('Settings Endpoint', false, 'Settings endpoint failed');
+                }
+            } catch (error) {
+                logTestResult('Settings Endpoint', false, error.message);
+            }
+        }
+        
+        // Initialize test page
+        document.addEventListener('DOMContentLoaded', function() {
+            logTestResult('Page Load', true, 'Test page loaded successfully');
+        });
+    </script>
+</body>
+</html> 

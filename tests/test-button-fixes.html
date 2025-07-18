@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Fixes Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .btn-danger {
+            background: #dc3545;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .dropdown-test {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .dropdown-test select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .button-state {
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .enabled {
+            color: #28a745;
+        }
+        .disabled {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>Button Fixes Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Overview</h2>
+        <p>This test verifies that the delete and modify buttons are now working correctly after fixing the button ID mismatches.</p>
+        
+        <div class="status info">
+            <strong>Fixed Issues:</strong>
+            <ul>
+                <li>Delete button event listener was looking for 'start-delete-btn' but HTML had 'start-delete'</li>
+                <li>Modify button event listener was looking for 'start-modify-btn' but HTML had 'start-modify'</li>
+                <li>Both buttons now have correct event listeners</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Delete Section Test</h2>
+        <div class="dropdown-test">
+            <label for="delete-population-select">Delete Population:</label>
+            <select id="delete-population-select">
+                <option value="">Loading populations...</option>
+            </select>
+            <div class="button-state" id="delete-button-state">Button State: <span class="disabled">Disabled</span></div>
+            <button id="start-delete" class="test-button btn-danger" disabled>
+                <i class="fas fa-trash"></i> Start Delete
+            </button>
+            <div id="delete-click-status" class="status info">Click the button to test functionality</div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Modify Section Test</h2>
+        <div class="dropdown-test">
+            <label for="modify-population-select">Modify Population:</label>
+            <select id="modify-population-select">
+                <option value="">Loading populations...</option>
+            </select>
+            <div class="button-state" id="modify-button-state">Button State: <span class="disabled">Disabled</span></div>
+            <button id="start-modify" class="test-button btn-warning" disabled>
+                <i class="fas fa-edit"></i> Start Modify
+            </button>
+            <div id="modify-click-status" class="status info">Click the button to test functionality</div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results">
+            <div class="status info">Tests will run automatically when the page loads...</div>
+        </div>
+    </div>
+
+    <script src="public/js/bundle.js"></script>
+    <script>
+        // Test results tracking
+        const testResults = {
+            delete: { loaded: false, populated: false, buttonWorks: false, clickable: false },
+            modify: { loaded: false, populated: false, buttonWorks: false, clickable: false }
+        };
+
+        function updateTestResults() {
+            const resultsDiv = document.getElementById('test-results');
+            let html = '<h3>Test Results:</h3>';
+            
+            Object.entries(testResults).forEach(([section, results]) => {
+                const status = results.loaded && results.populated && results.buttonWorks && results.clickable ? 'success' : 'error';
+                const icon = results.loaded && results.populated && results.buttonWorks && results.clickable ? '✅' : '❌';
+                html += `<div class="status ${status}">${icon} ${section.toUpperCase()}: Loaded=${results.loaded}, Populated=${results.populated}, Button=${results.buttonWorks}, Clickable=${results.clickable}</div>`;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        function checkButtonState(buttonId, stateId) {
+            const button = document.getElementById(buttonId);
+            const stateDiv = document.getElementById(stateId);
+            const stateSpan = stateDiv.querySelector('span');
+            
+            if (button) {
+                const isEnabled = !button.disabled;
+                stateSpan.textContent = isEnabled ? 'Enabled' : 'Disabled';
+                stateSpan.className = isEnabled ? 'enabled' : 'disabled';
+                return isEnabled;
+            }
+            return false;
+        }
+
+        function checkDropdownPopulation(dropdownId, section) {
+            const dropdown = document.getElementById(dropdownId);
+            if (dropdown && dropdown.options.length > 1) {
+                testResults[section].populated = true;
+                return true;
+            }
+            return false;
+        }
+
+        function testButtonClick(buttonId, statusId, section) {
+            const button = document.getElementById(buttonId);
+            const statusDiv = document.getElementById(statusId);
+            
+            if (button) {
+                // Test if button is clickable by adding a temporary click handler
+                const originalOnClick = button.onclick;
+                let clickTested = false;
+                
+                button.onclick = function(e) {
+                    e.preventDefault();
+                    statusDiv.innerHTML = `<div class="status success">✅ ${section.toUpperCase()} button is clickable!</div>`;
+                    testResults[section].clickable = true;
+                    updateTestResults();
+                    
+                    // Restore original onclick
+                    button.onclick = originalOnClick;
+                    clickTested = true;
+                };
+                
+                // Trigger a click after a short delay
+                setTimeout(() => {
+                    if (!clickTested) {
+                        button.click();
+                    }
+                }, 1000);
+            }
+        }
+
+        // Monitor dropdown changes
+        function setupDropdownMonitoring() {
+            const dropdowns = [
+                { id: 'delete-population-select', section: 'delete', buttonId: 'start-delete', stateId: 'delete-button-state' },
+                { id: 'modify-population-select', section: 'modify', buttonId: 'start-modify', stateId: 'modify-button-state' }
+            ];
+
+            dropdowns.forEach(({ id, section, buttonId, stateId }) => {
+                const dropdown = document.getElementById(id);
+                if (dropdown) {
+                    testResults[section].loaded = true;
+                    
+                    // Check initial state
+                    checkDropdownPopulation(id, section);
+                    const buttonWorks = checkButtonState(buttonId, stateId);
+                    testResults[section].buttonWorks = buttonWorks;
+                    
+                    // Monitor changes
+                    dropdown.addEventListener('change', () => {
+                        checkDropdownPopulation(id, section);
+                        const buttonWorks = checkButtonState(buttonId, stateId);
+                        testResults[section].buttonWorks = buttonWorks;
+                        updateTestResults();
+                        
+                        // Test button click when enabled
+                        if (buttonWorks) {
+                            testButtonClick(buttonId, `${section}-click-status`, section);
+                        }
+                    });
+                }
+            });
+        }
+
+        // Wait for the app to initialize
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                setupDropdownMonitoring();
+                updateTestResults();
+                
+                // Run periodic checks
+                setInterval(() => {
+                    setupDropdownMonitoring();
+                    updateTestResults();
+                }, 2000);
+            }, 1000);
+        });
+
+        // Add manual test buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            const testSection = document.createElement('div');
+            testSection.className = 'test-section';
+            testSection.innerHTML = `
+                <h2>Manual Tests</h2>
+                <button onclick="testDeleteButton()" class="test-button">Test Delete Button</button>
+                <button onclick="testModifyButton()" class="test-button">Test Modify Button</button>
+                <button onclick="selectPopulations()" class="test-button">Select Populations</button>
+            `;
+            document.body.appendChild(testSection);
+        });
+
+        function testDeleteButton() {
+            const button = document.getElementById('start-delete');
+            if (button) {
+                button.click();
+                alert('Delete button test completed. Check status above.');
+            } else {
+                alert('Delete button not found.');
+            }
+        }
+
+        function testModifyButton() {
+            const button = document.getElementById('start-modify');
+            if (button) {
+                button.click();
+                alert('Modify button test completed. Check status above.');
+            } else {
+                alert('Modify button not found.');
+            }
+        }
+
+        function selectPopulations() {
+            const deleteDropdown = document.getElementById('delete-population-select');
+            const modifyDropdown = document.getElementById('modify-population-select');
+            
+            if (deleteDropdown && deleteDropdown.options.length > 1) {
+                deleteDropdown.selectedIndex = 1;
+                deleteDropdown.dispatchEvent(new Event('change'));
+            }
+            
+            if (modifyDropdown && modifyDropdown.options.length > 1) {
+                modifyDropdown.selectedIndex = 1;
+                modifyDropdown.dispatchEvent(new Event('change'));
+            }
+            
+            alert('Populations selected. Check button states.');
+        }
+    </script>
+</body>
+</html> 

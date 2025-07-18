@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disclaimer Modal Test</title>
+    <!-- Ping Identity Official CSS -->
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css">
+    <!-- Bootstrap CSS -->
+    <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/styles-fixed.css">
+    <!-- Disclaimer Modal CSS -->
+    <link rel="stylesheet" href="/css/disclaimer-modal.css">
+    <style>
+        body {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .test-button {
+            margin: 10px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Disclaimer Modal Test Page</h1>
+    
+    <div class="test-section">
+        <h2>Test Controls</h2>
+        <button class="test-button" onclick="testShowModal()">Show Disclaimer Modal</button>
+        <button class="test-button" onclick="testResetDisclaimer()">Reset Disclaimer Acceptance</button>
+        <button class="test-button" onclick="testCheckStatus()">Check Disclaimer Status</button>
+        <button class="test-button" onclick="testEnableApp()">Simulate App Enable</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Simulated App Interface</h2>
+        <div class="app-container disclaimer-modal-active">
+            <nav class="sidebar">
+                <div class="sidebar-header">
+                    <h3>Test App</h3>
+                </div>
+                <ul class="nav-links">
+                    <li class="nav-item" data-view="home">
+                        <i class="fas fa-home"></i>
+                        <span>Home</span>
+                    </li>
+                    <li class="nav-item" data-view="import">
+                        <i class="fas fa-upload"></i>
+                        <span>Import</span>
+                    </li>
+                    <li class="nav-item" data-view="settings">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </li>
+                </ul>
+            </nav>
+            
+            <main class="main-content">
+                <div class="view active">
+                    <h3>Test Content</h3>
+                    <p>This content should be disabled until disclaimer is accepted.</p>
+                    <button class="btn btn-primary">Test Button</button>
+                    <input type="text" placeholder="Test Input" class="form-control">
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Disclaimer Modal Script -->
+    <script src="/js/modules/disclaimer-modal.js"></script>
+    
+    <script>
+        function logTest(message, type = 'info') {
+            const results = document.getElementById('test-results');
+            const status = document.createElement('div');
+            status.className = `status ${type}`;
+            status.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            results.appendChild(status);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function testShowModal() {
+            logTest('Testing disclaimer modal display...', 'info');
+            
+            // Reset disclaimer acceptance
+            if (window.DisclaimerModal) {
+                window.DisclaimerModal.resetDisclaimerAcceptance();
+                logTest('Disclaimer acceptance reset', 'success');
+                
+                // Create new modal instance
+                new window.DisclaimerModal();
+                logTest('Disclaimer modal created and shown', 'success');
+            } else {
+                logTest('DisclaimerModal not available', 'error');
+            }
+        }
+
+        function testResetDisclaimer() {
+            logTest('Resetting disclaimer acceptance...', 'info');
+            
+            if (window.DisclaimerModal) {
+                window.DisclaimerModal.resetDisclaimerAcceptance();
+                logTest('Disclaimer acceptance reset successfully', 'success');
+            } else {
+                logTest('DisclaimerModal not available', 'error');
+            }
+        }
+
+        function testCheckStatus() {
+            logTest('Checking disclaimer status...', 'info');
+            
+            if (window.DisclaimerModal) {
+                const isAccepted = window.DisclaimerModal.isDisclaimerAccepted();
+                logTest(`Disclaimer accepted: ${isAccepted}`, isAccepted ? 'success' : 'info');
+            } else {
+                logTest('DisclaimerModal not available', 'error');
+            }
+        }
+
+        function testEnableApp() {
+            logTest('Simulating app enable...', 'info');
+            
+            const appContainer = document.querySelector('.app-container');
+            if (appContainer) {
+                appContainer.classList.remove('disclaimer-modal-active');
+                logTest('App container enabled (disclaimer-modal-active class removed)', 'success');
+            } else {
+                logTest('App container not found', 'error');
+            }
+        }
+
+        // Initialize test page
+        document.addEventListener('DOMContentLoaded', () => {
+            logTest('Test page loaded', 'info');
+            logTest('DisclaimerModal available: ' + (window.DisclaimerModal ? 'Yes' : 'No'), 'info');
+            
+            // Check initial status
+            if (window.DisclaimerModal) {
+                const isAccepted = window.DisclaimerModal.isDisclaimerAccepted();
+                logTest(`Initial disclaimer status: ${isAccepted ? 'Accepted' : 'Not accepted'}`, 'info');
+            }
+        });
+    </script>
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-content">
+        <div class="footer-logo">
+          <img src="/ping-identity-logo.svg" alt="Ping Identity Logo" height="28" width="auto" loading="lazy" />
+        </div>
+        <div class="footer-text">
+          <span>&copy; 2025 Ping Identity. All rights reserved.</span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html> 

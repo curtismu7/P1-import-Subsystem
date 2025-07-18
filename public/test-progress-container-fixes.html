@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Container Fixes Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 15px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .log-output {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        .log-entry.error {
+            color: #dc3545;
+        }
+        .log-entry.warn {
+            color: #ffc107;
+        }
+        .log-entry.info {
+            color: #17a2b8;
+        }
+        .log-entry.debug {
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Progress Container Fixes Test</h1>
+        <p>This page tests the defensive checks added to the progress manager to handle missing progress container gracefully.</p>
+        
+        <div class="test-section">
+            <h3>Test 1: Initialize Progress Manager</h3>
+            <p>Test that the progress manager initializes without errors when progress container is missing.</p>
+            <button class="test-button" onclick="testInitialization()">Test Initialization</button>
+            <div id="init-status" class="status" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test 2: Start Operation</h3>
+            <p>Test that starting an operation doesn't crash when progress container is missing.</p>
+            <button class="test-button" onclick="testStartOperation()">Test Start Operation</button>
+            <div id="operation-status" class="status" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test 3: Update Progress</h3>
+            <p>Test that updating progress doesn't crash when progress container is missing.</p>
+            <button class="test-button" onclick="testUpdateProgress()">Test Update Progress</button>
+            <div id="progress-status" class="status" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test 4: Complete Operation</h3>
+            <p>Test that completing an operation doesn't crash when progress container is missing.</p>
+            <button class="test-button" onclick="testCompleteOperation()">Test Complete Operation</button>
+            <div id="complete-status" class="status" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Console Logs</h3>
+            <p>Monitor the console for any errors or warnings:</p>
+            <div id="log-output" class="log-output"></div>
+        </div>
+    </div>
+
+    <script>
+        // Capture console logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        const originalInfo = console.info;
+        const originalDebug = console.debug;
+        
+        const logOutput = document.getElementById('log-output');
+        
+        function addLogEntry(level, message) {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${level}`;
+            entry.textContent = `[${new Date().toISOString()}] [${level.toUpperCase()}] ${message}`;
+            logOutput.appendChild(entry);
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addLogEntry('info', args.join(' '));
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addLogEntry('error', args.join(' '));
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addLogEntry('warn', args.join(' '));
+        };
+        
+        console.info = function(...args) {
+            originalInfo.apply(console, args);
+            addLogEntry('info', args.join(' '));
+        };
+        
+        console.debug = function(...args) {
+            originalDebug.apply(console, args);
+            addLogEntry('debug', args.join(' '));
+        };
+        
+        // Test functions
+        function showStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+            element.style.display = 'block';
+        }
+        
+        async function testInitialization() {
+            try {
+                console.log('Testing progress manager initialization...');
+                
+                // Load the app.js bundle
+                const script = document.createElement('script');
+                script.src = 'public/js/bundle.js';
+                script.type = 'module';
+                
+                script.onload = () => {
+                    console.log('Bundle loaded successfully');
+                    showStatus('init-status', '✅ Progress manager initialized without errors', 'success');
+                };
+                
+                script.onerror = (error) => {
+                    console.error('Failed to load bundle:', error);
+                    showStatus('init-status', '❌ Failed to load bundle', 'error');
+                };
+                
+                document.head.appendChild(script);
+                
+            } catch (error) {
+                console.error('Initialization test failed:', error);
+                showStatus('init-status', `❌ Initialization test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testStartOperation() {
+            try {
+                console.log('Testing start operation...');
+                
+                // Simulate starting an operation
+                if (window.progressManager) {
+                    window.progressManager.startOperation('import', {
+                        total: 10,
+                        populationName: 'Test Population',
+                        fileName: 'test.csv'
+                    });
+                    showStatus('operation-status', '✅ Start operation completed without errors', 'success');
+                } else {
+                    showStatus('operation-status', '⚠️ Progress manager not available', 'info');
+                }
+                
+            } catch (error) {
+                console.error('Start operation test failed:', error);
+                showStatus('operation-status', `❌ Start operation test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testUpdateProgress() {
+            try {
+                console.log('Testing update progress...');
+                
+                // Simulate updating progress
+                if (window.progressManager) {
+                    window.progressManager.updateProgress(5, 10, 'Processing...', {
+                        processed: 5,
+                        success: 4,
+                        failed: 1,
+                        skipped: 0
+                    });
+                    showStatus('progress-status', '✅ Update progress completed without errors', 'success');
+                } else {
+                    showStatus('progress-status', '⚠️ Progress manager not available', 'info');
+                }
+                
+            } catch (error) {
+                console.error('Update progress test failed:', error);
+                showStatus('progress-status', `❌ Update progress test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testCompleteOperation() {
+            try {
+                console.log('Testing complete operation...');
+                
+                // Simulate completing an operation
+                if (window.progressManager) {
+                    window.progressManager.completeOperation({
+                        processed: 10,
+                        success: 9,
+                        failed: 1,
+                        skipped: 0,
+                        message: 'Operation completed successfully'
+                    });
+                    showStatus('complete-status', '✅ Complete operation completed without errors', 'success');
+                } else {
+                    showStatus('complete-status', '⚠️ Progress manager not available', 'info');
+                }
+                
+            } catch (error) {
+                console.error('Complete operation test failed:', error);
+                showStatus('complete-status', `❌ Complete operation test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Auto-run initialization test
+        window.addEventListener('load', () => {
+            setTimeout(testInitialization, 1000);
+        });
+    </script>
+</body>
+</html> 

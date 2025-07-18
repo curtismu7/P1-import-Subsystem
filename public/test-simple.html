@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Test</title>
+</head>
+<body>
+    <h1>Simple Test Page</h1>
+    <div id="test-output"></div>
+    
+    <script>
+        const output = document.getElementById('test-output');
+        
+        function log(message) {
+            const div = document.createElement('div');
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            output.appendChild(div);
+            console.log(message);
+        }
+        
+        log('Page loaded');
+        
+        // Test if we can load the bundle
+        const script = document.createElement('script');
+        script.src = '/js/bundle.js';
+        script.onload = () => {
+            log('✅ Bundle loaded successfully');
+            if (window.app) {
+                log('✅ window.app is available');
+            } else {
+                log('❌ window.app is not available');
+            }
+        };
+        script.onerror = (error) => {
+            log('❌ Failed to load bundle: ' + error.message);
+        };
+        
+        document.head.appendChild(script);
+    </script>
+</body>
+</html> 

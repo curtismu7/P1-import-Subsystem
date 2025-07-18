@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-info { background: #f0f0f0; padding: 10px; margin: 10px 0; border: 1px solid #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>UI Debug Test</h1>
+    <div id="debug-output"></div>
+    
+    <script>
+        const debugOutput = document.getElementById('debug-output');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `debug-info ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            debugOutput.appendChild(div);
+        }
+        
+        log('Page loaded, testing JavaScript execution...');
+        
+        // Test if we can access the main page
+        fetch('/')
+            .then(response => {
+                log(`Main page response status: ${response.status}`, response.ok ? 'success' : 'error');
+                return response.text();
+            })
+            .then(html => {
+                log(`Main page HTML length: ${html.length} characters`);
+                if (html.includes('PingOne User Import')) {
+                    log('✓ Main page contains expected title', 'success');
+                } else {
+                    log('✗ Main page missing expected title', 'error');
+                }
+            })
+            .catch(error => {
+                log(`✗ Error fetching main page: ${error.message}`, 'error');
+            });
+            
+        // Test if bundle.js is accessible
+        fetch('/js/bundle.js')
+            .then(response => {
+                log(`Bundle.js response status: ${response.status}`, response.ok ? 'success' : 'error');
+                return response.text();
+            })
+            .then(js => {
+                log(`Bundle.js size: ${js.length} characters`);
+                if (js.includes('window.app = app')) {
+                    log('✓ Bundle contains app initialization', 'success');
+                } else {
+                    log('✗ Bundle missing app initialization', 'error');
+                }
+            })
+            .catch(error => {
+                log(`✗ Error fetching bundle.js: ${error.message}`, 'error');
+            });
+            
+        // Test if CSS is accessible
+        fetch('/css/styles-fixed.css')
+            .then(response => {
+                log(`CSS response status: ${response.status}`, response.ok ? 'success' : 'error');
+            })
+            .catch(error => {
+                log(`✗ Error fetching CSS: ${error.message}`, 'error');
+            });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs Search Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        .logs-display {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f8f9fa;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Logs Search Functionality Test</h1>
+        
+        <div class="test-section">
+            <h3>1. Test Logs API Endpoint</h3>
+            <button onclick="testLogsAPI()">Test API Connection</button>
+            <div id="api-result" class="test-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Test Search Functionality</h3>
+            <input type="text" id="search-input" placeholder="Enter search term..." />
+            <button onclick="testSearch()">Test Search</button>
+            <button onclick="clearSearch()">Clear Search</button>
+            <div id="search-result" class="test-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Test Logs Display</h3>
+            <button onclick="loadAndDisplayLogs()">Load Logs</button>
+            <div id="logs-display" class="logs-display"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Test Filter by Level</h3>
+            <select id="level-filter">
+                <option value="all">All Levels</option>
+                <option value="debug">Debug</option>
+                <option value="info">Info</option>
+                <option value="warn">Warning</option>
+                <option value="error">Error</option>
+            </select>
+            <button onclick="testLevelFilter()">Test Level Filter</button>
+            <div id="level-result" class="test-result"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentLogs = [];
+
+        async function testLogsAPI() {
+            const resultDiv = document.getElementById('api-result');
+            try {
+                const response = await fetch('/api/logs/ui?limit=10');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `
+                        <strong>✅ API Connection Successful</strong><br>
+                        Total logs: ${data.total}<br>
+                        Retrieved: ${data.count}<br>
+                        Status: ${response.status}
+                    `;
+                    currentLogs = data.logs;
+                } else {
+                    resultDiv.className = 'test-result error';
+                    resultDiv.innerHTML = `<strong>❌ API Error:</strong> ${data.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `<strong>❌ Connection Error:</strong> ${error.message}`;
+            }
+        }
+
+        function testSearch() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const resultDiv = document.getElementById('search-result');
+            
+            if (!currentLogs.length) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = '<strong>❌ No logs loaded. Please load logs first.</strong>';
+                return;
+            }
+
+            const filteredLogs = currentLogs.filter(log => {
+                const searchText = `${log.message} ${log.data ? JSON.stringify(log.data) : ''}`.toLowerCase();
+                return searchText.includes(searchTerm);
+            });
+
+            resultDiv.className = 'test-result success';
+            resultDiv.innerHTML = `
+                <strong>✅ Search Results</strong><br>
+                Search term: "${searchTerm}"<br>
+                Total logs: ${currentLogs.length}<br>
+                Matching logs: ${filteredLogs.length}<br>
+                ${filteredLogs.length > 0 ? 'First match: ' + filteredLogs[0].message.substring(0, 50) + '...' : 'No matches found'}
+            `;
+
+            // Display filtered logs
+            displayLogs(filteredLogs);
+        }
+
+        function clearSearch() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('search-result').innerHTML = '';
+            displayLogs(currentLogs);
+        }
+
+        function testLevelFilter() {
+            const level = document.getElementById('level-filter').value;
+            const resultDiv = document.getElementById('level-result');
+            
+            if (!currentLogs.length) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = '<strong>❌ No logs loaded. Please load logs first.</strong>';
+                return;
+            }
+
+            const filteredLogs = currentLogs.filter(log => {
+                return level === 'all' || log.level === level;
+            });
+
+            resultDiv.className = 'test-result success';
+            resultDiv.innerHTML = `
+                <strong>✅ Level Filter Results</strong><br>
+                Selected level: "${level}"<br>
+                Total logs: ${currentLogs.length}<br>
+                Matching logs: ${filteredLogs.length}<br>
+                ${filteredLogs.length > 0 ? 'Sample: ' + filteredLogs[0].level + ' - ' + filteredLogs[0].message.substring(0, 50) + '...' : 'No matches found'}
+            `;
+
+            // Display filtered logs
+            displayLogs(filteredLogs);
+        }
+
+        async function loadAndDisplayLogs() {
+            try {
+                const response = await fetch('/api/logs/ui?limit=20');
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentLogs = data.logs;
+                    displayLogs(currentLogs);
+                } else {
+                    document.getElementById('logs-display').innerHTML = `<div class="error">Error loading logs: ${data.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('logs-display').innerHTML = `<div class="error">Connection error: ${error.message}</div>`;
+            }
+        }
+
+        function displayLogs(logs) {
+            const displayDiv = document.getElementById('logs-display');
+            
+            if (!logs.length) {
+                displayDiv.innerHTML = '<div class="info">No logs to display</div>';
+                return;
+            }
+
+            const logsHtml = logs.map(log => {
+                const timestamp = new Date(log.timestamp).toLocaleString();
+                const levelClass = log.level;
+                return `
+                    <div style="margin-bottom: 10px; padding: 8px; border-left: 3px solid #${getLevelColor(log.level)}; background-color: #f8f9fa;">
+                        <div style="font-weight: bold; color: #${getLevelColor(log.level)};">
+                            [${log.level.toUpperCase()}] ${timestamp}
+                        </div>
+                        <div style="margin-top: 5px;">${log.message}</div>
+                        ${log.data ? `<div style="margin-top: 5px; font-size: 11px; color: #666;">Data: ${JSON.stringify(log.data)}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            displayDiv.innerHTML = logsHtml;
+        }
+
+        function getLevelColor(level) {
+            const colors = {
+                'debug': '6c757d',
+                'info': '17a2b8',
+                'warn': 'ffc107',
+                'error': 'dc3545',
+                'success': '28a745'
+            };
+            return colors[level] || '6c757d';
+        }
+
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            setTimeout(testLogsAPI, 1000);
+        });
+    </script>
+</body>
+</html> 

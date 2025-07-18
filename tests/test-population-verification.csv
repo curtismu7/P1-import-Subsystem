@@ -1,0 +1,9 @@
+firstName,lastName,email,username,populationId,enabled
+John,Doe,john.doe@test.com,johndoe,,true
+Jane,Smith,jane.smith@test.com,janesmith,550e8400-e29b-41d4-a716-446655440000,true
+Bob,Johnson,bob.johnson@test.com,bobjohnson,invalid-population-id,true
+Alice,Brown,alice.brown@test.com,alicebrown,6ba7b810-9dad-11d1-80b4-00c04fd430c8,true
+Charlie,Davis,charlie.davis@test.com,charliedavis,,false
+Eva,Wilson,eva.wilson@test.com,evawilson,550e8400-e29b-41d4-a716-446655440001,true
+Frank,Miller,frank.miller@test.com,frankmiller,not-a-uuid,true
+Grace,Lee,grace.lee@test.com,gracelee,,true 

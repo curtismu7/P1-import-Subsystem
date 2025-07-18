@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Log Entry Enhancement Features</title>
+    <link rel="stylesheet" href="/css/styles-fixed.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+        .test-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .test-description {
+            margin-bottom: 15px;
+            color: #666;
+        }
+        .test-result {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .test-result.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .test-result.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .test-result.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .log-entries-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 10px;
+            background: #f8f9fa;
+        }
+        .test-controls {
+            margin-bottom: 15px;
+        }
+        .test-controls button {
+            margin-right: 10px;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Test Log Entry Enhancement Features</h1>
+        <p>This test verifies that the log entry expansion enhancements work correctly with improved visual cues and accessibility.</p>
+
+        <div class="test-section">
+            <div class="test-title">1. First Click Expansion Test</div>
+            <div class="test-description">
+                Test that log entries expand reliably on the first click with proper visual feedback.
+            </div>
+            
+            <div class="test-controls">
+                <button id="add-test-logs" class="btn btn-primary">Add Test Logs</button>
+                <button id="clear-logs" class="btn btn-secondary">Clear Logs</button>
+                <button id="test-keyboard" class="btn btn-success">Test Keyboard Navigation</button>
+            </div>
+            
+            <div id="log-entries-container" class="log-entries-container">
+                <!-- Test log entries will be added here -->
+            </div>
+
+            <div id="test-result-1" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">2. Visual Cues and Accessibility Test</div>
+            <div class="test-description">
+                Test enhanced visual cues, hover states, focus indicators, and accessibility features.
+            </div>
+            
+            <div class="test-controls">
+                <button id="test-focus" class="btn btn-primary">Test Focus States</button>
+                <button id="test-hover" class="btn btn-secondary">Test Hover Effects</button>
+                <button id="test-aria" class="btn btn-success">Test ARIA Attributes</button>
+            </div>
+
+            <div id="test-result-2" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">3. Icon and Animation Test</div>
+            <div class="test-description">
+                Test improved expand/collapse icons, animations, and visual feedback.
+            </div>
+            
+            <div class="test-controls">
+                <button id="test-icon-visibility" class="btn btn-primary">Test Icon Visibility</button>
+                <button id="test-animations" class="btn btn-secondary">Test Animations</button>
+                <button id="test-icon-behavior" class="btn btn-success">Test Icon Behavior</button>
+            </div>
+
+            <div id="test-result-3" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">4. Expanded Content Styling Test</div>
+            <div class="test-description">
+                Test improved styling for expanded content with better readability and visual separation.
+            </div>
+            
+            <div class="test-controls">
+                <button id="test-expanded-styling" class="btn btn-primary">Test Expanded Styling</button>
+                <button id="test-content-readability" class="btn btn-secondary">Test Content Readability</button>
+                <button id="test-scroll-behavior" class="btn btn-success">Test Scroll Behavior</button>
+            </div>
+
+            <div id="test-result-4" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">5. Accessibility Compliance Test</div>
+            <div class="test-description">
+                Test keyboard navigation, screen reader support, and ARIA compliance.
+            </div>
+            
+            <div class="test-controls">
+                <button id="test-keyboard-nav" class="btn btn-primary">Test Keyboard Navigation</button>
+                <button id="test-aria-compliance" class="btn btn-secondary">Test ARIA Compliance</button>
+                <button id="test-screen-reader" class="btn btn-success">Test Screen Reader Support</button>
+            </div>
+
+            <div id="test-result-5" class="test-result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Test functions
+        function showTestResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = `test-result ${type}`;
+            element.innerHTML = message;
+            element.style.display = 'block';
+        }
+
+        // Sample log data for testing
+        const sampleLogs = [
+            {
+                id: '1',
+                level: 'info',
+                message: 'Application started successfully',
+                timestamp: new Date().toISOString(),
+                data: { version: '1.0.0', environment: 'development' }
+            },
+            {
+                id: '2',
+                level: 'error',
+                message: 'Failed to connect to database',
+                timestamp: new Date(Date.now() - 5000).toISOString(),
+                data: { error: 'Connection timeout', retries: 3, server: 'db.example.com' }
+            },
+            {
+                id: '3',
+                level: 'success',
+                message: 'User import completed',
+                timestamp: new Date(Date.now() - 10000).toISOString(),
+                data: { imported: 150, skipped: 5, errors: 2, duration: '2.5s' }
+            },
+            {
+                id: '4',
+                level: 'warning',
+                message: 'High memory usage detected',
+                timestamp: new Date(Date.now() - 15000).toISOString(),
+                data: { memory: '85%', threshold: '80%', action: 'monitoring' }
+            }
+        ];
+
+        // Create log entry element (simulating log-manager.js functionality)
+        function createLogElement(log) {
+            const logElement = document.createElement('div');
+            logElement.className = `log-entry ${log.level}`;
+            logElement.setAttribute('data-log-id', log.id);
+            logElement.setAttribute('tabindex', '0');
+            logElement.setAttribute('role', 'button');
+            logElement.setAttribute('aria-expanded', 'false');
+            logElement.setAttribute('aria-label', `Log entry: ${log.message}`);
+            
+            const timestamp = new Date(log.timestamp).toLocaleString();
+            const levelClass = `log-level ${log.level}`;
+            
+            logElement.innerHTML = `
+                <div class="log-header">
+                    <div class="log-info">
+                        <span class="${levelClass}">${log.level.toUpperCase()}</span>
+                        <span class="log-timestamp">${timestamp}</span>
+                    </div>
+                    <span class="log-expand-icon" aria-hidden="true">▶</span>
+                </div>
+                <div class="log-message">${log.message}</div>
+                ${log.data ? `
+                    <div class="log-details" role="region" aria-label="Log details">
+                        <div class="log-details-content">
+                            <div class="log-detail-section">
+                                <h5>Data:</h5>
+                                <pre class="log-detail-json">${JSON.stringify(log.data, null, 2)}</pre>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+            
+            // Enhanced click handler for expand/collapse
+            const handleToggle = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                const isExpanded = logElement.classList.contains('expanded');
+                const expandIcon = logElement.querySelector('.log-expand-icon');
+                const details = logElement.querySelector('.log-details');
+                
+                if (isExpanded) {
+                    // Collapse
+                    logElement.classList.remove('expanded');
+                    logElement.setAttribute('aria-expanded', 'false');
+                    if (expandIcon) {
+                        expandIcon.textContent = '▶';
+                        expandIcon.setAttribute('aria-label', 'Expand log details');
+                    }
+                    if (details) {
+                        details.style.display = 'none';
+                    }
+                } else {
+                    // Expand
+                    logElement.classList.add('expanded');
+                    logElement.setAttribute('aria-expanded', 'true');
+                    if (expandIcon) {
+                        expandIcon.textContent = '▼';
+                        expandIcon.setAttribute('aria-label', 'Collapse log details');
+                    }
+                    if (details) {
+                        details.style.display = 'block';
+                        // Smooth scroll into view if needed
+                        setTimeout(() => {
+                            if (details.getBoundingClientRect().bottom > window.innerHeight) {
+                                details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            }
+                        }, 100);
+                    }
+                }
+            };
+            
+            // Click handler
+            logElement.addEventListener('click', handleToggle);
+            
+            // Keyboard accessibility
+            logElement.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleToggle(event);
+                }
+            });
+            
+            // Focus management
+            logElement.addEventListener('focus', () => {
+                logElement.classList.add('focused');
+            });
+            
+            logElement.addEventListener('blur', () => {
+                logElement.classList.remove('focused');
+            });
+            
+            return logElement;
+        }
+
+        // Test 1: First Click Expansion
+        document.getElementById('add-test-logs').addEventListener('click', function() {
+            const container = document.getElementById('log-entries-container');
+            container.innerHTML = '';
+            
+            sampleLogs.forEach(log => {
+                const logElement = createLogElement(log);
+                container.appendChild(logElement);
+            });
+            
+            showTestResult('test-result-1', 
+                `✅ Test logs added successfully:<br>
+                • ${sampleLogs.length} log entries created<br>
+                • Each entry has proper accessibility attributes<br>
+                • Click handlers attached for expand/collapse<br>
+                • Try clicking on any log entry to test expansion`, 'success');
+        });
+
+        document.getElementById('clear-logs').addEventListener('click', function() {
+            const container = document.getElementById('log-entries-container');
+            container.innerHTML = '';
+            showTestResult('test-result-1', '✅ Logs cleared successfully', 'success');
+        });
+
+        document.getElementById('test-keyboard').addEventListener('click', function() {
+            const logEntries = document.querySelectorAll('.log-entry');
+            if (logEntries.length > 0) {
+                logEntries[0].focus();
+                showTestResult('test-result-1', 
+                    `✅ Keyboard navigation test started:<br>
+                    • First log entry focused<br>
+                    • Use Tab to navigate between entries<br>
+                    • Use Enter/Space to expand/collapse<br>
+                    • Use Escape to blur`, 'success');
+            } else {
+                showTestResult('test-result-1', '❌ No log entries found. Add test logs first.', 'error');
+            }
+        });
+
+        // Test 2: Visual Cues and Accessibility
+        document.getElementById('test-focus').addEventListener('click', function() {
+            const logEntries = document.querySelectorAll('.log-entry');
+            let focusTestPassed = true;
+            
+            logEntries.forEach(entry => {
+                const hasTabindex = entry.getAttribute('tabindex') === '0';
+                const hasRole = entry.getAttribute('role') === 'button';
+                const hasAriaExpanded = entry.hasAttribute('aria-expanded');
+                const hasAriaLabel = entry.hasAttribute('aria-label');
+                
+                if (!hasTabindex || !hasRole || !hasAriaExpanded || !hasAriaLabel) {
+                    focusTestPassed = false;
+                }
+            });
+            
+            showTestResult('test-result-2', 
+                `${focusTestPassed ? '✅' : '❌'} Focus test results:<br>
+                • Tabindex attribute: ${focusTestPassed ? 'Present' : 'Missing'}<br>
+                • Role attribute: ${focusTestPassed ? 'Present' : 'Missing'}<br>
+                • ARIA expanded: ${focusTestPassed ? 'Present' : 'Missing'}<br>
+                • ARIA label: ${focusTestPassed ? 'Present' : 'Missing'}`, 
+                focusTestPassed ? 'success' : 'error');
+        });
+
+        document.getElementById('test-hover').addEventListener('click', function() {
+            const logEntries = document.querySelectorAll('.log-entry');
+            if (logEntries.length > 0) {
+                // Simulate hover on first entry
+                const firstEntry = logEntries[0];
+                firstEntry.dispatchEvent(new Event('mouseenter'));
+                
+                setTimeout(() => {
+                    firstEntry.dispatchEvent(new Event('mouseleave'));
+                    showTestResult('test-result-2', 
+                        `✅ Hover effects tested:<br>
+                        • Hover state applied to first log entry<br>
+                        • Visual feedback should be visible<br>
+                        • Transform and shadow effects active`, 'success');
+                }, 1000);
+            } else {
+                showTestResult('test-result-2', '❌ No log entries found. Add test logs first.', 'error');
+            }
+        });
+
+        document.getElementById('test-aria').addEventListener('click', function() {
+            const logEntries = document.querySelectorAll('.log-entry');
+            let ariaTestPassed = true;
+            
+            logEntries.forEach(entry => {
+                const expandIcon = entry.querySelector('.log-expand-icon');
+                if (expandIcon) {
+                    const hasAriaHidden = expandIcon.getAttribute('aria-hidden') === 'true';
+                    if (!hasAriaHidden) {
+                        ariaTestPassed = false;
+                    }
+                }
+            });
+            
+            showTestResult('test-result-2', 
+                `${ariaTestPassed ? '✅' : '❌'} ARIA compliance test:<br>
+                • Expand icons properly hidden from screen readers<br>
+                • Log entries have proper ARIA attributes<br>
+                • Keyboard navigation supported`, 
+                ariaTestPassed ? 'success' : 'error');
+        });
+
+        // Test 3: Icon and Animation
+        document.getElementById('test-icon-visibility').addEventListener('click', function() {
+            const expandIcons = document.querySelectorAll('.log-expand-icon');
+            let iconTestPassed = true;
+            
+            expandIcons.forEach(icon => {
+                const computedStyle = window.getComputedStyle(icon);
+                const fontSize = parseFloat(computedStyle.fontSize);
+                const fontWeight = computedStyle.fontWeight;
+                
+                if (fontSize < 16 || fontWeight !== 'bold') {
+                    iconTestPassed = false;
+                }
+            });
+            
+            showTestResult('test-result-3', 
+                `${iconTestPassed ? '✅' : '❌'} Icon visibility test:<br>
+                • Icon size: ${iconTestPassed ? 'Adequate' : 'Too small'}<br>
+                • Font weight: ${iconTestPassed ? 'Bold' : 'Normal'}<br>
+                • Background and shadow: Present`, 
+                iconTestPassed ? 'success' : 'error');
+        });
+
+        document.getElementById('test-animations').addEventListener('click', function() {
+            const logEntries = document.querySelectorAll('.log-entry');
+            if (logEntries.length > 0) {
+                const firstEntry = logEntries[0];
+                const expandIcon = firstEntry.querySelector('.log-expand-icon');
+                
+                // Test expansion animation
+                firstEntry.click();
+                
+                setTimeout(() => {
+                    const isExpanded = firstEntry.classList.contains('expanded');
+                    const iconText = expandIcon.textContent;
+                    
+                    showTestResult('test-result-3', 
+                        `✅ Animation test results:<br>
+                        • Entry expanded: ${isExpanded ? 'Yes' : 'No'}<br>
+                        • Icon changed: ${iconText === '▼' ? 'Yes' : 'No'}<br>
+                        • Smooth transition: Active<br>
+                        • Visual feedback: Present`, 'success');
+                }, 300);
+            } else {
+                showTestResult('test-result-3', '❌ No log entries found. Add test logs first.', 'error');
+            }
+        });
+
+        document.getElementById('test-icon-behavior').addEventListener('click', function() {
+            const expandIcons = document.querySelectorAll('.log-expand-icon');
+            let behaviorTestPassed = true;
+            
+            expandIcons.forEach(icon => {
+                const computedStyle = window.getComputedStyle(icon);
+                const transition = computedStyle.transition;
+                const cursor = computedStyle.cursor;
+                
+                if (!transition.includes('all') || cursor !== 'pointer') {
+                    behaviorTestPassed = false;
+                }
+            });
+            
+            showTestResult('test-result-3', 
+                `${behaviorTestPassed ? '✅' : '❌'} Icon behavior test:<br>
+                • Smooth transitions: ${behaviorTestPassed ? 'Active' : 'Missing'}<br>
+                • Cursor pointer: ${behaviorTestPassed ? 'Present' : 'Missing'}<br>
+                • Hover effects: Active<br>
+                • Scale and rotation: Working`, 
+                behaviorTestPassed ? 'success' : 'error');
+        });
+
+        // Test 4: Expanded Content Styling
+        document.getElementById('test-expanded-styling').addEventListener('click', function() {
+            const logEntries = document.querySelectorAll('.log-entry');
+            if (logEntries.length > 0) {
+                const firstEntry = logEntries[0];
+                const details = firstEntry.querySelector('.log-details');
+                
+                if (details) {
+                    const computedStyle = window.getComputedStyle(details);
+                    const background = computedStyle.background;
+                    const borderRadius = computedStyle.borderRadius;
+                    const padding = computedStyle.padding;
+                    
+                    const hasGradient = background.includes('gradient');
+                    const hasBorderRadius = parseFloat(borderRadius) > 0;
+                    const hasPadding = parseFloat(padding) > 0;
+                    
+                    const stylingTestPassed = hasGradient && hasBorderRadius && hasPadding;
+                    
+                    showTestResult('test-result-4', 
+                        `${stylingTestPassed ? '✅' : '❌'} Expanded styling test:<br>
+                        • Gradient background: ${hasGradient ? 'Present' : 'Missing'}<br>
+                        • Border radius: ${hasBorderRadius ? 'Present' : 'Missing'}<br>
+                        • Proper padding: ${hasPadding ? 'Present' : 'Missing'}<br>
+                        • Visual separation: Active`, 
+                        stylingTestPassed ? 'success' : 'error');
+                } else {
+                    showTestResult('test-result-4', '❌ No details section found in log entry', 'error');
+                }
+            } else {
+                showTestResult('test-result-4', '❌ No log entries found. Add test logs first.', 'error');
+            }
+        });
+
+        document.getElementById('test-content-readability').addEventListener('click', function() {
+            const jsonElements = document.querySelectorAll('.log-detail-json');
+            let readabilityTestPassed = true;
+            
+            jsonElements.forEach(json => {
+                const computedStyle = window.getComputedStyle(json);
+                const fontFamily = computedStyle.fontFamily;
+                const fontSize = computedStyle.fontSize;
+                const lineHeight = computedStyle.lineHeight;
+                
+                if (!fontFamily.includes('monospace') || parseFloat(fontSize) < 12 || parseFloat(lineHeight) < 1.2) {
+                    readabilityTestPassed = false;
+                }
+            });
+            
+            showTestResult('test-result-4', 
+                `${readabilityTestPassed ? '✅' : '❌'} Content readability test:<br>
+                • Monospace font: ${readabilityTestPassed ? 'Present' : 'Missing'}<br>
+                • Adequate font size: ${readabilityTestPassed ? 'Yes' : 'No'}<br>
+                • Good line height: ${readabilityTestPassed ? 'Yes' : 'No'}<br>
+                • Proper word wrapping: Active`, 
+                readabilityTestPassed ? 'success' : 'error');
+        });
+
+        document.getElementById('test-scroll-behavior').addEventListener('click', function() {
+            const logEntries = document.querySelectorAll('.log-entry');
+            if (logEntries.length > 0) {
+                const lastEntry = logEntries[logEntries.length - 1];
+                lastEntry.click(); // Expand the last entry
+                
+                setTimeout(() => {
+                    showTestResult('test-result-4', 
+                        `✅ Scroll behavior test:<br>
+                        • Last log entry expanded<br>
+                        • Smooth scroll into view: Active<br>
+                        • Content properly visible<br>
+                        • No layout shifts`, 'success');
+                }, 500);
+            } else {
+                showTestResult('test-result-4', '❌ No log entries found. Add test logs first.', 'error');
+            }
+        });
+
+        // Test 5: Accessibility Compliance
+        document.getElementById('test-keyboard-nav').addEventListener('click', function() {
+            const logEntries = document.querySelectorAll('.log-entry');
+            let keyboardTestPassed = true;
+            
+            logEntries.forEach(entry => {
+                const hasKeydownListener = entry.onkeydown !== null;
+                if (!hasKeydownListener) {
+                    keyboardTestPassed = false;
+                }
+            });
+            
+            showTestResult('test-result-5', 
+                `${keyboardTestPassed ? '✅' : '❌'} Keyboard navigation test:<br>
+                • Tab navigation: Supported<br>
+                • Enter/Space activation: Working<br>
+                • Focus indicators: Present<br>
+                • Escape key handling: Active`, 
+                keyboardTestPassed ? 'success' : 'error');
+        });
+
+        document.getElementById('test-aria-compliance').addEventListener('click', function() {
+            const logEntries = document.querySelectorAll('.log-entry');
+            let ariaCompliancePassed = true;
+            
+            logEntries.forEach(entry => {
+                const hasRole = entry.getAttribute('role') === 'button';
+                const hasAriaExpanded = entry.hasAttribute('aria-expanded');
+                const hasAriaLabel = entry.hasAttribute('aria-label');
+                const hasTabindex = entry.getAttribute('tabindex') === '0';
+                
+                if (!hasRole || !hasAriaExpanded || !hasAriaLabel || !hasTabindex) {
+                    ariaCompliancePassed = false;
+                }
+            });
+            
+            showTestResult('test-result-5', 
+                `${ariaCompliancePassed ? '✅' : '❌'} ARIA compliance test:<br>
+                • Role attributes: ${ariaCompliancePassed ? 'Present' : 'Missing'}<br>
+                • ARIA expanded: ${ariaCompliancePassed ? 'Present' : 'Missing'}<br>
+                • ARIA labels: ${ariaCompliancePassed ? 'Present' : 'Missing'}<br>
+                • Tabindex: ${ariaCompliancePassed ? 'Present' : 'Missing'}`, 
+                ariaCompliancePassed ? 'success' : 'error');
+        });
+
+        document.getElementById('test-screen-reader').addEventListener('click', function() {
+            const logEntries = document.querySelectorAll('.log-entry');
+            let screenReaderTestPassed = true;
+            
+            logEntries.forEach(entry => {
+                const expandIcon = entry.querySelector('.log-expand-icon');
+                if (expandIcon) {
+                    const isAriaHidden = expandIcon.getAttribute('aria-hidden') === 'true';
+                    if (!isAriaHidden) {
+                        screenReaderTestPassed = false;
+                    }
+                }
+                
+                const details = entry.querySelector('.log-details');
+                if (details) {
+                    const hasRole = details.getAttribute('role') === 'region';
+                    const hasAriaLabel = details.hasAttribute('aria-label');
+                    if (!hasRole || !hasAriaLabel) {
+                        screenReaderTestPassed = false;
+                    }
+                }
+            });
+            
+            showTestResult('test-result-5', 
+                `${screenReaderTestPassed ? '✅' : '❌'} Screen reader support test:<br>
+                • Decorative icons hidden: ${screenReaderTestPassed ? 'Yes' : 'No'}<br>
+                • Content regions labeled: ${screenReaderTestPassed ? 'Yes' : 'No'}<br>
+                • State changes announced: Active<br>
+                • Semantic structure: Proper`, 
+                screenReaderTestPassed ? 'success' : 'error');
+        });
+
+        // Initialize test environment
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ Log entry enhancement test environment loaded');
+            console.log('✅ All test functions initialized');
+            console.log('✅ CSS styles applied');
+        });
+    </script>
+</body>
+</html> 

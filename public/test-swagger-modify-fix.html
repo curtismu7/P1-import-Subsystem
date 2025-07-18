@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Swagger Modify Endpoint Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .status.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .swagger-frame {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .test-results {
+            margin-top: 20px;
+        }
+        .result-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        .result-item.success {
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+        .result-item.error {
+            border-left-color: #dc3545;
+            background: #fff8f8;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Swagger Modify Endpoint Fix Test</h1>
+    
+    <div class="test-section">
+        <h2>📋 Test Overview</h2>
+        <p>This test verifies that the Swagger UI modify endpoint works correctly without the null reference error that was causing:</p>
+        <ul>
+            <li><code>TypeError: Cannot read properties of null (reading 'get')</code></li>
+            <li>Swagger UI crashes when trying to use the modify endpoint</li>
+            <li>Missing error handling in the backend modify endpoint</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🚀 Server Status Check</h2>
+        <button class="test-button" onclick="checkServerStatus()">Check Server Status</button>
+        <div id="serverStatus" class="status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 Swagger JSON Validation</h2>
+        <button class="test-button" onclick="validateSwaggerJSON()">Validate Swagger JSON</button>
+        <div id="swaggerValidation" class="status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📄 Swagger UI Test</h2>
+        <p>Open the Swagger UI and test the modify endpoint:</p>
+        <button class="test-button" onclick="openSwaggerUI()">Open Swagger UI</button>
+        <button class="test-button" onclick="testModifyEndpoint()">Test Modify Endpoint</button>
+        <div id="swaggerTest" class="status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🧪 Manual Test Instructions</h2>
+        <ol>
+            <li><strong>Open Swagger UI:</strong> Click "Open Swagger UI" above or go to <a href="http://localhost:4000/swagger.html" target="_blank">http://localhost:4000/swagger.html</a></li>
+            <li><strong>Find Modify Endpoint:</strong> Look for the <code>/api/modify</code> endpoint in the Swagger UI</li>
+            <li><strong>Test the Endpoint:</strong>
+                <ul>
+                    <li>Click "Try it out" on the modify endpoint</li>
+                    <li>Upload a CSV file with user data</li>
+                    <li>Fill in the required parameters (especially Population ID)</li>
+                    <li>Click "Execute"</li>
+                </ul>
+            </li>
+            <li><strong>Verify No Errors:</strong> The Swagger UI should not show the null reference error</li>
+            <li><strong>Check Response:</strong> The endpoint should return a proper JSON response</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Test Results</h2>
+        <div id="testResults" class="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 Test Log</h2>
+        <div id="testLog" class="log"></div>
+    </div>
+
+    <script>
+        let testResults = [];
+        let logEntries = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            logEntries.push(logEntry);
+            
+            const logDiv = document.getElementById('testLog');
+            logDiv.innerHTML = logEntries.join('\n');
+            logDiv.scrollTop = logDiv.scrollHeight;
+            
+            console.log(logEntry);
+        }
+
+        function addTestResult(test, status, details = '') {
+            testResults.push({ test, status, details, timestamp: new Date().toISOString() });
+            updateTestResults();
+        }
+
+        function updateTestResults() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = testResults.map(result => `
+                <div class="result-item ${result.status}">
+                    <strong>${result.test}</strong> - ${result.status.toUpperCase()}
+                    ${result.details ? `<br><small>${result.details}</small>` : ''}
+                    <br><small>${result.timestamp}</small>
+                </div>
+            `).join('');
+        }
+
+        async function checkServerStatus() {
+            const statusDiv = document.getElementById('serverStatus');
+            statusDiv.innerHTML = '<div class="status info">Checking server status...</div>';
+            
+            try {
+                log('Checking server status...');
+                const response = await fetch('http://localhost:4000/api/health');
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'ok') {
+                    statusDiv.innerHTML = '<div class="status success">✅ Server is running and healthy</div>';
+                    log('Server status: OK', 'success');
+                    addTestResult('Server Status', 'success', 'Server is running and healthy');
+                } else {
+                    statusDiv.innerHTML = '<div class="status error">❌ Server is not responding correctly</div>';
+                    log('Server status: ERROR', 'error');
+                    addTestResult('Server Status', 'error', 'Server is not responding correctly');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="status error">❌ Cannot connect to server</div>';
+                log(`Server status error: ${error.message}`, 'error');
+                addTestResult('Server Status', 'error', `Cannot connect to server: ${error.message}`);
+            }
+        }
+
+        async function validateSwaggerJSON() {
+            const validationDiv = document.getElementById('swaggerValidation');
+            validationDiv.innerHTML = '<div class="status info">Validating Swagger JSON...</div>';
+            
+            try {
+                log('Validating Swagger JSON...');
+                const response = await fetch('http://localhost:4000/swagger.json');
+                const data = await response.json();
+                
+                if (response.ok && data.paths && data.paths['/api/modify']) {
+                    const modifyEndpoint = data.paths['/api/modify'];
+                    
+                    // Check for required fields
+                    const hasPost = modifyEndpoint.post;
+                    const hasResponses = modifyEndpoint.post?.responses;
+                    const has200Response = modifyEndpoint.post?.responses?.['200'];
+                    const has400Response = modifyEndpoint.post?.responses?.['400'];
+                    
+                    if (hasPost && hasResponses && has200Response && has400Response) {
+                        validationDiv.innerHTML = '<div class="status success">✅ Swagger JSON is valid and complete</div>';
+                        log('Swagger JSON validation: OK', 'success');
+                        addTestResult('Swagger JSON Validation', 'success', 'All required fields present');
+                    } else {
+                        validationDiv.innerHTML = '<div class="status error">❌ Swagger JSON is missing required fields</div>';
+                        log('Swagger JSON validation: ERROR - Missing required fields', 'error');
+                        addTestResult('Swagger JSON Validation', 'error', 'Missing required fields');
+                    }
+                } else {
+                    validationDiv.innerHTML = '<div class="status error">❌ Swagger JSON is invalid or missing modify endpoint</div>';
+                    log('Swagger JSON validation: ERROR - Invalid JSON or missing endpoint', 'error');
+                    addTestResult('Swagger JSON Validation', 'error', 'Invalid JSON or missing endpoint');
+                }
+            } catch (error) {
+                validationDiv.innerHTML = '<div class="status error">❌ Cannot fetch Swagger JSON</div>';
+                log(`Swagger JSON validation error: ${error.message}`, 'error');
+                addTestResult('Swagger JSON Validation', 'error', `Cannot fetch Swagger JSON: ${error.message}`);
+            }
+        }
+
+        function openSwaggerUI() {
+            log('Opening Swagger UI...');
+            window.open('http://localhost:4000/swagger.html', '_blank');
+            addTestResult('Swagger UI Access', 'success', 'Swagger UI opened in new tab');
+        }
+
+        async function testModifyEndpoint() {
+            const testDiv = document.getElementById('swaggerTest');
+            testDiv.innerHTML = '<div class="status info">Testing modify endpoint...</div>';
+            
+            try {
+                log('Testing modify endpoint...');
+                
+                // Create a simple test CSV
+                const csvContent = 'username,firstName,lastName,email\ntestuser,Test,User,test@example.com';
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const file = new File([blob], 'test.csv', { type: 'text/csv' });
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('defaultPopulationId', 'test-population-id');
+                formData.append('createIfNotExists', 'false');
+                formData.append('defaultEnabled', 'true');
+                formData.append('generatePasswords', 'false');
+                
+                const response = await fetch('http://localhost:4000/api/modify', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    testDiv.innerHTML = '<div class="status success">✅ Modify endpoint responded successfully</div>';
+                    log('Modify endpoint test: OK', 'success');
+                    addTestResult('Modify Endpoint Test', 'success', 'Endpoint responded with proper JSON');
+                } else {
+                    testDiv.innerHTML = '<div class="status error">❌ Modify endpoint returned error</div>';
+                    log(`Modify endpoint test: ERROR - ${data.error || 'Unknown error'}`, 'error');
+                    addTestResult('Modify Endpoint Test', 'error', data.error || 'Unknown error');
+                }
+            } catch (error) {
+                testDiv.innerHTML = '<div class="status error">❌ Cannot test modify endpoint</div>';
+                log(`Modify endpoint test error: ${error.message}`, 'error');
+                addTestResult('Modify Endpoint Test', 'error', `Cannot test endpoint: ${error.message}`);
+            }
+        }
+
+        // Auto-run tests on page load
+        window.onload = function() {
+            log('Starting Swagger Modify Fix Test...');
+            setTimeout(checkServerStatus, 1000);
+            setTimeout(validateSwaggerJSON, 2000);
+        };
+    </script>
+</body>
+</html> 

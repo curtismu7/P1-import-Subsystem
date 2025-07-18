@@ -1,0 +1,380 @@
+<!--
+  Population Selector Enforcement for Swagger UI
+  ------------------------------------------------
+  - The population selector is now required for all major operations (import, export, delete, modify, etc.).
+  - The selector is styled to match the size and prominence of other controls, with a clear label and required indicator.
+  - If no population is selected, all relevant actions are blocked, a visible error is shown, and the selector is highlighted and focused.
+  - Both population name and ID are shown in the dropdown and after selection.
+  - User guidance is provided if a user tries to run a test without choosing a population.
+  - This logic is implemented in the main HTML and JS for the Swagger UI page, and does not break existing functionality.
+  - See requestInterceptor and loadPopulations for details.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PingOne Import Tool API Documentation</title>
+  <link rel="stylesheet" type="text/css" href="/swagger/swagger-ui.css" />
+  <link rel="icon" href="/favicon.ico" />
+  <!-- Ping Identity Disclaimer Banner -->
+  <link rel="stylesheet" href="/css/ping-identity.css" />
+  <!-- Token Status Indicator CSS -->
+  <link rel="stylesheet" href="/css/token-status-indicator.css" />
+  <script src="/js/modules/disclaimer-banner.js"></script>
+  <!-- Token Status Indicator Script -->
+  <script src="/js/modules/token-status-indicator.js"></script>
+  <style>
+    body { margin: 0; background: #f8f9fa; }
+    #swagger-ui { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    
+    /* Population selector styles */
+    .population-selector {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .population-selector h3 {
+      margin: 0 0 10px 0;
+      color: #333;
+      font-size: 16px;
+    }
+    
+    .population-selector select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      background: white;
+    }
+    
+    .population-selector select:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+    }
+    
+    .population-info {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .loading-populations {
+      color: #007bff;
+      font-style: italic;
+    }
+    
+    .error-populations {
+      color: #dc3545;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Population Selector -->
+  <div class="population-selector" id="population-selector-container">
+    <label for="population-selector" id="population-selector-label" style="font-size: 1.1em; font-weight: 600; display: block; margin-bottom: 6px;">Select Population <span style="color: #dc3545;">(Required)</span></label>
+    <select id="population-selector" style="height: 2.5em; font-size: 1em; font-weight: 500; border: 2px solid #dc3545; background: #fffbe6;">
+      <option value="">Loading populations...</option>
+    </select>
+    <div class="population-info">
+      <span id="population-status" class="loading-populations">Loading available populations...</span>
+      <span id="selected-population-details" style="display:none;"></span>
+    </div>
+  </div>
+  
+  <div id="swagger-ui"></div>
+  <script src="/swagger/swagger-ui-bundle.js"></script>
+  <script src="/swagger/swagger-ui-standalone-preset.js"></script>
+  <script>
+    // PingOne token auto-fetch and injection logic
+    let pingOneToken = null;
+    let tokenExpiry = 0;
+    let tokenRefreshTimeout = null;
+    let isFetchingToken = false; // Prevent multiple simultaneous requests
+    let pendingRequests = []; // Queue for requests waiting for token refresh
+    
+    // Population selector logic
+    let selectedPopulationId = null;
+    let populations = [];
+
+    async function fetchToken() {
+      // Prevent multiple simultaneous token requests
+      if (isFetchingToken) {
+        return new Promise((resolve) => {
+          pendingRequests.push(resolve);
+        });
+      }
+      
+      isFetchingToken = true;
+      
+      try {
+        const res = await fetch('/api/token', { 
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Token fetch failed: ${res.status} ${res.statusText}`);
+        }
+        
+        const data = await res.json();
+        
+        if (data.success && data.data && data.data.access_token) {
+          pingOneToken = data.data.access_token;
+          // Set expiry to 1 minute before actual expiry
+          const expiresIn = data.data.expires_in || 3600;
+          tokenExpiry = Date.now() + (expiresIn - 60) * 1000;
+          
+          // Clear existing timeout
+          if (tokenRefreshTimeout) {
+            clearTimeout(tokenRefreshTimeout);
+          }
+          
+          // Set up next refresh
+          tokenRefreshTimeout = setTimeout(() => {
+            fetchToken();
+          }, (expiresIn - 60) * 1000);
+          
+          // Optional: show a debug indicator
+          if (window.location.search.includes('debugToken')) {
+            let el = document.getElementById('token-debug');
+            if (!el) {
+              el = document.createElement('div');
+              el.id = 'token-debug';
+              el.style = 'position:fixed;bottom:10px;right:10px;background:#28a745;color:#fff;padding:8px 16px;border-radius:6px;z-index:9999;font-size:13px;opacity:0.85;';
+              document.body.appendChild(el);
+            }
+            el.textContent = `✅ Token fetched: ${new Date().toLocaleTimeString()}`;
+          }
+          
+          // Resolve all pending requests
+          pendingRequests.forEach(resolve => resolve());
+          pendingRequests = [];
+          
+          return pingOneToken;
+        } else {
+          throw new Error('Invalid token response format');
+        }
+      } catch (e) {
+        console.error('Token fetch error:', e);
+        pingOneToken = null;
+        
+        if (window.location.search.includes('debugToken')) {
+          let el = document.getElementById('token-debug');
+          if (!el) {
+            el = document.createElement('div');
+            el.id = 'token-debug';
+            el.style = 'position:fixed;bottom:10px;right:10px;background:#dc3545;color:#fff;padding:8px 16px;border-radius:6px;z-index:9999;font-size:13px;opacity:0.85;';
+            document.body.appendChild(el);
+          }
+          el.textContent = `❌ Token error: ${e.message}`;
+        }
+        
+        // Retry after 30 seconds on error
+        setTimeout(() => {
+          fetchToken();
+        }, 30000);
+        
+        throw e;
+      } finally {
+        isFetchingToken = false;
+      }
+    }
+
+    // Check if token is valid and refresh if needed
+    async function ensureValidToken() {
+      // If token is expired or will expire soon, refresh it
+      if (!pingOneToken || Date.now() >= tokenExpiry) {
+        console.log('Token expired or missing, refreshing...');
+        await fetchToken();
+      }
+      return pingOneToken;
+    }
+
+    // Load populations from PingOne API
+    async function loadPopulations() {
+      const statusEl = document.getElementById('population-status');
+      const selectorEl = document.getElementById('population-selector');
+      const detailsEl = document.getElementById('selected-population-details');
+      try {
+        statusEl.textContent = 'Loading populations...';
+        statusEl.className = 'loading-populations';
+        selectorEl.style.border = '2px solid #dc3545';
+        selectorEl.style.background = '#fffbe6';
+        const response = await fetch('/api/pingone/populations');
+        if (!response.ok) {
+          throw new Error(`Failed to load populations: ${response.status}`);
+        }
+        populations = await response.json();
+        selectorEl.innerHTML = '';
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select a population for testing...';
+        selectorEl.appendChild(defaultOption);
+        populations.forEach(population => {
+          const option = document.createElement('option');
+          option.value = population.id;
+          option.textContent = `${population.name} (${population.id})`;
+          option.setAttribute('data-population-name', population.name);
+          selectorEl.appendChild(option);
+        });
+        statusEl.textContent = `Loaded ${populations.length} populations`;
+        statusEl.className = '';
+        selectorEl.addEventListener('change', function() {
+          selectedPopulationId = this.value;
+          if (selectedPopulationId) {
+            const pop = populations.find(p => p.id === selectedPopulationId);
+            detailsEl.style.display = 'block';
+            detailsEl.innerHTML = `<strong>Selected:</strong> ${pop.name} <span style="color:#888">(${pop.id})</span>`;
+            selectorEl.style.border = '2px solid #28a745';
+            selectorEl.style.background = '#f8fff8';
+          } else {
+            detailsEl.style.display = 'none';
+            selectorEl.style.border = '2px solid #dc3545';
+            selectorEl.style.background = '#fffbe6';
+          }
+        });
+      } catch (error) {
+        console.error('Error loading populations:', error);
+        statusEl.textContent = `Error loading populations: ${error.message}`;
+        statusEl.className = 'error-populations';
+        selectorEl.style.border = '2px solid #dc3545';
+        selectorEl.style.background = '#fffbe6';
+      }
+    }
+
+    // Swagger UI initialization
+    window.onload = function() {
+      // Fetch initial token
+      fetchToken();
+      
+      // Set up periodic token validation (every 5 minutes)
+      setInterval(async () => {
+        try {
+          await ensureValidToken();
+        } catch (error) {
+          console.error('Periodic token validation failed:', error);
+        }
+      }, 5 * 60 * 1000); // 5 minutes
+      
+      // Load populations
+      loadPopulations();
+      
+      const ui = SwaggerUIBundle({
+        url: '/swagger.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        layout: 'StandaloneLayout',
+        requestInterceptor: async (req) => {
+          // Block if no population selected for relevant endpoints
+          const needsPopulation = [
+            '/api/import', '/api/export', '/api/delete', '/api/modify', '/api/export-users', '/api/delete-users', '/api/modify-users'
+          ];
+          const selectorEl = document.getElementById('population-selector');
+          const labelEl = document.getElementById('population-selector-label');
+          const detailsEl = document.getElementById('selected-population-details');
+          if (needsPopulation.some(path => req.url.includes(path))) {
+            if (!selectedPopulationId) {
+              // Highlight selector and scroll/focus
+              selectorEl.style.border = '2px solid #dc3545';
+              selectorEl.style.background = '#fffbe6';
+              labelEl.style.color = '#dc3545';
+              selectorEl.focus();
+              selectorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // Show error message
+              detailsEl.style.display = 'block';
+              detailsEl.innerHTML = '<span style="color:#dc3545;font-weight:600;">Please select a population before continuing.</span>';
+              throw new Error('Please select a population before continuing.');
+            } else {
+              labelEl.style.color = '#333';
+            }
+          }
+          
+          // Ensure valid token for all authenticated requests
+          if (req.url.startsWith('/api/')) {
+            try {
+              const token = await ensureValidToken();
+              if (token) {
+                req.headers['Authorization'] = 'Bearer ' + token;
+              }
+            } catch (error) {
+              console.error('Failed to get valid token:', error);
+              // Continue without token if we can't get one
+            }
+          }
+          
+          // Add population ID to requests that need it
+          if (selectedPopulationId && req.url.includes('/api/')) {
+            // For GET requests, add as query parameter
+            if (req.method === 'GET') {
+              const url = new URL(req.url, window.location.origin);
+              if (!url.searchParams.has('population.id')) {
+                url.searchParams.set('population.id', selectedPopulationId);
+                req.url = url.pathname + url.search;
+              }
+            }
+            
+            // For POST/PUT requests, add to body if it's JSON
+            if ((req.method === 'POST' || req.method === 'PUT') && req.body) {
+              try {
+                const body = JSON.parse(req.body);
+                if (!body.populationId && !body.population?.id) {
+                  body.populationId = selectedPopulationId;
+                  req.body = JSON.stringify(body);
+                }
+              } catch (e) {
+                // Body is not JSON, skip
+              }
+            }
+          }
+          
+          return req;
+        },
+        responseInterceptor: async (res) => {
+          // Handle 401 responses by refreshing token and retrying
+          if (res.status === 401) {
+            console.log('Token expired (401 response), refreshing...');
+            pingOneToken = null;
+            tokenExpiry = 0;
+            
+            try {
+              await fetchToken();
+              console.log('Token refreshed successfully, request can be retried');
+            } catch (error) {
+              console.error('Failed to refresh token after 401:', error);
+            }
+          }
+          return res;
+        },
+        // Hide the authorize button (token is auto-injected)
+        plugins: [
+          function HideAuthorizePlugin() {
+            return {
+              components: {
+                authorizeBtn: () => null
+              }
+            };
+          }
+        ],
+        onComplete: function() {
+          console.log('Swagger UI loaded successfully');
+        }
+      });
+      
+      window.ui = ui;
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,287 @@
+/* Disclaimer Modal Styles */
+.disclaimer-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    /* backdrop-filter: blur(4px); */
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease-in-out;
+}
+
+.disclaimer-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.disclaimer-modal {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    transform: scale(0.9);
+    transition: transform 0.3s ease-in-out;
+}
+
+.disclaimer-modal-overlay.active .disclaimer-modal {
+    transform: scale(1);
+}
+
+.disclaimer-modal-header {
+    background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+    color: white;
+    padding: 24px 30px 20px;
+    border-radius: 12px 12px 0 0;
+    position: relative;
+}
+
+.disclaimer-modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.disclaimer-modal-header .warning-icon {
+    font-size: 1.8rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.disclaimer-modal-body {
+    padding: 30px;
+    line-height: 1.6;
+}
+
+.disclaimer-content {
+    margin-bottom: 24px;
+}
+
+.disclaimer-content h3 {
+    color: #d32f2f;
+    margin-bottom: 16px;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.disclaimer-content p {
+    margin-bottom: 16px;
+    color: #333;
+}
+
+.disclaimer-content ul {
+    margin: 16px 0;
+    padding-left: 24px;
+}
+
+.disclaimer-content li {
+    margin-bottom: 8px;
+    color: #555;
+    position: relative;
+}
+
+.disclaimer-content li::before {
+    content: "⚠️";
+    position: absolute;
+    left: -24px;
+    top: 0;
+}
+
+.disclaimer-content .highlight {
+    background-color: #fff3cd;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    color: #856404;
+}
+
+.disclaimer-modal-footer {
+    padding: 20px 30px 30px;
+    border-top: 1px solid #e0e0e0;
+    background: #f8f9fa;
+    border-radius: 0 0 12px 12px;
+}
+
+.disclaimer-agreement {
+    margin-bottom: 20px;
+}
+
+.disclaimer-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    cursor: pointer;
+    padding: 12px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.disclaimer-checkbox:hover {
+    background-color: #f0f0f0;
+}
+
+.disclaimer-checkbox input[type="checkbox"] {
+    margin: 0;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #d32f2f;
+}
+
+.disclaimer-checkbox label {
+    cursor: pointer;
+    font-weight: 500;
+    color: #333;
+    line-height: 1.4;
+    margin: 0;
+    flex: 1;
+}
+
+.disclaimer-checkbox .required-indicator {
+    color: #d32f2f;
+    font-weight: 600;
+}
+
+.disclaimer-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.disclaimer-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 100px;
+    font-size: 1rem;
+}
+
+.disclaimer-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.disclaimer-btn-primary {
+    background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+    color: white;
+}
+
+.disclaimer-btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #b71c1c 0%, #8b0000 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
+}
+
+.disclaimer-btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.disclaimer-btn-secondary:hover:not(:disabled) {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+/* Focus management */
+.disclaimer-modal:focus {
+    outline: none;
+}
+
+.disclaimer-modal *:focus {
+    outline: 2px solid #d32f2f;
+    outline-offset: 2px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .disclaimer-modal {
+        margin: 10px;
+        max-height: 95vh;
+    }
+    
+    .disclaimer-modal-header {
+        padding: 20px 20px 16px;
+    }
+    
+    .disclaimer-modal-header h2 {
+        font-size: 1.3rem;
+    }
+    
+    .disclaimer-modal-body {
+        padding: 20px;
+    }
+    
+    .disclaimer-modal-footer {
+        padding: 16px 20px 24px;
+    }
+    
+    .disclaimer-actions {
+        flex-direction: column;
+    }
+    
+    .disclaimer-btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .disclaimer-modal-overlay {
+        padding: 10px;
+    }
+    
+    .disclaimer-modal-header h2 {
+        font-size: 1.2rem;
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+}
+
+/* Screen reader only text */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Disable body scroll when modal is active */
+body.disclaimer-modal-open {
+    overflow: hidden;
+}
+
+/* Dim background elements when modal is active */
+.app-container.disclaimer-modal-active {
+    /* filter: blur(2px); */
+    pointer-events: none;
+}
+
+.app-container.disclaimer-modal-active * {
+    pointer-events: none;
+} 

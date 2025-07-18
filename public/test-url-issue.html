@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Issue Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 URL Issue Debug Test</h1>
+    
+    <div class="test-section">
+        <h2>Current Page Info</h2>
+        <div id="page-info"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>API Tests</h2>
+        <button onclick="testRelativeURL()">Test Relative URL</button>
+        <button onclick="testAbsoluteURL()">Test Absolute URL</button>
+        <button onclick="testFetch()">Test Fetch</button>
+        <div id="api-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Log</h2>
+        <div class="log" id="console-log"></div>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('console-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `test-result ${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('console-log').innerHTML = '';
+        }
+
+        // Display current page info
+        function displayPageInfo() {
+            const pageInfo = document.getElementById('page-info');
+            pageInfo.innerHTML = `
+                <div class="test-result info">
+                    <strong>Current URL:</strong> ${window.location.href}<br>
+                    <strong>Protocol:</strong> ${window.location.protocol}<br>
+                    <strong>Host:</strong> ${window.location.host}<br>
+                    <strong>Port:</strong> ${window.location.port}<br>
+                    <strong>Pathname:</strong> ${window.location.pathname}<br>
+                    <strong>Origin:</strong> ${window.location.origin}
+                </div>
+            `;
+        }
+
+        async function testRelativeURL() {
+            log('Testing relative URL: /api/settings');
+            try {
+                const response = await fetch('/api/settings');
+                const data = await response.json();
+                log(`✅ Relative URL successful: ${response.status}`, 'success');
+                log(`Response: ${JSON.stringify(data, null, 2)}`, 'info');
+            } catch (error) {
+                log(`❌ Relative URL failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAbsoluteURL() {
+            const currentOrigin = window.location.origin;
+            const url = `${currentOrigin}/api/settings`;
+            log(`Testing absolute URL: ${url}`);
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                log(`✅ Absolute URL successful: ${response.status}`, 'success');
+                log(`Response: ${JSON.stringify(data, null, 2)}`, 'info');
+            } catch (error) {
+                log(`❌ Absolute URL failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testFetch() {
+            log('Testing fetch with different URL formats...');
+            
+            const tests = [
+                { name: 'Relative URL', url: '/api/settings' },
+                { name: 'Absolute URL (current origin)', url: `${window.location.origin}/api/settings` },
+                { name: 'Full URL (localhost:4000)', url: 'http://localhost:4000/api/settings' },
+                { name: 'Full URL (localhost:4000)', url: 'http://localhost:4000/api/settings' }
+            ];
+
+            for (const test of tests) {
+                log(`Testing: ${test.name} - ${test.url}`);
+                try {
+                    const response = await fetch(test.url);
+                    const data = await response.json();
+                    log(`✅ ${test.name}: ${response.status}`, 'success');
+                } catch (error) {
+                    log(`❌ ${test.name}: ${error.message}`, 'error');
+                }
+                await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between tests
+            }
+        }
+
+        // Initialize page
+        window.addEventListener('load', () => {
+            log('🔍 URL Issue Debug Test Page Loaded');
+            displayPageInfo();
+        });
+    </script>
+</body>
+</html> 

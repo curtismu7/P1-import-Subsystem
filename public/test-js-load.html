@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS Load Test</title>
+</head>
+<body>
+    <h1>JavaScript Load Test</h1>
+    <div id="output"></div>
+    
+    <script>
+        document.getElementById('output').innerHTML = '<p>✅ Basic JavaScript is working</p>';
+        
+        // Test if we can load the bundle
+        const script = document.createElement('script');
+        script.src = '/js/bundle.js';
+        script.onload = () => {
+            document.getElementById('output').innerHTML += '<p>✅ Bundle loaded</p>';
+            
+            setTimeout(() => {
+                if (window.app) {
+                    document.getElementById('output').innerHTML += '<p>✅ window.app exists</p>';
+                } else {
+                    document.getElementById('output').innerHTML += '<p>❌ window.app does not exist</p>';
+                }
+            }, 1000);
+        };
+        script.onerror = () => {
+            document.getElementById('output').innerHTML += '<p>❌ Failed to load bundle</p>';
+        };
+        
+        document.head.appendChild(script);
+    </script>
+</body>
+</html> 

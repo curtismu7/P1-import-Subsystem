@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Debug Test</title>
+    <link rel="stylesheet" href="public/css/styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Progress Debug Test</h1>
+        <p>This page tests the progress container functionality and debugging.</p>
+        
+        <div class="test-section">
+            <h3>Element Registry Tests</h3>
+            <button class="test-button" onclick="testElementRegistry()">Test Element Registry</button>
+            <button class="test-button" onclick="testUIManager()">Test UI Manager</button>
+            <button class="test-button" onclick="testProgressContainer()">Test Progress Container</button>
+            <button class="test-button" onclick="testStartImport()">Test Start Import</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Direct Element Tests</h3>
+            <button class="test-button" onclick="testDirectElementAccess()">Test Direct Element Access</button>
+            <button class="test-button" onclick="testCSSDisplay()">Test CSS Display Properties</button>
+            <button class="test-button" onclick="testElementVisibility()">Test Element Visibility</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>App Integration Tests</h3>
+            <button class="test-button" onclick="testAppIntegration()">Test App Integration</button>
+            <button class="test-button" onclick="testShowProgressSection()">Test showProgressSection()</button>
+            <button class="test-button" onclick="testUIManagerShowProgress()">Test UI Manager showProgress()</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Comprehensive Debug</h3>
+            <button class="test-button" onclick="runComprehensiveDebug()">Run Comprehensive Debug</button>
+            <button class="test-button" onclick="clearDebugOutput()">Clear Debug Output</button>
+        </div>
+        
+        <div id="debug-output" class="debug-info">
+            <h3>Debug Output:</h3>
+            <div id="debug-content"></div>
+        </div>
+        
+        <!-- Progress Container (copied from main app) -->
+        <div id="progress-container" class="progress-container" style="display:none;">
+            <div class="progress-section">
+                <div class="progress-header">
+                    <h3><i class="fas fa-cog fa-spin"></i> Import Progress</h3>
+                    <button class="close-progress-btn" type="button" aria-label="Close progress">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="progress-content">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill"></div>
+                        </div>
+                        <div class="progress-percentage">0%</div>
+                    </div>
+                    
+                    <div class="progress-status">
+                        <div class="status-message">Preparing import...</div>
+                        <div class="status-details"></div>
+                    </div>
+                    
+                    <div class="progress-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Total:</span>
+                            <span class="stat-value total">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Processed:</span>
+                            <span class="stat-value processed">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Success:</span>
+                            <span class="stat-value success">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Failed:</span>
+                            <span class="stat-value failed">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Skipped:</span>
+                            <span class="stat-value skipped">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="progress-timing">
+                        <div class="time-elapsed">
+                            <i class="fas fa-clock"></i>
+                            <span>Elapsed: <span class="elapsed-value">00:00</span></span>
+                        </div>
+                        <div class="time-remaining">
+                            <i class="fas fa-hourglass-half"></i>
+                            <span>ETA: <span class="eta-value">Calculating...</span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="progress-actions">
+                        <button class="btn btn-secondary cancel-import-btn" type="button">
+                            <i class="fas fa-stop"></i> Cancel Import
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, data = null) {
+            const debugContent = document.getElementById('debug-content');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            if (data) {
+                logEntry.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            debugContent.appendChild(logEntry);
+            console.log(message, data);
+        }
+        
+        function clearDebugOutput() {
+            const debugContent = document.getElementById('debug-content');
+            debugContent.innerHTML = '';
+        }
+        
+        function testElementRegistry() {
+            log('🧪 Testing Element Registry...');
+            
+            // Test if progress container exists
+            const progressContainer = document.getElementById('progress-container');
+            log('Progress container found:', !!progressContainer);
+            
+            if (progressContainer) {
+                log('Progress container display style:', progressContainer.style.display);
+                log('Progress container classes:', progressContainer.className);
+            }
+            
+            // Test ElementRegistry if available
+            if (typeof ElementRegistry !== 'undefined') {
+                const registryContainer = ElementRegistry.progressContainer();
+                log('ElementRegistry progress container:', !!registryContainer);
+            } else {
+                log('ElementRegistry not available');
+            }
+        }
+        
+        function testUIManager() {
+            log('🧪 Testing UI Manager...');
+            
+            // Test if UI manager is available globally
+            if (window.app && window.app.uiManager) {
+                log('UI Manager found:', !!window.app.uiManager);
+                
+                // Test showProgress method
+                if (typeof window.app.uiManager.showProgress === 'function') {
+                    log('showProgress method available');
+                    window.app.uiManager.showProgress();
+                    log('showProgress called');
+                } else {
+                    log('showProgress method not available');
+                }
+                
+                // Test progress container property
+                log('UI Manager progress container:', !!window.app.uiManager.progressContainer);
+            } else {
+                log('UI Manager not available');
+            }
+        }
+        
+        function testProgressContainer() {
+            log('🧪 Testing Progress Container directly...');
+            
+            const progressContainer = document.getElementById('progress-container');
+            if (progressContainer) {
+                // Test showing the container
+                progressContainer.style.display = 'block';
+                log('Progress container shown directly');
+                
+                // Test progress bar
+                const progressBarFill = document.querySelector('.progress-bar-fill');
+                if (progressBarFill) {
+                    progressBarFill.style.width = '50%';
+                    log('Progress bar updated to 50%');
+                }
+                
+                // Test stats
+                const statElements = document.querySelectorAll('.stat-value');
+                statElements.forEach(element => {
+                    element.textContent = '10';
+                });
+                log('Stats updated');
+            } else {
+                log('Progress container not found');
+            }
+        }
+        
+        function testStartImport() {
+            log('🧪 Testing Start Import...');
+            
+            if (window.app && typeof window.app.startImport === 'function') {
+                log('startImport method available');
+                
+                // Mock file and population for testing
+                const mockFile = new File(['test'], 'test.csv', { type: 'text/csv' });
+                const mockPopulation = { id: 'test-pop', name: 'Test Population' };
+                
+                // Set up mock data
+                if (window.app.fileHandler) {
+                    window.app.fileHandler.setCurrentFile(mockFile);
+                    log('Mock file set');
+                }
+                
+                // Try to start import
+                try {
+                    window.app.startImport();
+                    log('startImport called successfully');
+                } catch (error) {
+                    log('startImport error:', error.message);
+                }
+            } else {
+                log('startImport method not available');
+            }
+        }
+        
+        function testDirectElementAccess() {
+            log('🧪 Testing Direct Element Access...');
+            
+            // Test all possible progress container selectors
+            const selectors = [
+                '#progress-container',
+                '.progress-container',
+                '[id="progress-container"]',
+                '[class*="progress"]'
+            ];
+            
+            selectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                log(`Selector "${selector}" found ${elements.length} elements:`, 
+                    Array.from(elements).map(el => ({ id: el.id, className: el.className, display: el.style.display })));
+            });
+        }
+        
+        function testCSSDisplay() {
+            log('🧪 Testing CSS Display Properties...');
+            
+            const progressContainer = document.getElementById('progress-container');
+            if (progressContainer) {
+                const computedStyle = window.getComputedStyle(progressContainer);
+                log('Computed CSS properties:', {
+                    display: computedStyle.display,
+                    visibility: computedStyle.visibility,
+                    opacity: computedStyle.opacity,
+                    position: computedStyle.position,
+                    zIndex: computedStyle.zIndex
+                });
+                
+                // Test if element is actually visible
+                const rect = progressContainer.getBoundingClientRect();
+                log('Element dimensions:', {
+                    width: rect.width,
+                    height: rect.height,
+                    top: rect.top,
+                    left: rect.left,
+                    visible: rect.width > 0 && rect.height > 0
+                });
+            } else {
+                log('Progress container not found for CSS testing');
+            }
+        }
+        
+        function testElementVisibility() {
+            log('🧪 Testing Element Visibility...');
+            
+            const progressContainer = document.getElementById('progress-container');
+            if (progressContainer) {
+                // Test different display values
+                const testValues = ['block', 'inline-block', 'flex', 'grid'];
+                
+                testValues.forEach(value => {
+                    progressContainer.style.display = value;
+                    const isVisible = progressContainer.offsetParent !== null;
+                    log(`Display "${value}": visible = ${isVisible}`);
+                });
+                
+                // Reset to original state
+                progressContainer.style.display = 'none';
+            } else {
+                log('Progress container not found for visibility testing');
+            }
+        }
+        
+        function testAppIntegration() {
+            log('🧪 Testing App Integration...');
+            
+            // Test if app is available
+            if (window.app) {
+                log('App object available');
+                
+                // Test app methods
+                const methods = ['showProgressSection', 'startImport', 'uiManager'];
+                methods.forEach(method => {
+                    const available = typeof window.app[method] === 'function' || window.app[method];
+                    log(`App.${method} available:`, available);
+                });
+                
+                // Test UI manager specifically
+                if (window.app.uiManager) {
+                    log('UI Manager methods:', {
+                        showProgress: typeof window.app.uiManager.showProgress,
+                        progressContainer: !!window.app.uiManager.progressContainer
+                    });
+                }
+            } else {
+                log('App object not available');
+            }
+        }
+        
+        function testShowProgressSection() {
+            log('🧪 Testing showProgressSection()...');
+            
+            if (window.app && typeof window.app.showProgressSection === 'function') {
+                log('showProgressSection method available, calling...');
+                try {
+                    window.app.showProgressSection();
+                    log('showProgressSection called successfully');
+                } catch (error) {
+                    log('showProgressSection error:', error.message);
+                }
+            } else {
+                log('showProgressSection method not available');
+            }
+        }
+        
+        function testUIManagerShowProgress() {
+            log('🧪 Testing UI Manager showProgress()...');
+            
+            if (window.app && window.app.uiManager && typeof window.app.uiManager.showProgress === 'function') {
+                log('UI Manager showProgress method available, calling...');
+                try {
+                    window.app.uiManager.showProgress();
+                    log('UI Manager showProgress called successfully');
+                } catch (error) {
+                    log('UI Manager showProgress error:', error.message);
+                }
+            } else {
+                log('UI Manager showProgress method not available');
+            }
+        }
+        
+        function runComprehensiveDebug() {
+            log('🔍 Running Comprehensive Debug...');
+            
+            // Test all aspects
+            testElementRegistry();
+            testDirectElementAccess();
+            testCSSDisplay();
+            testElementVisibility();
+            testAppIntegration();
+            testUIManager();
+            
+            // Test actual showing
+            log('🧪 Testing actual progress display...');
+            const progressContainer = document.getElementById('progress-container');
+            if (progressContainer) {
+                progressContainer.style.display = 'block';
+                log('Progress container display set to block');
+                
+                // Check if it's actually visible
+                setTimeout(() => {
+                    const isVisible = progressContainer.offsetParent !== null;
+                    const rect = progressContainer.getBoundingClientRect();
+                    log('Final visibility check:', {
+                        isVisible,
+                        dimensions: { width: rect.width, height: rect.height },
+                        display: progressContainer.style.display,
+                        computedDisplay: window.getComputedStyle(progressContainer).display
+                    });
+                }, 100);
+            }
+        }
+        
+        // Initialize test
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🧪 Progress Debug Test Page Loaded');
+            log('Available test functions:');
+            log('- testElementRegistry()');
+            log('- testUIManager()');
+            log('- testProgressContainer()');
+            log('- testStartImport()');
+            log('- testDirectElementAccess()');
+            log('- testCSSDisplay()');
+            log('- testElementVisibility()');
+            log('- testAppIntegration()');
+            log('- testShowProgressSection()');
+            log('- testUIManagerShowProgress()');
+            log('- runComprehensiveDebug()');
+        });
+    </script>
+</body>
+</html> 

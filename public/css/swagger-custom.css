@@ -1,0 +1,590 @@
+/* Custom Swagger UI Styling for PingOne Import Tool */
+
+/* Import the app's font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Override Swagger UI default styles */
+.swagger-ui {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Header styling */
+.swagger-ui .topbar {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  padding: 15px 0;
+  box-shadow: 0 2px 10px rgba(0, 123, 255, 0.1);
+}
+
+.swagger-ui .topbar .download-url-wrapper {
+  display: none;
+}
+
+/* Logo and title */
+.swagger-ui .topbar .topbar-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+}
+
+.swagger-ui .topbar .topbar-wrapper .link {
+  color: white;
+  font-size: 24px;
+  font-weight: 600;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.swagger-ui .topbar .topbar-wrapper .link::before {
+  content: '';
+  width: 32px;
+  height: 32px;
+  background: url('https://raw.githubusercontent.com/curtismu7/CDN/fd81b602d8c3635a8ca40aab169c83b86eae2dc0/Ping%20Identity_idEzgMTpXK_1.svg') no-repeat center;
+  background-size: contain;
+  filter: brightness(0) invert(1);
+}
+
+/* Main content area */
+.swagger-ui .wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Operation blocks */
+.swagger-ui .opblock {
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e1e5e9;
+}
+
+.swagger-ui .opblock.opblock-get {
+  border-color: #61affe;
+  background: rgba(97, 175, 254, 0.1);
+}
+
+.swagger-ui .opblock.opblock-post {
+  border-color: #49cc90;
+  background: rgba(73, 204, 144, 0.1);
+}
+
+.swagger-ui .opblock.opblock-put {
+  border-color: #fca130;
+  background: rgba(252, 161, 48, 0.1);
+}
+
+.swagger-ui .opblock.opblock-delete {
+  border-color: #f93e3e;
+  background: rgba(249, 62, 62, 0.1);
+}
+
+/* Operation headers */
+.swagger-ui .opblock .opblock-summary {
+  padding: 15px 20px;
+  border-radius: 8px 8px 0 0;
+}
+
+.swagger-ui .opblock .opblock-summary-method {
+  font-weight: 600;
+  font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  min-width: 80px;
+  text-align: center;
+}
+
+.swagger-ui .opblock.opblock-get .opblock-summary-method {
+  background: #61affe;
+  color: white;
+}
+
+.swagger-ui .opblock.opblock-post .opblock-summary-method {
+  background: #49cc90;
+  color: white;
+}
+
+.swagger-ui .opblock.opblock-put .opblock-summary-method {
+  background: #fca130;
+  color: white;
+}
+
+.swagger-ui .opblock.opblock-delete .opblock-summary-method {
+  background: #f93e3e;
+  color: white;
+}
+
+/* Operation descriptions */
+.swagger-ui .opblock .opblock-summary-description {
+  font-weight: 500;
+  color: #3b4151;
+  font-size: 16px;
+}
+
+/* Try it out button */
+.swagger-ui .try-out__btn {
+  background: #007bff;
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.swagger-ui .try-out__btn:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.swagger-ui .try-out__btn:active {
+  transform: translateY(0);
+}
+
+/* Execute button */
+.swagger-ui .execute-wrapper .btn.execute {
+  background: #28a745;
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.swagger-ui .execute-wrapper .btn.execute:hover {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+.swagger-ui .execute-wrapper .btn.execute:active {
+  transform: translateY(0);
+}
+
+/* Response section */
+.swagger-ui .responses-wrapper {
+  background: #f8f9fa;
+  border-radius: 0 0 8px 8px;
+  padding: 20px;
+}
+
+.swagger-ui .responses-table {
+  margin-top: 15px;
+}
+
+.swagger-ui .responses-table .response {
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+/* Status codes */
+.swagger-ui .response-col_status {
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 4px;
+  text-align: center;
+  min-width: 80px;
+}
+
+.swagger-ui .response-col_status.response-200 {
+  background: #d4edda;
+  color: #155724;
+}
+
+.swagger-ui .response-col_status.response-400 {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.swagger-ui .response-col_status.response-401 {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.swagger-ui .response-col_status.response-500 {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* Parameters section */
+.swagger-ui .parameters-container {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 15px 0;
+}
+
+.swagger-ui .parameters-container .parameter__name {
+  font-weight: 600;
+  color: #3b4151;
+}
+
+.swagger-ui .parameters-container .parameter__type {
+  color: #7f8c8d;
+  font-size: 12px;
+}
+
+/* Input fields */
+.swagger-ui input[type="text"],
+.swagger-ui textarea,
+.swagger-ui select {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.swagger-ui input[type="text"]:focus,
+.swagger-ui textarea:focus,
+.swagger-ui select:focus {
+  border-color: #007bff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* Authentication section */
+.swagger-ui .auth-wrapper {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.swagger-ui .auth-wrapper .authorization__btn {
+  background: #007bff;
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.swagger-ui .auth-wrapper .authorization__btn:hover {
+  background: #0056b3;
+}
+
+/* Model section */
+.swagger-ui .model {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 15px 0;
+}
+
+.swagger-ui .model-title {
+  font-weight: 600;
+  color: #3b4151;
+  margin-bottom: 10px;
+}
+
+/* Schema section */
+.swagger-ui .model-box {
+  background: white;
+  border: 1px solid #e1e5e9;
+  border-radius: 4px;
+  padding: 15px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .swagger-ui .wrapper {
+    padding: 10px;
+  }
+  
+  .swagger-ui .opblock .opblock-summary {
+    padding: 10px 15px;
+  }
+  
+  .swagger-ui .opblock-summary-description {
+    font-size: 14px;
+  }
+  
+  .swagger-ui .responses-wrapper {
+    padding: 15px;
+  }
+}
+
+/* Loading states */
+.swagger-ui .loading {
+  color: #007bff;
+  font-style: italic;
+}
+
+/* Error states */
+.swagger-ui .error {
+  color: #dc3545;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  padding: 10px;
+  margin: 10px 0;
+}
+
+/* Success states */
+.swagger-ui .success {
+  color: #155724;
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  border-radius: 4px;
+  padding: 10px;
+  margin: 10px 0;
+}
+
+/* Custom scrollbar */
+.swagger-ui ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.swagger-ui ::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Focus states for accessibility */
+.swagger-ui button:focus,
+.swagger-ui input:focus,
+.swagger-ui select:focus,
+.swagger-ui textarea:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* Enhanced accessibility features */
+.swagger-ui .opblock-summary-method {
+  position: relative;
+  overflow: hidden;
+}
+
+.swagger-ui .opblock-summary-method::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.swagger-ui .opblock-summary-method:hover::after {
+  left: 100%;
+}
+
+/* Improved button interactions */
+.swagger-ui .btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.swagger-ui .btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s;
+}
+
+.swagger-ui .btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Enhanced table styling */
+.swagger-ui .responses-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.swagger-ui .responses-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  padding: 12px;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.swagger-ui .responses-table td {
+  padding: 12px;
+  border-bottom: 1px solid #dee2e6;
+  transition: background-color 0.2s ease;
+}
+
+.swagger-ui .responses-table tr:hover td {
+  background-color: #f8f9fa;
+}
+
+/* Code block styling */
+.swagger-ui .microlight {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-x: auto;
+}
+
+/* Collapse/expand animations */
+.swagger-ui .opblock.is-open .opblock-summary {
+  border-bottom: 1px solid #e1e5e9;
+}
+
+.swagger-ui .opblock .opblock-summary-operation-id,
+.swagger-ui .opblock .opblock-summary-path {
+  transition: color 0.2s ease;
+}
+
+.swagger-ui .opblock:hover .opblock-summary-operation-id,
+.swagger-ui .opblock:hover .opblock-summary-path {
+  color: #007bff;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .swagger-ui {
+    background: #1a1a1a;
+    color: #ffffff;
+  }
+  
+  .swagger-ui .topbar {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+  }
+  
+  .swagger-ui .opblock {
+    background: #2d2d2d;
+    border-color: #404040;
+  }
+  
+  .swagger-ui .responses-wrapper,
+  .swagger-ui .parameters-container,
+  .swagger-ui .model {
+    background: #2d2d2d;
+  }
+  
+  .swagger-ui input[type="text"],
+  .swagger-ui textarea,
+  .swagger-ui select {
+    background: #404040;
+    color: #ffffff;
+    border-color: #555555;
+  }
+  
+  .swagger-ui .microlight {
+    background: #2d2d2d;
+    border-color: #404040;
+    color: #ffffff;
+  }
+  
+  .swagger-ui .responses-table th {
+    background: #404040;
+    border-bottom-color: #555555;
+  }
+  
+  .swagger-ui .responses-table td {
+    border-bottom-color: #404040;
+  }
+  
+  .swagger-ui .responses-table tr:hover td {
+    background-color: #404040;
+  }
+  
+  .swagger-ui .model-box {
+    background: #2d2d2d;
+    border-color: #404040;
+  }
+  
+  .swagger-ui .auth-wrapper {
+    background: #2d2d2d;
+    border-color: #404040;
+  }
+  
+  .swagger-ui .opblock-summary-description {
+    color: #e5e7eb;
+  }
+  
+  .swagger-ui .parameters-container .parameter__name {
+    color: #e5e7eb;
+  }
+  
+  .swagger-ui .model-title {
+    color: #e5e7eb;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .swagger-ui .opblock {
+    border-width: 2px;
+  }
+  
+  .swagger-ui .btn {
+    border-width: 2px;
+  }
+  
+  .swagger-ui input[type="text"],
+  .swagger-ui textarea,
+  .swagger-ui select {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .swagger-ui .btn,
+  .swagger-ui .opblock-summary-method,
+  .swagger-ui input,
+  .swagger-ui textarea,
+  .swagger-ui select {
+    transition: none;
+  }
+  
+  .swagger-ui .opblock-summary-method::after {
+    display: none;
+  }
+  
+  .swagger-ui .btn::before {
+    display: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .swagger-ui .topbar,
+  .swagger-ui .try-out__btn,
+  .swagger-ui .execute-wrapper {
+    display: none;
+  }
+  
+  .swagger-ui .opblock {
+    break-inside: avoid;
+    border: 1px solid #000;
+  }
+  
+  .swagger-ui .responses-wrapper {
+    background: none;
+    border: 1px solid #000;
+  }
+} 
