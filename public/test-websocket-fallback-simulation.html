@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Fallback Simulation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .log { background-color: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; max-height: 300px; overflow-y: auto; }
+        button { padding: 10px 15px; margin: 5px; border: none; border-radius: 3px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-warning { background-color: #ffc107; color: black; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .status.connected { background-color: #d4edda; color: #155724; }
+        .status.disconnected { background-color: #f8d7da; color: #721c24; }
+        .status.connecting { background-color: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Fallback Simulation Test</h1>
+    
+    <div class="test-section info">
+        <h3>Test Overview</h3>
+        <p>This page simulates the Socket.IO to WebSocket fallback scenario:</p>
+        <ol>
+            <li><strong>Step 1:</strong> Attempt Socket.IO connection (should fail)</li>
+            <li><strong>Step 2:</strong> Automatically fallback to WebSocket</li>
+            <li><strong>Step 3:</strong> Test WebSocket functionality</li>
+            <li><strong>Step 4:</strong> Simulate import with progress updates</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h3>Connection Status</h3>
+        <div id="socketIOStatus" class="status disconnected">Socket.IO: Disconnected</div>
+        <div id="webSocketStatus" class="status disconnected">WebSocket: Disconnected</div>
+        <div id="fallbackStatus" class="status disconnected">Fallback: Not Active</div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Controls</h3>
+        <button id="testSocketIOFailure" class="btn-primary">Test Socket.IO Failure → WebSocket Fallback</button>
+        <button id="testWebSocketOnly" class="btn-success">Test WebSocket Only</button>
+        <button id="testImportSimulation" class="btn-warning">Simulate Import with Progress</button>
+        <button id="resetTest" class="btn-danger">Reset Test</button>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Log</h3>
+        <div id="testLog" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Progress Updates</h3>
+        <div id="progressLog" class="log"></div>
+    </div>
+
+    <script>
+        let socket = null;
+        let ws = null;
+        let testSessionId = null;
+        let fallbackActive = false;
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color: #666;">[${timestamp}]</span> ${message}`;
+            if (type === 'error') logEntry.style.color = 'red';
+            if (type === 'success') logEntry.style.color = 'green';
+            if (type === 'warning') logEntry.style.color = 'orange';
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function updateStatus(elementId, status, message) {
+            const element = document.getElementById(elementId);
+            element.className = `status ${status}`;
+            element.textContent = message;
+        }
+
+        function logProgress(message, type = 'info') {
+            const logElement = document.getElementById('progressLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color: #666;">[${timestamp}]</span> ${message}`;
+            if (type === 'error') logEntry.style.color = 'red';
+            if (type === 'success') logEntry.style.color = 'green';
+            if (type === 'warning') logEntry.style.color = 'orange';
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // Test Socket.IO failure and WebSocket fallback
+        document.getElementById('testSocketIOFailure').addEventListener('click', () => {
+            log('🚀 Starting Socket.IO failure → WebSocket fallback test...');
+            testSessionId = 'test-session-' + Date.now();
+            
+            // Step 1: Try Socket.IO (will fail)
+            log('📡 Attempting Socket.IO connection...');
+            updateStatus('socketIOStatus', 'connecting', 'Socket.IO: Connecting...');
+            
+            try {
+                // Simulate Socket.IO failure by connecting to non-existent endpoint
+                socket = io('http://localhost:9999'); // This will fail
+                
+                socket.on('connect', () => {
+                    log('✅ Socket.IO connected (unexpected)', 'success');
+                    updateStatus('socketIOStatus', 'connected', 'Socket.IO: Connected');
+                });
+                
+                socket.on('connect_error', (error) => {
+                    log('❌ Socket.IO connection failed (expected):', error.message, 'warning');
+                    updateStatus('socketIOStatus', 'disconnected', 'Socket.IO: Failed');
+                    
+                    // Step 2: Fallback to WebSocket
+                    log('🔄 Socket.IO failed, falling back to WebSocket...');
+                    startWebSocketFallback();
+                });
+                
+                socket.on('disconnect', (reason) => {
+                    log('🔄 Socket.IO disconnected:', reason, 'warning');
+                    updateStatus('socketIOStatus', 'disconnected', 'Socket.IO: Disconnected');
+                });
+                
+            } catch (error) {
+                log('❌ Socket.IO setup failed:', error.message, 'error');
+                updateStatus('socketIOStatus', 'disconnected', 'Socket.IO: Setup Failed');
+                startWebSocketFallback();
+            }
+        });
+
+        // Test WebSocket only
+        document.getElementById('testWebSocketOnly').addEventListener('click', () => {
+            log('🚀 Starting WebSocket-only test...');
+            testSessionId = 'test-session-' + Date.now();
+            startWebSocketFallback();
+        });
+
+        function startWebSocketFallback() {
+            log('🔌 Starting WebSocket fallback connection...');
+            updateStatus('webSocketStatus', 'connecting', 'WebSocket: Connecting...');
+            updateStatus('fallbackStatus', 'connecting', 'Fallback: Active');
+            fallbackActive = true;
+            
+            try {
+                const wsUrl = `ws://${window.location.hostname}:${window.location.port || 4000}`;
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = () => {
+                    log('✅ WebSocket connected successfully', 'success');
+                    updateStatus('webSocketStatus', 'connected', 'WebSocket: Connected');
+                    
+                    // Send session registration
+                    const message = JSON.stringify({ sessionId: testSessionId });
+                    ws.send(message);
+                    log('📤 Sent WebSocket session registration:', message);
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log('📩 WebSocket message received:', JSON.stringify(data), 'success');
+                        logProgress('📊 Progress update received via WebSocket', 'success');
+                    } catch (e) {
+                        log('📩 WebSocket raw message:', event.data);
+                        logProgress('📊 Raw progress update received', 'info');
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    log('❌ WebSocket error:', error.message || 'Unknown error', 'error');
+                    updateStatus('webSocketStatus', 'disconnected', 'WebSocket: Error');
+                };
+                
+                ws.onclose = (event) => {
+                    log('🔄 WebSocket closed:', event.code, event.reason, 'warning');
+                    updateStatus('webSocketStatus', 'disconnected', 'WebSocket: Closed');
+                };
+                
+            } catch (error) {
+                log('❌ Failed to create WebSocket connection:', error.message, 'error');
+                updateStatus('webSocketStatus', 'disconnected', 'WebSocket: Setup Failed');
+            }
+        }
+
+        // Simulate import with progress
+        document.getElementById('testImportSimulation').addEventListener('click', async () => {
+            if (!testSessionId) {
+                log('❌ No test session ID available. Run a connection test first.', 'error');
+                return;
+            }
+            
+            log('🚀 Starting import simulation with progress updates...');
+            
+            try {
+                // Create a test CSV
+                const testCsv = 'username,email,firstName,lastName\ntestuser1,test1@example.com,Test,User1\ntestuser2,test2@example.com,Test,User2\ntestuser3,test3@example.com,Test,User3';
+                const blob = new Blob([testCsv], { type: 'text/csv' });
+                const file = new File([blob], 'test-import.csv', { type: 'text/csv' });
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('populationId', 'test-population-id');
+                formData.append('populationName', 'Test Population');
+                formData.append('totalUsers', '3');
+                
+                log('📤 Sending import request to server...');
+                
+                const response = await fetch('/api/import', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                const importSessionId = result.sessionId;
+                
+                log('✅ Import started successfully. Session ID:', importSessionId, 'success');
+                logProgress('✅ Import started with session ID: ' + importSessionId, 'success');
+                
+                // Simulate progress updates
+                simulateProgressUpdates(importSessionId);
+                
+            } catch (error) {
+                log('❌ Import simulation failed:', error.message, 'error');
+                logProgress('❌ Import failed: ' + error.message, 'error');
+            }
+        });
+
+        function simulateProgressUpdates(sessionId) {
+            log('📊 Simulating progress updates for session:', sessionId);
+            
+            // Simulate progress updates every 2 seconds
+            let current = 0;
+            const total = 3;
+            const interval = setInterval(() => {
+                current++;
+                const percentage = Math.round((current / total) * 100);
+                
+                const progressData = {
+                    current: current,
+                    total: total,
+                    percentage: percentage,
+                    message: `Processing user ${current} of ${total}`,
+                    status: current === total ? 'completed' : 'processing'
+                };
+                
+                logProgress(`📈 Progress: ${current}/${total} (${percentage}%) - ${progressData.message}`, 'success');
+                
+                if (current >= total) {
+                    logProgress('✅ Import completed successfully!', 'success');
+                    clearInterval(interval);
+                }
+            }, 2000);
+        }
+
+        // Reset test
+        document.getElementById('resetTest').addEventListener('click', () => {
+            log('🔄 Resetting test...');
+            
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+            
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            
+            testSessionId = null;
+            fallbackActive = false;
+            
+            updateStatus('socketIOStatus', 'disconnected', 'Socket.IO: Disconnected');
+            updateStatus('webSocketStatus', 'disconnected', 'WebSocket: Disconnected');
+            updateStatus('fallbackStatus', 'disconnected', 'Fallback: Not Active');
+            
+            document.getElementById('testLog').innerHTML = '';
+            document.getElementById('progressLog').innerHTML = '';
+            
+            log('✅ Test reset complete');
+        });
+
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            log('📋 WebSocket Fallback Simulation Test page loaded');
+            log('💡 Click "Test Socket.IO Failure → WebSocket Fallback" to start');
+        });
+    </script>
+</body>
+</html> 

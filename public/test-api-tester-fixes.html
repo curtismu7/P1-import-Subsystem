@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Tester Fixes Verification</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .test-success { background-color: #d4edda; color: #155724; }
+        .test-error { background-color: #f8d7da; color: #721c24; }
+        .test-info { background-color: #d1ecf1; color: #0c5460; }
+        .loading { color: #007bff; }
+        .function-list {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .function-item {
+            margin: 5px 0;
+            padding: 5px;
+            background: white;
+            border-radius: 3px;
+        }
+        .function-item.success { border-left: 4px solid #28a745; }
+        .function-item.error { border-left: 4px solid #dc3545; }
+        .function-item.warning { border-left: 4px solid #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1><i class="fas fa-bug"></i> API Tester Fixes Verification</h1>
+        <p class="lead">Testing all missing API test functions that were implemented</p>
+
+        <!-- Server Status -->
+        <div class="test-section">
+            <h3><i class="fas fa-server"></i> Server Status Check</h3>
+            <div id="server-status" class="test-result test-info">
+                <i class="fas fa-spinner fa-spin"></i> Checking server status...
+            </div>
+        </div>
+
+        <!-- Function Verification -->
+        <div class="test-section">
+            <h3><i class="fas fa-code"></i> Function Implementation Check</h3>
+            <div id="function-check" class="function-list">
+                <div class="function-item">
+                    <i class="fas fa-spinner fa-spin"></i> Checking function implementations...
+                </div>
+            </div>
+        </div>
+
+        <!-- API Tests -->
+        <div class="test-section">
+            <h3><i class="fas fa-flask"></i> API Function Tests</h3>
+            
+            <!-- Connection Test -->
+            <div class="mb-3">
+                <h5><i class="fas fa-plug"></i> Connection API Test</h5>
+                <button class="btn btn-success" onclick="testConnectionFunction()">
+                    <i class="fas fa-play"></i> Test Connection API
+                </button>
+                <div id="connection-test-result" class="test-result" style="display: none;"></div>
+            </div>
+
+            <!-- Token Test -->
+            <div class="mb-3">
+                <h5><i class="fas fa-key"></i> Token API Test</h5>
+                <button class="btn btn-primary" onclick="testTokenFunction()">
+                    <i class="fas fa-play"></i> Test Token API
+                </button>
+                <div id="token-test-result" class="test-result" style="display: none;"></div>
+            </div>
+
+            <!-- Populations Test -->
+            <div class="mb-3">
+                <h5><i class="fas fa-users"></i> Populations API Test</h5>
+                <button class="btn btn-info" onclick="testPopulationsFunction()">
+                    <i class="fas fa-play"></i> Test Populations API
+                </button>
+                <div id="populations-test-result" class="test-result" style="display: none;"></div>
+            </div>
+
+            <!-- Settings Test -->
+            <div class="mb-3">
+                <h5><i class="fas fa-cog"></i> Settings API Test</h5>
+                <button class="btn btn-warning" onclick="testSettingsFunction()">
+                    <i class="fas fa-play"></i> Test Settings API
+                </button>
+                <div id="settings-test-result" class="test-result" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Manual Test Instructions -->
+        <div class="test-section">
+            <h3><i class="fas fa-user"></i> Manual Test Instructions</h3>
+            <div class="alert alert-info">
+                <h5>Steps to verify the fixes:</h5>
+                <ol>
+                    <li><strong>Open API Tester:</strong> Navigate to <a href="/api-tester.html" target="_blank">http://localhost:4000/api-tester.html</a></li>
+                    <li><strong>Test Connection:</strong> Click the "Test Connection" button - should work without errors</li>
+                    <li><strong>Test Token:</strong> Click the "Test Token API" button - should work without errors</li>
+                    <li><strong>Test Populations:</strong> Click the "Test Populations API" button - should work without errors</li>
+                    <li><strong>Test Settings:</strong> Fill in settings form and click "Test Settings API" - should work without errors</li>
+                    <li><strong>Test Import:</strong> Select a CSV file and click "Test Import API" - should work without errors</li>
+                    <li><strong>Test Modify:</strong> Select a CSV file and click "Test Modify API" - should work without errors</li>
+                    <li><strong>Test Export:</strong> Enter a population ID and click "Test Export API" - should work without errors</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="test-section">
+            <h3><i class="fas fa-clipboard-check"></i> Test Summary</h3>
+            <div id="test-summary" class="alert alert-secondary">
+                <i class="fas fa-spinner fa-spin"></i> Running tests...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Test results tracking
+        let testResults = {
+            serverStatus: false,
+            functionsImplemented: false,
+            connectionAPI: false,
+            tokenAPI: false,
+            populationsAPI: false,
+            settingsAPI: false
+        };
+
+        // Initialize tests
+        window.addEventListener('load', async () => {
+            await checkServerStatus();
+            await checkFunctionImplementations();
+            await runAPITests();
+            updateSummary();
+        });
+
+        // Check server status
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('server-status').innerHTML = `
+                        <div class="test-success">
+                            <i class="fas fa-check-circle"></i> Server is running successfully
+                            <br><small>Status: ${data.status} | Uptime: ${Math.round(data.uptime)}s</small>
+                        </div>
+                    `;
+                    testResults.serverStatus = true;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                document.getElementById('server-status').innerHTML = `
+                    <div class="test-error">
+                        <i class="fas fa-times-circle"></i> Server check failed: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Check if functions are implemented in api-tester.html
+        async function checkFunctionImplementations() {
+            try {
+                const response = await fetch('/api-tester.html');
+                const html = await response.text();
+                
+                const functions = [
+                    'testConnectionAPI',
+                    'testTokenAPI', 
+                    'testPopulationsAPI',
+                    'testSettingsAPI',
+                    'testImportAPI',
+                    'testModifyAPI',
+                    'testExportAPI'
+                ];
+                
+                let functionList = '';
+                let implementedCount = 0;
+                
+                functions.forEach(func => {
+                    const isImplemented = html.includes(`function ${func}`) || html.includes(`async function ${func}`);
+                    const status = isImplemented ? 'success' : 'error';
+                    const icon = isImplemented ? 'fa-check-circle' : 'fa-times-circle';
+                    const text = isImplemented ? 'Implemented' : 'Missing';
+                    
+                    if (isImplemented) implementedCount++;
+                    
+                    functionList += `
+                        <div class="function-item ${status}">
+                            <i class="fas ${icon}"></i> ${func} - ${text}
+                        </div>
+                    `;
+                });
+                
+                document.getElementById('function-check').innerHTML = functionList;
+                testResults.functionsImplemented = implementedCount === functions.length;
+                
+            } catch (error) {
+                document.getElementById('function-check').innerHTML = `
+                    <div class="function-item error">
+                        <i class="fas fa-times-circle"></i> Failed to check functions: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Test Connection API
+        async function testConnectionFunction() {
+            const resultDiv = document.getElementById('connection-test-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Testing Connection API...</div>';
+            
+            try {
+                const response = await fetch('/api/pingone/test-connection', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="test-success">
+                            <i class="fas fa-check-circle"></i> Connection API test successful
+                            <br><small>Status: ${response.status} | Message: ${data.message || 'Connection successful'}</small>
+                        </div>
+                    `;
+                    testResults.connectionAPI = true;
+                } else {
+                    throw new Error(data.message || `HTTP ${response.status}`);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="test-error">
+                        <i class="fas fa-times-circle"></i> Connection API test failed: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Test Token API
+        async function testTokenFunction() {
+            const resultDiv = document.getElementById('token-test-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Testing Token API...</div>';
+            
+            try {
+                const response = await fetch('/api/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="test-success">
+                            <i class="fas fa-check-circle"></i> Token API test successful
+                            <br><small>Status: ${response.status} | Token: ${data.token ? data.token.slice(0, 32) + '...' : 'N/A'}</small>
+                        </div>
+                    `;
+                    testResults.tokenAPI = true;
+                } else {
+                    throw new Error(data.message || `HTTP ${response.status}`);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="test-error">
+                        <i class="fas fa-times-circle"></i> Token API test failed: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Test Populations API
+        async function testPopulationsFunction() {
+            const resultDiv = document.getElementById('populations-test-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Testing Populations API...</div>';
+            
+            try {
+                const response = await fetch('/api/pingone/populations', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="test-success">
+                            <i class="fas fa-check-circle"></i> Populations API test successful
+                            <br><small>Status: ${response.status} | Count: ${data.populations ? data.populations.length : 0} populations</small>
+                        </div>
+                    `;
+                    testResults.populationsAPI = true;
+                } else {
+                    throw new Error(data.message || `HTTP ${response.status}`);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="test-error">
+                        <i class="fas fa-times-circle"></i> Populations API test failed: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Test Settings API
+        async function testSettingsFunction() {
+            const resultDiv = document.getElementById('settings-test-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Testing Settings API...</div>';
+            
+            try {
+                // First get current settings
+                const getResponse = await fetch('/api/settings');
+                const getData = await getResponse.json();
+                
+                if (getResponse.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="test-success">
+                            <i class="fas fa-check-circle"></i> Settings API test successful
+                            <br><small>Status: ${getResponse.status} | Environment ID: ${getData.data?.environmentId || 'N/A'}</small>
+                        </div>
+                    `;
+                    testResults.settingsAPI = true;
+                } else {
+                    throw new Error(getData.message || `HTTP ${getResponse.status}`);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="test-error">
+                        <i class="fas fa-times-circle"></i> Settings API test failed: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Run all API tests
+        async function runAPITests() {
+            await testConnectionFunction();
+            await testTokenFunction();
+            await testPopulationsFunction();
+            await testSettingsFunction();
+        }
+
+        // Update summary
+        function updateSummary() {
+            const passed = Object.values(testResults).filter(Boolean).length;
+            const total = Object.keys(testResults).length;
+            const percentage = Math.round((passed / total) * 100);
+            
+            let summaryHTML = `
+                <h5><i class="fas fa-chart-bar"></i> Test Results Summary</h5>
+                <p><strong>Passed:</strong> ${passed}/${total} (${percentage}%)</p>
+                <ul>
+            `;
+            
+            Object.entries(testResults).forEach(([test, passed]) => {
+                const icon = passed ? 'fa-check-circle text-success' : 'fa-times-circle text-danger';
+                const status = passed ? 'PASS' : 'FAIL';
+                summaryHTML += `<li><i class="fas ${icon}"></i> ${test}: ${status}</li>`;
+            });
+            
+            summaryHTML += '</ul>';
+            
+            if (percentage === 100) {
+                summaryHTML += '<div class="alert alert-success mt-3"><i class="fas fa-trophy"></i> All tests passed! API Tester fixes are working correctly.</div>';
+            } else {
+                summaryHTML += '<div class="alert alert-warning mt-3"><i class="fas fa-exclamation-triangle"></i> Some tests failed. Please check the details above.</div>';
+            }
+            
+            document.getElementById('test-summary').innerHTML = summaryHTML;
+        }
+    </script>
+</body>
+</html> 

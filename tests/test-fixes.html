@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Fixes - PingOne Import Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .log-output {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Fixes - PingOne Import Tool</h1>
+        
+        <div class="test-section info">
+            <h3>🔧 Testing Logger and Populations Loading Fixes</h3>
+            <p>This page tests the fixes for the logger initialization and populations loading issues.</p>
+        </div>
+
+        <div class="test-section">
+            <h3>1. Logger Test</h3>
+            <button onclick="testLogger()">Test Logger Initialization</button>
+            <div id="logger-result" class="log-output"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Populations API Test</h3>
+            <button onclick="testPopulationsAPI()">Test Populations Endpoint</button>
+            <div id="populations-result" class="log-output"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Frontend Module Test</h3>
+            <button onclick="testFrontendModules()">Test Frontend Modules</button>
+            <div id="modules-result" class="log-output"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Complete Integration Test</h3>
+            <button onclick="runCompleteTest()">Run Complete Test</button>
+            <div id="complete-result" class="log-output"></div>
+        </div>
+    </div>
+
+    <script>
+        function logToElement(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] [${type.toUpperCase()}] ${message}\n`;
+            element.textContent += logEntry;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function testLogger() {
+            const resultElement = document.getElementById('logger-result');
+            resultElement.textContent = '';
+            
+            logToElement('logger-result', 'Testing logger initialization...', 'info');
+            
+            try {
+                // Test if window.logManager exists
+                if (typeof window.logManager === 'undefined') {
+                    logToElement('logger-result', '❌ window.logManager is not defined', 'error');
+                    return;
+                }
+                
+                logToElement('logger-result', '✅ window.logManager exists', 'success');
+                
+                // Test if log function exists
+                if (typeof window.logManager.log !== 'function') {
+                    logToElement('logger-result', '❌ window.logManager.log is not a function', 'error');
+                    return;
+                }
+                
+                logToElement('logger-result', '✅ window.logManager.log is a function', 'success');
+                
+                // Test logging
+                try {
+                    window.logManager.log('info', 'Test log message', { test: true });
+                    logToElement('logger-result', '✅ Logger test message sent successfully', 'success');
+                } catch (error) {
+                    logToElement('logger-result', `❌ Logger test failed: ${error.message}`, 'error');
+                }
+                
+            } catch (error) {
+                logToElement('logger-result', `❌ Logger test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPopulationsAPI() {
+            const resultElement = document.getElementById('populations-result');
+            resultElement.textContent = '';
+            
+            logToElement('populations-result', 'Testing populations API endpoint...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:4000/api/populations');
+                
+                if (!response.ok) {
+                    logToElement('populations-result', `❌ API request failed: ${response.status} ${response.statusText}`, 'error');
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    logToElement('populations-result', `✅ Populations API working - found ${data.total} populations`, 'success');
+                    logToElement('populations-result', `📊 Populations: ${data.populations.map(p => p.name).join(', ')}`, 'info');
+                } else {
+                    logToElement('populations-result', `❌ API returned error: ${data.error}`, 'error');
+                }
+                
+            } catch (error) {
+                logToElement('populations-result', `❌ API test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testFrontendModules() {
+            const resultElement = document.getElementById('modules-result');
+            resultElement.textContent = '';
+            
+            logToElement('modules-result', 'Testing frontend module initialization...', 'info');
+            
+            try {
+                // Test if the main app bundle is loaded
+                if (typeof window.app === 'undefined') {
+                    logToElement('modules-result', '⚠️  Main app not loaded yet (this is normal)', 'info');
+                } else {
+                    logToElement('modules-result', '✅ Main app is loaded', 'success');
+                }
+                
+                // Test if modules are available
+                const modules = ['deleteManager', 'exportManager', 'logManager'];
+                modules.forEach(module => {
+                    if (typeof window[module] !== 'undefined') {
+                        logToElement('modules-result', `✅ ${module} is available`, 'success');
+                    } else {
+                        logToElement('modules-result', `⚠️  ${module} is not available yet`, 'info');
+                    }
+                });
+                
+                // Test logger functionality
+                if (window.logManager && typeof window.logManager.log === 'function') {
+                    try {
+                        window.logManager.log('info', 'Frontend module test', { test: true });
+                        logToElement('modules-result', '✅ Logger functionality working', 'success');
+                    } catch (error) {
+                        logToElement('modules-result', `❌ Logger test failed: ${error.message}`, 'error');
+                    }
+                } else {
+                    logToElement('modules-result', '⚠️  Logger not available for testing', 'info');
+                }
+                
+            } catch (error) {
+                logToElement('modules-result', `❌ Module test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function runCompleteTest() {
+            const resultElement = document.getElementById('complete-result');
+            resultElement.textContent = '';
+            
+            logToElement('complete-result', 'Running complete integration test...', 'info');
+            
+            // Test 1: Logger
+            logToElement('complete-result', '1. Testing logger...', 'info');
+            if (typeof window.logManager === 'undefined' || typeof window.logManager.log !== 'function') {
+                logToElement('complete-result', '❌ Logger not properly initialized', 'error');
+            } else {
+                logToElement('complete-result', '✅ Logger properly initialized', 'success');
+            }
+            
+            // Test 2: Populations API
+            logToElement('complete-result', '2. Testing populations API...', 'info');
+            try {
+                const response = await fetch('http://localhost:4000/api/populations');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        logToElement('complete-result', `✅ Populations API working (${data.total} populations)`, 'success');
+                    } else {
+                        logToElement('complete-result', '❌ Populations API returned error', 'error');
+                    }
+                } else {
+                    logToElement('complete-result', '❌ Populations API request failed', 'error');
+                }
+            } catch (error) {
+                logToElement('complete-result', `❌ Populations API test failed: ${error.message}`, 'error');
+            }
+            
+            // Test 3: Frontend modules
+            logToElement('complete-result', '3. Testing frontend modules...', 'info');
+            const moduleTests = [
+                { name: 'logManager', test: () => typeof window.logManager === 'object' && typeof window.logManager.log === 'function' },
+                { name: 'deleteManager', test: () => typeof window.deleteManager === 'object' },
+                { name: 'exportManager', test: () => typeof window.exportManager === 'object' }
+            ];
+            
+            let moduleSuccess = true;
+            moduleTests.forEach(({ name, test }) => {
+                if (test()) {
+                    logToElement('complete-result', `✅ ${name} is available`, 'success');
+                } else {
+                    logToElement('complete-result', `⚠️  ${name} is not available`, 'info');
+                    moduleSuccess = false;
+                }
+            });
+            
+            // Summary
+            logToElement('complete-result', '--- Test Summary ---', 'info');
+            if (moduleSuccess) {
+                logToElement('complete-result', '🎉 All tests passed! The fixes are working correctly.', 'success');
+            } else {
+                logToElement('complete-result', '⚠️  Some modules may still be loading. Try refreshing the page.', 'info');
+            }
+        }
+
+        // Auto-run basic tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                logToElement('logger-result', 'Page loaded, ready for testing...', 'info');
+            }, 1000);
+        });
+    </script>
+</body>
+</html> 

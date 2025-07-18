@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Connection Test</title>
+    <!-- Socket.IO Client Library -->
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-connected { background-color: #28a745; }
+        .status-disconnected { background-color: #dc3545; }
+        .status-connecting { background-color: #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 WebSocket Connection Test</h1>
+        <p>This page tests WebSocket and Socket.IO connections to diagnose connection issues.</p>
+        
+        <div style="margin-bottom: 20px;">
+            <button onclick="testBasicWebSocket()">Test Basic WebSocket</button>
+            <button onclick="testSocketIO()">Test Socket.IO</button>
+            <button onclick="testSSEConnection()">Test SSE Connection</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <h3>Connection Status:</h3>
+            <div>
+                <span class="status-indicator" id="ws-status"></span>
+                <span>Basic WebSocket: <span id="ws-text">Disconnected</span></span>
+            </div>
+            <div>
+                <span class="status-indicator" id="socketio-status"></span>
+                <span>Socket.IO: <span id="socketio-text">Disconnected</span></span>
+            </div>
+            <div>
+                <span class="status-indicator" id="sse-status"></span>
+                <span>Server-Sent Events: <span id="sse-text">Disconnected</span></span>
+            </div>
+        </div>
+        
+        <div class="log" id="test-log"></div>
+    </div>
+
+    <script>
+        let socket = null;
+        let eventSource = null;
+        let wsConnection = null;
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('test-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `test-result ${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function updateStatus(elementId, textId, status, text) {
+            const statusElement = document.getElementById(elementId);
+            const textElement = document.getElementById(textId);
+            
+            statusElement.className = `status-indicator status-${status}`;
+            textElement.textContent = text;
+        }
+
+        function testBasicWebSocket() {
+            log('Testing basic WebSocket connection...', 'info');
+            updateStatus('ws-status', 'ws-text', 'connecting', 'Connecting...');
+            
+            try {
+                // Close existing connection if any
+                if (wsConnection) {
+                    wsConnection.close();
+                }
+                
+                wsConnection = new WebSocket('ws://127.0.0.1:4000');
+                
+                wsConnection.onopen = function() {
+                    log('✅ Basic WebSocket connection successful', 'success');
+                    updateStatus('ws-status', 'ws-text', 'connected', 'Connected');
+                    
+                    // Send a test message
+                    wsConnection.send('ping');
+                };
+                
+                wsConnection.onmessage = function(event) {
+                    log(`📨 WebSocket message received: ${event.data}`, 'info');
+                };
+                
+                wsConnection.onerror = function(error) {
+                    log(`❌ WebSocket error: ${error}`, 'error');
+                    updateStatus('ws-status', 'ws-text', 'disconnected', 'Error');
+                };
+                
+                wsConnection.onclose = function(event) {
+                    log(`🔌 WebSocket closed: code=${event.code}, reason=${event.reason}`, 'info');
+                    updateStatus('ws-status', 'ws-text', 'disconnected', 'Disconnected');
+                };
+                
+                // Close after 5 seconds
+                setTimeout(() => {
+                    if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+                        wsConnection.close();
+                    }
+                }, 5000);
+                
+            } catch (error) {
+                log(`❌ WebSocket test failed: ${error.message}`, 'error');
+                updateStatus('ws-status', 'ws-text', 'disconnected', 'Failed');
+            }
+        }
+
+        function testSocketIO() {
+            log('Testing Socket.IO connection...', 'info');
+            updateStatus('socketio-status', 'socketio-text', 'connecting', 'Connecting...');
+            
+            try {
+                // Close existing connection if any
+                if (socket) {
+                    socket.disconnect();
+                }
+                
+                // Connect to Socket.IO server
+                socket = io('http://127.0.0.1:4000', {
+                    transports: ['websocket', 'polling'],
+                    timeout: 5000
+                });
+                
+                socket.on('connect', function() {
+                    log('✅ Socket.IO connection successful', 'success');
+                    updateStatus('socketio-status', 'socketio-text', 'connected', 'Connected');
+                    
+                    // Emit a test event
+                    socket.emit('test', { message: 'Hello from client' });
+                });
+                
+                socket.on('disconnect', function(reason) {
+                    log(`🔌 Socket.IO disconnected: ${reason}`, 'info');
+                    updateStatus('socketio-status', 'socketio-text', 'disconnected', 'Disconnected');
+                });
+                
+                socket.on('error', function(error) {
+                    log(`❌ Socket.IO error: ${error}`, 'error');
+                    updateStatus('socketio-status', 'socketio-text', 'disconnected', 'Error');
+                });
+                
+                socket.on('test-response', function(data) {
+                    log(`📨 Socket.IO test response: ${JSON.stringify(data)}`, 'info');
+                });
+                
+                // Disconnect after 5 seconds
+                setTimeout(() => {
+                    if (socket && socket.connected) {
+                        socket.disconnect();
+                    }
+                }, 5000);
+                
+            } catch (error) {
+                log(`❌ Socket.IO test failed: ${error.message}`, 'error');
+                updateStatus('socketio-status', 'socketio-text', 'disconnected', 'Failed');
+            }
+        }
+
+        function testSSEConnection() {
+            log('Testing Server-Sent Events connection...', 'info');
+            updateStatus('sse-status', 'sse-text', 'connecting', 'Connecting...');
+            
+            try {
+                // Close existing connection if any
+                if (eventSource) {
+                    eventSource.close();
+                }
+                
+                eventSource = new EventSource('/api/events');
+                
+                eventSource.onopen = function() {
+                    log('✅ SSE connection successful', 'success');
+                    updateStatus('sse-status', 'sse-text', 'connected', 'Connected');
+                };
+                
+                eventSource.onmessage = function(event) {
+                    log(`📨 SSE message received: ${event.data}`, 'info');
+                };
+                
+                eventSource.onerror = function(error) {
+                    log(`❌ SSE error: ${error}`, 'error');
+                    updateStatus('sse-status', 'sse-text', 'disconnected', 'Error');
+                };
+                
+                // Close after 5 seconds
+                setTimeout(() => {
+                    if (eventSource && eventSource.readyState === EventSource.OPEN) {
+                        eventSource.close();
+                        updateStatus('sse-status', 'sse-text', 'disconnected', 'Disconnected');
+                    }
+                }, 5000);
+                
+            } catch (error) {
+                log(`❌ SSE test failed: ${error.message}`, 'error');
+                updateStatus('sse-status', 'sse-text', 'disconnected', 'Failed');
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('test-log').innerHTML = '';
+        }
+
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            log('🔌 WebSocket Connection Test Page Loaded', 'info');
+            log('Testing multiple connection types to diagnose issues...', 'info');
+            
+            // Initialize status indicators
+            updateStatus('ws-status', 'ws-text', 'disconnected', 'Disconnected');
+            updateStatus('socketio-status', 'socketio-text', 'disconnected', 'Disconnected');
+            updateStatus('sse-status', 'sse-text', 'disconnected', 'Disconnected');
+            
+            // Auto-run basic WebSocket test after 1 second
+            setTimeout(testBasicWebSocket, 1000);
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (wsConnection) wsConnection.close();
+            if (socket) socket.disconnect();
+            if (eventSource) eventSource.close();
+        });
+    </script>
+</body>
+</html> 

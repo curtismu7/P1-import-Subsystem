@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Delete Page Enhancement</title>
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css">
+    <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/css/styles-fixed.css">
+    <link rel="stylesheet" href="/css/ping-identity.css">
+    <link rel="stylesheet" href="/css/token-status-indicator.css">
+    <link rel="stylesheet" href="/css/progress-ui.css">
+    <link rel="stylesheet" href="/css/disclaimer-modal.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <img src="/ping-identity-logo.svg" alt="Ping Identity" class="logo">
+            </div>
+            <nav class="nav-links">
+                <div class="nav-item" data-view="home">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </div>
+                <div class="nav-item" data-view="delete-csv">
+                    <i class="fas fa-trash"></i>
+                    <span>Delete Users</span>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Delete CSV View -->
+            <div id="delete-csv-view" class="view active">
+                <div class="delete-header">
+                    <h1>Delete Users</h1>
+                    <div class="delete-actions">
+                        <div class="delete-buttons">
+                            <button id="cancel-delete-btn" class="btn btn-secondary" style="display: none;">
+                                <i class="fas fa-times"></i> Cancel Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="delete-content">
+                    <!-- Delete Type Selection -->
+                    <div class="delete-type-selection">
+                        <h3>Select Delete Type</h3>
+                        <div class="delete-type-options">
+                            <div class="form-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="delete-type" value="file" checked>
+                                    <span class="radio-label">
+                                        <i class="fas fa-file-csv"></i>
+                                        <strong>Delete by File</strong>
+                                        <small>Delete users from a CSV file</small>
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="delete-type" value="population">
+                                    <span class="radio-label">
+                                        <i class="fas fa-users"></i>
+                                        <strong>Delete by Population</strong>
+                                        <small>Delete all users in a specific population</small>
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="delete-type" value="environment">
+                                    <span class="radio-label">
+                                        <i class="fas fa-exclamation-triangle text-danger"></i>
+                                        <strong>Delete All Users</strong>
+                                        <small>Delete ALL users in the environment (IRREVERSIBLE)</small>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Upload Section (shown when "Delete by File" is selected) -->
+                    <div id="delete-file-section" class="delete-section">
+                        <div id="delete-drop-zone" class="import-drop-zone" tabindex="0" aria-label="Drag and drop CSV file here or click to select">
+                            <i class="fas fa-cloud-upload-alt fa-2x"></i>
+                            <div><strong>Drag & Drop CSV File Here</strong></div>
+                            <div style="font-size:0.95em; color:#888;">Drop a file here to delete users by population</div>
+                        </div>
+                        <div class="file-upload-container">
+                            <input type="file" id="delete-csv-file" accept=".csv,.txt" class="file-input">
+                            <label for="delete-csv-file" class="file-label">
+                                <i class="fas fa-trash"></i>
+                                <span>Choose CSV File with Users to Delete</span>
+                            </label>
+
+                            <div id="delete-file-info" class="file-info" style="margin-top: 10px;">
+                                <!-- File info will be displayed here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Population Selection Section (shown when "Delete by Population" is selected) -->
+                    <div id="delete-population-section" class="delete-section" style="display: none;">
+                        <div class="population-selection">
+                            <h3>Select Population to Delete</h3>
+                            <div class="population-options">
+                                <div class="form-group">
+                                    <label for="delete-population-select">Population:</label>
+                                    <select id="delete-population-select" class="form-control">
+                                        <option value="">Loading populations...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Environment Delete Warning Section (shown when "Delete All Users" is selected) -->
+                    <div id="delete-environment-section" class="delete-section" style="display: none;">
+                        <div class="environment-delete-warning">
+                            <div class="alert alert-danger">
+                                <h4><i class="fas fa-exclamation-triangle"></i> WARNING: Full Environment Deletion</h4>
+                                <p><strong>This action will delete ALL users in your PingOne environment.</strong></p>
+                                <ul>
+                                    <li>This action is <strong>IRREVERSIBLE</strong></li>
+                                    <li>All user accounts will be permanently deleted</li>
+                                    <li>No backup will be created automatically</li>
+                                    <li>This may affect all applications using this environment</li>
+                                    <li>All user data, settings, and configurations will be lost</li>
+                                </ul>
+                                <p><strong>Please ensure you have a backup before proceeding.</strong></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delete Options -->
+                    <div class="delete-options">
+                        <h3>Delete Options</h3>
+                        
+                        <!-- Standard confirmation for file/population deletes -->
+                        <div id="standard-confirmation" class="form-group">
+                            <label>
+                                <input type="checkbox" id="confirm-delete" required>
+                                I confirm that I want to delete these users permanently
+                            </label>
+                        </div>
+
+                        <!-- Enhanced confirmation for environment delete -->
+                        <div id="environment-confirmation" class="form-group" style="display: none;">
+                            <div class="alert alert-warning">
+                                <label>
+                                    <input type="checkbox" id="confirm-environment-delete" required>
+                                    <strong>I understand this will delete ALL users in the environment</strong>
+                                </label>
+                                <div class="form-group" style="margin-top: 10px;">
+                                    <label for="environment-delete-text">Type "DELETE ALL" to confirm:</label>
+                                    <input type="text" id="environment-delete-text" class="form-control" placeholder="Type DELETE ALL to confirm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="delete-skip-not-found" checked>
+                                Skip users not found in the population
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Delete Button -->
+                    <div class="form-actions">
+                        <button id="start-delete" class="btn btn-danger" disabled>
+                            <i class="fas fa-trash"></i> Start Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mock Log Manager for testing -->
+    <script>
+        // Mock log manager for testing
+        window.logManager = {
+            log: function(level, message, data) {
+                console.log(`[${level.toUpperCase()}] ${message}`, data);
+            }
+        };
+
+        // Mock UI Manager for testing
+        window.uiManager = {
+            showStatusMessage: function(type, title, message) {
+                console.log(`[${type.toUpperCase()}] ${title}: ${message}`);
+            },
+            debugLog: function(area, message, data) {
+                console.log(`[DEBUG-${area}] ${message}`, data);
+            }
+        };
+    </script>
+
+    <!-- Load the enhanced DeleteManager -->
+    <script type="module">
+        import { DeleteManager } from '/public/js/modules/delete-manager.js';
+        
+        // Initialize delete manager when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            window.deleteManager = new DeleteManager();
+            console.log('✅ Enhanced DeleteManager initialized for testing');
+        });
+    </script>
+</body>
+</html> 

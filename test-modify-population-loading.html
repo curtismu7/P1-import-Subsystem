@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modify Page Population Loading Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Modify Page Population Loading Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Direct API Call</h2>
+        <p>Test the populations API endpoint directly:</p>
+        <button onclick="testPopulationsAPI()">Test /api/populations</button>
+        <div id="api-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Modify Population Dropdown</h2>
+        <p>Test the modify population dropdown functionality:</p>
+        <label for="modify-population-select">Population:</label>
+        <select id="modify-population-select">
+            <option value="">Loading populations...</option>
+        </select>
+        <button onclick="testModifyDropdown()">Load Populations</button>
+        <div id="dropdown-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Simulate Modify View Navigation</h2>
+        <p>Test the showView method for modify view:</p>
+        <button onclick="testModifyViewNavigation()">Simulate Modify View</button>
+        <div id="navigation-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Console Log</h2>
+        <div id="console-log" class="log"></div>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <script>
+        // Override console.log to capture logs
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        
+        function addToLog(level, ...args) {
+            const logDiv = document.getElementById('console-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            logDiv.innerHTML += `[${timestamp}] ${level}: ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToLog('LOG', ...args);
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addToLog('WARN', ...args);
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToLog('ERROR', ...args);
+        };
+        
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="test-result ${type}">${message}</div>`;
+        }
+        
+        async function testPopulationsAPI() {
+            try {
+                console.log('🔄 Testing populations API...');
+                const response = await fetch('/api/populations');
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('api-result', 
+                        `✅ API call successful! Found ${data.populations.length} populations: ${data.populations.map(p => p.name).join(', ')}`, 
+                        'success'
+                    );
+                } else {
+                    showResult('api-result', 
+                        `❌ API call failed: ${data.error || 'Unknown error'}`, 
+                        'error'
+                    );
+                }
+            } catch (error) {
+                showResult('api-result', 
+                    `❌ API call error: ${error.message}`, 
+                    'error'
+                );
+            }
+        }
+        
+        async function testModifyDropdown() {
+            try {
+                console.log('🔄 Testing modify dropdown population loading...');
+                const select = document.getElementById('modify-population-select');
+                
+                if (!select) {
+                    showResult('dropdown-result', '❌ Modify population select element not found', 'error');
+                    return;
+                }
+                
+                // Simulate the loadPopulationsForDropdown method
+                select.disabled = true;
+                select.innerHTML = '<option value="">Loading populations...</option>';
+                
+                const response = await fetch('/api/populations');
+                const data = await response.json();
+                
+                if (response.ok && data.success && data.populations) {
+                    // Populate the dropdown
+                    select.innerHTML = '';
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.textContent = 'Select a population...';
+                    select.appendChild(defaultOption);
+                    
+                    data.populations.forEach(population => {
+                        const option = document.createElement('option');
+                        option.value = population.id;
+                        option.textContent = population.name;
+                        select.appendChild(option);
+                    });
+                    
+                    select.disabled = false;
+                    
+                    showResult('dropdown-result', 
+                        `✅ Dropdown populated successfully with ${data.populations.length} populations`, 
+                        'success'
+                    );
+                } else {
+                    select.innerHTML = '<option value="">Failed to load populations</option>';
+                    select.disabled = true;
+                    showResult('dropdown-result', 
+                        `❌ Failed to load populations: ${data.error || 'Unknown error'}`, 
+                        'error'
+                    );
+                }
+            } catch (error) {
+                showResult('dropdown-result', 
+                    `❌ Dropdown test error: ${error.message}`, 
+                    'error'
+                );
+            }
+        }
+        
+        async function testModifyViewNavigation() {
+            try {
+                console.log('🔄 Testing modify view navigation...');
+                
+                // Check if app is available
+                if (typeof window.app === 'undefined') {
+                    showResult('navigation-result', 
+                        '⚠️ App not available - this is expected if not on the main page', 
+                        'warning'
+                    );
+                    return;
+                }
+                
+                // Check if showView method exists
+                if (typeof window.app.showView !== 'function') {
+                    showResult('navigation-result', 
+                        '❌ showView method not available', 
+                        'error'
+                    );
+                    return;
+                }
+                
+                // Simulate navigation to modify view
+                console.log('🔄 Simulating navigation to modify view...');
+                await window.app.showView('modify');
+                
+                showResult('navigation-result', 
+                    '✅ Modify view navigation simulated successfully', 
+                    'success'
+                );
+            } catch (error) {
+                showResult('navigation-result', 
+                    `❌ Navigation test error: ${error.message}`, 
+                    'error'
+                );
+            }
+        }
+        
+        function clearLog() {
+            document.getElementById('console-log').innerHTML = '';
+        }
+        
+        // Auto-run API test on page load
+        window.addEventListener('load', () => {
+            console.log('🚀 Modify population loading test page loaded');
+            setTimeout(() => {
+                testPopulationsAPI();
+            }, 1000);
+        });
+    </script>
+</body>
+</html> 

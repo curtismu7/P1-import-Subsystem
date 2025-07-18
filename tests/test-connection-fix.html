@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connection Check Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Server Connection Check Test</h1>
+    
+    <div class="test-section">
+        <h2>Manual Connection Test</h2>
+        <button id="test-connection" class="btn btn-primary">Test Server Connection</button>
+        <button id="test-health" class="btn btn-secondary">Test Health Endpoint</button>
+        <div id="connection-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Connection Status</h2>
+        <div id="connection-status" class="status info">Not tested yet</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Debug Information</h2>
+        <div id="debug-info">
+            <p>Click the buttons above to test the connection.</p>
+        </div>
+    </div>
+
+    <script>
+        // Simple API client for testing
+        class TestAPIClient {
+            async get(endpoint) {
+                try {
+                    const response = await fetch(endpoint);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    throw error;
+                }
+            }
+        }
+
+        const apiClient = new TestAPIClient();
+        
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('connection-status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+        
+        function updateResult(message, type = 'info') {
+            const resultDiv = document.getElementById('connection-result');
+            resultDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        function updateDebugInfo(info) {
+            const debugDiv = document.getElementById('debug-info');
+            debugDiv.innerHTML = `<pre>${JSON.stringify(info, null, 2)}</pre>`;
+        }
+        
+        // Test the health endpoint directly
+        document.getElementById('test-health').addEventListener('click', async () => {
+            try {
+                updateStatus('Testing health endpoint...', 'info');
+                const response = await apiClient.get('/api/health');
+                
+                updateStatus('Health endpoint working', 'success');
+                updateResult('✅ Health endpoint responded successfully', 'success');
+                updateDebugInfo(response);
+                
+                // Check the specific fields the frontend expects
+                const serverInfo = response?.server || {};
+                const checks = response?.checks || {};
+                
+                const pingOneInitialized = serverInfo?.pingOneInitialized || 
+                                         serverInfo?.pingOne?.initialized || 
+                                         checks?.pingOneConnected === 'ok' || 
+                                         false;
+                
+                const isConnected = checks?.pingOneConnected === 'ok';
+                
+                const analysis = {
+                    pingOneInitialized,
+                    isConnected,
+                    checks: checks,
+                    serverInfo: serverInfo,
+                    finalResult: pingOneInitialized || isConnected ? 'CONNECTED' : 'DISCONNECTED'
+                };
+                
+                updateDebugInfo(analysis);
+                
+            } catch (error) {
+                updateStatus('Health endpoint failed', 'error');
+                updateResult(`❌ Health endpoint error: ${error.message}`, 'error');
+                updateDebugInfo({ error: error.message });
+            }
+        });
+        
+        // Test the connection check logic (simulating the frontend)
+        document.getElementById('test-connection').addEventListener('click', async () => {
+            try {
+                updateStatus('Testing server connection...', 'info');
+                const response = await apiClient.get('/api/health');
+                
+                const responseData = response || {};
+                const serverInfo = responseData?.server || {};
+                const checks = responseData?.checks || {};
+                
+                const pingOneInitialized = serverInfo?.pingOneInitialized || 
+                                         serverInfo?.pingOne?.initialized || 
+                                         checks?.pingOneConnected === 'ok' || 
+                                         false;
+                
+                const isConnected = checks?.pingOneConnected === 'ok';
+                
+                if (pingOneInitialized || isConnected) {
+                    updateStatus('Connected to PingOne', 'success');
+                    updateResult('✅ Server connection check passed', 'success');
+                } else {
+                    updateStatus('Not connected to PingOne', 'warning');
+                    updateResult('⚠️ Server connection check failed - not connected to PingOne', 'warning');
+                }
+                
+                const analysis = {
+                    responseData,
+                    serverInfo,
+                    checks,
+                    pingOneInitialized,
+                    isConnected,
+                    finalResult: pingOneInitialized || isConnected ? 'CONNECTED' : 'DISCONNECTED'
+                };
+                
+                updateDebugInfo(analysis);
+                
+            } catch (error) {
+                updateStatus('Connection check failed', 'error');
+                updateResult(`❌ Connection check error: ${error.message}`, 'error');
+                updateDebugInfo({ error: error.message });
+            }
+        });
+    </script>
+</body>
+</html> 

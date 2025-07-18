@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PingOne Import Tool - API Documentation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        .btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: background 0.3s ease;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background: #5a6fd8;
+        }
+        .btn-secondary {
+            background: #6c757d;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .endpoint {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .feature-list li:before {
+            content: "✅ ";
+            margin-right: 10px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 API Documentation</h1>
+        
+        <div class="card">
+            <h2>🚀 Quick Access</h2>
+            <p>Access the interactive API documentation using the links below:</p>
+            
+            <a href="/api-docs" class="btn">📖 Open Swagger UI</a>
+            <a href="/api-docs.json" class="btn btn-secondary">📄 View API Spec (JSON)</a>
+        </div>
+
+        <div class="card">
+            <h2>🔗 Direct Links</h2>
+            <div class="endpoint">GET /api-docs</div>
+            <p>Interactive Swagger UI documentation</p>
+            
+            <div class="endpoint">GET /api-docs.json</div>
+            <p>OpenAPI 3.0 specification in JSON format</p>
+        </div>
+
+        <div class="card">
+            <h2>📋 API Features</h2>
+            <ul class="feature-list">
+                <li><strong>User Import:</strong> Upload CSV files to create users in PingOne populations</li>
+                <li><strong>User Export:</strong> Export users from populations in JSON/CSV formats</li>
+                <li><strong>User Modification:</strong> Update existing users with batch operations</li>
+                <li><strong>Real-time Progress:</strong> Server-Sent Events for import progress tracking</li>
+                <li><strong>Population Management:</strong> Create and manage user populations</li>
+                <li><strong>Token Management:</strong> Handle PingOne API authentication</li>
+                <li><strong>Feature Flags:</strong> Enable/disable application features</li>
+                <li><strong>Comprehensive Logging:</strong> Detailed logging for debugging and monitoring</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>🔐 Authentication</h2>
+            <p>Most endpoints require valid PingOne API credentials configured via settings. The API uses Bearer token authentication.</p>
+            <span class="status success">Bearer Token Required</span>
+        </div>
+
+        <div class="card">
+            <h2>⚡ Rate Limiting</h2>
+            <p>API endpoints are rate-limited to prevent abuse:</p>
+            <ul>
+                <li><strong>Health checks:</strong> 200 requests/second</li>
+                <li><strong>Logs API:</strong> 100 requests/second</li>
+                <li><strong>General API:</strong> 150 requests/second</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>📁 File Uploads</h2>
+            <p>CSV files for import/modify operations have a <strong>10MB size limit</strong>.</p>
+            <span class="status info">Max File Size: 10MB</span>
+        </div>
+
+        <div class="card">
+            <h2>🛠️ Development</h2>
+            <p>For development and testing, you can also access:</p>
+            <div class="endpoint">GET /api/health</div>
+            <p>Check server health and status</p>
+            
+            <div class="endpoint">GET /api/logs</div>
+            <p>View application logs</p>
+            
+            <div class="endpoint">GET /api/settings</div>
+            <p>View current application settings</p>
+        </div>
+
+        <div class="card">
+            <h2>📞 Support</h2>
+            <p>If you need help with the API:</p>
+            <ul>
+                <li>Check the interactive documentation at <code>/api-docs</code></li>
+                <li>Review the health endpoint at <code>/api/health</code></li>
+                <li>Check application logs at <code>/api/logs</code></li>
+                <li>All endpoints return consistent error responses with appropriate HTTP status codes</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Auto-redirect to Swagger UI after 5 seconds
+        setTimeout(() => {
+            if (confirm('Would you like to open the interactive Swagger documentation now?')) {
+                window.location.href = '/api-docs';
+            }
+        }, 5000);
+    </script>
+</body>
+</html> 

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Population Dropdown Fixes Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .dropdown-test {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .dropdown-test select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .button-state {
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .enabled {
+            color: #28a745;
+        }
+        .disabled {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>Population Dropdown Fixes Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Overview</h2>
+        <p>This test verifies that all population dropdowns are working correctly and their respective buttons are enabled/disabled appropriately.</p>
+        
+        <div class="status info">
+            <strong>Test Steps:</strong>
+            <ol>
+                <li>Check that all population dropdowns load correctly</li>
+                <li>Verify that buttons are disabled when no population is selected</li>
+                <li>Test that buttons are enabled when population is selected</li>
+                <li>Test file upload functionality for each section</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Import Section Test</h2>
+        <div class="dropdown-test">
+            <label for="import-population-select">Import Population:</label>
+            <select id="import-population-select">
+                <option value="">Loading populations...</option>
+            </select>
+            <div class="button-state" id="import-button-state">Button State: <span class="disabled">Disabled</span></div>
+            <button id="start-import" class="test-button" disabled>Start Import</button>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Delete Section Test</h2>
+        <div class="dropdown-test">
+            <label for="delete-population-select">Delete Population:</label>
+            <select id="delete-population-select">
+                <option value="">Loading populations...</option>
+            </select>
+            <div class="button-state" id="delete-button-state">Button State: <span class="disabled">Disabled</span></div>
+            <button id="start-delete" class="test-button" disabled>Start Delete</button>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Modify Section Test</h2>
+        <div class="dropdown-test">
+            <label for="modify-population-select">Modify Population:</label>
+            <select id="modify-population-select">
+                <option value="">Loading populations...</option>
+            </select>
+            <div class="button-state" id="modify-button-state">Button State: <span class="disabled">Disabled</span></div>
+            <button id="start-modify" class="test-button" disabled>Start Modify</button>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Export Section Test</h2>
+        <div class="dropdown-test">
+            <label for="export-population-select">Export Population:</label>
+            <select id="export-population-select">
+                <option value="">Select a population...</option>
+                <option value="ALL">ALL - Export from all populations</option>
+            </select>
+            <div class="button-state" id="export-button-state">Button State: <span class="enabled">Enabled</span></div>
+            <button id="start-export" class="test-button">Start Export</button>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results">
+            <div class="status info">Tests will run automatically when the page loads...</div>
+        </div>
+    </div>
+
+    <script src="public/js/bundle.js"></script>
+    <script>
+        // Test results tracking
+        const testResults = {
+            import: { loaded: false, populated: false, buttonWorks: false },
+            delete: { loaded: false, populated: false, buttonWorks: false },
+            modify: { loaded: false, populated: false, buttonWorks: false },
+            export: { loaded: false, populated: false, buttonWorks: false }
+        };
+
+        function updateTestResults() {
+            const resultsDiv = document.getElementById('test-results');
+            let html = '<h3>Test Results:</h3>';
+            
+            Object.entries(testResults).forEach(([section, results]) => {
+                const status = results.loaded && results.populated && results.buttonWorks ? 'success' : 'error';
+                const icon = results.loaded && results.populated && results.buttonWorks ? '✅' : '❌';
+                html += `<div class="status ${status}">${icon} ${section.toUpperCase()}: Loaded=${results.loaded}, Populated=${results.populated}, Button=${results.buttonWorks}</div>`;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        function checkButtonState(buttonId, stateId) {
+            const button = document.getElementById(buttonId);
+            const stateDiv = document.getElementById(stateId);
+            const stateSpan = stateDiv.querySelector('span');
+            
+            if (button) {
+                const isEnabled = !button.disabled;
+                stateSpan.textContent = isEnabled ? 'Enabled' : 'Disabled';
+                stateSpan.className = isEnabled ? 'enabled' : 'disabled';
+                return isEnabled;
+            }
+            return false;
+        }
+
+        function checkDropdownPopulation(dropdownId, section) {
+            const dropdown = document.getElementById(dropdownId);
+            if (dropdown && dropdown.options.length > 1) {
+                testResults[section].populated = true;
+                return true;
+            }
+            return false;
+        }
+
+        // Monitor dropdown changes
+        function setupDropdownMonitoring() {
+            const dropdowns = [
+                { id: 'import-population-select', section: 'import', buttonId: 'start-import', stateId: 'import-button-state' },
+                { id: 'delete-population-select', section: 'delete', buttonId: 'start-delete', stateId: 'delete-button-state' },
+                { id: 'modify-population-select', section: 'modify', buttonId: 'start-modify', stateId: 'modify-button-state' },
+                { id: 'export-population-select', section: 'export', buttonId: 'start-export', stateId: 'export-button-state' }
+            ];
+
+            dropdowns.forEach(({ id, section, buttonId, stateId }) => {
+                const dropdown = document.getElementById(id);
+                if (dropdown) {
+                    testResults[section].loaded = true;
+                    
+                    // Check initial state
+                    checkDropdownPopulation(id, section);
+                    const buttonWorks = checkButtonState(buttonId, stateId);
+                    testResults[section].buttonWorks = buttonWorks;
+                    
+                    // Monitor changes
+                    dropdown.addEventListener('change', () => {
+                        checkDropdownPopulation(id, section);
+                        const buttonWorks = checkButtonState(buttonId, stateId);
+                        testResults[section].buttonWorks = buttonWorks;
+                        updateTestResults();
+                    });
+                }
+            });
+        }
+
+        // Wait for the app to initialize
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                setupDropdownMonitoring();
+                updateTestResults();
+                
+                // Run periodic checks
+                setInterval(() => {
+                    setupDropdownMonitoring();
+                    updateTestResults();
+                }, 2000);
+            }, 1000);
+        });
+
+        // Add manual test buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            const testSection = document.createElement('div');
+            testSection.className = 'test-section';
+            testSection.innerHTML = `
+                <h2>Manual Tests</h2>
+                <button onclick="testImportDropdown()" class="test-button">Test Import Dropdown</button>
+                <button onclick="testDeleteDropdown()" class="test-button">Test Delete Dropdown</button>
+                <button onclick="testModifyDropdown()" class="test-button">Test Modify Dropdown</button>
+                <button onclick="testExportDropdown()" class="test-button">Test Export Dropdown</button>
+            `;
+            document.body.appendChild(testSection);
+        });
+
+        function testImportDropdown() {
+            const dropdown = document.getElementById('import-population-select');
+            if (dropdown && dropdown.options.length > 1) {
+                dropdown.selectedIndex = 1;
+                dropdown.dispatchEvent(new Event('change'));
+                alert('Import dropdown test completed. Check button state.');
+            } else {
+                alert('Import dropdown not populated yet.');
+            }
+        }
+
+        function testDeleteDropdown() {
+            const dropdown = document.getElementById('delete-population-select');
+            if (dropdown && dropdown.options.length > 1) {
+                dropdown.selectedIndex = 1;
+                dropdown.dispatchEvent(new Event('change'));
+                alert('Delete dropdown test completed. Check button state.');
+            } else {
+                alert('Delete dropdown not populated yet.');
+            }
+        }
+
+        function testModifyDropdown() {
+            const dropdown = document.getElementById('modify-population-select');
+            if (dropdown && dropdown.options.length > 1) {
+                dropdown.selectedIndex = 1;
+                dropdown.dispatchEvent(new Event('change'));
+                alert('Modify dropdown test completed. Check button state.');
+            } else {
+                alert('Modify dropdown not populated yet.');
+            }
+        }
+
+        function testExportDropdown() {
+            const dropdown = document.getElementById('export-population-select');
+            if (dropdown && dropdown.options.length > 1) {
+                dropdown.selectedIndex = 1;
+                dropdown.dispatchEvent(new Event('change'));
+                alert('Export dropdown test completed. Check button state.');
+            } else {
+                alert('Export dropdown not populated yet.');
+            }
+        }
+    </script>
+</body>
+</html> 

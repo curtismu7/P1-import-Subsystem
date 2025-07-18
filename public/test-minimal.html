@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Test</title>
+    <link rel="stylesheet" href="/css/styles-fixed.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <ul class="nav-list">
+                <li class="nav-item active" data-view="home">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </li>
+            </ul>
+        </nav>
+        
+        <main class="main-content">
+            <div id="home-view" class="view active">
+                <div class="home-header">
+                    <h1>PingOne User Import Tool</h1>
+                </div>
+                <div class="feature-cards">
+                    <div class="feature-card" data-view="import">
+                        <h3>Import Users</h3>
+                        <p>Bulk import users from CSV into PingOne.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        console.log('Minimal test page loaded');
+        
+        // Test if basic DOM is working
+        const homeView = document.getElementById('home-view');
+        if (homeView) {
+            console.log('✅ Home view element found');
+            homeView.style.border = '2px solid red';
+        } else {
+            console.log('❌ Home view element not found');
+        }
+        
+        // Load the bundle
+        const script = document.createElement('script');
+        script.src = '/js/bundle.js';
+        script.onload = () => {
+            console.log('✅ Bundle loaded');
+            
+            setTimeout(() => {
+                if (window.app) {
+                    console.log('✅ window.app exists');
+                    try {
+                        window.app.showView('home');
+                        console.log('✅ Successfully called showView');
+                    } catch (error) {
+                        console.error('❌ Error calling showView:', error);
+                    }
+                } else {
+                    console.log('❌ window.app does not exist');
+                }
+            }, 1000);
+        };
+        script.onerror = (error) => {
+            console.error('❌ Failed to load bundle:', error);
+        };
+        
+        document.head.appendChild(script);
+    </script>
+</body>
+</html> 

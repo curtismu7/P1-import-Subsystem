@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History Filter Fix Test</title>
+    <link rel="stylesheet" href="public/css/ping-identity.css">
+    <style>
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .test-pass {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .test-fail {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .test-info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .filter-test {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        .filter-controls {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        .filter-controls select, .filter-controls input {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        .filter-controls button {
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .filter-controls button:hover {
+            background-color: #0056b3;
+        }
+        .history-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: white;
+        }
+        .history-entry {
+            border: 1px solid #eee;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .operation-type {
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+        }
+        .import { background-color: #d4edda; color: #155724; }
+        .export { background-color: #d1ecf1; color: #0c5460; }
+        .delete { background-color: #f8d7da; color: #721c24; }
+        .modify { background-color: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>History Filter Fix Test</h1>
+        <p>This page tests the history filter functionality to ensure filters work correctly individually and in combination.</p>
+
+        <div class="test-section">
+            <h2>Test Overview</h2>
+            <div class="test-info">
+                <strong>Issue Fixed:</strong> History page filters were returning no results unless all filter options were selected.<br>
+                <strong>Solution:</strong> Updated frontend filtering logic to properly apply all filter types (type, population, date range) in addition to text search.<br>
+                <strong>Changes Made:</strong>
+                <ul>
+                    <li>Enhanced <code>getFilteredHistory()</code> method to apply type, population, and date range filters</li>
+                    <li>Updated <code>applyFilters()</code> and <code>clearFilters()</code> to use client-side filtering</li>
+                    <li>Added <code>displayNoFilterResults()</code> method to show proper "No records found" message</li>
+                    <li>Improved filter logic to use AND logic for multiple filters</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Filter Controls</h2>
+            <div class="filter-controls">
+                <div>
+                    <label for="test-type-filter">Operation Type:</label>
+                    <select id="test-type-filter">
+                        <option value="">All Types</option>
+                        <option value="IMPORT">Import</option>
+                        <option value="EXPORT">Export</option>
+                        <option value="DELETE">Delete</option>
+                        <option value="MODIFY">Modify</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="test-population-filter">Population:</label>
+                    <select id="test-population-filter">
+                        <option value="">All Populations</option>
+                        <option value="Test">Test</option>
+                        <option value="Sample">Sample</option>
+                        <option value="Production">Production</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="test-date-start">Start Date:</label>
+                    <input type="date" id="test-date-start">
+                </div>
+                <div>
+                    <label for="test-date-end">End Date:</label>
+                    <input type="date" id="test-date-end">
+                </div>
+                <div>
+                    <label for="test-search">Search:</label>
+                    <input type="text" id="test-search" placeholder="Search text...">
+                </div>
+                <div>
+                    <button onclick="applyTestFilters()">Apply Filters</button>
+                    <button onclick="clearTestFilters()">Clear Filters</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test Results</h2>
+            <div id="test-results">
+                <div class="test-info">Click "Apply Filters" to test the filtering functionality.</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Sample History Data</h2>
+            <div class="history-container" id="test-history-container">
+                <!-- Sample history entries will be populated here -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Filter Test Cases</h2>
+            <div class="filter-test">
+                <h3>Test Case 1: Individual Type Filter</h3>
+                <p>Select only "Import" type filter - should show only import operations</p>
+                <button onclick="testIndividualTypeFilter()">Test Type Filter</button>
+            </div>
+            <div class="filter-test">
+                <h3>Test Case 2: Individual Population Filter</h3>
+                <p>Select only "Test" population filter - should show only operations with "Test" in population name</p>
+                <button onclick="testIndividualPopulationFilter()">Test Population Filter</button>
+            </div>
+            <div class="filter-test">
+                <h3>Test Case 3: Date Range Filter</h3>
+                <p>Set a date range - should show only operations within that date range</p>
+                <button onclick="testDateRangeFilter()">Test Date Range Filter</button>
+            </div>
+            <div class="filter-test">
+                <h3>Test Case 4: Combined Filters</h3>
+                <p>Apply multiple filters - should show operations that match ALL criteria (AND logic)</p>
+                <button onclick="testCombinedFilters()">Test Combined Filters</button>
+            </div>
+            <div class="filter-test">
+                <h3>Test Case 5: No Results</h3>
+                <p>Apply filters that should return no results - should show "No records found" message</p>
+                <button onclick="testNoResults()">Test No Results</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample history data for testing
+        const sampleHistory = [
+            {
+                id: '1',
+                timestamp: '2025-07-14T10:00:00Z',
+                type: 'IMPORT',
+                fileName: 'users.csv',
+                population: 'Test Users',
+                message: 'Import completed successfully',
+                success: 95,
+                errors: 2,
+                skipped: 3,
+                total: 100
+            },
+            {
+                id: '2',
+                timestamp: '2025-07-14T11:00:00Z',
+                type: 'EXPORT',
+                fileName: 'export.csv',
+                population: 'Sample Population',
+                message: 'Export completed successfully',
+                recordCount: 150,
+                format: 'CSV'
+            },
+            {
+                id: '3',
+                timestamp: '2025-07-14T12:00:00Z',
+                type: 'DELETE',
+                fileName: 'delete.csv',
+                population: 'Production Users',
+                message: 'Delete completed successfully',
+                deleteCount: 25,
+                total: 25
+            },
+            {
+                id: '4',
+                timestamp: '2025-07-13T15:00:00Z',
+                type: 'MODIFY',
+                fileName: 'update.csv',
+                population: 'Test Users',
+                message: 'Modify completed successfully',
+                success: 80,
+                errors: 1,
+                skipped: 0,
+                total: 81
+            },
+            {
+                id: '5',
+                timestamp: '2025-07-12T09:00:00Z',
+                type: 'IMPORT',
+                fileName: 'new-users.csv',
+                population: 'Sample Population',
+                message: 'Import completed successfully',
+                success: 200,
+                errors: 0,
+                skipped: 0,
+                total: 200
+            }
+        ];
+
+        let currentHistory = [...sampleHistory];
+        let currentFilters = {
+            type: '',
+            population: '',
+            startDate: '',
+            endDate: '',
+            text: ''
+        };
+
+        // Initialize the test page
+        function initializeTest() {
+            displayTestHistory();
+            updateTestResults('Test page initialized with sample data');
+        }
+
+        // Display history with current filters
+        function displayTestHistory() {
+            const container = document.getElementById('test-history-container');
+            const filteredHistory = getFilteredTestHistory();
+            
+            container.innerHTML = '';
+            
+            if (filteredHistory.length === 0) {
+                const hasFilters = currentFilters.type || currentFilters.population || currentFilters.startDate || currentFilters.endDate || currentFilters.text;
+                if (hasFilters) {
+                    container.innerHTML = `
+                        <div class="no-history-message">
+                            <i class="fas fa-search"></i>
+                            <h3>No records found</h3>
+                            <p>No operations match the selected filters.</p>
+                            <p>Try adjusting your filter criteria or <button onclick="clearTestFilters()">clear all filters</button> to see all records.</p>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<div class="no-history-message"><p>No history data available.</p></div>';
+                }
+                return;
+            }
+            
+            filteredHistory.forEach(operation => {
+                const historyElement = createTestHistoryElement(operation);
+                container.appendChild(historyElement);
+            });
+        }
+
+        // Get filtered history based on current filters
+        function getFilteredTestHistory() {
+            return currentHistory.filter(operation => {
+                // Type filter
+                if (currentFilters.type && operation.type !== currentFilters.type) {
+                    return false;
+                }
+                
+                // Population filter
+                if (currentFilters.population && !operation.population.toLowerCase().includes(currentFilters.population.toLowerCase())) {
+                    return false;
+                }
+                
+                // Date range filters
+                if (currentFilters.startDate) {
+                    const operationDate = new Date(operation.timestamp);
+                    const startDate = new Date(currentFilters.startDate);
+                    if (operationDate < startDate) {
+                        return false;
+                    }
+                }
+                
+                if (currentFilters.endDate) {
+                    const operationDate = new Date(operation.timestamp);
+                    const endDate = new Date(currentFilters.endDate);
+                    endDate.setHours(23, 59, 59, 999);
+                    if (operationDate > endDate) {
+                        return false;
+                    }
+                }
+                
+                // Text search filter
+                if (currentFilters.text) {
+                    const searchText = `${operation.type} ${operation.fileName} ${operation.population} ${operation.message}`.toLowerCase();
+                    if (!searchText.includes(currentFilters.text.toLowerCase())) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            });
+        }
+
+        // Create history element for display
+        function createTestHistoryElement(operation) {
+            const historyElement = document.createElement('div');
+            historyElement.className = `history-entry ${operation.type.toLowerCase()}`;
+            
+            const timestamp = new Date(operation.timestamp).toLocaleString();
+            const typeClass = `operation-type ${operation.type.toLowerCase()}`;
+            
+            historyElement.innerHTML = `
+                <div class="history-header">
+                    <div class="history-info">
+                        <span class="${typeClass}">${operation.type}</span>
+                        <span class="history-timestamp">${timestamp}</span>
+                    </div>
+                    <div class="history-summary">
+                        <span class="history-file">${operation.fileName}</span>
+                        <span class="history-population">${operation.population}</span>
+                    </div>
+                </div>
+                <div class="history-message">${operation.message}</div>
+            `;
+            
+            return historyElement;
+        }
+
+        // Apply filters from UI controls
+        function applyTestFilters() {
+            const typeFilter = document.getElementById('test-type-filter');
+            const populationFilter = document.getElementById('test-population-filter');
+            const startDateFilter = document.getElementById('test-date-start');
+            const endDateFilter = document.getElementById('test-date-end');
+            const searchFilter = document.getElementById('test-search');
+            
+            currentFilters.type = typeFilter ? typeFilter.value : '';
+            currentFilters.population = populationFilter ? populationFilter.value : '';
+            currentFilters.startDate = startDateFilter ? startDateFilter.value : '';
+            currentFilters.endDate = endDateFilter ? endDateFilter.value : '';
+            currentFilters.text = searchFilter ? searchFilter.value : '';
+            
+            displayTestHistory();
+            updateTestResults(`Filters applied: ${JSON.stringify(currentFilters)}`);
+        }
+
+        // Clear all filters
+        function clearTestFilters() {
+            const typeFilter = document.getElementById('test-type-filter');
+            const populationFilter = document.getElementById('test-population-filter');
+            const startDateFilter = document.getElementById('test-date-start');
+            const endDateFilter = document.getElementById('test-date-end');
+            const searchFilter = document.getElementById('test-search');
+            
+            if (typeFilter) typeFilter.value = '';
+            if (populationFilter) populationFilter.value = '';
+            if (startDateFilter) startDateFilter.value = '';
+            if (endDateFilter) endDateFilter.value = '';
+            if (searchFilter) searchFilter.value = '';
+            
+            currentFilters = {
+                type: '',
+                population: '',
+                startDate: '',
+                endDate: '',
+                text: ''
+            };
+            
+            displayTestHistory();
+            updateTestResults('All filters cleared');
+        }
+
+        // Update test results display
+        function updateTestResults(message, isPass = true) {
+            const resultsContainer = document.getElementById('test-results');
+            const resultClass = isPass ? 'test-pass' : 'test-fail';
+            
+            const resultElement = document.createElement('div');
+            resultElement.className = `test-result ${resultClass}`;
+            resultElement.innerHTML = `
+                <strong>${new Date().toLocaleTimeString()}:</strong> ${message}
+            `;
+            
+            resultsContainer.appendChild(resultElement);
+            resultsContainer.scrollTop = resultsContainer.scrollHeight;
+        }
+
+        // Test individual type filter
+        function testIndividualTypeFilter() {
+            const typeFilter = document.getElementById('test-type-filter');
+            typeFilter.value = 'IMPORT';
+            applyTestFilters();
+            
+            const filteredHistory = getFilteredTestHistory();
+            const expectedCount = currentHistory.filter(op => op.type === 'IMPORT').length;
+            
+            if (filteredHistory.length === expectedCount) {
+                updateTestResults(`✅ Type filter test PASSED: Found ${filteredHistory.length} import operations`);
+            } else {
+                updateTestResults(`❌ Type filter test FAILED: Expected ${expectedCount}, found ${filteredHistory.length}`, false);
+            }
+        }
+
+        // Test individual population filter
+        function testIndividualPopulationFilter() {
+            const populationFilter = document.getElementById('test-population-filter');
+            populationFilter.value = 'Test';
+            applyTestFilters();
+            
+            const filteredHistory = getFilteredTestHistory();
+            const expectedCount = currentHistory.filter(op => op.population.toLowerCase().includes('test')).length;
+            
+            if (filteredHistory.length === expectedCount) {
+                updateTestResults(`✅ Population filter test PASSED: Found ${filteredHistory.length} operations with "Test" in population`);
+            } else {
+                updateTestResults(`❌ Population filter test FAILED: Expected ${expectedCount}, found ${filteredHistory.length}`, false);
+            }
+        }
+
+        // Test date range filter
+        function testDateRangeFilter() {
+            const startDateFilter = document.getElementById('test-date-start');
+            const endDateFilter = document.getElementById('test-date-end');
+            startDateFilter.value = '2025-07-14';
+            endDateFilter.value = '2025-07-14';
+            applyTestFilters();
+            
+            const filteredHistory = getFilteredTestHistory();
+            const expectedCount = currentHistory.filter(op => {
+                const opDate = new Date(op.timestamp);
+                const startDate = new Date('2025-07-14');
+                const endDate = new Date('2025-07-14');
+                endDate.setHours(23, 59, 59, 999);
+                return opDate >= startDate && opDate <= endDate;
+            }).length;
+            
+            if (filteredHistory.length === expectedCount) {
+                updateTestResults(`✅ Date range filter test PASSED: Found ${filteredHistory.length} operations on 2025-07-14`);
+            } else {
+                updateTestResults(`❌ Date range filter test FAILED: Expected ${expectedCount}, found ${filteredHistory.length}`, false);
+            }
+        }
+
+        // Test combined filters
+        function testCombinedFilters() {
+            const typeFilter = document.getElementById('test-type-filter');
+            const populationFilter = document.getElementById('test-population-filter');
+            typeFilter.value = 'IMPORT';
+            populationFilter.value = 'Test';
+            applyTestFilters();
+            
+            const filteredHistory = getFilteredTestHistory();
+            const expectedCount = currentHistory.filter(op => 
+                op.type === 'IMPORT' && op.population.toLowerCase().includes('test')
+            ).length;
+            
+            if (filteredHistory.length === expectedCount) {
+                updateTestResults(`✅ Combined filters test PASSED: Found ${filteredHistory.length} import operations with "Test" in population`);
+            } else {
+                updateTestResults(`❌ Combined filters test FAILED: Expected ${expectedCount}, found ${filteredHistory.length}`, false);
+            }
+        }
+
+        // Test no results scenario
+        function testNoResults() {
+            const typeFilter = document.getElementById('test-type-filter');
+            const populationFilter = document.getElementById('test-population-filter');
+            typeFilter.value = 'DELETE';
+            populationFilter.value = 'NonExistent';
+            applyTestFilters();
+            
+            const filteredHistory = getFilteredTestHistory();
+            
+            if (filteredHistory.length === 0) {
+                updateTestResults(`✅ No results test PASSED: Correctly showed no results for impossible filter combination`);
+            } else {
+                updateTestResults(`❌ No results test FAILED: Expected 0 results, found ${filteredHistory.length}`, false);
+            }
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', initializeTest);
+    </script>
+</body>
+</html> 

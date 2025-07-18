@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disclaimer Modal Fix Test</title>
+    <link rel="stylesheet" href="css/styles-fixed.css">
+    <link rel="stylesheet" href="css/disclaimer-modal.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        .test-button {
+            background: var(--ping-accent-blue);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: var(--ping-accent-blue-dark);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 Disclaimer Modal Fix Test</h1>
+        
+        <div class="test-section">
+            <h2>Test Controls</h2>
+            <button class="test-button" onclick="testDisclaimerModal()">Test Disclaimer Modal</button>
+            <button class="test-button" onclick="resetDisclaimer()">Reset Disclaimer Acceptance</button>
+            <button class="test-button" onclick="testLogManager()">Test LogManager Availability</button>
+            <button class="test-button" onclick="clearConsole()">Clear Console</button>
+        </div>
+
+        <div class="test-section">
+            <h2>Test Results</h2>
+            <div id="test-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Console Output</h2>
+            <div id="console-output" style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; max-height: 200px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Capture console output
+        const originalConsoleLog = console.log;
+        const originalConsoleWarn = console.warn;
+        const originalConsoleError = console.error;
+        const consoleOutput = document.getElementById('console-output');
+
+        function addToConsoleOutput(type, ...args) {
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            
+            const line = document.createElement('div');
+            line.style.color = type === 'error' ? '#dc3545' : type === 'warn' ? '#ffc107' : '#007bff';
+            line.textContent = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            consoleOutput.appendChild(line);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = (...args) => {
+            originalConsoleLog.apply(console, args);
+            addToConsoleOutput('log', ...args);
+        };
+
+        console.warn = (...args) => {
+            originalConsoleWarn.apply(console, args);
+            addToConsoleOutput('warn', ...args);
+        };
+
+        console.error = (...args) => {
+            originalConsoleError.apply(console, args);
+            addToConsoleOutput('error', ...args);
+        };
+
+        function addTestResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('test-results');
+            const result = document.createElement('div');
+            result.className = `status ${type}`;
+            result.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            resultsDiv.appendChild(result);
+        }
+
+        function testDisclaimerModal() {
+            addTestResult('Testing disclaimer modal...', 'info');
+            
+            // Clear any existing disclaimer acceptance
+            localStorage.removeItem('disclaimerAccepted');
+            localStorage.removeItem('disclaimerAcceptedAt');
+            
+            // Create a new disclaimer modal
+            try {
+                if (window.DisclaimerModal) {
+                    const modal = new window.DisclaimerModal();
+                    addTestResult('Disclaimer modal created successfully', 'success');
+                    
+                    // Test the logEvent method
+                    try {
+                        modal.logEvent('test_event', { test: true });
+                        addTestResult('logEvent method works without crashing', 'success');
+                    } catch (error) {
+                        addTestResult(`logEvent method crashed: ${error.message}`, 'error');
+                    }
+                } else {
+                    addTestResult('DisclaimerModal class not available', 'error');
+                }
+            } catch (error) {
+                addTestResult(`Disclaimer modal creation failed: ${error.message}`, 'error');
+            }
+        }
+
+        function resetDisclaimer() {
+            localStorage.removeItem('disclaimerAccepted');
+            localStorage.removeItem('disclaimerAcceptedAt');
+            addTestResult('Disclaimer acceptance reset', 'info');
+        }
+
+        function testLogManager() {
+            addTestResult('Testing LogManager availability...', 'info');
+            
+            if (window.logManager) {
+                addTestResult('logManager exists', 'success');
+                
+                if (typeof window.logManager.log === 'function') {
+                    addTestResult('logManager.log method is available', 'success');
+                } else {
+                    addTestResult('logManager.log method is NOT available', 'error');
+                }
+            } else {
+                addTestResult('logManager does not exist', 'warn');
+            }
+        }
+
+        function clearConsole() {
+            consoleOutput.innerHTML = '';
+            addTestResult('Console cleared', 'info');
+        }
+
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            addTestResult('Page loaded, running auto-tests...', 'info');
+            setTimeout(() => {
+                testLogManager();
+                testDisclaimerModal();
+            }, 1000);
+        });
+    </script>
+
+    <!-- Load the disclaimer modal script -->
+    <script src="js/modules/disclaimer-modal.js"></script>
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-content">
+        <div class="footer-logo">
+          <img src="/ping-identity-logo.svg" alt="Ping Identity Logo" height="28" width="auto" loading="lazy" />
+        </div>
+        <div class="footer-text">
+          <span>&copy; 2025 Ping Identity. All rights reserved.</span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html> 

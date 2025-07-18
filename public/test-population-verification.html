@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Population Service Verification Test</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .test-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .failure {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .log-entry {
+            font-family: monospace;
+            margin: 2px 0;
+        }
+        #test-log {
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Population Service Verification Test</h1>
+        <p>This page tests the integration of the new PopulationService and PopulationManager components.</p>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="test-section">
+                    <h3>1. PopulationService Initialization</h3>
+                    <p>Tests that the PopulationService can be initialized correctly.</p>
+                    <button id="test-init" class="btn btn-primary">Run Test</button>
+                    <div id="test-init-result" class="test-result pending">Pending...</div>
+                </div>
+
+                <div class="test-section">
+                    <h3>2. Fetch Populations</h3>
+                    <p>Tests that populations can be fetched from the API.</p>
+                    <button id="test-fetch" class="btn btn-primary">Run Test</button>
+                    <div id="test-fetch-result" class="test-result pending">Pending...</div>
+                </div>
+
+                <div class="test-section">
+                    <h3>3. Populate Dropdown</h3>
+                    <p>Tests that a dropdown can be populated with populations.</p>
+                    <select id="test-dropdown" class="form-control mb-2">
+                        <option value="">Loading...</option>
+                    </select>
+                    <button id="test-dropdown" class="btn btn-primary">Run Test</button>
+                    <div id="test-dropdown-result" class="test-result pending">Pending...</div>
+                </div>
+
+                <div class="test-section">
+                    <h3>4. Cache Functionality</h3>
+                    <p>Tests that the caching mechanism works correctly.</p>
+                    <button id="test-cache" class="btn btn-primary">Run Test</button>
+                    <div id="test-cache-result" class="test-result pending">Pending...</div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="test-section">
+                    <h3>5. Get Population by ID</h3>
+                    <p>Tests that a specific population can be retrieved by ID.</p>
+                    <input type="text" id="population-id" class="form-control mb-2" placeholder="Enter Population ID">
+                    <button id="test-get-by-id" class="btn btn-primary">Run Test</button>
+                    <div id="test-get-by-id-result" class="test-result pending">Pending...</div>
+                </div>
+
+                <div class="test-section">
+                    <h3>6. PopulationManager Integration</h3>
+                    <p>Tests that the PopulationManager works correctly with the PopulationService.</p>
+                    <select id="manager-dropdown" class="form-control mb-2">
+                        <option value="">Loading...</option>
+                    </select>
+                    <button id="test-manager" class="btn btn-primary">Run Test</button>
+                    <div id="test-manager-result" class="test-result pending">Pending...</div>
+                </div>
+
+                <div class="test-section">
+                    <h3>7. Error Handling</h3>
+                    <p>Tests that errors are handled gracefully.</p>
+                    <button id="test-error" class="btn btn-primary">Run Test</button>
+                    <div id="test-error-result" class="test-result pending">Pending...</div>
+                </div>
+
+                <div class="test-section">
+                    <h3>8. App.js Integration</h3>
+                    <p>Tests that the App.js integration works correctly.</p>
+                    <button id="test-app" class="btn btn-primary">Run Test</button>
+                    <div id="test-app-result" class="test-result pending">Pending...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <h3>Test Log</h3>
+                <div id="test-log"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import PopulationService from './js/modules/population-service.js';
+        import apiFactory from './js/modules/api-factory.js';
+        
+        // Try to import PopulationManager if available
+        let populationManager = null;
+        try {
+            const module = await import('./js/modules/population-manager.js');
+            populationManager = module.default;
+            log('PopulationManager imported successfully');
+        } catch (error) {
+            log('PopulationManager import failed: ' + error.message, 'error');
+        }
+
+        // Variables to store test objects
+        let populationService = null;
+        let apiClient = null;
+        
+        // Utility functions
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('test-log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function setTestResult(id, success, message) {
+            const resultElement = document.getElementById(`${id}-result`);
+            resultElement.className = `test-result ${success ? 'success' : 'failure'}`;
+            resultElement.textContent = message;
+        }
+
+        // Test 1: PopulationService Initialization
+        document.getElementById('test-init').addEventListener('click', async () => {
+            try {
+                log('Initializing API client...');
+                apiClient = apiFactory.getPingOneClient();
+                
+                log('Initializing PopulationService...');
+                populationService = new PopulationService(apiClient, null, console);
+                
+                log('PopulationService initialized successfully');
+                setTestResult('test-init', true, 'Success: PopulationService initialized correctly');
+            } catch (error) {
+                log('PopulationService initialization failed: ' + error.message, 'error');
+                setTestResult('test-init', false, 'Failure: ' + error.message);
+            }
+        });
+
+        // Test 2: Fetch Populations
+        document.getElementById('test-fetch').addEventListener('click', async () => {
+            if (!populationService) {
+                setTestResult('test-fetch', false, 'Failure: PopulationService not initialized. Run Test 1 first.');
+                return;
+            }
+
+            try {
+                log('Fetching populations...');
+                const populations = await populationService.getPopulations();
+                
+                log(`Successfully fetched ${populations.length} populations`);
+                populations.forEach(pop => {
+                    log(`- ${pop.name} (${pop.id})`);
+                });
+                
+                setTestResult('test-fetch', true, `Success: Fetched ${populations.length} populations`);
+            } catch (error) {
+                log('Failed to fetch populations: ' + error.message, 'error');
+                setTestResult('test-fetch', false, 'Failure: ' + error.message);
+            }
+        });
+
+        // Test 3: Populate Dropdown
+        document.getElementById('test-dropdown').addEventListener('click', async () => {
+            if (!populationService) {
+                setTestResult('test-dropdown', false, 'Failure: PopulationService not initialized. Run Test 1 first.');
+                return;
+            }
+
+            try {
+                log('Populating dropdown...');
+                const success = await populationService.populateDropdown('test-dropdown', {
+                    includeEmpty: true,
+                    emptyText: 'Select a population'
+                });
+                
+                if (success) {
+                    const dropdown = document.getElementById('test-dropdown');
+                    log(`Successfully populated dropdown with ${dropdown.options.length - 1} populations`);
+                    setTestResult('test-dropdown', true, `Success: Populated dropdown with ${dropdown.options.length - 1} populations`);
+                } else {
+                    throw new Error('Failed to populate dropdown');
+                }
+            } catch (error) {
+                log('Failed to populate dropdown: ' + error.message, 'error');
+                setTestResult('test-dropdown', false, 'Failure: ' + error.message);
+            }
+        });
+
+        // Test 4: Cache Functionality
+        document.getElementById('test-cache').addEventListener('click', async () => {
+            if (!populationService) {
+                setTestResult('test-cache', false, 'Failure: PopulationService not initialized. Run Test 1 first.');
+                return;
+            }
+
+            try {
+                log('Testing cache functionality...');
+                
+                // First call should hit the API
+                log('First call (should hit API)...');
+                const startTime1 = performance.now();
+                await populationService.getPopulations();
+                const endTime1 = performance.now();
+                const time1 = endTime1 - startTime1;
+                log(`First call took ${time1.toFixed(2)}ms`);
+                
+                // Second call should use cache
+                log('Second call (should use cache)...');
+                const startTime2 = performance.now();
+                await populationService.getPopulations();
+                const endTime2 = performance.now();
+                const time2 = endTime2 - startTime2;
+                log(`Second call took ${time2.toFixed(2)}ms`);
+                
+                // Force refresh should hit the API again
+                log('Force refresh call (should hit API)...');
+                const startTime3 = performance.now();
+                await populationService.getPopulations({}, true);
+                const endTime3 = performance.now();
+                const time3 = endTime3 - startTime3;
+                log(`Force refresh call took ${time3.toFixed(2)}ms`);
+                
+                // Clear cache
+                log('Clearing cache...');
+                populationService.clearCache();
+                
+                // After clearing cache, should hit the API again
+                log('Call after clearing cache (should hit API)...');
+                const startTime4 = performance.now();
+                await populationService.getPopulations();
+                const endTime4 = performance.now();
+                const time4 = endTime4 - startTime4;
+                log(`Call after clearing cache took ${time4.toFixed(2)}ms`);
+                
+                const cacheWorking = time2 < time1 && time3 > time2 && time4 > time2;
+                setTestResult('test-cache', cacheWorking, cacheWorking ? 'Success: Cache is working correctly' : 'Failure: Cache may not be working correctly');
+            } catch (error) {
+                log('Cache test failed: ' + error.message, 'error');
+                setTestResult('test-cache', false, 'Failure: ' + error.message);
+            }
+        });
+
+        // Test 5: Get Population by ID
+        document.getElementById('test-get-by-id').addEventListener('click', async () => {
+            if (!populationService) {
+                setTestResult('test-get-by-id', false, 'Failure: PopulationService not initialized. Run Test 1 first.');
+                return;
+            }
+
+            const populationId = document.getElementById('population-id').value.trim();
+            if (!populationId) {
+                setTestResult('test-get-by-id', false, 'Failure: Please enter a Population ID');
+                return;
+            }
+
+            try {
+                log(`Fetching population with ID: ${populationId}...`);
+                const population = await populationService.getPopulationById(populationId);
+                
+                log(`Successfully fetched population: ${population.name} (${population.id})`);
+                log(`Description: ${population.description || 'N/A'}`);
+                log(`User Count: ${population.userCount || 'N/A'}`);
+                
+                setTestResult('test-get-by-id', true, `Success: Fetched population "${population.name}"`);
+            } catch (error) {
+                log('Failed to fetch population: ' + error.message, 'error');
+                setTestResult('test-get-by-id', false, 'Failure: ' + error.message);
+            }
+        });
+
+        // Test 6: PopulationManager Integration
+        document.getElementById('test-manager').addEventListener('click', async () => {
+            if (!populationManager) {
+                setTestResult('test-manager', false, 'Failure: PopulationManager not available');
+                return;
+            }
+
+            try {
+                log('Testing PopulationManager integration...');
+                
+                // Initialize dropdown
+                log('Initializing dropdown with PopulationManager...');
+                const success = await populationManager.initPopulationDropdown('manager-dropdown', {
+                    includeEmpty: true,
+                    emptyText: 'Select a population'
+                });
+                
+                if (success) {
+                    const dropdown = document.getElementById('manager-dropdown');
+                    log(`Successfully populated dropdown with ${dropdown.options.length - 1} populations`);
+                    
+                    // Select a population if available
+                    if (dropdown.options.length > 1) {
+                        const populationId = dropdown.options[1].value;
+                        log(`Selecting population with ID: ${populationId}...`);
+                        const population = await populationManager.selectPopulation(populationId);
+                        
+                        log(`Successfully selected population: ${population.name} (${population.id})`);
+                        
+                        // Verify selected population
+                        const selectedPopulation = populationManager.getSelectedPopulation();
+                        log(`Selected population from manager: ${selectedPopulation.name} (${selectedPopulation.id})`);
+                        
+                        // Refresh populations
+                        log('Refreshing populations...');
+                        await populationManager.refreshPopulations('manager-dropdown');
+                        log('Successfully refreshed populations');
+                        
+                        setTestResult('test-manager', true, 'Success: PopulationManager integration works correctly');
+                    } else {
+                        setTestResult('test-manager', true, 'Success: Dropdown populated, but no populations available to select');
+                    }
+                } else {
+                    throw new Error('Failed to populate dropdown');
+                }
+            } catch (error) {
+                log('PopulationManager test failed: ' + error.message, 'error');
+                setTestResult('test-manager', false, 'Failure: ' + error.message);
+            }
+        });
+
+        // Test 7: Error Handling
+        document.getElementById('test-error').addEventListener('click', async () => {
+            if (!populationService) {
+                setTestResult('test-error', false, 'Failure: PopulationService not initialized. Run Test 1 first.');
+                return;
+            }
+
+            try {
+                log('Testing error handling...');
+                
+                // Test with invalid population ID
+                log('Testing with invalid population ID...');
+                try {
+                    await populationService.getPopulationById('invalid-id');
+                    log('Error: Should have thrown an error for invalid ID', 'error');
+                } catch (error) {
+                    log(`Correctly caught error: ${error.message}`);
+                }
+                
+                // Test with missing dropdown ID
+                log('Testing with missing dropdown ID...');
+                try {
+                    await populationService.populateDropdown();
+                    log('Error: Should have thrown an error for missing dropdown ID', 'error');
+                } catch (error) {
+                    log(`Correctly caught error: ${error.message}`);
+                }
+                
+                // Test with non-existent dropdown ID
+                log('Testing with non-existent dropdown ID...');
+                try {
+                    await populationService.populateDropdown('non-existent-dropdown');
+                    log('Error: Should have thrown an error for non-existent dropdown ID', 'error');
+                } catch (error) {
+                    log(`Correctly caught error: ${error.message}`);
+                }
+                
+                setTestResult('test-error', true, 'Success: Error handling works correctly');
+            } catch (error) {
+                log('Error handling test failed: ' + error.message, 'error');
+                setTestResult('test-error', false, 'Failure: ' + error.message);
+            }
+        });
+
+        // Test 8: App.js Integration
+        document.getElementById('test-app').addEventListener('click', async () => {
+            try {
+                log('Testing App.js integration...');
+                
+                // Check if app is available
+                if (!window.app) {
+                    log('App not available in window object', 'error');
+                    setTestResult('test-app', false, 'Failure: App not available in window object');
+                    return;
+                }
+                
+                // Check if populationService is initialized in app
+                if (!window.app.populationService) {
+                    log('PopulationService not initialized in app', 'error');
+                    setTestResult('test-app', false, 'Failure: PopulationService not initialized in app');
+                    return;
+                }
+                
+                // Test loadPopulationsForDropdown method
+                log('Testing app.loadPopulationsForDropdown method...');
+                try {
+                    // Create a test dropdown
+                    const dropdown = document.createElement('select');
+                    dropdown.id = 'app-test-dropdown';
+                    document.body.appendChild(dropdown);
+                    
+                    await window.app.loadPopulationsForDropdown('app-test-dropdown');
+                    log('Successfully called app.loadPopulationsForDropdown');
+                    
+                    // Clean up
+                    document.body.removeChild(dropdown);
+                } catch (error) {
+                    log(`Failed to call app.loadPopulationsForDropdown: ${error.message}`, 'error');
+                    setTestResult('test-app', false, 'Failure: ' + error.message);
+                    return;
+                }
+                
+                setTestResult('test-app', true, 'Success: App.js integration works correctly');
+            } catch (error) {
+                log('App.js integration test failed: ' + error.message, 'error');
+                setTestResult('test-app', false, 'Failure: ' + error.message);
+            }
+        });
+
+        // Initialize log
+        log('Population Service Verification Test loaded');
+        log('Click the "Run Test" buttons to start testing');
+    </script>
+</body>
+</html>

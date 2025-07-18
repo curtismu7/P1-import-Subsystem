@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Import Progress Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-header {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            margin: -20px -20px 20px -20px;
+            border-radius: 8px 8px 0 0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status.warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .status.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .log-container {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        .log-entry.info { color: #007bff; }
+        .log-entry.success { color: #28a745; }
+        .log-entry.error { color: #dc3545; }
+        .log-entry.warning { color: #ffc107; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .test-results {
+            background: #e8f5e8;
+            border: 1px solid #28a745;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .test-results.error {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Final Import Progress Test</h1>
+    
+    <div class="test-section">
+        <div class="test-header">
+            <h2>1. System Check</h2>
+        </div>
+        <div id="system-status" class="status info">Checking system components...</div>
+        <button onclick="runSystemCheck()">Run System Check</button>
+        <div id="system-log" class="log-container"></div>
+        <div id="system-results" class="test-results" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-header">
+            <h2>2. Progress Window Test</h2>
+        </div>
+        <div id="progress-status" class="status info">Testing progress window functionality...</div>
+        <button onclick="testProgressWindow()">Test Progress Window</button>
+        <button onclick="hideProgressWindow()">Hide Progress Window</button>
+        <div id="progress-log" class="log-container"></div>
+        <div id="progress-results" class="test-results" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-header">
+            <h2>3. Real Import Simulation</h2>
+        </div>
+        <div id="simulation-status" class="status info">Ready to simulate real import...</div>
+        <button onclick="startRealImportSimulation()">Start Real Import Simulation</button>
+        <button onclick="stopRealImportSimulation()" disabled id="stop-simulation-btn">Stop Simulation</button>
+        <div id="simulation-log" class="log-container"></div>
+        <div id="simulation-results" class="test-results" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-header">
+            <h2>4. Socket Connection Test</h2>
+        </div>
+        <div id="socket-status" class="status info">Testing socket connections...</div>
+        <button onclick="testSocketConnections()">Test Socket Connections</button>
+        <div id="socket-log" class="log-container"></div>
+        <div id="socket-results" class="test-results" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-header">
+            <h2>5. Debug Information</h2>
+        </div>
+        <div id="debug-info" class="debug-info">
+            <strong>Debug Information:</strong><br>
+            <div id="debug-content">Loading...</div>
+        </div>
+        <button onclick="refreshDebugInfo()">Refresh Debug Info</button>
+    </div>
+
+    <div class="test-section">
+        <div class="test-header">
+            <h2>6. Final Test Results</h2>
+        </div>
+        <div id="final-results" class="test-results">
+            <strong>Test Results:</strong><br>
+            <div id="final-results-content">Tests not run yet...</div>
+        </div>
+        <button onclick="runAllTests()">Run All Tests</button>
+    </div>
+
+    <script>
+        // Global variables
+        let simulationInterval = null;
+        let testResults = {
+            systemCheck: false,
+            progressWindow: false,
+            realImport: false,
+            socketConnections: false
+        };
+
+        // Logging utility
+        function log(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Update status utility
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+
+        // Show test results
+        function showResults(containerId, results, isSuccess = true) {
+            const container = document.getElementById(containerId);
+            container.style.display = 'block';
+            container.className = isSuccess ? 'test-results' : 'test-results error';
+            container.innerHTML = `<strong>Test Results:</strong><br>${results}`;
+        }
+
+        // Test 1: System Check
+        function runSystemCheck() {
+            updateStatus('system-status', 'Running system check...', 'info');
+            log('system-log', 'Starting comprehensive system check...', 'info');
+
+            let results = [];
+            let allPassed = true;
+
+            try {
+                // Check if app is available
+                if (window.app) {
+                    log('system-log', '✅ App object found', 'success');
+                    results.push('✅ App object found');
+                } else {
+                    log('system-log', '❌ App object not found', 'error');
+                    results.push('❌ App object not found');
+                    allPassed = false;
+                }
+
+                // Check if UI manager is available
+                if (window.app && window.app.uiManager) {
+                    log('system-log', '✅ UI Manager found', 'success');
+                    results.push('✅ UI Manager found');
+                } else {
+                    log('system-log', '❌ UI Manager not found', 'error');
+                    results.push('❌ UI Manager not found');
+                    allPassed = false;
+                }
+
+                // Check if progress manager is available
+                if (window.progressManager) {
+                    log('system-log', '✅ Progress Manager found globally', 'success');
+                    results.push('✅ Progress Manager found globally');
+                } else {
+                    log('system-log', '❌ Progress Manager not found globally', 'error');
+                    results.push('❌ Progress Manager not found globally');
+                    allPassed = false;
+                }
+
+                // Check progress container
+                const progressContainer = document.getElementById('progress-container');
+                if (progressContainer) {
+                    log('system-log', '✅ Progress container found in DOM', 'success');
+                    results.push('✅ Progress container found in DOM');
+                } else {
+                    log('system-log', '❌ Progress container not found in DOM', 'error');
+                    results.push('❌ Progress container not found in DOM');
+                    allPassed = false;
+                }
+
+                // Check UI manager methods
+                if (window.app && window.app.uiManager) {
+                    const uiManager = window.app.uiManager;
+                    const methods = ['startImportOperation', 'updateImportOperationWithSessionId', 'updateImportProgress', 'completeOperation'];
+                    
+                    methods.forEach(method => {
+                        if (typeof uiManager[method] === 'function') {
+                            log('system-log', `✅ UI Manager method available: ${method}`, 'success');
+                            results.push(`✅ UI Manager method available: ${method}`);
+                        } else {
+                            log('system-log', `❌ UI Manager method missing: ${method}`, 'error');
+                            results.push(`❌ UI Manager method missing: ${method}`);
+                            allPassed = false;
+                        }
+                    });
+                }
+
+                // Check socket availability
+                if (typeof io !== 'undefined') {
+                    log('system-log', '✅ Socket.IO available', 'success');
+                    results.push('✅ Socket.IO available');
+                } else {
+                    log('system-log', '❌ Socket.IO not available', 'error');
+                    results.push('❌ Socket.IO not available');
+                    allPassed = false;
+                }
+
+                if (typeof WebSocket !== 'undefined') {
+                    log('system-log', '✅ WebSocket available', 'success');
+                    results.push('✅ WebSocket available');
+                } else {
+                    log('system-log', '❌ WebSocket not available', 'error');
+                    results.push('❌ WebSocket not available');
+                    allPassed = false;
+                }
+
+                if (typeof EventSource !== 'undefined') {
+                    log('system-log', '✅ EventSource available', 'success');
+                    results.push('✅ EventSource available');
+                } else {
+                    log('system-log', '❌ EventSource not available', 'error');
+                    results.push('❌ EventSource not available');
+                    allPassed = false;
+                }
+
+                if (allPassed) {
+                    updateStatus('system-status', '✅ System check passed', 'success');
+                    log('system-log', '✅ All system checks passed', 'success');
+                    testResults.systemCheck = true;
+                } else {
+                    updateStatus('system-status', '❌ System check failed', 'error');
+                    log('system-log', '❌ Some system checks failed', 'error');
+                    testResults.systemCheck = false;
+                }
+
+                showResults('system-results', results.join('<br>'), allPassed);
+
+            } catch (error) {
+                log('system-log', `Error in system check: ${error.message}`, 'error');
+                updateStatus('system-status', '❌ Error in system check', 'error');
+                testResults.systemCheck = false;
+                showResults('system-results', `Error: ${error.message}`, false);
+            }
+        }
+
+        // Test 2: Progress Window Test
+        function testProgressWindow() {
+            updateStatus('progress-status', 'Testing progress window...', 'info');
+            log('progress-log', 'Starting progress window test...', 'info');
+
+            let results = [];
+            let allPassed = true;
+
+            try {
+                if (!window.app || !window.app.uiManager) {
+                    log('progress-log', '❌ App or UI manager not available', 'error');
+                    results.push('❌ App or UI manager not available');
+                    allPassed = false;
+                } else {
+                    const uiManager = window.app.uiManager;
+
+                    // Test starting import operation
+                    log('progress-log', 'Testing startImportOperation...', 'info');
+                    uiManager.startImportOperation({
+                        total: 100,
+                        populationName: 'Test Population',
+                        populationId: 'test-population-id',
+                        fileName: 'test-users.csv'
+                    });
+
+                    log('progress-log', '✅ Import operation started successfully', 'success');
+                    results.push('✅ Import operation started successfully');
+
+                    // Check if progress container is visible after a delay
+                    setTimeout(() => {
+                        const progressContainer = document.getElementById('progress-container');
+                        if (progressContainer && progressContainer.style.display !== 'none') {
+                            log('progress-log', '✅ Progress container is visible', 'success');
+                            results.push('✅ Progress container is visible');
+                        } else {
+                            log('progress-log', '❌ Progress container is not visible', 'error');
+                            results.push('❌ Progress container is not visible');
+                            allPassed = false;
+                        }
+
+                        // Test progress updates
+                        log('progress-log', 'Testing progress updates...', 'info');
+                        uiManager.updateImportProgress(50, 100, 'Testing progress updates...', {
+                            processed: 50,
+                            success: 40,
+                            failed: 5,
+                            skipped: 5
+                        }, 'Test Population', 'test-population-id');
+
+                        log('progress-log', '✅ Progress updates working', 'success');
+                        results.push('✅ Progress updates working');
+
+                        if (allPassed) {
+                            updateStatus('progress-status', '✅ Progress window test passed', 'success');
+                            log('progress-log', '✅ Progress window test completed successfully', 'success');
+                            testResults.progressWindow = true;
+                        } else {
+                            updateStatus('progress-status', '❌ Progress window test failed', 'error');
+                            log('progress-log', '❌ Progress window test failed', 'error');
+                            testResults.progressWindow = false;
+                        }
+
+                        showResults('progress-results', results.join('<br>'), allPassed);
+                    }, 1000);
+
+                }
+
+            } catch (error) {
+                log('progress-log', `Error in progress window test: ${error.message}`, 'error');
+                updateStatus('progress-status', '❌ Error in progress window test', 'error');
+                testResults.progressWindow = false;
+                showResults('progress-results', `Error: ${error.message}`, false);
+            }
+        }
+
+        function hideProgressWindow() {
+            try {
+                if (window.app && window.app.uiManager) {
+                    window.app.uiManager.hideProgress();
+                    log('progress-log', 'Progress window hidden', 'info');
+                    updateStatus('progress-status', 'Progress window hidden', 'info');
+                }
+            } catch (error) {
+                log('progress-log', `Error hiding progress: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 3: Real Import Simulation
+        function startRealImportSimulation() {
+            updateStatus('simulation-status', 'Starting real import simulation...', 'info');
+            log('simulation-log', 'Starting real import simulation...', 'info');
+
+            let results = [];
+            let allPassed = true;
+
+            try {
+                if (!window.app || !window.app.uiManager) {
+                    log('simulation-log', '❌ App or UI manager not available', 'error');
+                    results.push('❌ App or UI manager not available');
+                    allPassed = false;
+                } else {
+                    const uiManager = window.app.uiManager;
+
+                    // Start the import operation
+                    uiManager.startImportOperation({
+                        total: 100,
+                        populationName: 'Test Population',
+                        populationId: 'test-population-id',
+                        fileName: 'test-users.csv'
+                    });
+
+                    log('simulation-log', '✅ Import operation started', 'success');
+                    results.push('✅ Import operation started');
+
+                    // Simulate real import progress
+                    let currentProgress = 0;
+                    simulationInterval = setInterval(() => {
+                        currentProgress += 2;
+                        
+                        if (currentProgress <= 100) {
+                            const message = `Importing user ${currentProgress} of 100...`;
+                            
+                            // Update progress
+                            uiManager.updateImportProgress(
+                                currentProgress, 
+                                100, 
+                                message,
+                                {
+                                    processed: currentProgress,
+                                    success: Math.floor(currentProgress * 0.85),
+                                    failed: Math.floor(currentProgress * 0.08),
+                                    skipped: Math.floor(currentProgress * 0.07)
+                                },
+                                'Test Population',
+                                'test-population-id'
+                            );
+                            
+                            log('simulation-log', `Import progress: ${currentProgress}/100`, 'info');
+                        } else {
+                            clearInterval(simulationInterval);
+                            simulationInterval = null;
+                            
+                            // Complete the operation
+                            uiManager.completeOperation({
+                                total: 100,
+                                success: 85,
+                                failed: 8,
+                                skipped: 7
+                            });
+                            
+                            log('simulation-log', '✅ Real import simulation completed', 'success');
+                            results.push('✅ Real import simulation completed');
+                            
+                            if (allPassed) {
+                                updateStatus('simulation-status', '✅ Real import simulation passed', 'success');
+                                log('simulation-log', '✅ Real import simulation test passed', 'success');
+                                testResults.realImport = true;
+                            } else {
+                                updateStatus('simulation-status', '❌ Real import simulation failed', 'error');
+                                log('simulation-log', '❌ Real import simulation test failed', 'error');
+                                testResults.realImport = false;
+                            }
+
+                            showResults('simulation-results', results.join('<br>'), allPassed);
+                            document.getElementById('stop-simulation-btn').disabled = true;
+                        }
+                    }, 300);
+
+                    document.getElementById('stop-simulation-btn').disabled = false;
+
+                }
+
+            } catch (error) {
+                log('simulation-log', `Error in real import simulation: ${error.message}`, 'error');
+                updateStatus('simulation-status', '❌ Error in real import simulation', 'error');
+                testResults.realImport = false;
+                showResults('simulation-results', `Error: ${error.message}`, false);
+            }
+        }
+
+        function stopRealImportSimulation() {
+            if (simulationInterval) {
+                clearInterval(simulationInterval);
+                simulationInterval = null;
+                log('simulation-log', 'Real import simulation stopped', 'warning');
+                updateStatus('simulation-status', 'Real import simulation stopped', 'warning');
+                document.getElementById('stop-simulation-btn').disabled = true;
+            }
+        }
+
+        // Test 4: Socket Connections
+        function testSocketConnections() {
+            updateStatus('socket-status', 'Testing socket connections...', 'info');
+            log('socket-log', 'Starting socket connection test...', 'info');
+
+            let results = [];
+            let allPassed = true;
+
+            try {
+                // Test Socket.IO
+                if (typeof io !== 'undefined') {
+                    log('socket-log', '✅ Socket.IO library available', 'success');
+                    results.push('✅ Socket.IO library available');
+                    
+                    const socket = io({
+                        timeout: 5000,
+                        forceNew: true
+                    });
+
+                    socket.on('connect', () => {
+                        log('socket-log', '✅ Socket.IO connected successfully', 'success');
+                        results.push('✅ Socket.IO connected successfully');
+                    });
+
+                    socket.on('connect_error', (error) => {
+                        log('socket-log', `❌ Socket.IO connection error: ${error.message}`, 'error');
+                        results.push(`❌ Socket.IO connection error: ${error.message}`);
+                        allPassed = false;
+                    });
+
+                    socket.on('disconnect', () => {
+                        log('socket-log', '⚠️ Socket.IO disconnected', 'warning');
+                    });
+
+                } else {
+                    log('socket-log', '❌ Socket.IO library not available', 'error');
+                    results.push('❌ Socket.IO library not available');
+                    allPassed = false;
+                }
+
+                // Test WebSocket
+                if (typeof WebSocket !== 'undefined') {
+                    log('socket-log', '✅ WebSocket available', 'success');
+                    results.push('✅ WebSocket available');
+                    
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const wsUrl = `${protocol}//${window.location.host}`;
+                    
+                    try {
+                        const websocket = new WebSocket(wsUrl);
+                        
+                        websocket.onopen = () => {
+                            log('socket-log', '✅ WebSocket connected successfully', 'success');
+                            results.push('✅ WebSocket connected successfully');
+                        };
+                        
+                        websocket.onerror = (error) => {
+                            log('socket-log', `❌ WebSocket error: ${error.message || 'Unknown error'}`, 'error');
+                            results.push(`❌ WebSocket error: ${error.message || 'Unknown error'}`);
+                            allPassed = false;
+                        };
+                        
+                        websocket.onclose = () => {
+                            log('socket-log', '⚠️ WebSocket disconnected', 'warning');
+                        };
+                    } catch (error) {
+                        log('socket-log', `❌ WebSocket setup error: ${error.message}`, 'error');
+                        results.push(`❌ WebSocket setup error: ${error.message}`);
+                        allPassed = false;
+                    }
+                } else {
+                    log('socket-log', '❌ WebSocket not available', 'error');
+                    results.push('❌ WebSocket not available');
+                    allPassed = false;
+                }
+
+                setTimeout(() => {
+                    if (allPassed) {
+                        updateStatus('socket-status', '✅ Socket connection test passed', 'success');
+                        log('socket-log', '✅ Socket connection test passed', 'success');
+                        testResults.socketConnections = true;
+                    } else {
+                        updateStatus('socket-status', '❌ Socket connection test failed', 'error');
+                        log('socket-log', '❌ Socket connection test failed', 'error');
+                        testResults.socketConnections = false;
+                    }
+
+                    showResults('socket-results', results.join('<br>'), allPassed);
+                }, 2000);
+
+            } catch (error) {
+                log('socket-log', `Error testing socket connections: ${error.message}`, 'error');
+                updateStatus('socket-status', '❌ Error testing socket connections', 'error');
+                testResults.socketConnections = false;
+                showResults('socket-results', `Error: ${error.message}`, false);
+            }
+        }
+
+        // Test 5: Debug Information
+        function refreshDebugInfo() {
+            const debugContent = document.getElementById('debug-content');
+            let debugInfo = '';
+
+            try {
+                // App availability
+                debugInfo += `App available: ${!!window.app}\n`;
+                debugInfo += `UI Manager available: ${!!(window.app && window.app.uiManager)}\n`;
+                debugInfo += `Progress Manager available: ${!!window.progressManager}\n\n`;
+
+                // Progress container
+                const progressContainer = document.getElementById('progress-container');
+                debugInfo += `Progress container: ${!!progressContainer}\n`;
+                if (progressContainer) {
+                    debugInfo += `Progress container display: ${progressContainer.style.display}\n`;
+                    debugInfo += `Progress container visibility: ${progressContainer.offsetParent !== null}\n`;
+                }
+                debugInfo += '\n';
+
+                // Socket availability
+                debugInfo += `Socket.IO available: ${typeof io !== 'undefined'}\n`;
+                debugInfo += `WebSocket available: ${typeof WebSocket !== 'undefined'}\n`;
+                debugInfo += `EventSource available: ${typeof EventSource !== 'undefined'}\n\n`;
+
+                // Test results
+                debugInfo += `System check: ${testResults.systemCheck ? 'PASS' : 'FAIL'}\n`;
+                debugInfo += `Progress window: ${testResults.progressWindow ? 'PASS' : 'FAIL'}\n`;
+                debugInfo += `Real import: ${testResults.realImport ? 'PASS' : 'FAIL'}\n`;
+                debugInfo += `Socket connections: ${testResults.socketConnections ? 'PASS' : 'FAIL'}\n`;
+
+            } catch (error) {
+                debugInfo += `Error getting debug info: ${error.message}\n`;
+            }
+
+            debugContent.textContent = debugInfo;
+        }
+
+        // Test 6: Run All Tests
+        function runAllTests() {
+            log('final-results-content', 'Running all tests...', 'info');
+            
+            // Run all tests in sequence
+            setTimeout(() => runSystemCheck(), 100);
+            setTimeout(() => testProgressWindow(), 2000);
+            setTimeout(() => startRealImportSimulation(), 4000);
+            setTimeout(() => testSocketConnections(), 6000);
+            setTimeout(() => {
+                // Show final results
+                const finalResults = document.getElementById('final-results-content');
+                const allPassed = Object.values(testResults).every(result => result === true);
+                
+                let results = [];
+                results.push(`System Check: ${testResults.systemCheck ? '✅ PASS' : '❌ FAIL'}`);
+                results.push(`Progress Window: ${testResults.progressWindow ? '✅ PASS' : '❌ FAIL'}`);
+                results.push(`Real Import: ${testResults.realImport ? '✅ PASS' : '❌ FAIL'}`);
+                results.push(`Socket Connections: ${testResults.socketConnections ? '✅ PASS' : '❌ FAIL'}`);
+                
+                if (allPassed) {
+                    results.push('<br><strong>🎉 ALL TESTS PASSED! Import progress functionality is working correctly.</strong>');
+                } else {
+                    results.push('<br><strong>❌ SOME TESTS FAILED! Import progress functionality needs attention.</strong>');
+                }
+                
+                finalResults.innerHTML = results.join('<br>');
+                
+                // Update final results styling
+                const finalResultsContainer = document.getElementById('final-results');
+                finalResultsContainer.className = allPassed ? 'test-results' : 'test-results error';
+                
+            }, 8000);
+        }
+
+        // Initialize tests
+        window.onload = function() {
+            log('system-log', 'Page loaded, ready for testing...', 'info');
+            refreshDebugInfo();
+        };
+    </script>
+</body>
+</html> 

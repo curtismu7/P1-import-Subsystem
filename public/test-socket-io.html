@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO and WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .log { background-color: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; max-height: 200px; overflow-y: auto; }
+        button { padding: 10px 15px; margin: 5px; border: none; border-radius: 3px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-warning { background-color: #ffc107; color: black; }
+        .btn-danger { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <h1>Socket.IO and WebSocket Connection Test</h1>
+    
+    <div class="test-section info">
+        <h3>Test Overview</h3>
+        <p>This page tests the real-time connection functionality:</p>
+        <ul>
+            <li><strong>Socket.IO:</strong> Primary real-time connection</li>
+            <li><strong>WebSocket:</strong> Fallback connection</li>
+            <li><strong>Polling:</strong> Final fallback</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>Socket.IO Test</h3>
+        <button id="testSocketIO" class="btn-primary">Test Socket.IO Connection</button>
+        <button id="disconnectSocketIO" class="btn-warning">Disconnect Socket.IO</button>
+        <div id="socketIOLog" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>WebSocket Test</h3>
+        <button id="testWebSocket" class="btn-primary">Test WebSocket Connection</button>
+        <button id="disconnectWebSocket" class="btn-warning">Disconnect WebSocket</button>
+        <div id="webSocketLog" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Import Simulation</h3>
+        <button id="simulateImport" class="btn-success">Simulate Import with Progress</button>
+        <div id="importLog" class="log"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket = null;
+        let ws = null;
+        let importSessionId = null;
+
+        function log(elementId, message, type = 'info') {
+            const logElement = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color: #666;">[${timestamp}]</span> ${message}`;
+            if (type === 'error') logEntry.style.color = 'red';
+            if (type === 'success') logEntry.style.color = 'green';
+            if (type === 'warning') logEntry.style.color = 'orange';
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // Socket.IO Test
+        document.getElementById('testSocketIO').addEventListener('click', () => {
+            log('socketIOLog', '🔌 Attempting Socket.IO connection...');
+            
+            try {
+                socket = io();
+                
+                socket.on('connect', () => {
+                    log('socketIOLog', '✅ Socket.IO connected successfully', 'success');
+                    document.getElementById('testSocketIO').style.backgroundColor = '#28a745';
+                });
+                
+                socket.on('disconnect', (reason) => {
+                    log('socketIOLog', `🔄 Socket.IO disconnected: ${reason}`, 'warning');
+                    document.getElementById('testSocketIO').style.backgroundColor = '#ffc107';
+                });
+                
+                socket.on('connect_error', (error) => {
+                    log('socketIOLog', `❌ Socket.IO connection error: ${error.message}`, 'error');
+                    document.getElementById('testSocketIO').style.backgroundColor = '#dc3545';
+                });
+                
+            } catch (error) {
+                log('socketIOLog', `❌ Socket.IO setup failed: ${error.message}`, 'error');
+            }
+        });
+
+        document.getElementById('disconnectSocketIO').addEventListener('click', () => {
+            if (socket) {
+                socket.disconnect();
+                log('socketIOLog', '🔌 Socket.IO manually disconnected');
+                document.getElementById('testSocketIO').style.backgroundColor = '#007bff';
+            }
+        });
+
+        // WebSocket Test
+        document.getElementById('testWebSocket').addEventListener('click', () => {
+            log('webSocketLog', '🔌 Attempting WebSocket connection...');
+            
+            try {
+                const wsUrl = `ws://${window.location.hostname}:${window.location.port || 4000}`;
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = () => {
+                    log('webSocketLog', '✅ WebSocket connected successfully', 'success');
+                    document.getElementById('testWebSocket').style.backgroundColor = '#28a745';
+                    
+                    // Send a test message
+                    ws.send(JSON.stringify({ type: 'test', message: 'Hello from WebSocket test' }));
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log('webSocketLog', `📩 WebSocket message received: ${JSON.stringify(data)}`);
+                    } catch (e) {
+                        log('webSocketLog', `📩 WebSocket raw message: ${event.data}`);
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    log('webSocketLog', `❌ WebSocket error: ${error.message || 'Unknown error'}`, 'error');
+                    document.getElementById('testWebSocket').style.backgroundColor = '#dc3545';
+                };
+                
+                ws.onclose = (event) => {
+                    log('webSocketLog', `🔄 WebSocket closed: ${event.code} - ${event.reason}`, 'warning');
+                    document.getElementById('testWebSocket').style.backgroundColor = '#ffc107';
+                };
+                
+            } catch (error) {
+                log('webSocketLog', `❌ WebSocket setup failed: ${error.message}`, 'error');
+            }
+        });
+
+        document.getElementById('disconnectWebSocket').addEventListener('click', () => {
+            if (ws) {
+                ws.close();
+                log('webSocketLog', '🔌 WebSocket manually disconnected');
+                document.getElementById('testWebSocket').style.backgroundColor = '#007bff';
+            }
+        });
+
+        // Import Simulation
+        document.getElementById('simulateImport').addEventListener('click', async () => {
+            log('importLog', '🚀 Starting import simulation...');
+            
+            try {
+                // Create a test CSV file
+                const testData = 'username,email,firstName,lastName\n' +
+                               'testuser1,test1@example.com,Test,User1\n' +
+                               'testuser2,test2@example.com,Test,User2\n' +
+                               'testuser3,test3@example.com,Test,User3';
+                
+                const blob = new Blob([testData], { type: 'text/csv' });
+                const file = new File([blob], 'test-import.csv', { type: 'text/csv' });
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('populationId', 'test-population-id');
+                formData.append('populationName', 'Test Population');
+                formData.append('totalUsers', '3');
+                
+                log('importLog', '📤 Sending import request to server...');
+                
+                const response = await fetch('/api/import', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                importSessionId = result.sessionId;
+                
+                log('importLog', `✅ Import started successfully. Session ID: ${importSessionId}`, 'success');
+                
+                // Register session with Socket.IO if connected
+                if (socket && socket.connected) {
+                    socket.emit('registerSession', importSessionId);
+                    log('importLog', '📡 Registered session with Socket.IO');
+                }
+                
+                // Register session with WebSocket if connected
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ sessionId: importSessionId }));
+                    log('importLog', '📡 Registered session with WebSocket');
+                }
+                
+                // Listen for progress updates
+                if (socket) {
+                    socket.on('progress', (data) => {
+                        log('importLog', `📊 Progress update: ${JSON.stringify(data)}`, 'success');
+                    });
+                    
+                    socket.on('completion', (data) => {
+                        log('importLog', `✅ Import completed: ${JSON.stringify(data)}`, 'success');
+                    });
+                    
+                    socket.on('error', (data) => {
+                        log('importLog', `❌ Import error: ${JSON.stringify(data)}`, 'error');
+                    });
+                }
+                
+            } catch (error) {
+                log('importLog', `❌ Import simulation failed: ${error.message}`, 'error');
+            }
+        });
+
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            log('socketIOLog', '📋 Socket.IO and WebSocket test page loaded');
+            log('webSocketLog', '📋 Ready to test connections');
+            log('importLog', '📋 Ready to simulate import');
+        });
+    </script>
+</body>
+</html> 

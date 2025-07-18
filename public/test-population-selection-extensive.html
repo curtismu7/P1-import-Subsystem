@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extensive Population Selection Testing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-button.danger {
+            background: #dc3545;
+        }
+        .test-button.danger:hover {
+            background: #c82333;
+        }
+        .test-button.success {
+            background: #28a745;
+        }
+        .test-button.success:hover {
+            background: #218838;
+        }
+        .test-button.info {
+            background: #17a2b8;
+        }
+        .test-button.info:hover {
+            background: #138496;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .population-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .population-card {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+        .population-card.selected {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        .population-card.default {
+            border-color: #ffc107;
+            background: #fff3cd;
+        }
+        .population-card h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .population-card .details {
+            font-size: 12px;
+            color: #666;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .test-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .test-result {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .test-result.pass {
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .test-result.fail {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .test-result.warning {
+            background: #fff3cd;
+            border-color: #ffeaa7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Extensive Population Selection Testing</h1>
+        <p class="lead">Comprehensive testing to identify why population selection isn't working properly.</p>
+
+        <div class="test-section">
+            <h3>📊 Available Populations Analysis</h3>
+            <button class="test-button info" onclick="loadAndAnalyzePopulations()">
+                <i class="fas fa-chart-bar"></i> Load & Analyze Populations
+            </button>
+            <div id="populations-analysis" class="status info">
+                Click to load and analyze populations
+            </div>
+            <div id="populations-grid" class="population-grid"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Population Selection Testing</h3>
+            <div class="form-group">
+                <label for="test-population-select">Select Population:</label>
+                <select id="test-population-select" class="form-control" onchange="onPopulationChange()">
+                    <option value="">Loading populations...</option>
+                </select>
+            </div>
+            <div id="selection-status" class="status info">
+                No population selected
+            </div>
+            <button class="test-button success" onclick="testSelectionPersistence()">
+                <i class="fas fa-save"></i> Test Selection Persistence
+            </button>
+            <button class="test-button info" onclick="testAppState()">
+                <i class="fas fa-cog"></i> Test App State
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>🚀 Import Simulation Tests</h3>
+            <div class="form-group">
+                <label for="test-file">Test CSV File:</label>
+                <input type="file" id="test-file" class="form-control" accept=".csv">
+            </div>
+            <button class="test-button danger" onclick="simulateImportWithTracking()">
+                <i class="fas fa-upload"></i> Simulate Import with Full Tracking
+            </button>
+            <button class="test-button info" onclick="testMultipleImports()">
+                <i class="fas fa-repeat"></i> Test Multiple Imports
+            </button>
+            <div id="import-results" class="test-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 Settings & Configuration Analysis</h3>
+            <button class="test-button info" onclick="analyzeSettings()">
+                <i class="fas fa-cog"></i> Analyze Settings
+            </button>
+            <button class="test-button info" onclick="testDefaultPopulationLogic()">
+                <i class="fas fa-question-circle"></i> Test Default Population Logic
+            </button>
+            <div id="settings-analysis" class="status info">
+                Click to analyze settings
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Advanced Debugging</h3>
+            <button class="test-button info" onclick="testDropdownBehavior()">
+                <i class="fas fa-list"></i> Test Dropdown Behavior
+            </button>
+            <button class="test-button info" onclick="testEventListeners()">
+                <i class="fas fa-bell"></i> Test Event Listeners
+            </button>
+            <button class="test-button info" onclick="testServerCommunication()">
+                <i class="fas fa-server"></i> Test Server Communication
+            </button>
+            <div id="debug-results" class="test-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Test Results Summary</h3>
+            <div id="test-summary" class="status info">
+                No tests run yet
+            </div>
+            <button class="test-button" onclick="runAllTests()">
+                <i class="fas fa-play"></i> Run All Tests
+            </button>
+            <button class="test-button" onclick="clearResults()">
+                <i class="fas fa-trash"></i> Clear Results
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 Debug Log</h3>
+            <button class="test-button" onclick="clearLog()">Clear Log</button>
+            <div id="debug-log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        let populations = [];
+        let selectedPopulation = null;
+        let testResults = [];
+        let importHistory = [];
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color: #666;">[${timestamp}]</span> <span style="color: ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : type === 'warning' ? '#ffc107' : '#007bff'};">${message}</span>`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('debug-log').innerHTML = '';
+        }
+
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+
+        function addTestResult(testName, result, details = '') {
+            const resultsDiv = document.getElementById('debug-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${result}`;
+            resultDiv.innerHTML = `
+                <strong>${testName}</strong><br>
+                <span style="color: ${result === 'pass' ? '#28a745' : result === 'fail' ? '#dc3545' : '#ffc107'};">${result.toUpperCase()}</span><br>
+                <small>${details}</small>
+            `;
+            resultsDiv.appendChild(resultDiv);
+            
+            testResults.push({ name: testName, result, details, timestamp: new Date() });
+            updateTestSummary();
+        }
+
+        function updateTestSummary() {
+            const summaryDiv = document.getElementById('test-summary');
+            const total = testResults.length;
+            const passed = testResults.filter(r => r.result === 'pass').length;
+            const failed = testResults.filter(r => r.result === 'fail').length;
+            const warnings = testResults.filter(r => r.result === 'warning').length;
+            
+            summaryDiv.innerHTML = `
+                Total Tests: ${total} | 
+                Passed: ${passed} | 
+                Failed: ${failed} | 
+                Warnings: ${warnings}
+            `;
+            summaryDiv.className = `status ${failed > 0 ? 'error' : warnings > 0 ? 'warning' : 'success'}`;
+        }
+
+        function clearResults() {
+            document.getElementById('debug-results').innerHTML = '';
+            document.getElementById('import-results').innerHTML = '';
+            testResults = [];
+            updateTestSummary();
+        }
+
+        async function loadAndAnalyzePopulations() {
+            log('Loading and analyzing populations...', 'info');
+            updateStatus('populations-analysis', 'Loading populations...', 'info');
+            
+            try {
+                const response = await fetch('/api/pingone/populations');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                populations = await response.json();
+                log(`Loaded ${populations.length} populations`, 'success');
+                
+                // Update dropdown
+                const dropdown = document.getElementById('test-population-select');
+                dropdown.innerHTML = '<option value="">Select a population...</option>';
+                populations.forEach(population => {
+                    const option = document.createElement('option');
+                    option.value = population.id;
+                    option.textContent = population.name;
+                    dropdown.appendChild(option);
+                });
+                
+                // Display populations in grid
+                const gridDiv = document.getElementById('populations-grid');
+                gridDiv.innerHTML = '';
+                populations.forEach(population => {
+                    const card = document.createElement('div');
+                    card.className = `population-card ${population.default ? 'default' : ''}`;
+                    card.innerHTML = `
+                        <h4>${population.name}</h4>
+                        <div class="details">
+                            <strong>ID:</strong> ${population.id}<br>
+                            <strong>Users:</strong> ${population.userCount || 0}<br>
+                            <strong>Default:</strong> ${population.default ? 'YES' : 'No'}<br>
+                            <strong>Created:</strong> ${new Date(population.createdAt).toLocaleDateString()}
+                        </div>
+                    `;
+                    gridDiv.appendChild(card);
+                });
+                
+                // Analyze populations
+                const defaultPop = populations.find(p => p.default);
+                const testPop = populations.find(p => p.name === 'TEST');
+                const firstPop = populations[0];
+                
+                let analysis = `Found ${populations.length} populations:\n`;
+                analysis += `- Default population: ${defaultPop ? defaultPop.name : 'None'}\n`;
+                analysis += `- First population: ${firstPop.name}\n`;
+                analysis += `- TEST population: ${testPop ? 'Found' : 'Not found'}\n`;
+                
+                if (defaultPop) {
+                    analysis += `⚠️ WARNING: Default population is "${defaultPop.name}" - this might override user selection`;
+                    updateStatus('populations-analysis', analysis, 'warning');
+                    addTestResult('Default Population Detection', 'warning', `Found default: ${defaultPop.name}`);
+                } else {
+                    updateStatus('populations-analysis', analysis, 'success');
+                    addTestResult('Default Population Detection', 'pass', 'No default population found');
+                }
+                
+                if (testPop) {
+                    addTestResult('TEST Population Detection', 'warning', `Found TEST population with ${testPop.userCount} users`);
+                }
+                
+            } catch (error) {
+                log(`Error loading populations: ${error.message}`, 'error');
+                updateStatus('populations-analysis', `Error: ${error.message}`, 'error');
+                addTestResult('Population Loading', 'fail', error.message);
+            }
+        }
+
+        function onPopulationChange() {
+            const dropdown = document.getElementById('test-population-select');
+            const selectedValue = dropdown.value;
+            const selectedText = dropdown.selectedOptions[0]?.text || '';
+            
+            log(`Population selection changed: ${selectedText} (${selectedValue})`, 'info');
+            
+            if (!selectedValue) {
+                selectedPopulation = null;
+                updateStatus('selection-status', 'No population selected', 'warning');
+                return;
+            }
+            
+            selectedPopulation = {
+                id: selectedValue,
+                name: selectedText
+            };
+            
+            updateStatus('selection-status', `Selected: ${selectedText}`, 'success');
+            
+            // Update card highlighting
+            document.querySelectorAll('.population-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            const selectedCard = Array.from(document.querySelectorAll('.population-card')).find(card => 
+                card.querySelector('h4').textContent === selectedText
+            );
+            if (selectedCard) {
+                selectedCard.classList.add('selected');
+            }
+        }
+
+        function testSelectionPersistence() {
+            log('Testing selection persistence...', 'info');
+            
+            if (!selectedPopulation) {
+                addTestResult('Selection Persistence', 'fail', 'No population selected');
+                return;
+            }
+            
+            // Test if selection persists after dropdown change
+            const dropdown = document.getElementById('test-population-select');
+            const currentValue = dropdown.value;
+            const currentText = dropdown.selectedOptions[0]?.text || '';
+            
+            if (currentValue === selectedPopulation.id && currentText === selectedPopulation.name) {
+                addTestResult('Selection Persistence', 'pass', `Selection maintained: ${selectedPopulation.name}`);
+                log(`✅ Selection persistence test passed: ${selectedPopulation.name}`, 'success');
+            } else {
+                addTestResult('Selection Persistence', 'fail', `Selection lost. Expected: ${selectedPopulation.name}, Got: ${currentText}`);
+                log(`❌ Selection persistence test failed`, 'error');
+            }
+        }
+
+        function testAppState() {
+            log('Testing app state...', 'info');
+            
+            if (window.app) {
+                const currentSelection = window.app.getCurrentPopulationSelection();
+                const storedId = window.app.selectedPopulationId;
+                const storedName = window.app.selectedPopulationName;
+                
+                log(`App state - Current: ${JSON.stringify(currentSelection)}`, 'info');
+                log(`App state - Stored ID: ${storedId}`, 'info');
+                log(`App state - Stored Name: ${storedName}`, 'info');
+                
+                if (selectedPopulation && storedId === selectedPopulation.id && storedName === selectedPopulation.name) {
+                    addTestResult('App State Synchronization', 'pass', 'App state matches selection');
+                } else {
+                    addTestResult('App State Synchronization', 'fail', 'App state does not match selection');
+                }
+            } else {
+                addTestResult('App State', 'warning', 'App not available (not on main page)');
+            }
+        }
+
+        async function simulateImportWithTracking() {
+            if (!selectedPopulation) {
+                addTestResult('Import Simulation', 'fail', 'No population selected');
+                return;
+            }
+            
+            const fileInput = document.getElementById('test-file');
+            if (!fileInput.files[0]) {
+                addTestResult('Import Simulation', 'fail', 'No file selected');
+                return;
+            }
+            
+            log(`Simulating import with population: ${selectedPopulation.name} (${selectedPopulation.id})`, 'info');
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                formData.append('populationId', selectedPopulation.id);
+                formData.append('populationName', selectedPopulation.name);
+                formData.append('totalUsers', '5');
+                
+                const startTime = Date.now();
+                const response = await fetch('/api/import', {
+                    method: 'POST',
+                    body: formData
+                });
+                const endTime = Date.now();
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                const duration = endTime - startTime;
+                
+                log(`Import simulation completed in ${duration}ms`, 'success');
+                log(`Response: ${JSON.stringify(result)}`, 'info');
+                
+                // Track import history
+                const importRecord = {
+                    timestamp: new Date(),
+                    selectedPopulation: selectedPopulation,
+                    response: result,
+                    duration: duration
+                };
+                importHistory.push(importRecord);
+                
+                // Check if population used matches selection
+                if (result.success && result.populationId === selectedPopulation.id) {
+                    addTestResult('Import Population Match', 'pass', `Used correct population: ${selectedPopulation.name}`);
+                    log(`✅ Import used correct population: ${selectedPopulation.name}`, 'success');
+                } else {
+                    addTestResult('Import Population Match', 'fail', `Population mismatch! Selected: ${selectedPopulation.id}, Used: ${result.populationId}`);
+                    log(`❌ Population mismatch detected!`, 'error');
+                }
+                
+                // Display import result
+                const resultsDiv = document.getElementById('import-results');
+                const resultDiv = document.createElement('div');
+                resultDiv.className = `test-result ${result.success ? 'pass' : 'fail'}`;
+                resultDiv.innerHTML = `
+                    <strong>Import Test ${importHistory.length}</strong><br>
+                    <span>Selected: ${selectedPopulation.name}</span><br>
+                    <span>Used: ${result.populationName || 'Unknown'}</span><br>
+                    <span>Duration: ${duration}ms</span><br>
+                    <small>${result.success ? 'Success' : 'Failed'}</small>
+                `;
+                resultsDiv.appendChild(resultDiv);
+                
+            } catch (error) {
+                log(`Error during import simulation: ${error.message}`, 'error');
+                addTestResult('Import Simulation', 'fail', error.message);
+            }
+        }
+
+        async function testMultipleImports() {
+            log('Testing multiple imports with different populations...', 'info');
+            
+            if (!selectedPopulation) {
+                addTestResult('Multiple Import Test', 'fail', 'No population selected');
+                return;
+            }
+            
+            const fileInput = document.getElementById('test-file');
+            if (!fileInput.files[0]) {
+                addTestResult('Multiple Import Test', 'fail', 'No file selected');
+                return;
+            }
+            
+            // Test with different populations
+            const testPopulations = populations.slice(0, 3); // Test first 3 populations
+            let successCount = 0;
+            let failureCount = 0;
+            
+            for (let i = 0; i < testPopulations.length; i++) {
+                const testPop = testPopulations[i];
+                log(`Testing import with population: ${testPop.name}`, 'info');
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('file', fileInput.files[0]);
+                    formData.append('populationId', testPop.id);
+                    formData.append('populationName', testPop.name);
+                    formData.append('totalUsers', '5');
+                    
+                    const response = await fetch('/api/import', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success && result.populationId === testPop.id) {
+                        successCount++;
+                        log(`✅ Import ${i+1} successful with ${testPop.name}`, 'success');
+                    } else {
+                        failureCount++;
+                        log(`❌ Import ${i+1} failed or used wrong population`, 'error');
+                    }
+                    
+                    // Small delay between tests
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                } catch (error) {
+                    failureCount++;
+                    log(`❌ Import ${i+1} error: ${error.message}`, 'error');
+                }
+            }
+            
+            const result = successCount === testPopulations.length ? 'pass' : 'fail';
+            addTestResult('Multiple Import Test', result, `${successCount}/${testPopulations.length} successful`);
+        }
+
+        async function analyzeSettings() {
+            log('Analyzing settings...', 'info');
+            updateStatus('settings-analysis', 'Analyzing settings...', 'info');
+            
+            try {
+                const response = await fetch('/api/settings');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                log(`Settings response: ${JSON.stringify(result)}`, 'info');
+                
+                if (result.success && result.data) {
+                    const settings = result.data;
+                    let analysis = `Settings Analysis:\n`;
+                    analysis += `- Environment ID: ${settings.environmentId}\n`;
+                    analysis += `- API Client ID: ${settings.apiClientId}\n`;
+                    analysis += `- Population ID: ${settings.populationId}\n`;
+                    analysis += `- Region: ${settings.region}\n`;
+                    
+                    if (settings.populationId && settings.populationId !== 'not set') {
+                        analysis += `⚠️ WARNING: Default population configured: ${settings.populationId}`;
+                        updateStatus('settings-analysis', analysis, 'warning');
+                        addTestResult('Settings Analysis', 'warning', `Default population configured: ${settings.populationId}`);
+                    } else {
+                        updateStatus('settings-analysis', analysis, 'success');
+                        addTestResult('Settings Analysis', 'pass', 'No default population configured');
+                    }
+                } else {
+                    updateStatus('settings-analysis', `Settings check failed: ${result.error}`, 'error');
+                    addTestResult('Settings Analysis', 'fail', result.error);
+                }
+                
+            } catch (error) {
+                log(`Error analyzing settings: ${error.message}`, 'error');
+                updateStatus('settings-analysis', `Error: ${error.message}`, 'error');
+                addTestResult('Settings Analysis', 'fail', error.message);
+            }
+        }
+
+        function testDefaultPopulationLogic() {
+            log('Testing default population logic...', 'info');
+            
+            const defaultPop = populations.find(p => p.default);
+            const firstPop = populations[0];
+            
+            if (defaultPop) {
+                log(`Found default population: ${defaultPop.name}`, 'warning');
+                addTestResult('Default Population Logic', 'warning', `Default population: ${defaultPop.name}`);
+                
+                // Check if this might be causing the issue
+                if (defaultPop.name.toLowerCase().includes('test')) {
+                    addTestResult('Default Population Issue', 'fail', `Default population is TEST-related: ${defaultPop.name}`);
+                }
+            } else {
+                log('No default population found', 'success');
+                addTestResult('Default Population Logic', 'pass', 'No default population');
+            }
+            
+            // Check if first population is being used as fallback
+            log(`First population: ${firstPop.name}`, 'info');
+            addTestResult('First Population Check', 'info', `First population: ${firstPop.name}`);
+        }
+
+        function testDropdownBehavior() {
+            log('Testing dropdown behavior...', 'info');
+            
+            const dropdown = document.getElementById('test-population-select');
+            if (!dropdown) {
+                addTestResult('Dropdown Behavior', 'fail', 'Dropdown not found');
+                return;
+            }
+            
+            const options = Array.from(dropdown.options);
+            log(`Dropdown has ${options.length} options`, 'info');
+            
+            // Test option values
+            const validOptions = options.filter(opt => opt.value && opt.value.trim() !== '');
+            if (validOptions.length === populations.length) {
+                addTestResult('Dropdown Options', 'pass', `${validOptions.length} valid options`);
+            } else {
+                addTestResult('Dropdown Options', 'fail', `Expected ${populations.length}, got ${validOptions.length}`);
+            }
+            
+            // Test selection
+            if (dropdown.value && dropdown.selectedOptions[0]) {
+                addTestResult('Dropdown Selection', 'pass', `Selected: ${dropdown.selectedOptions[0].text}`);
+            } else {
+                addTestResult('Dropdown Selection', 'warning', 'No selection');
+            }
+        }
+
+        function testEventListeners() {
+            log('Testing event listeners...', 'info');
+            
+            const dropdown = document.getElementById('test-population-select');
+            if (!dropdown) {
+                addTestResult('Event Listeners', 'fail', 'Dropdown not found');
+                return;
+            }
+            
+            // Test if change event is working
+            let eventFired = false;
+            const testHandler = () => { eventFired = true; };
+            
+            dropdown.addEventListener('change', testHandler);
+            
+            // Trigger a change event
+            const originalValue = dropdown.value;
+            dropdown.value = dropdown.options[1]?.value || '';
+            dropdown.dispatchEvent(new Event('change'));
+            
+            // Reset
+            dropdown.value = originalValue;
+            dropdown.removeEventListener('change', testHandler);
+            
+            if (eventFired) {
+                addTestResult('Event Listeners', 'pass', 'Change event fires correctly');
+            } else {
+                addTestResult('Event Listeners', 'fail', 'Change event not firing');
+            }
+        }
+
+        async function testServerCommunication() {
+            log('Testing server communication...', 'info');
+            
+            try {
+                // Test populations endpoint
+                const popResponse = await fetch('/api/pingone/populations');
+                if (popResponse.ok) {
+                    addTestResult('Server Communication - Populations', 'pass', 'Populations endpoint working');
+                } else {
+                    addTestResult('Server Communication - Populations', 'fail', `HTTP ${popResponse.status}`);
+                }
+                
+                // Test settings endpoint
+                const settingsResponse = await fetch('/api/settings');
+                if (settingsResponse.ok) {
+                    addTestResult('Server Communication - Settings', 'pass', 'Settings endpoint working');
+                } else {
+                    addTestResult('Server Communication - Settings', 'fail', `HTTP ${settingsResponse.status}`);
+                }
+                
+                // Test import endpoint (without file)
+                const importResponse = await fetch('/api/import', { method: 'POST' });
+                if (importResponse.status === 400) {
+                    addTestResult('Server Communication - Import', 'pass', 'Import endpoint responding (expected 400 without file)');
+                } else {
+                    addTestResult('Server Communication - Import', 'fail', `Unexpected status: ${importResponse.status}`);
+                }
+                
+            } catch (error) {
+                addTestResult('Server Communication', 'fail', error.message);
+            }
+        }
+
+        async function runAllTests() {
+            log('Running all tests...', 'info');
+            clearResults();
+            
+            // Run tests in sequence
+            await loadAndAnalyzePopulations();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            testDropdownBehavior();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            testEventListeners();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            testDefaultPopulationLogic();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await analyzeSettings();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            testServerCommunication();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            testAppState();
+            
+            log('All tests completed', 'success');
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Extensive population selection testing page loaded', 'info');
+            loadAndAnalyzePopulations();
+        });
+    </script>
+</body>
+</html> 

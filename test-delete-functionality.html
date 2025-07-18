@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete Functionality Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+    </style>
+</head>
+<body>
+    <h1>Delete Functionality Test</h1>
+    
+    <div class="test-section info">
+        <h3>🔍 Test Status</h3>
+        <p>This page tests the delete functionality to ensure the "Only absolute URLs are supported" error is fixed.</p>
+    </div>
+
+    <div class="test-section">
+        <h3>📋 Test Steps</h3>
+        <ol>
+            <li>Click "Test Delete API" to verify the endpoint is working</li>
+            <li>Check the console for any errors</li>
+            <li>Verify that the "Only absolute URLs are supported" error is gone</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h3>🧪 Test Actions</h3>
+        <button class="btn-primary" onclick="testDeleteAPI()">Test Delete API</button>
+        <button class="btn-success" onclick="testPopulations()">Test Populations</button>
+        <button class="btn-danger" onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <div id="results" class="test-section">
+        <h3>📊 Test Results</h3>
+        <div id="test-output">No tests run yet.</div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('test-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logEntry.style.color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+            output.appendChild(logEntry);
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        async function testDeleteAPI() {
+            log('🧪 Testing Delete API endpoint...', 'info');
+            
+            try {
+                const response = await fetch('/api/delete-users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: 'population',
+                        populationId: 'test-population-id'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('✅ Delete API is working correctly!', 'success');
+                    log(`Response: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log(`❌ Delete API returned error: ${response.status}`, 'error');
+                    log(`Error details: ${JSON.stringify(data, null, 2)}`, 'error');
+                    
+                    // Check if the old "Only absolute URLs are supported" error is gone
+                    if (data.error && data.error.includes('Only absolute URLs are supported')) {
+                        log('❌ The "Only absolute URLs are supported" error is still present!', 'error');
+                    } else {
+                        log('✅ The "Only absolute URLs are supported" error is fixed!', 'success');
+                        log('The new error is different, which means the URL issue is resolved.', 'info');
+                    }
+                }
+            } catch (error) {
+                log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPopulations() {
+            log('🧪 Testing Populations API...', 'info');
+            
+            try {
+                const response = await fetch('/api/populations');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('✅ Populations API is working!', 'success');
+                    log(`Found ${data.populations?.length || 0} populations`, 'info');
+                } else {
+                    log(`❌ Populations API error: ${response.status}`, 'error');
+                    log(`Error details: ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('test-output').innerHTML = 'Results cleared.';
+        }
+
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            log('🚀 Delete functionality test page loaded', 'info');
+            log('Ready to test the delete functionality!', 'info');
+        });
+    </script>
+</body>
+</html> 

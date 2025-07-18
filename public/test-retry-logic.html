@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retry Logic Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-button.success {
+            background: #28a745;
+        }
+        .test-button.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .test-button.danger {
+            background: #dc3545;
+        }
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-healthy {
+            background: #28a745;
+        }
+        .status-unhealthy {
+            background: #dc3545;
+        }
+        .status-checking {
+            background: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔄 Retry Logic & Health Check Test</h1>
+        <p>This page tests the enhanced retry logic with exponential backoff and server health checking.</p>
+        
+        <div class="test-section">
+            <h3>Server Health Status</h3>
+            <div id="health-status">
+                <span class="status-indicator status-checking"></span>
+                <span id="health-text">Checking server health...</span>
+            </div>
+            <button class="test-button" onclick="checkServerHealth()">Check Server Health</button>
+            <button class="test-button" onclick="checkHealthEndpoint()">Test Health Endpoint</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Settings Loading Tests</h3>
+            <button class="test-button" onclick="testSettingsLoading()">Test Settings Loading</button>
+            <button class="test-button" onclick="testSettingsWithRetry()">Test Settings with Retry</button>
+            <button class="test-button" onclick="testSettingsWithHealthCheck()">Test Settings with Health Check</button>
+            <button class="test-button" onclick="testInitialDelay()">Test Initial Delay</button>
+            <button class="test-button" onclick="testProgressiveDelay()">Test Progressive Delay</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Retry Logic Tests</h3>
+            <button class="test-button" onclick="testRetryOnTimeout()">Test Retry on Timeout</button>
+            <button class="test-button" onclick="testRetryOnServerError()">Test Retry on Server Error</button>
+            <button class="test-button" onclick="testRetryOnRateLimit()">Test Retry on Rate Limit</button>
+            <button class="test-button" onclick="testNoRetryOnClientError()">Test No Retry on Client Error</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Exponential Backoff Tests</h3>
+            <button class="test-button" onclick="testExponentialBackoff()">Test Exponential Backoff</button>
+            <button class="test-button" onclick="testBackoffWithJitter()">Test Backoff with Jitter</button>
+            <button class="test-button" onclick="testMaxRetryDelay()">Test Max Retry Delay</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Comprehensive Tests</h3>
+            <button class="test-button success" onclick="runComprehensiveTest()">Run Comprehensive Test</button>
+            <button class="test-button warning" onclick="simulateServerIssues()">Simulate Server Issues</button>
+            <button class="test-button danger" onclick="testUnhealthyServer()">Test Unhealthy Server</button>
+        </div>
+        
+        <div id="debug-output" class="debug-info">
+            <h3>Debug Output:</h3>
+            <div id="debug-content"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, data = null) {
+            const debugContent = document.getElementById('debug-content');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            if (data) {
+                logEntry.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            debugContent.appendChild(logEntry);
+            console.log(message, data);
+            
+            // Auto-scroll to bottom
+            debugContent.scrollTop = debugContent.scrollHeight;
+        }
+        
+        function updateHealthStatus(isHealthy, message) {
+            const statusIndicator = document.querySelector('.status-indicator');
+            const healthText = document.getElementById('health-text');
+            
+            if (isHealthy) {
+                statusIndicator.className = 'status-indicator status-healthy';
+                healthText.textContent = `✅ ${message}`;
+            } else {
+                statusIndicator.className = 'status-indicator status-unhealthy';
+                healthText.textContent = `❌ ${message}`;
+            }
+        }
+        
+        async function checkServerHealth() {
+            log('🏥 Checking server health...');
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    updateHealthStatus(true, 'Server is healthy');
+                    log('✅ Server health check passed', data);
+                } else {
+                    updateHealthStatus(false, 'Server health check failed');
+                    log('❌ Server health check failed', data);
+                }
+            } catch (error) {
+                updateHealthStatus(false, 'Server health check error');
+                log('❌ Server health check error', { error: error.message });
+            }
+        }
+        
+        async function checkHealthEndpoint() {
+            log('🔍 Testing health endpoint directly...');
+            try {
+                const startTime = Date.now();
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                const duration = Date.now() - startTime;
+                
+                log('📊 Health endpoint response', {
+                    status: response.status,
+                    duration: `${duration}ms`,
+                    data: data
+                });
+            } catch (error) {
+                log('❌ Health endpoint error', { error: error.message });
+            }
+        }
+        
+        async function testSettingsLoading() {
+            log('⚙️ Testing basic settings loading...');
+            try {
+                const response = await fetch('/api/settings');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('✅ Settings loaded successfully', data);
+                } else {
+                    log('❌ Settings loading failed', data);
+                }
+            } catch (error) {
+                log('❌ Settings loading error', { error: error.message });
+            }
+        }
+        
+        async function testSettingsWithRetry() {
+            log('🔄 Testing settings loading with retry logic...');
+            try {
+                // Simulate the enhanced retry logic
+                const response = await fetch('/api/settings', {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' },
+                    signal: AbortSignal.timeout(8000) // 8 second timeout
+                });
+                
+                const data = await response.json();
+                log('✅ Settings loaded with retry logic', data);
+            } catch (error) {
+                log('❌ Settings loading with retry failed', { error: error.message });
+            }
+        }
+        
+        async function testSettingsWithHealthCheck() {
+            log('🏥 Testing settings loading with health check...');
+            try {
+                // First check server health
+                const healthResponse = await fetch('/api/health');
+                const healthData = await healthResponse.json();
+                
+                if (healthResponse.ok && healthData.success) {
+                    log('✅ Server health check passed, loading settings...');
+                    
+                    // Then load settings
+                    const settingsResponse = await fetch('/api/settings');
+                    const settingsData = await settingsResponse.json();
+                    
+                    if (settingsResponse.ok) {
+                        log('✅ Settings loaded after health check', settingsData);
+                    } else {
+                        log('❌ Settings loading failed after health check', settingsData);
+                    }
+                } else {
+                    log('❌ Server health check failed, skipping settings load', healthData);
+                }
+            } catch (error) {
+                log('❌ Settings loading with health check error', { error: error.message });
+            }
+        }
+        
+        async function testRetryOnTimeout() {
+            log('⏱️ Testing retry logic on timeout...');
+            try {
+                // Create a request that will timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 100); // Very short timeout
+                
+                const response = await fetch('/api/settings', {
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                log('✅ Request completed (unexpected success)');
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    log('⏱️ Request timed out as expected', { error: error.message });
+                } else {
+                    log('❌ Unexpected error during timeout test', { error: error.message });
+                }
+            }
+        }
+        
+        async function testRetryOnServerError() {
+            log('🔧 Testing retry logic on server error...');
+            try {
+                // Try to access a non-existent endpoint to simulate server error
+                const response = await fetch('/api/nonexistent-endpoint');
+                
+                if (response.status >= 500) {
+                    log('🔧 Server error detected as expected', { status: response.status });
+                } else {
+                    log('⚠️ Unexpected response status', { status: response.status });
+                }
+            } catch (error) {
+                log('❌ Error during server error test', { error: error.message });
+            }
+        }
+        
+        async function testRetryOnRateLimit() {
+            log('🚦 Testing retry logic on rate limit...');
+            try {
+                // Make multiple rapid requests to potentially trigger rate limiting
+                const promises = Array(5).fill().map(() => fetch('/api/settings'));
+                const responses = await Promise.all(promises);
+                
+                const rateLimited = responses.some(r => r.status === 429);
+                if (rateLimited) {
+                    log('🚦 Rate limit detected as expected');
+                } else {
+                    log('✅ No rate limiting detected (server handled requests well)');
+                }
+            } catch (error) {
+                log('❌ Error during rate limit test', { error: error.message });
+            }
+        }
+        
+        async function testNoRetryOnClientError() {
+            log('🚫 Testing no retry on client error...');
+            try {
+                // Try to access a forbidden endpoint
+                const response = await fetch('/api/forbidden-endpoint');
+                
+                if (response.status === 403) {
+                    log('🚫 Client error (403) detected - should not retry');
+                } else {
+                    log('⚠️ Unexpected response status', { status: response.status });
+                }
+            } catch (error) {
+                log('❌ Error during client error test', { error: error.message });
+            }
+        }
+        
+        function testExponentialBackoff() {
+            log('📈 Testing exponential backoff calculation...');
+            
+            const baseDelay = 1000;
+            const maxDelay = 10000;
+            
+            for (let attempt = 1; attempt <= 5; attempt++) {
+                const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
+                const jitter = Math.random() * 0.1 * exponentialDelay;
+                const finalDelay = Math.min(exponentialDelay + jitter, maxDelay);
+                
+                log(`Attempt ${attempt}: ${finalDelay.toFixed(0)}ms delay`, {
+                    baseDelay,
+                    exponentialDelay: exponentialDelay.toFixed(0),
+                    jitter: jitter.toFixed(0),
+                    finalDelay: finalDelay.toFixed(0),
+                    maxDelay
+                });
+            }
+        }
+        
+        function testBackoffWithJitter() {
+            log('🎲 Testing backoff with jitter...');
+            
+            const baseDelay = 1000;
+            const maxDelay = 10000;
+            
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                const delays = [];
+                for (let i = 0; i < 5; i++) {
+                    const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
+                    const jitter = Math.random() * 0.1 * exponentialDelay;
+                    const finalDelay = Math.min(exponentialDelay + jitter, maxDelay);
+                    delays.push(finalDelay);
+                }
+                
+                const avgDelay = delays.reduce((a, b) => a + b, 0) / delays.length;
+                const minDelay = Math.min(...delays);
+                const maxDelay = Math.max(...delays);
+                
+                log(`Attempt ${attempt} delays:`, {
+                    delays: delays.map(d => d.toFixed(0)),
+                    average: avgDelay.toFixed(0),
+                    min: minDelay.toFixed(0),
+                    max: maxDelay.toFixed(0)
+                });
+            }
+        }
+        
+        function testMaxRetryDelay() {
+            log('⏰ Testing max retry delay...');
+            
+            const baseDelay = 1000;
+            const maxDelay = 5000; // Shorter for testing
+            
+            for (let attempt = 1; attempt <= 10; attempt++) {
+                const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
+                const finalDelay = Math.min(exponentialDelay, maxDelay);
+                
+                log(`Attempt ${attempt}: ${finalDelay.toFixed(0)}ms`, {
+                    exponentialDelay: exponentialDelay.toFixed(0),
+                    maxDelay,
+                    capped: finalDelay < exponentialDelay
+                });
+            }
+        }
+        
+        async function runComprehensiveTest() {
+            log('🧪 Running comprehensive retry logic test...');
+            
+            // Test 1: Health check
+            log('1️⃣ Testing server health...');
+            await checkServerHealth();
+            
+            // Test 2: Settings loading
+            log('2️⃣ Testing settings loading...');
+            await testSettingsLoading();
+            
+            // Test 3: Exponential backoff
+            log('3️⃣ Testing exponential backoff...');
+            testExponentialBackoff();
+            
+            // Test 4: Retry scenarios
+            log('4️⃣ Testing retry scenarios...');
+            await testRetryOnTimeout();
+            
+            log('✅ Comprehensive test completed!');
+        }
+        
+        async function simulateServerIssues() {
+            log('⚠️ Simulating server issues...');
+            
+            // Simulate various server issues
+            const issues = [
+                'Network timeout',
+                'Server overload',
+                'Rate limiting',
+                'Temporary unavailability'
+            ];
+            
+            for (const issue of issues) {
+                log(`⚠️ Simulating: ${issue}`);
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            log('✅ Server issue simulation completed');
+        }
+        
+        async function testUnhealthyServer() {
+            log('🚨 Testing unhealthy server scenario...');
+            
+            // Simulate server health degradation
+            updateHealthStatus(false, 'Server is unhealthy');
+            
+            try {
+                const response = await fetch('/api/settings');
+                log('⚠️ Unexpected success with unhealthy server', { status: response.status });
+            } catch (error) {
+                log('🚨 Expected failure with unhealthy server', { error: error.message });
+            }
+        }
+        
+        async function testInitialDelay() {
+            log('⏳ Testing initial delay before settings request...');
+            window.INITIAL_SETTINGS_DELAY = 3000; // 3 seconds
+            const start = Date.now();
+            try {
+                // Simulate settings load (reloads the app's loadSettings if available)
+                if (window.app && typeof window.app.loadSettings === 'function') {
+                    await window.app.loadSettings();
+                } else {
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                }
+                const duration = Date.now() - start;
+                log(`✅ Initial delay test completed in ${duration}ms`);
+            } catch (error) {
+                log('❌ Initial delay test error', { error: error.message });
+            }
+            window.INITIAL_SETTINGS_DELAY = undefined;
+        }
+        
+        async function testProgressiveDelay() {
+            log('⏳ Testing progressive delay with health check...');
+            window.INITIAL_SETTINGS_DELAY = 0; // Use health check only
+            const start = Date.now();
+            try {
+                if (window.app && typeof window.app.loadSettings === 'function') {
+                    await window.app.loadSettings();
+                } else {
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                }
+                const duration = Date.now() - start;
+                log(`✅ Progressive delay test completed in ${duration}ms`);
+            } catch (error) {
+                log('❌ Progressive delay test error', { error: error.message });
+            }
+            window.INITIAL_SETTINGS_DELAY = undefined;
+        }
+        
+        // Initialize test
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🧪 Retry Logic Test Page Loaded');
+            log('Available test functions:');
+            log('- checkServerHealth()');
+            log('- testSettingsLoading()');
+            log('- testRetryOnTimeout()');
+            log('- testExponentialBackoff()');
+            log('- runComprehensiveTest()');
+            
+            // Initial health check
+            checkServerHealth();
+        });
+    </script>
+</body>
+</html> 

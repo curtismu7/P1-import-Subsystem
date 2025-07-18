@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Population Selection Debug Test - PingOne Import Tool</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css">
+    <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/css/styles-fixed.css">
+    <link rel="stylesheet" href="/css/disclaimer-modal.css">
+    <link rel="stylesheet" href="/css/progress-ui.css">
+    <style>
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .test-button {
+            margin: 5px;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .test-success { background: #28a745; color: white; }
+        .test-error { background: #dc3545; color: white; }
+        .test-warning { background: #ffc107; color: #212529; }
+        .test-info { background: #17a2b8; color: white; }
+        
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .population-dropdown {
+            margin: 10px 0;
+            padding: 10px;
+            border: 2px solid #007bff;
+            border-radius: 4px;
+            background: white;
+        }
+        
+        .test-file {
+            margin: 10px 0;
+            padding: 10px;
+            border: 2px solid #28a745;
+            border-radius: 4px;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="/ping-identity-logo.svg" alt="Ping Identity" width="40" height="40">
+                </div>
+                <h3>PingOne Import Tool</h3>
+            </div>
+            <nav class="nav-links">
+                <a href="#" class="nav-item active">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-upload"></i>
+                    <span>Import</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-trash"></i>
+                    <span>Delete</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-download"></i>
+                    <span>Export</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-edit"></i>
+                    <span>Modify</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-history"></i>
+                    <span>History</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Logs</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- Universal Disclaimer Banner -->
+        <div class="universal-disclaimer-banner">
+            <div class="disclaimer-content">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>This is a test disclaimer banner to verify proper positioning and styling.</span>
+            </div>
+        </div>
+
+        <!-- Universal Token Status -->
+        <div class="universal-token-status">
+            <div class="token-status-bar">
+                <div class="token-status-content">
+                    <div class="token-status-icon">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    <div class="token-status-text">
+                        <span>Token Status: Valid</span>
+                    </div>
+                    <div class="token-status-time">
+                        <span>Expires in: 45:30</span>
+                    </div>
+                    <div class="token-status-actions">
+                        <button class="btn btn-sm btn-outline-secondary">Refresh</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar" id="statusBar">
+            <div class="status-content">
+                <div class="status-icon">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <div class="status-message">
+                    Population selection debug test - checking dropdown functionality
+                </div>
+                <button class="status-dismiss" onclick="hideStatusBar()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="view active">
+                <div class="content-area">
+                    <h1>Population Selection Debug Test</h1>
+                    <p>This page tests the population dropdown functionality to identify why imports are failing with "No population selected" error.</p>
+
+                    <div class="test-section">
+                        <h3>1. Population Dropdown Test</h3>
+                        <p>Test the population dropdown functionality:</p>
+                        
+                        <div class="population-dropdown">
+                            <label for="import-population-select">Import Population:</label>
+                            <select id="import-population-select" class="form-control">
+                                <option value="">Loading populations...</option>
+                            </select>
+                            <div id="population-debug-info" class="debug-info">
+                                <strong>Dropdown Status:</strong> Loading...
+                            </div>
+                        </div>
+                        
+                        <button class="test-button test-info" onclick="loadPopulations()">
+                            Load Populations
+                        </button>
+                        <button class="test-button test-info" onclick="checkPopulationSelection()">
+                            Check Selection
+                        </button>
+                        <button class="test-button test-info" onclick="debugPopulationDropdown()">
+                            Debug Dropdown
+                        </button>
+                    </div>
+
+                    <div class="test-section">
+                        <h3>2. File Selection Test</h3>
+                        <p>Test file selection functionality:</p>
+                        
+                        <div class="test-file">
+                            <label for="csv-file">CSV File:</label>
+                            <input type="file" id="csv-file" accept=".csv" class="form-control">
+                            <div id="file-debug-info" class="debug-info">
+                                <strong>File Status:</strong> No file selected
+                            </div>
+                        </div>
+                        
+                        <button class="test-button test-info" onclick="checkFileSelection()">
+                            Check File
+                        </button>
+                        <button class="test-button test-success" onclick="createTestFile()">
+                            Create Test CSV
+                        </button>
+                    </div>
+
+                    <div class="test-section">
+                        <h3>3. Import Button State Test</h3>
+                        <p>Test the import button state based on file and population selection:</p>
+                        
+                        <button id="start-import" class="test-button test-success" disabled>
+                            Start Import (Disabled)
+                        </button>
+                        <button id="bottom-start-import" class="test-button test-success" disabled>
+                            Start Import Bottom (Disabled)
+                        </button>
+                        
+                        <div id="button-debug-info" class="debug-info">
+                            <strong>Button State:</strong> Checking...
+                        </div>
+                    </div>
+
+                    <div class="test-section">
+                        <h3>4. API Connection Test</h3>
+                        <p>Test the API connection and population loading:</p>
+                        
+                        <button class="test-button test-info" onclick="testAPIConnection()">
+                            Test API Connection
+                        </button>
+                        <button class="test-button test-info" onclick="testPopulationAPI()">
+                            Test Population API
+                        </button>
+                        <button class="test-button test-info" onclick="testTokenStatus()">
+                            Test Token Status
+                        </button>
+                        
+                        <div id="api-debug-info" class="debug-info">
+                            <strong>API Status:</strong> Not tested
+                        </div>
+                    </div>
+
+                    <div class="test-section">
+                        <h3>5. Import Validation Test</h3>
+                        <p>Test the import validation logic:</p>
+                        
+                        <button class="test-button test-warning" onclick="testImportValidation()">
+                            Test Import Validation
+                        </button>
+                        <button class="test-button test-warning" onclick="simulateImportStart()">
+                            Simulate Import Start
+                        </button>
+                        
+                        <div id="validation-debug-info" class="debug-info">
+                            <strong>Validation Status:</strong> Not tested
+                        </div>
+                    </div>
+
+                    <div class="test-section">
+                        <h3>6. Console Debug</h3>
+                        <p>Check the browser console for detailed debug information:</p>
+                        
+                        <button class="test-button test-info" onclick="enableDebugMode()">
+                            Enable Debug Mode
+                        </button>
+                        <button class="test-button test-info" onclick="clearConsole()">
+                            Clear Console
+                        </button>
+                        
+                        <div class="debug-info">
+                            <strong>Debug Instructions:</strong>
+                            <ol>
+                                <li>Open browser console (F12)</li>
+                                <li>Enable debug mode</li>
+                                <li>Try loading populations and selecting one</li>
+                                <li>Check console for detailed logs</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for testing
+        let debugMode = false;
+        let testFile = null;
+
+        // Enable debug mode
+        function enableDebugMode() {
+            debugMode = true;
+            window.DEBUG_MODE = true;
+            console.log('🔧 Debug mode enabled');
+            document.getElementById('api-debug-info').innerHTML = '<strong>Debug Mode:</strong> Enabled';
+        }
+
+        // Clear console
+        function clearConsole() {
+            console.clear();
+            console.log('🧹 Console cleared');
+        }
+
+        // Load populations
+        async function loadPopulations() {
+            try {
+                console.log('🔄 Loading populations...');
+                document.getElementById('population-debug-info').innerHTML = '<strong>Dropdown Status:</strong> Loading...';
+                
+                const response = await fetch('/api/pingone/populations');
+                const populations = await response.json();
+                
+                console.log('📋 Populations loaded:', populations);
+                
+                const select = document.getElementById('import-population-select');
+                select.innerHTML = '';
+                
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'Select a population...';
+                select.appendChild(defaultOption);
+                
+                populations.forEach(population => {
+                    const option = document.createElement('option');
+                    option.value = population.id;
+                    option.textContent = population.name;
+                    select.appendChild(option);
+                });
+                
+                select.disabled = false;
+                
+                document.getElementById('population-debug-info').innerHTML = 
+                    `<strong>Dropdown Status:</strong> Loaded ${populations.length} populations`;
+                
+                console.log('✅ Populations loaded successfully');
+                
+            } catch (error) {
+                console.error('❌ Failed to load populations:', error);
+                document.getElementById('population-debug-info').innerHTML = 
+                    `<strong>Dropdown Status:</strong> Error - ${error.message}`;
+            }
+        }
+
+        // Check population selection
+        function checkPopulationSelection() {
+            const select = document.getElementById('import-population-select');
+            const selectedValue = select.value;
+            const selectedText = select.selectedOptions[0]?.text || '';
+            
+            console.log('🔍 Population Selection Check:');
+            console.log('Selected Value:', selectedValue);
+            console.log('Selected Text:', selectedText);
+            console.log('Options Count:', select.options.length);
+            
+            const debugInfo = `
+                <strong>Selection Status:</strong><br>
+                Value: ${selectedValue || 'None'}<br>
+                Text: ${selectedText || 'None'}<br>
+                Options: ${select.options.length}<br>
+                Valid: ${selectedValue && selectedValue !== '' ? 'Yes' : 'No'}
+            `;
+            
+            document.getElementById('population-debug-info').innerHTML = debugInfo;
+        }
+
+        // Debug population dropdown
+        function debugPopulationDropdown() {
+            const select = document.getElementById('import-population-select');
+            
+            console.log('🔍 Population Dropdown Debug:');
+            console.log('Element exists:', !!select);
+            console.log('Disabled:', select.disabled);
+            console.log('Value:', select.value);
+            console.log('Selected index:', select.selectedIndex);
+            
+            const options = Array.from(select.options).map((opt, idx) => ({
+                index: idx,
+                value: opt.value,
+                text: opt.text,
+                selected: opt.selected
+            }));
+            
+            console.log('All options:', options);
+            
+            const debugInfo = `
+                <strong>Dropdown Debug:</strong><br>
+                Element exists: ${!!select}<br>
+                Disabled: ${select.disabled}<br>
+                Value: ${select.value || 'None'}<br>
+                Selected index: ${select.selectedIndex}<br>
+                Options count: ${select.options.length}
+            `;
+            
+            document.getElementById('population-debug-info').innerHTML = debugInfo;
+        }
+
+        // Check file selection
+        function checkFileSelection() {
+            const fileInput = document.getElementById('csv-file');
+            const file = fileInput.files[0];
+            
+            console.log('🔍 File Selection Check:');
+            console.log('File selected:', !!file);
+            
+            if (file) {
+                console.log('File name:', file.name);
+                console.log('File size:', file.size);
+                console.log('File type:', file.type);
+            }
+            
+            const debugInfo = `
+                <strong>File Status:</strong><br>
+                File selected: ${!!file}<br>
+                ${file ? `Name: ${file.name}<br>Size: ${file.size} bytes<br>Type: ${file.type}` : 'No file selected'}
+            `;
+            
+            document.getElementById('file-debug-info').innerHTML = debugInfo;
+        }
+
+        // Create test CSV file
+        function createTestFile() {
+            const csvContent = `firstName,lastName,email,username
+John,Doe,john.doe@example.com,johndoe
+Jane,Smith,jane.smith@example.com,janesmith
+Bob,Johnson,bob.johnson@example.com,bobjohnson`;
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            testFile = new File([blob], 'test-users.csv', { type: 'text/csv' });
+            
+            // Create a FileList-like object
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(testFile);
+            
+            const fileInput = document.getElementById('csv-file');
+            fileInput.files = dataTransfer.files;
+            
+            console.log('📄 Test CSV file created:', testFile);
+            checkFileSelection();
+        }
+
+        // Test API connection
+        async function testAPIConnection() {
+            try {
+                console.log('🔌 Testing API connection...');
+                document.getElementById('api-debug-info').innerHTML = '<strong>API Status:</strong> Testing...';
+                
+                const response = await fetch('/api/settings');
+                const settings = await response.json();
+                
+                console.log('✅ API connection successful:', settings);
+                document.getElementById('api-debug-info').innerHTML = 
+                    '<strong>API Status:</strong> Connected successfully';
+                
+            } catch (error) {
+                console.error('❌ API connection failed:', error);
+                document.getElementById('api-debug-info').innerHTML = 
+                    `<strong>API Status:</strong> Failed - ${error.message}`;
+            }
+        }
+
+        // Test population API
+        async function testPopulationAPI() {
+            try {
+                console.log('👥 Testing population API...');
+                document.getElementById('api-debug-info').innerHTML = '<strong>Population API:</strong> Testing...';
+                
+                const response = await fetch('/api/pingone/populations');
+                const populations = await response.json();
+                
+                console.log('✅ Population API successful:', populations);
+                document.getElementById('api-debug-info').innerHTML = 
+                    `<strong>Population API:</strong> Success - ${populations.length} populations found`;
+                
+            } catch (error) {
+                console.error('❌ Population API failed:', error);
+                document.getElementById('api-debug-info').innerHTML = 
+                    `<strong>Population API:</strong> Failed - ${error.message}`;
+            }
+        }
+
+        // Test token status
+        async function testTokenStatus() {
+            try {
+                console.log('🔑 Testing token status...');
+                document.getElementById('api-debug-info').innerHTML = '<strong>Token Status:</strong> Testing...';
+                
+                const response = await fetch('/api/pingone/token');
+                const tokenInfo = await response.json();
+                
+                console.log('✅ Token status successful:', tokenInfo);
+                document.getElementById('api-debug-info').innerHTML = 
+                    '<strong>Token Status:</strong> Valid token found';
+                
+            } catch (error) {
+                console.error('❌ Token status failed:', error);
+                document.getElementById('api-debug-info').innerHTML = 
+                    `<strong>Token Status:</strong> Failed - ${error.message}`;
+            }
+        }
+
+        // Test import validation
+        function testImportValidation() {
+            console.log('🔍 Testing import validation...');
+            
+            const populationSelect = document.getElementById('import-population-select');
+            const fileInput = document.getElementById('csv-file');
+            
+            const hasPopulation = populationSelect.value && populationSelect.value !== '';
+            const hasFile = fileInput.files.length > 0;
+            
+            console.log('Validation results:');
+            console.log('Has population:', hasPopulation);
+            console.log('Has file:', hasFile);
+            console.log('Can import:', hasPopulation && hasFile);
+            
+            const debugInfo = `
+                <strong>Validation Results:</strong><br>
+                Has population: ${hasPopulation ? 'Yes' : 'No'}<br>
+                Has file: ${hasFile ? 'Yes' : 'No'}<br>
+                Can import: ${hasPopulation && hasFile ? 'Yes' : 'No'}
+            `;
+            
+            document.getElementById('validation-debug-info').innerHTML = debugInfo;
+        }
+
+        // Simulate import start
+        function simulateImportStart() {
+            console.log('🚀 Simulating import start...');
+            
+            const populationSelect = document.getElementById('import-population-select');
+            const fileInput = document.getElementById('csv-file');
+            
+            if (!populationSelect.value) {
+                console.error('❌ No population selected');
+                document.getElementById('validation-debug-info').innerHTML = 
+                    '<strong>Import Error:</strong> No population selected';
+                return;
+            }
+            
+            if (!fileInput.files.length) {
+                console.error('❌ No file selected');
+                document.getElementById('validation-debug-info').innerHTML = 
+                    '<strong>Import Error:</strong> No file selected';
+                return;
+            }
+            
+            console.log('✅ Import validation passed');
+            document.getElementById('validation-debug-info').innerHTML = 
+                '<strong>Import Status:</strong> Validation passed - ready to import';
+        }
+
+        // Update button state
+        function updateButtonState() {
+            const populationSelect = document.getElementById('import-population-select');
+            const fileInput = document.getElementById('csv-file');
+            
+            const hasPopulation = populationSelect.value && populationSelect.value !== '';
+            const hasFile = fileInput.files.length > 0;
+            const canImport = hasPopulation && hasFile;
+            
+            const startImportBtn = document.getElementById('start-import');
+            const bottomStartImportBtn = document.getElementById('bottom-start-import');
+            
+            startImportBtn.disabled = !canImport;
+            bottomStartImportBtn.disabled = !canImport;
+            
+            startImportBtn.textContent = canImport ? 'Start Import' : 'Start Import (Disabled)';
+            bottomStartImportBtn.textContent = canImport ? 'Start Import Bottom' : 'Start Import Bottom (Disabled)';
+            
+            const debugInfo = `
+                <strong>Button State:</strong><br>
+                Has population: ${hasPopulation ? 'Yes' : 'No'}<br>
+                Has file: ${hasFile ? 'Yes' : 'No'}<br>
+                Can import: ${canImport ? 'Yes' : 'No'}<br>
+                Buttons enabled: ${canImport ? 'Yes' : 'No'}
+            `;
+            
+            document.getElementById('button-debug-info').innerHTML = debugInfo;
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add change listeners
+            const populationSelect = document.getElementById('import-population-select');
+            const fileInput = document.getElementById('csv-file');
+            
+            populationSelect.addEventListener('change', function() {
+                console.log('🔄 Population selection changed:', this.value);
+                updateButtonState();
+            });
+            
+            fileInput.addEventListener('change', function() {
+                console.log('🔄 File selection changed:', this.files[0]?.name);
+                updateButtonState();
+            });
+            
+            // Initial button state
+            updateButtonState();
+            
+            console.log('🔧 Population selection debug test initialized');
+        });
+
+        // Status bar functions
+        function showStatusBar(type, message) {
+            const statusBar = document.getElementById('statusBar');
+            const statusIcon = statusBar.querySelector('.status-icon i');
+            const statusMessage = statusBar.querySelector('.status-message');
+            
+            switch(type) {
+                case 'success':
+                    statusIcon.className = 'fas fa-check-circle';
+                    break;
+                case 'error':
+                    statusIcon.className = 'fas fa-exclamation-circle';
+                    break;
+                case 'warning':
+                    statusIcon.className = 'fas fa-exclamation-triangle';
+                    break;
+                case 'info':
+                    statusIcon.className = 'fas fa-info-circle';
+                    break;
+            }
+            
+            statusMessage.textContent = message;
+            statusBar.classList.add('visible');
+        }
+        
+        function hideStatusBar() {
+            const statusBar = document.getElementById('statusBar');
+            statusBar.classList.remove('visible');
+        }
+        
+        // Show initial status
+        setTimeout(() => {
+            showStatusBar('info', 'Population selection debug test ready');
+        }, 1000);
+    </script>
+</body>
+</html> 

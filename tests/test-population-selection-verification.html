@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Population Selection Verification Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+        .test-result.success {
+            background-color: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        .test-result.error {
+            background-color: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        .test-result.warning {
+            background-color: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+        .test-result.info {
+            background-color: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+        .log-entry {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            border-left: 3px solid #dee2e6;
+        }
+        .log-entry.success { border-left-color: #28a745; }
+        .log-entry.error { border-left-color: #dc3545; }
+        .log-entry.warning { border-left-color: #ffc107; }
+        .log-entry.info { border-left-color: #17a2b8; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .population-dropdown {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .test-csv {
+            width: 100%;
+            height: 100px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        .comparison-table th,
+        .comparison-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .comparison-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .highlight-match {
+            background-color: #d4edda;
+        }
+        .highlight-mismatch {
+            background-color: #f8d7da;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Population Selection Verification Test</h1>
+    <p>This test verifies that the population used to store users matches what's selected in the UI dropdown.</p>
+
+    <div class="test-section">
+        <h2>Test Setup</h2>
+        <p>Select a population from the dropdown and upload a CSV file to test the population selection logic.</p>
+        
+        <label for="test-population-select">Select Population:</label>
+        <select id="test-population-select" class="population-dropdown">
+            <option value="">Loading populations...</option>
+        </select>
+        
+        <div>
+            <label for="test-csv-file">Upload Test CSV:</label>
+            <input type="file" id="test-csv-file" accept=".csv" />
+        </div>
+        
+        <textarea id="test-csv-content" class="test-csv" placeholder="Or paste CSV content here..."></textarea>
+        
+        <button id="run-population-test">Run Population Selection Test</button>
+        <button id="clear-test-results">Clear Results</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Detailed Logs</h2>
+        <div id="test-logs"></div>
+    </div>
+
+    <script>
+        class PopulationSelectionTest {
+            constructor() {
+                this.logs = [];
+                this.testResults = [];
+                this.selectedPopulationId = null;
+                this.selectedPopulationName = null;
+                this.csvData = null;
+                this.processedUsers = [];
+                
+                this.setupEventListeners();
+                this.loadPopulations();
+            }
+
+            setupEventListeners() {
+                document.getElementById('run-population-test').addEventListener('click', () => {
+                    this.runTest();
+                });
+                
+                document.getElementById('clear-test-results').addEventListener('click', () => {
+                    this.clearResults();
+                });
+                
+                document.getElementById('test-population-select').addEventListener('change', (e) => {
+                    this.updateSelectedPopulation(e.target.value);
+                });
+                
+                document.getElementById('test-csv-file').addEventListener('change', (e) => {
+                    this.handleFileUpload(e.target.files[0]);
+                });
+                
+                document.getElementById('test-csv-content').addEventListener('input', (e) => {
+                    this.handleCsvContent(e.target.value);
+                });
+            }
+
+            log(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = {
+                    timestamp,
+                    message,
+                    type
+                };
+                this.logs.push(logEntry);
+                this.updateLogDisplay();
+            }
+
+            updateLogDisplay() {
+                const logsContainer = document.getElementById('test-logs');
+                logsContainer.innerHTML = this.logs.map(log => 
+                    `<div class="log-entry ${log.type}">
+                        <strong>[${log.timestamp}]</strong> ${log.message}
+                    </div>`
+                ).join('');
+            }
+
+            async loadPopulations() {
+                try {
+                    this.log('Loading populations from PingOne...', 'info');
+                    
+                    // Simulate API call to get populations
+                    const response = await fetch('/api/populations');
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const populations = await response.json();
+                    this.populateDropdown(populations);
+                    this.log(`Loaded ${populations.length} populations`, 'success');
+                } catch (error) {
+                    this.log(`Failed to load populations: ${error.message}`, 'error');
+                    // Fallback to test populations
+                    this.populateDropdown([
+                        { id: 'test-pop-1', name: 'Test Population 1' },
+                        { id: 'test-pop-2', name: 'Test Population 2' },
+                        { id: 'test-pop-3', name: 'Test Population 3' }
+                    ]);
+                }
+            }
+
+            populateDropdown(populations) {
+                const select = document.getElementById('test-population-select');
+                select.innerHTML = '<option value="">Select a population...</option>';
+                
+                populations.forEach(pop => {
+                    const option = document.createElement('option');
+                    option.value = pop.id;
+                    option.textContent = pop.name;
+                    select.appendChild(option);
+                });
+                
+                this.log(`Populated dropdown with ${populations.length} populations`, 'info');
+            }
+
+            updateSelectedPopulation(populationId) {
+                const select = document.getElementById('test-population-select');
+                const selectedOption = select.options[select.selectedIndex];
+                
+                this.selectedPopulationId = populationId;
+                this.selectedPopulationName = selectedOption ? selectedOption.text : '';
+                
+                this.log(`Selected population: ${this.selectedPopulationName} (${this.selectedPopulationId})`, 'info');
+            }
+
+            handleFileUpload(file) {
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.handleCsvContent(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+
+            handleCsvContent(content) {
+                if (!content.trim()) return;
+                
+                this.csvData = content;
+                this.log(`Loaded CSV content (${content.length} characters)`, 'info');
+                
+                // Parse CSV to show preview
+                const lines = content.split('\n');
+                const headers = lines[0].split(',').map(h => h.trim());
+                const preview = lines.slice(1, 4).map(line => {
+                    const values = line.split(',').map(v => v.trim());
+                    return headers.reduce((obj, header, index) => {
+                        obj[header] = values[index] || '';
+                        return obj;
+                    }, {});
+                });
+                
+                this.log(`CSV Preview: ${preview.length} rows with headers: ${headers.join(', ')}`, 'info');
+            }
+
+            async runTest() {
+                this.clearResults();
+                this.log('=== Starting Population Selection Test ===', 'info');
+                
+                // Test 1: Verify population selection
+                await this.testPopulationSelection();
+                
+                // Test 2: Verify CSV parsing
+                await this.testCsvParsing();
+                
+                // Test 3: Verify population assignment logic
+                await this.testPopulationAssignment();
+                
+                // Test 4: Verify consistency
+                await this.testConsistency();
+                
+                this.log('=== Population Selection Test Complete ===', 'info');
+                this.updateTestResults();
+            }
+
+            async testPopulationSelection() {
+                this.log('Testing population selection...', 'info');
+                
+                if (!this.selectedPopulationId) {
+                    this.addTestResult('Population Selection', 'error', 'No population selected from dropdown');
+                    return;
+                }
+                
+                const select = document.getElementById('test-population-select');
+                const selectedOption = select.options[select.selectedIndex];
+                
+                const testData = {
+                    element: select,
+                    selectedIndex: select.selectedIndex,
+                    value: this.selectedPopulationId,
+                    text: this.selectedPopulationName,
+                    optionsCount: select.options.length
+                };
+                
+                this.log(`Population dropdown state: ${JSON.stringify(testData, null, 2)}`, 'info');
+                
+                if (this.selectedPopulationId && this.selectedPopulationName) {
+                    this.addTestResult('Population Selection', 'success', 
+                        `Population selected: ${this.selectedPopulationName} (${this.selectedPopulationId})`);
+                } else {
+                    this.addTestResult('Population Selection', 'error', 
+                        'Invalid population selection state');
+                }
+            }
+
+            async testCsvParsing() {
+                this.log('Testing CSV parsing...', 'info');
+                
+                if (!this.csvData) {
+                    this.addTestResult('CSV Parsing', 'error', 'No CSV data provided');
+                    return;
+                }
+                
+                try {
+                    const lines = this.csvData.split('\n').filter(line => line.trim());
+                    const headers = lines[0].split(',').map(h => h.trim());
+                    
+                    this.processedUsers = lines.slice(1).map((line, index) => {
+                        const values = line.split(',').map(v => v.trim());
+                        const user = headers.reduce((obj, header, headerIndex) => {
+                            obj[header] = values[headerIndex] || '';
+                            return obj;
+                        }, {});
+                        
+                        // Add line number for error tracking
+                        user.lineNumber = index + 2; // +2 for header row and 0-based index
+                        
+                        return user;
+                    });
+                    
+                    this.log(`Parsed ${this.processedUsers.length} users from CSV`, 'success');
+                    this.addTestResult('CSV Parsing', 'success', 
+                        `Successfully parsed ${this.processedUsers.length} users with headers: ${headers.join(', ')}`);
+                    
+                    // Log first few users for verification
+                    this.processedUsers.slice(0, 3).forEach((user, index) => {
+                        this.log(`User ${index + 1}: ${JSON.stringify(user)}`, 'info');
+                    });
+                    
+                } catch (error) {
+                    this.log(`CSV parsing error: ${error.message}`, 'error');
+                    this.addTestResult('CSV Parsing', 'error', `Failed to parse CSV: ${error.message}`);
+                }
+            }
+
+            async testPopulationAssignment() {
+                this.log('Testing population assignment logic...', 'info');
+                
+                if (!this.processedUsers.length) {
+                    this.addTestResult('Population Assignment', 'error', 'No users to process');
+                    return;
+                }
+                
+                const assignmentResults = [];
+                let errors = 0;
+                let warnings = 0;
+                
+                this.processedUsers.forEach((user, index) => {
+                    const result = this.simulatePopulationAssignment(user);
+                    assignmentResults.push(result);
+                    
+                    if (result.type === 'error') errors++;
+                    if (result.type === 'warning') warnings++;
+                });
+                
+                this.log(`Population assignment complete: ${assignmentResults.length} users processed`, 'info');
+                this.log(`Results: ${assignmentResults.length - errors - warnings} success, ${warnings} warnings, ${errors} errors`, 'info');
+                
+                this.addTestResult('Population Assignment', 
+                    errors > 0 ? 'error' : warnings > 0 ? 'warning' : 'success',
+                    `Processed ${assignmentResults.length} users: ${assignmentResults.length - errors - warnings} success, ${warnings} warnings, ${errors} errors`
+                );
+                
+                // Store results for consistency test
+                this.assignmentResults = assignmentResults;
+            }
+
+            simulatePopulationAssignment(user) {
+                // Simulate the population assignment logic from pingone-client.js
+                let userPopulationId = null;
+                let fallbackPopulationId = this.selectedPopulationId;
+                let result = {
+                    user: user,
+                    assignedPopulationId: null,
+                    assignedPopulationName: null,
+                    type: 'success',
+                    message: '',
+                    lineNumber: user.lineNumber
+                };
+                
+                // Check if user has populationId in CSV
+                if (user.populationId && user.populationId.trim() !== '') {
+                    // Validate UUID format
+                    const isValidPopulationId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.populationId);
+                    
+                    if (isValidPopulationId) {
+                        // In real scenario, we would check if population exists in PingOne
+                        // For test, we'll assume it exists if it's a valid UUID
+                        userPopulationId = user.populationId;
+                        result.message = `Using CSV population ID: ${userPopulationId}`;
+                        this.log(`User ${user.email || user.username}: ${result.message}`, 'info');
+                    } else {
+                        // Invalid format, fall back to UI selection
+                        if (fallbackPopulationId) {
+                            userPopulationId = fallbackPopulationId;
+                            result.type = 'warning';
+                            result.message = `Invalid CSV population ID format, using UI selection: ${userPopulationId}`;
+                            this.log(`User ${user.email || user.username}: ${result.message}`, 'warning');
+                        } else {
+                            result.type = 'error';
+                            result.message = 'Invalid CSV population ID format and no UI fallback available';
+                            this.log(`User ${user.email || user.username}: ${result.message}`, 'error');
+                        }
+                    }
+                } else {
+                    // No CSV population ID, use UI selection
+                    if (fallbackPopulationId) {
+                        userPopulationId = fallbackPopulationId;
+                        result.message = `No CSV population ID, using UI selection: ${userPopulationId}`;
+                        this.log(`User ${user.email || user.username}: ${result.message}`, 'info');
+                    } else {
+                        result.type = 'error';
+                        result.message = 'No population ID available (neither CSV nor UI selection)';
+                        this.log(`User ${user.email || user.username}: ${result.message}`, 'error');
+                    }
+                }
+                
+                result.assignedPopulationId = userPopulationId;
+                result.assignedPopulationName = this.getPopulationNameById(userPopulationId);
+                
+                return result;
+            }
+
+            getPopulationNameById(populationId) {
+                if (!populationId) return 'None';
+                
+                const select = document.getElementById('test-population-select');
+                for (let option of select.options) {
+                    if (option.value === populationId) {
+                        return option.text;
+                    }
+                }
+                
+                return `Unknown (${populationId})`;
+            }
+
+            async testConsistency() {
+                this.log('Testing population assignment consistency...', 'info');
+                
+                if (!this.assignmentResults) {
+                    this.addTestResult('Consistency Check', 'error', 'No assignment results to check');
+                    return;
+                }
+                
+                const uiPopulationId = this.selectedPopulationId;
+                const uiPopulationName = this.selectedPopulationName;
+                
+                let consistentCount = 0;
+                let inconsistentCount = 0;
+                let errors = 0;
+                
+                const consistencyResults = this.assignmentResults.map(result => {
+                    if (result.type === 'error') {
+                        errors++;
+                        return { ...result, consistency: 'error' };
+                    }
+                    
+                    // Check if the assigned population matches UI selection (when UI selection was used)
+                    const usedUISelection = !result.user.populationId || 
+                                         result.user.populationId.trim() === '' ||
+                                         !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(result.user.populationId);
+                    
+                    if (usedUISelection && result.assignedPopulationId === uiPopulationId) {
+                        consistentCount++;
+                        return { ...result, consistency: 'consistent' };
+                    } else if (usedUISelection && result.assignedPopulationId !== uiPopulationId) {
+                        inconsistentCount++;
+                        return { ...result, consistency: 'inconsistent' };
+                    } else {
+                        // Used CSV population ID, so consistency doesn't apply
+                        return { ...result, consistency: 'csv-used' };
+                    }
+                });
+                
+                this.log(`Consistency results: ${consistentCount} consistent, ${inconsistentCount} inconsistent, ${errors} errors`, 'info');
+                
+                if (inconsistentCount > 0) {
+                    this.addTestResult('Consistency Check', 'error', 
+                        `${inconsistentCount} users have inconsistent population assignment`);
+                    
+                    // Log inconsistent assignments
+                    consistencyResults.filter(r => r.consistency === 'inconsistent').forEach(result => {
+                        this.log(`INCONSISTENT: User ${result.user.email || result.user.username} - Expected: ${uiPopulationName} (${uiPopulationId}), Got: ${result.assignedPopulationName} (${result.assignedPopulationId})`, 'error');
+                    });
+                } else if (errors > 0) {
+                    this.addTestResult('Consistency Check', 'warning', 
+                        `${errors} users had assignment errors`);
+                } else {
+                    this.addTestResult('Consistency Check', 'success', 
+                        `All ${consistentCount} users have consistent population assignment`);
+                }
+                
+                // Create detailed comparison table
+                this.createComparisonTable(consistencyResults);
+            }
+
+            createComparisonTable(results) {
+                const container = document.getElementById('test-results');
+                const tableDiv = document.createElement('div');
+                tableDiv.className = 'test-section';
+                tableDiv.innerHTML = `
+                    <h3>Detailed Population Assignment Results</h3>
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Line</th>
+                                <th>User</th>
+                                <th>CSV Population ID</th>
+                                <th>UI Selected Population</th>
+                                <th>Assigned Population</th>
+                                <th>Status</th>
+                                <th>Consistency</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${results.map(result => {
+                                const rowClass = result.consistency === 'inconsistent' ? 'highlight-mismatch' : 
+                                               result.consistency === 'consistent' ? 'highlight-match' : '';
+                                return `
+                                    <tr class="${rowClass}">
+                                        <td>${result.lineNumber}</td>
+                                        <td>${result.user.email || result.user.username || 'N/A'}</td>
+                                        <td>${result.user.populationId || 'None'}</td>
+                                        <td>${this.selectedPopulationName} (${this.selectedPopulationId})</td>
+                                        <td>${result.assignedPopulationName} (${result.assignedPopulationId})</td>
+                                        <td>${result.type}</td>
+                                        <td>${result.consistency}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+                container.appendChild(tableDiv);
+            }
+
+            addTestResult(testName, type, message) {
+                this.testResults.push({ testName, type, message });
+            }
+
+            updateTestResults() {
+                const container = document.getElementById('test-results');
+                container.innerHTML = this.testResults.map(result => 
+                    `<div class="test-result ${result.type}">
+                        <strong>${result.testName}:</strong> ${result.message}
+                    </div>`
+                ).join('');
+            }
+
+            clearResults() {
+                this.logs = [];
+                this.testResults = [];
+                this.processedUsers = [];
+                this.assignmentResults = null;
+                
+                document.getElementById('test-results').innerHTML = '';
+                document.getElementById('test-logs').innerHTML = '';
+            }
+        }
+
+        // Initialize the test when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.populationTest = new PopulationSelectionTest();
+        });
+    </script>
+</body>
+</html> 

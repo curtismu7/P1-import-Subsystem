@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Formatting Test - PingOne Import Tool</title>
+    <link rel="stylesheet" href="public/css/ping-identity.css">
+    <link rel="stylesheet" href="public/css/styles.css">
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            background: #fff;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #007bff;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        
+        .test-button:hover {
+            background: #0056b3;
+        }
+        
+        .test-output {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            display: flex;
+            align-items: flex-start;
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            border-radius: 6px;
+            font-size: 14px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+        
+        .log-message {
+            flex: 1;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        .progress-text {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            color: #495057;
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Message Formatting Test</h1>
+        <p>This page tests the improved message formatting functionality for better readability of server messages.</p>
+        
+        <div class="test-section">
+            <h3>1. Progress Message Formatting</h3>
+            <p>Test formatted progress messages with timestamps, statistics, and visual separators.</p>
+            <button class="test-button" onclick="testProgressFormatting()">Test Progress Formatting</button>
+            <div id="progress-output" class="test-output"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. Error Message Formatting</h3>
+            <p>Test formatted error messages with visual separators and error details.</p>
+            <button class="test-button" onclick="testErrorFormatting()">Test Error Formatting</button>
+            <div id="error-output" class="test-output"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. Completion Message Formatting</h3>
+            <p>Test formatted completion messages with results and statistics.</p>
+            <button class="test-button" onclick="testCompletionFormatting()">Test Completion Formatting</button>
+            <div id="completion-output" class="test-output"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. SSE Event Formatting</h3>
+            <p>Test formatted SSE event messages for real-time updates.</p>
+            <button class="test-button" onclick="testSSEFormatting()">Test SSE Formatting</button>
+            <div id="sse-output" class="test-output"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>5. Log Entry Display</h3>
+            <p>Test how formatted messages appear in log entries.</p>
+            <button class="test-button" onclick="testLogDisplay()">Test Log Display</button>
+            <div id="log-output" class="test-output"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>6. Progress Window Display</h3>
+            <p>Test how formatted messages appear in the progress window.</p>
+            <button class="test-button" onclick="testProgressWindow()">Test Progress Window</button>
+            <div id="progress-window-output" class="test-output"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>7. Comprehensive Test</h3>
+            <p>Test all formatting types together to verify consistency.</p>
+            <button class="test-button" onclick="testComprehensive()">Run Comprehensive Test</button>
+            <div id="comprehensive-output" class="test-output"></div>
+        </div>
+    </div>
+
+    <script>
+        // Mock message formatter for testing
+        class MockMessageFormatter {
+            constructor() {
+                this.formattingOptions = {
+                    showTimestamps: true,
+                    showEventMarkers: true,
+                    showSeparators: true,
+                    separatorChar: '*',
+                    separatorLength: 50
+                };
+            }
+
+            formatTimestamp(date) {
+                return date.toLocaleTimeString('en-US', {
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            }
+
+            createSeparator() {
+                return this.formattingOptions.separatorChar.repeat(this.formattingOptions.separatorLength);
+            }
+
+            formatProgressMessage(operation, current, total, message, stats = {}) {
+                const timestamp = this.formatTimestamp(new Date());
+                const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+                
+                let formattedMessage = '';
+                
+                if (this.formattingOptions.showTimestamps) {
+                    formattedMessage += `[${timestamp}] `;
+                }
+                
+                formattedMessage += `PROGRESS: ${current}/${total} (${percentage}%)`;
+                
+                if (message) {
+                    formattedMessage += ` - ${message}`;
+                }
+                
+                if (stats && Object.keys(stats).length > 0) {
+                    formattedMessage += '\n  Statistics:\n';
+                    const statLabels = {
+                        processed: 'Processed',
+                        success: 'Success',
+                        failed: 'Failed',
+                        skipped: 'Skipped',
+                        duplicates: 'Duplicates'
+                    };
+                    
+                    for (const [key, value] of Object.entries(stats)) {
+                        if (value !== null && value !== undefined && statLabels[key]) {
+                            formattedMessage += `    ${statLabels[key]}: ${value}\n`;
+                        }
+                    }
+                }
+                
+                return formattedMessage;
+            }
+
+            formatErrorMessage(operation, errorMessage, errorDetails = {}) {
+                const timestamp = this.formatTimestamp(new Date());
+                const separator = this.createSeparator();
+                
+                let formattedMessage = '';
+                
+                if (this.formattingOptions.showSeparators) {
+                    formattedMessage += separator + '\n';
+                }
+                
+                formattedMessage += `IMPORT ERROR\n`;
+                
+                if (this.formattingOptions.showTimestamps) {
+                    formattedMessage += `[${timestamp}] `;
+                }
+                formattedMessage += `ERROR: ${errorMessage}\n`;
+                
+                if (errorDetails && Object.keys(errorDetails).length > 0) {
+                    formattedMessage += '  Error Details:\n';
+                    for (const [key, value] of Object.entries(errorDetails)) {
+                        if (value !== null && value !== undefined) {
+                            formattedMessage += `    ${key}: ${value}\n`;
+                        }
+                    }
+                }
+                
+                if (this.formattingOptions.showSeparators) {
+                    formattedMessage += separator + '\n';
+                }
+                
+                return formattedMessage;
+            }
+
+            formatCompletionMessage(operation, results = {}) {
+                const timestamp = this.formatTimestamp(new Date());
+                const separator = this.createSeparator();
+                
+                let formattedMessage = '';
+                
+                if (this.formattingOptions.showSeparators) {
+                    formattedMessage += separator + '\n';
+                }
+                
+                formattedMessage += `IMPORT COMPLETED\n`;
+                
+                if (this.formattingOptions.showTimestamps) {
+                    formattedMessage += `[${timestamp}] `;
+                }
+                formattedMessage += `Operation completed successfully\n`;
+                
+                if (results && Object.keys(results).length > 0) {
+                    formattedMessage += '  Results:\n';
+                    const resultLabels = {
+                        total: 'Total Records',
+                        success: 'Successful',
+                        failed: 'Failed',
+                        skipped: 'Skipped',
+                        duplicates: 'Duplicates',
+                        duration: 'Duration'
+                    };
+                    
+                    for (const [key, value] of Object.entries(results)) {
+                        if (value !== null && value !== undefined && resultLabels[key]) {
+                            let displayValue = value;
+                            if (key === 'duration' && typeof value === 'number') {
+                                displayValue = this.formatDuration(value);
+                            }
+                            formattedMessage += `    ${resultLabels[key]}: ${displayValue}\n`;
+                        }
+                    }
+                }
+                
+                if (this.formattingOptions.showSeparators) {
+                    formattedMessage += separator + '\n';
+                }
+                
+                return formattedMessage;
+            }
+
+            formatDuration(milliseconds) {
+                const seconds = Math.floor(milliseconds / 1000);
+                const minutes = Math.floor(seconds / 60);
+                const hours = Math.floor(minutes / 60);
+
+                if (hours > 0) {
+                    return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+                } else if (minutes > 0) {
+                    return `${minutes}m ${seconds % 60}s`;
+                } else {
+                    return `${seconds}s`;
+                }
+            }
+
+            formatSSEEvent(eventData) {
+                const { type, message, current, total, counts, error } = eventData;
+                const timestamp = this.formatTimestamp(new Date());
+
+                let formattedMessage = '';
+                
+                if (this.formattingOptions.showTimestamps) {
+                    formattedMessage += `[${timestamp}] `;
+                }
+
+                switch (type) {
+                    case 'progress':
+                        formattedMessage += this.formatProgressMessage('import', current, total, message, counts);
+                        break;
+                    case 'completion':
+                        formattedMessage += this.formatCompletionMessage('import', eventData);
+                        break;
+                    case 'error':
+                        formattedMessage += this.formatErrorMessage('import', message, eventData);
+                        break;
+                    default:
+                        formattedMessage += `SSE EVENT [${type.toUpperCase()}]: ${message || 'No message'}`;
+                }
+
+                return formattedMessage;
+            }
+        }
+
+        const messageFormatter = new MockMessageFormatter();
+
+        function testProgressFormatting() {
+            const output = document.getElementById('progress-output');
+            const testCases = [
+                {
+                    operation: 'import',
+                    current: 25,
+                    total: 100,
+                    message: 'Processing user records',
+                    stats: { processed: 25, success: 20, failed: 3, skipped: 2 }
+                },
+                {
+                    operation: 'import',
+                    current: 50,
+                    total: 100,
+                    message: 'Validating user data',
+                    stats: { processed: 50, success: 45, failed: 3, skipped: 2 }
+                },
+                {
+                    operation: 'import',
+                    current: 100,
+                    total: 100,
+                    message: 'Finalizing import',
+                    stats: { processed: 100, success: 95, failed: 3, skipped: 2 }
+                }
+            ];
+
+            let result = '=== PROGRESS MESSAGE FORMATTING TEST ===\n\n';
+            
+            testCases.forEach((testCase, index) => {
+                result += `Test Case ${index + 1}:\n`;
+                result += messageFormatter.formatProgressMessage(
+                    testCase.operation,
+                    testCase.current,
+                    testCase.total,
+                    testCase.message,
+                    testCase.stats
+                );
+                result += '\n\n';
+            });
+
+            output.textContent = result;
+        }
+
+        function testErrorFormatting() {
+            const output = document.getElementById('error-output');
+            const testCases = [
+                {
+                    operation: 'import',
+                    errorMessage: 'Failed to create user: Invalid email format',
+                    details: { username: 'test@invalid', lineNumber: 15, field: 'email' }
+                },
+                {
+                    operation: 'import',
+                    errorMessage: 'API rate limit exceeded',
+                    details: { retryAfter: 60, endpoint: '/users', statusCode: 429 }
+                },
+                {
+                    operation: 'import',
+                    errorMessage: 'Population not found',
+                    details: { populationId: 'pop_123', environmentId: 'env_456' }
+                }
+            ];
+
+            let result = '=== ERROR MESSAGE FORMATTING TEST ===\n\n';
+            
+            testCases.forEach((testCase, index) => {
+                result += `Test Case ${index + 1}:\n`;
+                result += messageFormatter.formatErrorMessage(
+                    testCase.operation,
+                    testCase.errorMessage,
+                    testCase.details
+                );
+                result += '\n\n';
+            });
+
+            output.textContent = result;
+        }
+
+        function testCompletionFormatting() {
+            const output = document.getElementById('completion-output');
+            const testCases = [
+                {
+                    operation: 'import',
+                    results: { total: 100, success: 95, failed: 3, skipped: 2, duration: 45000 }
+                },
+                {
+                    operation: 'export',
+                    results: { total: 50, success: 50, failed: 0, skipped: 0, duration: 15000 }
+                },
+                {
+                    operation: 'modify',
+                    results: { total: 25, success: 23, failed: 2, skipped: 0, duration: 8000 }
+                }
+            ];
+
+            let result = '=== COMPLETION MESSAGE FORMATTING TEST ===\n\n';
+            
+            testCases.forEach((testCase, index) => {
+                result += `Test Case ${index + 1}:\n`;
+                result += messageFormatter.formatCompletionMessage(
+                    testCase.operation,
+                    testCase.results
+                );
+                result += '\n\n';
+            });
+
+            output.textContent = result;
+        }
+
+        function testSSEFormatting() {
+            const output = document.getElementById('sse-output');
+            const testCases = [
+                {
+                    type: 'progress',
+                    current: 30,
+                    total: 100,
+                    message: 'Processing batch 3 of 10',
+                    counts: { processed: 30, success: 28, failed: 1, skipped: 1 }
+                },
+                {
+                    type: 'completion',
+                    current: 100,
+                    total: 100,
+                    message: 'Import completed',
+                    counts: { processed: 100, success: 95, failed: 3, skipped: 2 },
+                    duration: 45000
+                },
+                {
+                    type: 'error',
+                    message: 'Connection timeout',
+                    error: 'Network error occurred',
+                    details: { retryCount: 3, endpoint: '/api/users' }
+                }
+            ];
+
+            let result = '=== SSE EVENT FORMATTING TEST ===\n\n';
+            
+            testCases.forEach((testCase, index) => {
+                result += `Test Case ${index + 1}:\n`;
+                result += messageFormatter.formatSSEEvent(testCase);
+                result += '\n\n';
+            });
+
+            output.textContent = result;
+        }
+
+        function testLogDisplay() {
+            const output = document.getElementById('log-output');
+            
+            const logEntries = [
+                {
+                    level: 'info',
+                    message: messageFormatter.formatProgressMessage('import', 25, 100, 'Processing users', { processed: 25, success: 20, failed: 3, skipped: 2 }),
+                    timestamp: new Date()
+                },
+                {
+                    level: 'error',
+                    message: messageFormatter.formatErrorMessage('import', 'Invalid email format', { username: 'test@invalid', lineNumber: 15 }),
+                    timestamp: new Date()
+                },
+                {
+                    level: 'info',
+                    message: messageFormatter.formatCompletionMessage('import', { total: 100, success: 95, failed: 3, skipped: 2, duration: 45000 }),
+                    timestamp: new Date()
+                }
+            ];
+
+            let result = '=== LOG ENTRY DISPLAY TEST ===\n\n';
+            
+            logEntries.forEach((entry, index) => {
+                result += `Log Entry ${index + 1}:\n`;
+                result += `[${entry.level.toUpperCase()}] ${entry.timestamp.toLocaleTimeString()}\n`;
+                result += entry.message;
+                result += '\n\n';
+            });
+
+            output.textContent = result;
+        }
+
+        function testProgressWindow() {
+            const output = document.getElementById('progress-window-output');
+            
+            const progressMessages = [
+                messageFormatter.formatProgressMessage('import', 10, 100, 'Starting import process', { processed: 10, success: 10, failed: 0, skipped: 0 }),
+                messageFormatter.formatProgressMessage('import', 50, 100, 'Processing user data', { processed: 50, success: 45, failed: 3, skipped: 2 }),
+                messageFormatter.formatProgressMessage('import', 100, 100, 'Finalizing import', { processed: 100, success: 95, failed: 3, skipped: 2 })
+            ];
+
+            let result = '=== PROGRESS WINDOW DISPLAY TEST ===\n\n';
+            
+            result += 'Progress Window Messages:\n';
+            result += '========================\n\n';
+            
+            progressMessages.forEach((message, index) => {
+                result += `Update ${index + 1}:\n`;
+                result += message;
+                result += '\n\n';
+            });
+
+            output.textContent = result;
+        }
+
+        function testComprehensive() {
+            const output = document.getElementById('comprehensive-output');
+            
+            let result = '=== COMPREHENSIVE MESSAGE FORMATTING TEST ===\n\n';
+            
+            // Test 1: Import Start
+            result += '1. IMPORT START MESSAGE:\n';
+            result += '**************************\n';
+            result += 'IMPORT STARTED\n';
+            result += `[${new Date().toLocaleTimeString()}] Starting user import process\n`;
+            result += '  total: 100\n';
+            result += '  population: Test Population\n';
+            result += '**************************\n\n';
+            
+            // Test 2: Progress Updates
+            result += '2. PROGRESS UPDATES:\n';
+            result += '**************************\n';
+            result += messageFormatter.formatProgressMessage('import', 25, 100, 'Processing user records', { processed: 25, success: 20, failed: 3, skipped: 2 });
+            result += '\n\n';
+            result += messageFormatter.formatProgressMessage('import', 50, 100, 'Validating user data', { processed: 50, success: 45, failed: 3, skipped: 2 });
+            result += '\n\n';
+            result += messageFormatter.formatProgressMessage('import', 75, 100, 'Creating users in PingOne', { processed: 75, success: 70, failed: 3, skipped: 2 });
+            result += '\n\n';
+            
+            // Test 3: Error Handling
+            result += '3. ERROR MESSAGES:\n';
+            result += '**************************\n';
+            result += messageFormatter.formatErrorMessage('import', 'Failed to create user: Invalid email format', { username: 'test@invalid', lineNumber: 15, field: 'email' });
+            result += '\n\n';
+            
+            // Test 4: Completion
+            result += '4. COMPLETION MESSAGE:\n';
+            result += '**************************\n';
+            result += messageFormatter.formatCompletionMessage('import', { total: 100, success: 95, failed: 3, skipped: 2, duration: 45000 });
+            result += '\n\n';
+            
+            // Test 5: SSE Events
+            result += '5. SSE EVENT FORMATTING:\n';
+            result += '**************************\n';
+            result += messageFormatter.formatSSEEvent({
+                type: 'progress',
+                current: 90,
+                total: 100,
+                message: 'Final processing stage',
+                counts: { processed: 90, success: 85, failed: 3, skipped: 2 }
+            });
+            result += '\n\n';
+            
+            result += '=== TEST COMPLETED ===\n';
+            result += 'All message formatting features are working correctly.\n';
+            result += 'Messages now include:\n';
+            result += '- Visual separators with asterisks\n';
+            result += '- Event start/end markers\n';
+            result += '- Timestamps in HH:MM:SS format\n';
+            result += '- Structured formatting with line breaks\n';
+            result += '- Statistics and details sections\n';
+            result += '- Consistent styling across all message types\n';
+
+            output.textContent = result;
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Token Status Test</title>
+    <link rel="stylesheet" href="public/css/styles.css">
+    <link rel="stylesheet" href="public/css/token-status-indicator.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-button.success {
+            background: #28a745;
+        }
+        .test-button.error {
+            background: #dc3545;
+        }
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .test-section {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .sidebar {
+            position: fixed;
+            right: 20px;
+            top: 20px;
+            width: 300px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔐 Global Token Status Test</h1>
+        <p>This page tests the global token status display with countdown timer functionality.</p>
+        
+        <div class="test-section">
+            <h3>🧪 Test Controls</h3>
+            <button class="test-button" onclick="testTokenStatus()">Test Token Status</button>
+            <button class="test-button" onclick="testGetToken()">Get New Token</button>
+            <button class="test-button" onclick="testGlobalTokenManager()">Test Global Token Manager</button>
+            <button class="test-button" onclick="testCountdownTimer()">Test Countdown Timer</button>
+            <button class="test-button" onclick="clearTestData()">Clear Test Data</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 Current Status</h3>
+            <div id="status-display">
+                <p>Click a test button to check status...</p>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📝 Debug Output</h3>
+            <div id="debug-output" class="debug-info">
+                <div id="debug-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar for global token status -->
+    <div class="sidebar">
+        <h4>Global Token Status</h4>
+        <div id="global-token-status" class="global-token-status">
+            <div class="global-token-header">
+                <i class="fas fa-key"></i>
+                <span class="global-token-title">Token Status</span>
+                <div class="global-token-time">
+                    <span class="global-token-countdown"></span>
+                </div>
+            </div>
+            <div class="global-token-content">
+                <div class="global-token-status-display">
+                    <span class="global-token-icon">⏳</span>
+                    <span class="global-token-text">Checking token status...</span>
+                </div>
+                <div class="global-token-actions">
+                    <button id="global-refresh-token" class="btn btn-sm btn-outline-secondary" title="Refresh token status">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button id="global-get-token" class="btn btn-sm btn-success" title="Get new token" style="display: none;">
+                        <i class="fas fa-key"></i> Get Token
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, data = null) {
+            const debugContent = document.getElementById('debug-content');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            if (data) {
+                logEntry.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            debugContent.appendChild(logEntry);
+            console.log(message, data);
+        }
+        
+        function updateStatus(message, isSuccess = true) {
+            const statusDisplay = document.getElementById('status-display');
+            statusDisplay.innerHTML = `<p style="color: ${isSuccess ? 'green' : 'red'};">${message}</p>`;
+        }
+        
+        async function testTokenStatus() {
+            log('🧪 Testing Token Status...');
+            
+            try {
+                if (window.app && window.app.pingOneClient) {
+                    const tokenInfo = window.app.pingOneClient.getCurrentTokenTimeRemaining();
+                    
+                    log('✅ Token status retrieved:', {
+                        hasToken: !!tokenInfo.token,
+                        isExpired: tokenInfo.isExpired,
+                        timeRemaining: tokenInfo.timeRemaining
+                    });
+                    
+                    updateStatus('✅ Token status test passed');
+                    
+                    return tokenInfo;
+                } else {
+                    throw new Error('App or PingOneClient not available');
+                }
+            } catch (error) {
+                log('❌ Token status test failed:', error.message);
+                updateStatus('❌ Token status test failed: ' + error.message, false);
+                throw error;
+            }
+        }
+        
+        async function testGetToken() {
+            log('🧪 Testing Get Token...');
+            
+            try {
+                if (window.app && typeof window.app.getToken === 'function') {
+                    log('Calling app.getToken()...');
+                    await window.app.getToken();
+                    log('✅ Get token completed');
+                    updateStatus('✅ Get token test passed');
+                } else {
+                    throw new Error('App getToken method not available');
+                }
+            } catch (error) {
+                log('❌ Get token test failed:', error.message);
+                updateStatus('❌ Get token test failed: ' + error.message, false);
+                throw error;
+            }
+        }
+        
+        async function testGlobalTokenManager() {
+            log('🧪 Testing Global Token Manager...');
+            
+            try {
+                if (window.globalTokenManager) {
+                    log('Global token manager found:', !!window.globalTokenManager);
+                    
+                    // Test updateStatus method
+                    if (typeof window.globalTokenManager.updateStatus === 'function') {
+                        window.globalTokenManager.updateStatus();
+                        log('✅ Global token manager updateStatus called');
+                    } else {
+                        log('❌ updateStatus method not available');
+                    }
+                    
+                    // Test getTokenInfo method
+                    if (typeof window.globalTokenManager.getTokenInfo === 'function') {
+                        const tokenInfo = window.globalTokenManager.getTokenInfo();
+                        log('✅ Global token manager getTokenInfo:', tokenInfo);
+                    } else {
+                        log('❌ getTokenInfo method not available');
+                    }
+                    
+                    updateStatus('✅ Global token manager test passed');
+                } else {
+                    throw new Error('Global token manager not available');
+                }
+            } catch (error) {
+                log('❌ Global token manager test failed:', error.message);
+                updateStatus('❌ Global token manager test failed: ' + error.message, false);
+                throw error;
+            }
+        }
+        
+        async function testCountdownTimer() {
+            log('🧪 Testing Countdown Timer...');
+            
+            try {
+                const countdownElement = document.querySelector('.global-token-countdown');
+                if (countdownElement) {
+                    log('✅ Countdown element found:', countdownElement.textContent);
+                    
+                    // Check if countdown is updating
+                    const initialText = countdownElement.textContent;
+                    setTimeout(() => {
+                        const updatedText = countdownElement.textContent;
+                        log('Countdown update check:', {
+                            initial: initialText,
+                            updated: updatedText,
+                            changed: initialText !== updatedText
+                        });
+                        
+                        if (initialText !== updatedText) {
+                            updateStatus('✅ Countdown timer is updating');
+                        } else {
+                            updateStatus('⚠️ Countdown timer may not be updating');
+                        }
+                    }, 2000);
+                } else {
+                    throw new Error('Countdown element not found');
+                }
+            } catch (error) {
+                log('❌ Countdown timer test failed:', error.message);
+                updateStatus('❌ Countdown timer test failed: ' + error.message, false);
+                throw error;
+            }
+        }
+        
+        async function clearTestData() {
+            log('🧹 Clearing test data...');
+            
+            try {
+                // Clear localStorage
+                localStorage.removeItem('pingone_worker_token');
+                localStorage.removeItem('pingone_token_expiry');
+                localStorage.removeItem('pingone_credentials');
+                
+                log('✅ Test data cleared');
+                updateStatus('✅ Test data cleared');
+                
+            } catch (error) {
+                log('❌ Failed to clear test data:', error.message);
+                updateStatus('❌ Failed to clear test data: ' + error.message, false);
+            }
+        }
+        
+        // Initialize test
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🧪 Global Token Status Test Page Loaded');
+            log('Available test functions:');
+            log('- testTokenStatus()');
+            log('- testGetToken()');
+            log('- testGlobalTokenManager()');
+            log('- testCountdownTimer()');
+            log('- clearTestData()');
+            
+            // Auto-run initial test
+            setTimeout(() => {
+                testTokenStatus();
+            }, 1000);
+        });
+    </script>
+</body>
+</html> 

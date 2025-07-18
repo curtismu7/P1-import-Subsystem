@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete Populations Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .results { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Delete Populations Fix Test</h1>
+    
+    <div class="test-section info">
+        <h3>🔧 What was fixed:</h3>
+        <ul>
+            <li><strong>Populations endpoint</strong> - Fixed "Only absolute URLs are supported" error</li>
+            <li><strong>Delete endpoint</strong> - Fixed "Only absolute URLs are supported" error</li>
+            <li><strong>API base URL</strong> - Now using token manager's getApiBaseUrl() method</li>
+            <li><strong>Environment ID</strong> - Now using token manager's getEnvironmentId() method</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>🧪 Test Populations Endpoint</h3>
+        <button class="btn-primary" onclick="testPopulations()">Test /api/populations</button>
+        <div id="populations-result" class="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>🧪 Test Delete Endpoint</h3>
+        <button class="btn-danger" onclick="testDelete()">Test /api/delete-users</button>
+        <div id="delete-result" class="results"></div>
+    </div>
+
+    <div class="test-section success">
+        <h3>✅ Expected Results:</h3>
+        <ul>
+            <li><strong>Populations endpoint</strong> - Should return 400 Bad Request (expected with test data) but NOT "Only absolute URLs are supported"</li>
+            <li><strong>Delete endpoint</strong> - Should return 400 Bad Request (expected with test data) but NOT "Only absolute URLs are supported"</li>
+            <li><strong>Frontend</strong> - Delete and Export managers should now load populations without errors</li>
+        </ul>
+    </div>
+
+    <script>
+        async function testPopulations() {
+            const resultDiv = document.getElementById('populations-result');
+            resultDiv.innerHTML = '<p>Testing populations endpoint...</p>';
+            
+            try {
+                const response = await fetch('/api/populations');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Populations endpoint working!</h4>
+                            <p>Status: ${response.status}</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Populations endpoint error</h4>
+                            <p>Status: ${response.status}</p>
+                            <p>Error: ${data.error || 'Unknown error'}</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Network error</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testDelete() {
+            const resultDiv = document.getElementById('delete-result');
+            resultDiv.innerHTML = '<p>Testing delete endpoint...</p>';
+            
+            try {
+                const response = await fetch('/api/delete-users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: 'population',
+                        populationId: 'test-population-id'
+                    })
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Delete endpoint working!</h4>
+                            <p>Status: ${response.status}</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Delete endpoint error</h4>
+                            <p>Status: ${response.status}</p>
+                            <p>Error: ${data.error || 'Unknown error'}</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Network error</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html> 

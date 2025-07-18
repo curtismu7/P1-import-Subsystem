@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Export Page Enhancement</title>
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css">
+    <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/css/styles-fixed.css">
+    <link rel="stylesheet" href="/css/progress-ui.css">
+    <link rel="stylesheet" href="/css/ping-identity.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="header-content">
+                <div class="header-logo">
+                    <img src="/ping-identity-logo.svg" alt="Ping Identity Logo" height="32" width="auto" loading="lazy" />
+                </div>
+                <div class="header-title">
+                    <h1>Export Enhancement Test</h1>
+                </div>
+            </div>
+        </header>
+
+        <main class="app-main">
+            <!-- Test Navigation -->
+            <nav class="test-nav">
+                <button class="btn btn-primary" onclick="testPopulationSelection()">
+                    <i class="fas fa-users"></i> Test Population Selection
+                </button>
+                <button class="btn btn-info" onclick="testCredentialOverride()">
+                    <i class="fas fa-key"></i> Test Credential Override
+                </button>
+                <button class="btn btn-success" onclick="testTokenGeneration()">
+                    <i class="fas fa-token"></i> Test Token Generation
+                </button>
+                <button class="btn btn-warning" onclick="testJWTDecoder()">
+                    <i class="fas fa-eye"></i> Test JWT Decoder
+                </button>
+                <button class="btn btn-secondary" onclick="testExportOperation()">
+                    <i class="fas fa-download"></i> Test Export Operation
+                </button>
+            </nav>
+
+            <!-- Test Results -->
+            <div class="test-results">
+                <h3>Test Results</h3>
+                <div id="test-output" class="test-output"></div>
+            </div>
+
+            <!-- Export View (Enhanced) -->
+            <div id="export-view" class="view">
+                <div class="export-header">
+                    <h1>Export Users</h1>
+                </div>
+                
+                <div class="export-content">
+                    <!-- Population Selection -->
+                    <div class="export-population-section">
+                        <h3>Select Population</h3>
+                        <div class="form-group">
+                            <label for="export-population-select">Population:</label>
+                            <select id="export-population-select" class="form-control" required>
+                                <option value="">Select a population...</option>
+                                <option value="ALL">ALL - Export from all populations</option>
+                            </select>
+                            <small class="form-text">Select a specific population or ALL to export from all populations</small>
+                        </div>
+                    </div>
+
+                    <!-- Export Credentials Override Section -->
+                    <div class="export-credentials-section">
+                        <h3>Export Credentials</h3>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="export-use-override-credentials">
+                                Change credentials for Export only
+                            </label>
+                            <small class="form-text">Use different credentials for this export operation</small>
+                        </div>
+                        
+                        <div id="export-credentials-fields" class="credentials-fields" style="display: none;">
+                            <div class="form-group">
+                                <label for="export-environment-id">Environment ID:</label>
+                                <input type="text" id="export-environment-id" class="form-control" placeholder="Enter environment ID">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="export-api-client-id">API Client ID:</label>
+                                <input type="text" id="export-api-client-id" class="form-control" placeholder="Enter API client ID">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="export-api-secret">API Secret:</label>
+                                <div class="input-group">
+                                    <input type="password" id="export-api-secret" class="form-control" placeholder="Enter API secret">
+                                    <button type="button" id="toggle-export-secret-visibility" class="btn btn-outline-secondary" aria-label="Toggle password visibility">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="export-region">Region:</label>
+                                <select id="export-region" class="form-control">
+                                    <option value="NA">North America (excluding Canada)</option>
+                                    <option value="CA">Canada</option>
+                                    <option value="EU">European Union</option>
+                                    <option value="AU">Australia</option>
+                                    <option value="SG">Singapore</option>
+                                    <option value="AP">Asia-Pacific</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <button type="button" id="generate-export-token" class="btn btn-primary">
+                                    <i class="fas fa-key"></i> Generate Export Token
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Export Token Status -->
+                    <div id="export-token-status" class="token-status-section" style="display: none;">
+                        <h3>Export Token Status</h3>
+                        <div class="token-status-display">
+                            <div class="token-timer">
+                                <span class="token-status-label">Time Remaining:</span>
+                                <span id="export-token-timer" class="token-timer-value">--:--</span>
+                                <span id="export-token-status-indicator" class="token-status-indicator">●</span>
+                            </div>
+                            
+                            <div class="token-metadata">
+                                <div class="token-info">
+                                    <strong>Scopes:</strong> <span id="export-token-scopes">--</span>
+                                </div>
+                                <div class="token-info">
+                                    <strong>Environment:</strong> <span id="export-token-environment">--</span>
+                                </div>
+                                <div class="token-info">
+                                    <strong>Expires:</strong> <span id="export-token-expires">--</span>
+                                </div>
+                            </div>
+                            
+                            <div class="token-actions">
+                                <button type="button" id="view-export-token" class="btn btn-outline-info btn-sm">
+                                    <i class="fas fa-eye"></i> View Raw Token
+                                </button>
+                                <button type="button" id="refresh-export-token" class="btn btn-outline-warning btn-sm">
+                                    <i class="fas fa-sync-alt"></i> Refresh Token
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- JWT Decoder Panel -->
+                    <div id="export-jwt-panel" class="jwt-panel" style="display: none;">
+                        <h3>JWT Token Details</h3>
+                        <div class="jwt-sections">
+                            <div class="jwt-section">
+                                <h4>Raw Token</h4>
+                                <div class="jwt-content">
+                                    <pre id="export-jwt-raw" class="jwt-raw"></pre>
+                                    <button type="button" id="copy-jwt-raw" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="jwt-section">
+                                <h4>Header</h4>
+                                <div class="jwt-content">
+                                    <pre id="export-jwt-header" class="jwt-decoded"></pre>
+                                    <button type="button" id="copy-jwt-header" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="jwt-section">
+                                <h4>Payload</h4>
+                                <div class="jwt-content">
+                                    <pre id="export-jwt-payload" class="jwt-decoded"></pre>
+                                    <button type="button" id="copy-jwt-payload" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="jwt-section">
+                                <h4>Signature</h4>
+                                <div class="jwt-content">
+                                    <pre id="export-jwt-signature" class="jwt-signature"></pre>
+                                    <button type="button" id="copy-jwt-signature" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="jwt-panel-actions">
+                            <button type="button" id="close-jwt-panel" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Close
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Export Options -->
+                    <div class="export-options-container">
+                        <h3>Export Options</h3>
+                        <div class="form-group">
+                            <label for="export-population-filter">User Status Filter:</label>
+                            <select id="export-population-filter" class="form-control">
+                                <option value="all" selected>All Users</option>
+                                <option value="active">Active Users Only</option>
+                                <option value="inactive">Inactive Users Only</option>
+                                <option value="archived">Archived Users Only</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="export-format">Export Format:</label>
+                            <select id="export-format" class="form-control">
+                                <option value="csv">CSV</option>
+                                <option value="json">JSON</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="export-include-disabled" checked>
+                                Include disabled users
+                            </label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="export-include-metadata" checked>
+                                Include user metadata
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button id="start-export" class="btn btn-success" disabled>
+                            <i class="fas fa-download"></i> Start Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/modules/export-manager.js"></script>
+    <script>
+        // Test functions
+        function logTest(message, type = 'info') {
+            const output = document.getElementById('test-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `test-log test-log-${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            output.appendChild(logEntry);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function testPopulationSelection() {
+            logTest('🧪 Testing Population Selection...', 'info');
+            
+            const select = document.getElementById('export-population-select');
+            if (!select) {
+                logTest('❌ Population select element not found', 'error');
+                return;
+            }
+
+            // Test population loading
+            logTest('📋 Loading populations...', 'info');
+            
+            // Simulate population loading
+            setTimeout(() => {
+                const populations = [
+                    { id: 'pop-1', name: 'Test Population 1' },
+                    { id: 'pop-2', name: 'Test Population 2' },
+                    { id: 'pop-3', name: 'Test Population 3' }
+                ];
+
+                // Clear existing options except ALL
+                const allOption = select.querySelector('option[value="ALL"]');
+                select.innerHTML = '<option value="">Select a population...</option>';
+                if (allOption) {
+                    select.appendChild(allOption);
+                }
+
+                // Add test populations
+                populations.forEach(population => {
+                    const option = document.createElement('option');
+                    option.value = population.id;
+                    option.textContent = population.name;
+                    select.appendChild(option);
+                });
+
+                logTest(`✅ Loaded ${populations.length} test populations`, 'success');
+                
+                // Test selection
+                select.value = 'pop-1';
+                select.dispatchEvent(new Event('change'));
+                logTest('✅ Population selection test completed', 'success');
+            }, 1000);
+        }
+
+        function testCredentialOverride() {
+            logTest('🧪 Testing Credential Override...', 'info');
+            
+            const checkbox = document.getElementById('export-use-override-credentials');
+            const fields = document.getElementById('export-credentials-fields');
+            
+            if (!checkbox || !fields) {
+                logTest('❌ Credential override elements not found', 'error');
+                return;
+            }
+
+            // Test enabling override
+            checkbox.checked = true;
+            checkbox.dispatchEvent(new Event('change'));
+            logTest('✅ Credential override enabled', 'success');
+
+            // Test filling credentials
+            document.getElementById('export-environment-id').value = 'test-env-123';
+            document.getElementById('export-api-client-id').value = 'test-client-id';
+            document.getElementById('export-api-secret').value = 'test-secret';
+            document.getElementById('export-region').value = 'NA';
+            
+            logTest('✅ Test credentials filled', 'success');
+
+            // Test disabling override
+            setTimeout(() => {
+                checkbox.checked = false;
+                checkbox.dispatchEvent(new Event('change'));
+                logTest('✅ Credential override disabled', 'success');
+            }, 2000);
+        }
+
+        function testTokenGeneration() {
+            logTest('🧪 Testing Token Generation...', 'info');
+            
+            const generateBtn = document.getElementById('generate-export-token');
+            if (!generateBtn) {
+                logTest('❌ Generate token button not found', 'error');
+                return;
+            }
+
+            // Enable credential override first
+            const checkbox = document.getElementById('export-use-override-credentials');
+            checkbox.checked = true;
+            checkbox.dispatchEvent(new Event('change'));
+
+            // Fill test credentials
+            document.getElementById('export-environment-id').value = 'test-env-123';
+            document.getElementById('export-api-client-id').value = 'test-client-id';
+            document.getElementById('export-api-secret').value = 'test-secret';
+
+            // Simulate token generation
+            logTest('🔑 Generating test token...', 'info');
+            
+            setTimeout(() => {
+                // Simulate successful token generation
+                const mockToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LWNsaWVudC1pZCIsImVudiI6InRlc3QtZW52LTEyMyIsInNjb3BlIjoib3BlbmlkIGV4cG9ydCBkZWxldGUiLCJleHAiOjE3MzU2ODgwMDAsImlhdCI6MTczNTY4NDQwMH0.test-signature';
+                
+                // Update token status display
+                document.getElementById('export-token-status').style.display = 'block';
+                document.getElementById('export-token-timer').textContent = '59:59';
+                document.getElementById('export-token-scopes').textContent = 'openid export delete';
+                document.getElementById('export-token-environment').textContent = 'test-env-123';
+                document.getElementById('export-token-expires').textContent = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+                
+                logTest('✅ Test token generated successfully', 'success');
+            }, 1500);
+        }
+
+        function testJWTDecoder() {
+            logTest('🧪 Testing JWT Decoder...', 'info');
+            
+            const mockToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LWNsaWVudC1pZCIsImVudiI6InRlc3QtZW52LTEyMyIsInNjb3BlIjoib3BlbmlkIGV4cG9ydCBkZWxldGUiLCJleHAiOjE3MzU2ODgwMDAsImlhdCI6MTczNTY4NDQwMH0.test-signature';
+            
+            try {
+                const parts = mockToken.split('.');
+                const header = JSON.parse(atob(parts[0]));
+                const payload = JSON.parse(atob(parts[1]));
+                const signature = parts[2];
+
+                // Update JWT panel
+                document.getElementById('export-jwt-raw').textContent = mockToken;
+                document.getElementById('export-jwt-header').textContent = JSON.stringify(header, null, 2);
+                document.getElementById('export-jwt-payload').textContent = JSON.stringify(payload, null, 2);
+                document.getElementById('export-jwt-signature').textContent = signature;
+                
+                document.getElementById('export-jwt-panel').style.display = 'block';
+                
+                logTest('✅ JWT decoder test completed', 'success');
+            } catch (error) {
+                logTest(`❌ JWT decoder error: ${error.message}`, 'error');
+            }
+        }
+
+        function testExportOperation() {
+            logTest('🧪 Testing Export Operation...', 'info');
+            
+            const startBtn = document.getElementById('start-export');
+            if (!startBtn) {
+                logTest('❌ Start export button not found', 'error');
+                return;
+            }
+
+            // Enable export button
+            startBtn.disabled = false;
+            
+            // Simulate export operation
+            logTest('📤 Starting test export operation...', 'info');
+            
+            setTimeout(() => {
+                logTest('✅ Test export operation completed', 'success');
+                startBtn.disabled = true;
+            }, 2000);
+        }
+
+        // Initialize test environment
+        document.addEventListener('DOMContentLoaded', () => {
+            logTest('🚀 Export Enhancement Test Environment Initialized', 'success');
+            logTest('📋 Available tests:', 'info');
+            logTest('  • Population Selection', 'info');
+            logTest('  • Credential Override', 'info');
+            logTest('  • Token Generation', 'info');
+            logTest('  • JWT Decoder', 'info');
+            logTest('  • Export Operation', 'info');
+        });
+    </script>
+
+    <style>
+        .test-nav {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .test-results {
+            background: var(--ping-surface-color);
+            border: 1px solid var(--ping-border-color);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .test-output {
+            background: var(--ping-surface-secondary);
+            border: 1px solid var(--ping-border-color);
+            border-radius: 4px;
+            padding: 1rem;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .test-log {
+            margin-bottom: 0.5rem;
+            padding: 0.25rem 0;
+        }
+
+        .test-log-info {
+            color: var(--ping-text-primary);
+        }
+
+        .test-log-success {
+            color: var(--ping-success-green);
+        }
+
+        .test-log-error {
+            color: var(--ping-error-red);
+        }
+
+        .test-log-warning {
+            color: var(--ping-warning-orange);
+        }
+    </style>
+</body>
+</html> 

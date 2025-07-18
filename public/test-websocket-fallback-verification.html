@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Fallback Verification Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .connection-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .connection-card {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            background-color: #f8f9fa;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 WebSocket Fallback Verification Test</h1>
+        <p>This test verifies that the system properly falls back from Socket.IO to WebSocket when Socket.IO fails.</p>
+        
+        <div class="test-section">
+            <h2>📡 Connection Status</h2>
+            <div class="connection-info">
+                <div class="connection-card">
+                    <h3>Socket.IO Status</h3>
+                    <div id="socketio-status" class="status info">Initializing...</div>
+                    <div id="socketio-details"></div>
+                </div>
+                <div class="connection-card">
+                    <h3>WebSocket Status</h3>
+                    <div id="websocket-status" class="status info">Initializing...</div>
+                    <div id="websocket-details"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 Test Controls</h2>
+            <button id="test-socketio" onclick="testSocketIO()">Test Socket.IO Only</button>
+            <button id="test-websocket" onclick="testWebSocket()">Test WebSocket Only</button>
+            <button id="test-fallback" onclick="testFallback()">Test Fallback Mechanism</button>
+            <button id="test-progress" onclick="testProgressUpdates()">Test Progress Updates</button>
+            <button id="clear-log" onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 Progress Simulation</h2>
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+            </div>
+            <div id="progress-text">0%</div>
+            <div id="progress-details"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📝 Test Log</h2>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+
+    <!-- Socket.IO Client Library -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <script>
+        let socketIO = null;
+        let webSocket = null;
+        let currentConnection = null;
+        let testInProgress = false;
+
+        // Logging function
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color: #666;">[${timestamp}]</span> <span style="color: ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : type === 'warning' ? '#ffc107' : '#007bff'}">${message}</span>`;
+            document.getElementById('log').appendChild(logEntry);
+            document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        function updateStatus(elementId, status, message) {
+            const element = document.getElementById(elementId);
+            element.className = `status ${status}`;
+            element.textContent = message;
+        }
+
+        function updateDetails(elementId, details) {
+            document.getElementById(elementId).innerHTML = details;
+        }
+
+        // Test Socket.IO connection
+        function testSocketIO() {
+            if (testInProgress) return;
+            testInProgress = true;
+            
+            log('🧪 Testing Socket.IO connection...', 'info');
+            updateStatus('socketio-status', 'info', 'Testing...');
+
+            try {
+                socketIO = io();
+                
+                socketIO.on('connect', () => {
+                    log('✅ Socket.IO connected successfully', 'success');
+                    updateStatus('socketio-status', 'success', 'Connected');
+                    updateDetails('socketio-details', `
+                        <strong>Connection ID:</strong> ${socketIO.id}<br>
+                        <strong>Transport:</strong> ${socketIO.io.engine.transport.name}<br>
+                        <strong>Connected:</strong> ${socketIO.connected}
+                    `);
+                    testInProgress = false;
+                });
+
+                socketIO.on('connect_error', (error) => {
+                    log(`❌ Socket.IO connection failed: ${error.message}`, 'error');
+                    updateStatus('socketio-status', 'error', 'Connection Failed');
+                    updateDetails('socketio-details', `<strong>Error:</strong> ${error.message}`);
+                    testInProgress = false;
+                });
+
+                socketIO.on('disconnect', (reason) => {
+                    log(`⚠️ Socket.IO disconnected: ${reason}`, 'warning');
+                    updateStatus('socketio-status', 'warning', 'Disconnected');
+                });
+
+            } catch (error) {
+                log(`❌ Socket.IO initialization failed: ${error.message}`, 'error');
+                updateStatus('socketio-status', 'error', 'Initialization Failed');
+                updateDetails('socketio-details', `<strong>Error:</strong> ${error.message}`);
+                testInProgress = false;
+            }
+        }
+
+        // Test WebSocket connection
+        function testWebSocket() {
+            if (testInProgress) return;
+            testInProgress = true;
+            
+            log('🧪 Testing WebSocket connection...', 'info');
+            updateStatus('websocket-status', 'info', 'Testing...');
+
+            try {
+                const wsUrl = `ws://${window.location.host}/ws`;
+                webSocket = new WebSocket(wsUrl);
+                
+                webSocket.onopen = () => {
+                    log('✅ WebSocket connected successfully', 'success');
+                    updateStatus('websocket-status', 'success', 'Connected');
+                    updateDetails('websocket-details', `
+                        <strong>URL:</strong> ${wsUrl}<br>
+                        <strong>Protocol:</strong> ${webSocket.protocol || 'None'}<br>
+                        <strong>Ready State:</strong> ${webSocket.readyState}
+                    `);
+                    testInProgress = false;
+                };
+
+                webSocket.onerror = (error) => {
+                    log(`❌ WebSocket connection failed: ${error}`, 'error');
+                    updateStatus('websocket-status', 'error', 'Connection Failed');
+                    updateDetails('websocket-details', `<strong>Error:</strong> ${error}`);
+                    testInProgress = false;
+                };
+
+                webSocket.onclose = (event) => {
+                    log(`⚠️ WebSocket closed: ${event.code} - ${event.reason}`, 'warning');
+                    updateStatus('websocket-status', 'warning', 'Closed');
+                };
+
+                webSocket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`📨 WebSocket message received: ${JSON.stringify(data)}`, 'info');
+                    } catch (e) {
+                        log(`📨 WebSocket raw message: ${event.data}`, 'info');
+                    }
+                };
+
+            } catch (error) {
+                log(`❌ WebSocket initialization failed: ${error.message}`, 'error');
+                updateStatus('websocket-status', 'error', 'Initialization Failed');
+                updateDetails('websocket-details', `<strong>Error:</strong> ${error.message}`);
+                testInProgress = false;
+            }
+        }
+
+        // Test fallback mechanism
+        function testFallback() {
+            if (testInProgress) return;
+            testInProgress = true;
+            
+            log('🧪 Testing fallback mechanism (Socket.IO → WebSocket)...', 'info');
+            
+            // First try Socket.IO
+            log('1️⃣ Attempting Socket.IO connection...', 'info');
+            
+            try {
+                socketIO = io();
+                
+                socketIO.on('connect', () => {
+                    log('✅ Socket.IO connected - no fallback needed', 'success');
+                    currentConnection = 'socketio';
+                    testInProgress = false;
+                });
+
+                socketIO.on('connect_error', (error) => {
+                    log(`❌ Socket.IO failed: ${error.message}`, 'error');
+                    log('2️⃣ Falling back to WebSocket...', 'info');
+                    
+                    // Fallback to WebSocket
+                    try {
+                        const wsUrl = `ws://${window.location.host}/ws`;
+                        webSocket = new WebSocket(wsUrl);
+                        
+                        webSocket.onopen = () => {
+                            log('✅ WebSocket fallback successful!', 'success');
+                            currentConnection = 'websocket';
+                            testInProgress = false;
+                        };
+
+                        webSocket.onerror = (error) => {
+                            log(`❌ WebSocket fallback also failed: ${error}`, 'error');
+                            testInProgress = false;
+                        };
+
+                    } catch (wsError) {
+                        log(`❌ WebSocket fallback failed: ${wsError.message}`, 'error');
+                        testInProgress = false;
+                    }
+                });
+
+            } catch (error) {
+                log(`❌ Socket.IO initialization failed: ${error.message}`, 'error');
+                log('2️⃣ Falling back to WebSocket...', 'info');
+                
+                // Fallback to WebSocket
+                try {
+                    const wsUrl = `ws://${window.location.host}/ws`;
+                    webSocket = new WebSocket(wsUrl);
+                    
+                    webSocket.onopen = () => {
+                        log('✅ WebSocket fallback successful!', 'success');
+                        currentConnection = 'websocket';
+                        testInProgress = false;
+                    };
+
+                    webSocket.onerror = (error) => {
+                        log(`❌ WebSocket fallback also failed: ${error}`, 'error');
+                        testInProgress = false;
+                    };
+
+                } catch (wsError) {
+                    log(`❌ WebSocket fallback failed: ${wsError.message}`, 'error');
+                    testInProgress = false;
+                }
+            }
+        }
+
+        // Test progress updates
+        function testProgressUpdates() {
+            if (!currentConnection) {
+                log('❌ No active connection. Please establish a connection first.', 'error');
+                return;
+            }
+
+            log('🧪 Testing progress updates...', 'info');
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 10;
+                document.getElementById('progress-fill').style.width = progress + '%';
+                document.getElementById('progress-text').textContent = progress + '%';
+                
+                const progressData = {
+                    type: 'progress',
+                    current: progress,
+                    total: 100,
+                    message: `Processing step ${progress/10}/10`,
+                    timestamp: new Date().toISOString()
+                };
+
+                if (currentConnection === 'socketio' && socketIO) {
+                    socketIO.emit('progress', progressData);
+                    log(`📤 Socket.IO progress sent: ${progress}%`, 'info');
+                } else if (currentConnection === 'websocket' && webSocket) {
+                    webSocket.send(JSON.stringify(progressData));
+                    log(`📤 WebSocket progress sent: ${progress}%`, 'info');
+                }
+
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    log('✅ Progress test completed', 'success');
+                }
+            }, 500);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 WebSocket Fallback Verification Test initialized', 'info');
+            log('Click "Test Fallback Mechanism" to verify the fallback works correctly', 'info');
+        });
+    </script>
+</body>
+</html> 

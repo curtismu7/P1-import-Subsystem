@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress UI Timeout Test - PingOne Import Tool</title>
+    <link rel="stylesheet" href="/css/ping-identity.css">
+    <link rel="stylesheet" href="/css/progress-ui.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: 'Ping Identity', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .test-section {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-title {
+            color: #1a1a1a;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .test-description {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-button.danger {
+            background: #dc3545;
+        }
+        .test-button.danger:hover {
+            background: #c82333;
+        }
+        .test-button.success {
+            background: #28a745;
+        }
+        .test-button.success:hover {
+            background: #218838;
+        }
+        .test-button.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .test-button.warning:hover {
+            background: #e0a800;
+        }
+        .log-container {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        .log-entry.info {
+            color: #007bff;
+        }
+        .log-entry.success {
+            color: #28a745;
+        }
+        .log-entry.error {
+            color: #dc3545;
+        }
+        .log-entry.warning {
+            color: #ffc107;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-indicator.connected {
+            background: #28a745;
+        }
+        .status-indicator.disconnected {
+            background: #dc3545;
+        }
+        .status-indicator.connecting {
+            background: #ffc107;
+        }
+        .progress-container {
+            margin-top: 20px;
+        }
+        .test-info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .test-info h4 {
+            color: #0056b3;
+            margin-top: 0;
+        }
+        .test-info ul {
+            margin-bottom: 0;
+        }
+        .test-info li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 class="test-title">Progress UI Timeout Test</h1>
+        <p class="test-description">Test the enhanced progress UI with timeout handling, SSE error handling, and real-time updates.</p>
+        
+        <div class="test-info">
+            <h4><i class="fas fa-info-circle"></i> Test Features</h4>
+            <ul>
+                <li><strong>Timeout Handling:</strong> 10-second timeout if no progress events received</li>
+                <li><strong>SSE Error Handling:</strong> User-facing errors for connection issues</li>
+                <li><strong>Real-time Updates:</strong> Progress events logged and displayed</li>
+                <li><strong>Enhanced UI:</strong> Modern, step-based progress with Ping Identity styling</li>
+                <li><strong>Error Recovery:</strong> Retry options and clear error messages</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3 class="test-title">Progress Manager Tests</h3>
+            <div class="test-buttons">
+                <button class="test-button" onclick="testNormalImport()">
+                    <i class="fas fa-play"></i> Test Normal Import
+                </button>
+                <button class="test-button warning" onclick="testTimeoutScenario()">
+                    <i class="fas fa-clock"></i> Test Timeout (10s)
+                </button>
+                <button class="test-button danger" onclick="testSSEError()">
+                    <i class="fas fa-exclamation-triangle"></i> Test SSE Error
+                </button>
+                <button class="test-button success" onclick="testProgressEvents()">
+                    <i class="fas fa-chart-line"></i> Test Progress Events
+                </button>
+                <button class="test-button" onclick="clearLogs()">
+                    <i class="fas fa-trash"></i> Clear Logs
+                </button>
+            </div>
+            
+            <div class="log-container" id="test-logs">
+                <div class="log-entry info">Ready to test progress UI enhancements...</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3 class="test-title">Connection Status</h3>
+            <div id="connection-status">
+                <span class="status-indicator disconnected"></span>
+                <span>Disconnected</span>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3 class="test-title">Progress UI</h3>
+            <div class="progress-container">
+                <div id="progress-container" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/bundle.js"></script>
+    <script>
+        // Test logging
+        function log(message, type = 'info') {
+            const logsContainer = document.getElementById('test-logs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('test-logs').innerHTML = '<div class="log-entry info">Logs cleared...</div>';
+        }
+
+        function updateConnectionStatus(status, message) {
+            const statusElement = document.getElementById('connection-status');
+            const indicator = statusElement.querySelector('.status-indicator');
+            const text = statusElement.querySelector('span:last-child');
+            
+            indicator.className = `status-indicator ${status}`;
+            text.textContent = message;
+        }
+
+        // Test scenarios
+        function testNormalImport() {
+            log('Starting normal import test...', 'info');
+            
+            if (window.progressManager) {
+                progressManager.startOperation('import', {
+                    fileName: 'test-users.csv',
+                    populationName: 'Test Population',
+                    totalUsers: 10
+                });
+                
+                // Simulate progress events
+                setTimeout(() => {
+                    if (progressManager.sseConnection) {
+                        const mockEvent = new MessageEvent('message', {
+                            data: JSON.stringify({
+                                type: 'progress',
+                                current: 1,
+                                total: 10,
+                                message: 'Processing user 1/10',
+                                counts: { processed: 1, success: 1, failed: 0, skipped: 0 }
+                            })
+                        });
+                        progressManager.sseConnection.onmessage(mockEvent);
+                    }
+                }, 1000);
+                
+                setTimeout(() => {
+                    if (progressManager.sseConnection) {
+                        const mockEvent = new MessageEvent('message', {
+                            data: JSON.stringify({
+                                type: 'completion',
+                                current: 10,
+                                total: 10,
+                                message: 'Import completed successfully',
+                                counts: { processed: 10, success: 8, failed: 1, skipped: 1 }
+                            })
+                        });
+                        progressManager.sseConnection.onmessage(mockEvent);
+                    }
+                }, 5000);
+            } else {
+                log('Progress manager not available', 'error');
+            }
+        }
+
+        function testTimeoutScenario() {
+            log('Starting timeout test (10 seconds)...', 'warning');
+            
+            if (window.progressManager) {
+                progressManager.startOperation('import', {
+                    fileName: 'timeout-test.csv',
+                    populationName: 'Timeout Test Population',
+                    totalUsers: 5
+                });
+                
+                // Don't send any progress events - let it timeout
+                log('No progress events will be sent - expecting timeout after 10 seconds', 'warning');
+            } else {
+                log('Progress manager not available', 'error');
+            }
+        }
+
+        function testSSEError() {
+            log('Starting SSE error test...', 'error');
+            
+            if (window.progressManager) {
+                progressManager.startOperation('import', {
+                    fileName: 'error-test.csv',
+                    populationName: 'Error Test Population',
+                    totalUsers: 3
+                });
+                
+                // Simulate SSE error
+                setTimeout(() => {
+                    if (progressManager.sseConnection) {
+                        progressManager.sseConnection.onerror(new Error('Simulated SSE connection error'));
+                    }
+                }, 2000);
+            } else {
+                log('Progress manager not available', 'error');
+            }
+        }
+
+        function testProgressEvents() {
+            log('Starting progress events test...', 'info');
+            
+            if (window.progressManager) {
+                progressManager.startOperation('import', {
+                    fileName: 'progress-test.csv',
+                    populationName: 'Progress Test Population',
+                    totalUsers: 20
+                });
+                
+                // Send multiple progress events
+                let current = 0;
+                const interval = setInterval(() => {
+                    current += 2;
+                    if (current <= 20 && progressManager.sseConnection) {
+                        const mockEvent = new MessageEvent('message', {
+                            data: JSON.stringify({
+                                type: 'progress',
+                                current: current,
+                                total: 20,
+                                message: `Processing user ${current}/20`,
+                                counts: { 
+                                    processed: current, 
+                                    success: Math.floor(current * 0.8), 
+                                    failed: Math.floor(current * 0.1), 
+                                    skipped: Math.floor(current * 0.1) 
+                                }
+                            })
+                        });
+                        progressManager.sseConnection.onmessage(mockEvent);
+                        log(`Sent progress event: ${current}/20`, 'success');
+                    } else {
+                        clearInterval(interval);
+                        // Send completion
+                        setTimeout(() => {
+                            if (progressManager.sseConnection) {
+                                const mockEvent = new MessageEvent('message', {
+                                    data: JSON.stringify({
+                                        type: 'completion',
+                                        current: 20,
+                                        total: 20,
+                                        message: 'Progress test completed',
+                                        counts: { processed: 20, success: 16, failed: 2, skipped: 2 }
+                                    })
+                                });
+                                progressManager.sseConnection.onmessage(mockEvent);
+                            }
+                        }, 1000);
+                    }
+                }, 500);
+            } else {
+                log('Progress manager not available', 'error');
+            }
+        }
+
+        // Initialize test environment
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Test page loaded successfully', 'success');
+            log('Progress manager available: ' + (window.progressManager ? 'Yes' : 'No'), 'info');
+            
+            // Monitor progress manager events
+            if (window.progressManager) {
+                // Override logger to capture events
+                const originalDebug = progressManager.logger.debug;
+                const originalInfo = progressManager.logger.info;
+                const originalError = progressManager.logger.error;
+                
+                progressManager.logger.debug = function(message, data) {
+                    log(`DEBUG: ${message}`, 'info');
+                    originalDebug.call(this, message, data);
+                };
+                
+                progressManager.logger.info = function(message, data) {
+                    log(`INFO: ${message}`, 'success');
+                    originalInfo.call(this, message, data);
+                };
+                
+                progressManager.logger.error = function(message, data) {
+                    log(`ERROR: ${message}`, 'error');
+                    originalError.call(this, message, data);
+                };
+                
+                log('Progress manager logger overridden for test monitoring', 'info');
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Logs Search Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        button { padding: 10px; margin: 5px; }
+        input { padding: 8px; margin: 5px; }
+        .logs { max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Simple Logs Search Test</h1>
+    
+    <div class="test">
+        <h3>Step 1: Add Test Logs</h3>
+        <button onclick="addTestLogs()">Add Test Logs</button>
+        <div id="add-result"></div>
+    </div>
+    
+    <div class="test">
+        <h3>Step 2: Test Search</h3>
+        <input type="text" id="search-term" placeholder="Enter search term..." />
+        <button onclick="testSearch()">Search</button>
+        <button onclick="loadLogs()">Load All Logs</button>
+        <div id="search-result"></div>
+    </div>
+    
+    <div class="test">
+        <h3>Step 3: Logs Display</h3>
+        <div id="logs-display" class="logs"></div>
+    </div>
+
+    <script>
+        async function addTestLogs() {
+            const resultDiv = document.getElementById('add-result');
+            try {
+                // Add some test logs
+                const testLogs = [
+                    { message: "TEST LOG: User import started", level: "info" },
+                    { message: "TEST LOG: File uploaded successfully", level: "info" },
+                    { message: "TEST LOG: Error occurred during import", level: "error" },
+                    { message: "TEST LOG: Warning about duplicate users", level: "warn" },
+                    { message: "TEST LOG: Debug information", level: "debug" }
+                ];
+                
+                for (const log of testLogs) {
+                    await fetch('/api/logs/ui', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(log)
+                    });
+                }
+                
+                resultDiv.className = 'test success';
+                resultDiv.innerHTML = '✅ Test logs added successfully!';
+            } catch (error) {
+                resultDiv.className = 'test error';
+                resultDiv.innerHTML = `❌ Error adding test logs: ${error.message}`;
+            }
+        }
+        
+        async function loadLogs() {
+            const displayDiv = document.getElementById('logs-display');
+            try {
+                const response = await fetch('/api/logs/ui?limit=50');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayDiv.innerHTML = data.logs.map(log => 
+                        `<div style="margin: 5px 0; padding: 5px; border-left: 3px solid #${getLevelColor(log.level)};">
+                            <strong>[${log.level.toUpperCase()}]</strong> ${log.message}
+                        </div>`
+                    ).join('');
+                } else {
+                    displayDiv.innerHTML = `<div class="error">Error loading logs: ${data.error}</div>`;
+                }
+            } catch (error) {
+                displayDiv.innerHTML = `<div class="error">Connection error: ${error.message}</div>`;
+            }
+        }
+        
+        async function testSearch() {
+            const searchTerm = document.getElementById('search-term').value.toLowerCase();
+            const resultDiv = document.getElementById('search-result');
+            const displayDiv = document.getElementById('logs-display');
+            
+            if (!searchTerm) {
+                resultDiv.innerHTML = '<div class="error">Please enter a search term</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/logs/ui?limit=100');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const filteredLogs = data.logs.filter(log => {
+                        const searchText = `${log.message} ${log.data ? JSON.stringify(log.data) : ''}`.toLowerCase();
+                        return searchText.includes(searchTerm);
+                    });
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ Search Results:<br>
+                            Search term: "${searchTerm}"<br>
+                            Total logs: ${data.logs.length}<br>
+                            Matching logs: ${filteredLogs.length}
+                        </div>
+                    `;
+                    
+                    displayDiv.innerHTML = filteredLogs.map(log => 
+                        `<div style="margin: 5px 0; padding: 5px; border-left: 3px solid #${getLevelColor(log.level)};">
+                            <strong>[${log.level.toUpperCase()}]</strong> ${log.message}
+                        </div>`
+                    ).join('');
+                } else {
+                    resultDiv.innerHTML = `<div class="error">Error loading logs: ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Connection error: ${error.message}</div>`;
+            }
+        }
+        
+        function getLevelColor(level) {
+            const colors = {
+                'debug': '6c757d',
+                'info': '17a2b8',
+                'warn': 'ffc107',
+                'error': 'dc3545',
+                'success': '28a745'
+            };
+            return colors[level] || '6c757d';
+        }
+        
+        // Auto-load logs on page load
+        window.addEventListener('load', () => {
+            setTimeout(loadLogs, 1000);
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API URL Feature Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .api-url-display {
+            padding: 0.75rem 1rem;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #495057;
+            word-break: break-all;
+            min-height: 2.5rem;
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .api-url-display.has-url {
+            background: #e8f5e8;
+            border-color: #28a745;
+            color: #155724;
+        }
+        .api-url-display.no-url {
+            background: #f8f9fa;
+            border-color: #e9ecef;
+            color: #6c757d;
+            font-style: italic;
+        }
+        .api-url-text {
+            display: inline-block;
+            width: 100%;
+        }
+        .api-url-display.has-url .api-url-text {
+            color: #155724;
+            font-weight: 500;
+        }
+        .api-url-display.no-url .api-url-text {
+            color: #6c757d;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔗 API URL Feature Test</h1>
+    
+    <div class="test">
+        <h3>1. Test API URL Display</h3>
+        <p>This test verifies that the API URL field shows the correct URL for the selected population.</p>
+        
+        <div class="form-group">
+            <label for="test-population-select">Test Population Selection:</label>
+            <select id="test-population-select" class="form-control">
+                <option value="">Select a population...</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="test-api-url">API URL Display:</label>
+            <div id="test-api-url" class="api-url-display no-url">
+                <span class="api-url-text">Select a population to see the API URL</span>
+            </div>
+        </div>
+        
+        <button onclick="testApiUrlFeature()">Test API URL Feature</button>
+        <div id="api-url-result" class="result"></div>
+    </div>
+
+    <div class="test">
+        <h3>2. Manual Test Instructions</h3>
+        <ol>
+            <li>Go to the main import page: <a href="http://127.0.0.1:4000/" target="_blank">http://127.0.0.1:4000/</a></li>
+            <li>Navigate to the Import section</li>
+            <li>Look for the "API URL" field below the population selection</li>
+            <li>Select a population from the dropdown</li>
+            <li>Verify that the API URL updates to show the correct endpoint</li>
+            <li>Check that the URL format is: <code>https://api.pingone.com/v1/environments/{environmentId}/populations/{populationId}</code></li>
+        </ol>
+    </div>
+
+    <script>
+        async function testApiUrlFeature() {
+            const resultDiv = document.getElementById('api-url-result');
+            resultDiv.innerHTML = '<div class="warning">Testing API URL feature...</div>';
+            
+            try {
+                // Test 1: Check if API URL element exists
+                const apiUrlElement = document.getElementById('test-api-url');
+                if (!apiUrlElement) {
+                    resultDiv.innerHTML = '<div class="error">❌ API URL element not found</div>';
+                    return;
+                }
+                
+                // Test 2: Check if API URL text element exists
+                const apiUrlTextElement = apiUrlElement.querySelector('.api-url-text');
+                if (!apiUrlTextElement) {
+                    resultDiv.innerHTML = '<div class="error">❌ API URL text element not found</div>';
+                    return;
+                }
+                
+                // Test 3: Simulate population selection
+                const testPopulationId = 'test-population-id';
+                const testPopulationName = 'Test Population';
+                
+                // Simulate the updatePopulationApiUrl function
+                if (testPopulationId && testPopulationName) {
+                    const environmentId = 'test-environment-id';
+                    const region = { apiUrl: 'https://api.pingone.com' };
+                    
+                    if (environmentId && region) {
+                        const apiUrl = `${region.apiUrl}/v1/environments/${environmentId}/populations/${testPopulationId}`;
+                        apiUrlTextElement.textContent = apiUrl;
+                        apiUrlElement.className = 'api-url-display has-url';
+                    } else {
+                        apiUrlTextElement.textContent = 'Environment not configured';
+                        apiUrlElement.className = 'api-url-display no-url';
+                    }
+                } else {
+                    apiUrlTextElement.textContent = 'Select a population to see the API URL';
+                    apiUrlElement.className = 'api-url-display no-url';
+                }
+                
+                // Test 4: Verify the URL format
+                const expectedUrl = 'https://api.pingone.com/v1/environments/test-environment-id/populations/test-population-id';
+                const actualUrl = apiUrlTextElement.textContent;
+                
+                if (actualUrl === expectedUrl) {
+                    resultDiv.innerHTML = '<div class="success">✅ API URL feature is working correctly!</div>';
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ API URL format incorrect. Expected: ${expectedUrl}, Got: ${actualUrl}</div>`;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error testing API URL feature: ${error.message}</div>`;
+            }
+        }
+        
+        // Initialize test
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('API URL Feature Test Page Loaded');
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History Display Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .history-item { margin: 10px 0; padding: 10px; border: 1px solid #eee; border-radius: 3px; }
+        .history-item h4 { margin: 0 0 5px 0; color: #333; }
+        .history-item p { margin: 5px 0; color: #666; }
+        .history-item .stats { font-weight: bold; color: #28a745; }
+        .history-item .error { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <h1>History Display Test</h1>
+    
+    <div class="test-section info">
+        <h3>🔍 Test Status</h3>
+        <p>This page tests the History API and displays the results to verify the backend is working correctly.</p>
+    </div>
+
+    <div class="test-section">
+        <h3>📊 History API Test</h3>
+        <div id="api-test-result">Testing...</div>
+    </div>
+
+    <div class="test-section">
+        <h3>📋 History Data Display</h3>
+        <div id="history-display">Loading...</div>
+    </div>
+
+    <div class="test-section">
+        <h3>🔧 Population API Test</h3>
+        <div id="population-test-result">Testing...</div>
+    </div>
+
+    <script>
+        // Test History API
+        async function testHistoryAPI() {
+            const resultDiv = document.getElementById('api-test-result');
+            try {
+                const response = await fetch('/api/history?limit=10');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ History API Working</h4>
+                            <p>Status: ${response.status}</p>
+                            <p>Total items: ${data.total}</p>
+                            <p>Returned: ${data.history.length} items</p>
+                        </div>
+                    `;
+                    displayHistoryData(data.history);
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ History API Error</h4>
+                            <p>Response: ${JSON.stringify(data)}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ History API Failed</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Display History Data
+        function displayHistoryData(history) {
+            const displayDiv = document.getElementById('history-display');
+            
+            if (!history || history.length === 0) {
+                displayDiv.innerHTML = '<p>No history data available</p>';
+                return;
+            }
+
+            const historyHTML = history.map(item => `
+                <div class="history-item">
+                    <h4>${item.type} - ${item.population || 'No Population'}</h4>
+                    <p><strong>Message:</strong> ${item.message}</p>
+                    <p><strong>File:</strong> ${item.fileName || 'N/A'}</p>
+                    <p><strong>Date:</strong> ${new Date(item.timestamp).toLocaleString()}</p>
+                    <p class="stats">
+                        Success: ${item.success} | 
+                        Errors: ${item.errors} | 
+                        Skipped: ${item.skipped} | 
+                        Total: ${item.total}
+                    </p>
+                </div>
+            `).join('');
+
+            displayDiv.innerHTML = historyHTML;
+        }
+
+        // Test Population API
+        async function testPopulationAPI() {
+            const resultDiv = document.getElementById('population-test-result');
+            try {
+                const response = await fetch('/api/populations');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Population API Working</h4>
+                            <p>Status: ${response.status}</p>
+                            <p>Total populations: ${data.total}</p>
+                            <p>Returned: ${data.populations.length} populations</p>
+                            <h5>Populations:</h5>
+                            <ul>
+                                ${data.populations.map(pop => `
+                                    <li><strong>${pop.name}</strong> (${pop.userCount} users) - ${pop.id}</li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Population API Error</h4>
+                            <p>Response: ${JSON.stringify(data)}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Population API Failed</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Run tests when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🧪 Running History and Population API tests...');
+            testHistoryAPI();
+            testPopulationAPI();
+        });
+    </script>
+</body>
+</html> 

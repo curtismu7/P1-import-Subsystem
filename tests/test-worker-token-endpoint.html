@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worker Token Endpoint Test - PingOne Import Tool</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .test-header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .test-content {
+            padding: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .test-section h3 {
+            color: #007bff;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .test-section.success h3 {
+            color: #28a745;
+        }
+        .test-section.error h3 {
+            color: #dc3545;
+        }
+        .test-section.warning h3 {
+            color: #ffc107;
+        }
+        .test-result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .test-result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .test-result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .test-result.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .btn:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        .btn-danger {
+            background: #dc3545;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-indicator.success {
+            background: #28a745;
+        }
+        .status-indicator.error {
+            background: #dc3545;
+        }
+        .status-indicator.warning {
+            background: #ffc107;
+        }
+        .status-indicator.info {
+            background: #17a2b8;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #495057;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-group input:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .token-display {
+            background: #f8f9fa;
+            border: 1px solid #e1e5e9;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+        }
+        .token-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .token-info-item {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .token-info-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .token-info-value {
+            color: #6c757d;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🔑 Worker Token Endpoint Test</h1>
+            <p>Comprehensive testing of the new PingOne worker token endpoint</p>
+        </div>
+        
+        <div class="test-content">
+            <!-- Basic Token Test -->
+            <div class="test-section" id="basic-token-test">
+                <h3>
+                    <span class="status-indicator info"></span>
+                    <span class="loading"></span>
+                    Basic Token Retrieval
+                </h3>
+                <p>Test the worker token endpoint with server-configured credentials.</p>
+                <button class="btn" onclick="testBasicToken()">Test Basic Token</button>
+                <div class="test-result" id="basic-token-result" style="display: none;"></div>
+            </div>
+
+            <!-- Custom Credentials Test -->
+            <div class="test-section" id="custom-credentials-test">
+                <h3>
+                    <span class="status-indicator info"></span>
+                    <span class="loading"></span>
+                    Custom Credentials Test
+                </h3>
+                <p>Test the worker token endpoint with custom client credentials.</p>
+                <div class="form-group">
+                    <label for="custom-client-id">Client ID:</label>
+                    <input type="text" id="custom-client-id" placeholder="Enter client ID (optional)">
+                </div>
+                <div class="form-group">
+                    <label for="custom-client-secret">Client Secret:</label>
+                    <input type="password" id="custom-client-secret" placeholder="Enter client secret (optional)">
+                </div>
+                <button class="btn" onclick="testCustomCredentials()">Test Custom Credentials</button>
+                <div class="test-result" id="custom-credentials-result" style="display: none;"></div>
+            </div>
+
+            <!-- Token Validation Test -->
+            <div class="test-section" id="token-validation-test">
+                <h3>
+                    <span class="status-indicator info"></span>
+                    <span class="loading"></span>
+                    Token Validation
+                </h3>
+                <p>Validate the retrieved token by using it in a PingOne API call.</p>
+                <button class="btn" onclick="testTokenValidation()">Validate Token</button>
+                <div class="test-result" id="token-validation-result" style="display: none;"></div>
+            </div>
+
+            <!-- Swagger Integration Test -->
+            <div class="test-section" id="swagger-integration-test">
+                <h3>
+                    <span class="status-indicator info"></span>
+                    <span class="loading"></span>
+                    Swagger Integration
+                </h3>
+                <p>Verify that the token endpoint appears in Swagger documentation.</p>
+                <button class="btn" onclick="testSwaggerIntegration()">Test Swagger Integration</button>
+                <div class="test-result" id="swagger-integration-result" style="display: none;"></div>
+            </div>
+
+            <!-- Error Handling Test -->
+            <div class="test-section" id="error-handling-test">
+                <h3>
+                    <span class="status-indicator info"></span>
+                    <span class="loading"></span>
+                    Error Handling
+                </h3>
+                <p>Test error handling with invalid credentials and parameters.</p>
+                <button class="btn btn-warning" onclick="testErrorHandling()">Test Error Handling</button>
+                <div class="test-result" id="error-handling-result" style="display: none;"></div>
+            </div>
+
+            <!-- Comprehensive Test -->
+            <div class="test-section" id="comprehensive-test">
+                <h3>
+                    <span class="status-indicator info"></span>
+                    <span class="loading"></span>
+                    Comprehensive Integration Test
+                </h3>
+                <p>Run all tests to verify complete worker token endpoint functionality.</p>
+                <button class="btn btn-success" onclick="runComprehensiveTest()">Run All Tests</button>
+                <div class="test-result" id="comprehensive-result" style="display: none;"></div>
+            </div>
+
+            <!-- Token Display -->
+            <div class="test-section" id="token-display" style="display: none;">
+                <h3>
+                    <span class="status-indicator success"></span>
+                    Retrieved Token Information
+                </h3>
+                <div id="token-display-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentToken = null;
+
+        async function testBasicToken() {
+            const section = document.getElementById('basic-token-test');
+            const result = document.getElementById('basic-token-result');
+            
+            try {
+                const response = await fetch('/api/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    section.className = 'test-section success';
+                    section.querySelector('h3').innerHTML = '<span class="status-indicator success"></span>Basic Token Retrieval';
+                    
+                    currentToken = data.data.access_token;
+                    
+                    result.className = 'test-result success';
+                    result.textContent = `✅ Basic token retrieval successful\n\nResponse:\n${JSON.stringify(data, null, 2)}`;
+                    
+                    // Show token display
+                    showTokenDisplay(data.data);
+                } else {
+                    throw new Error(data.error || 'Token retrieval failed');
+                }
+            } catch (error) {
+                section.className = 'test-section error';
+                section.querySelector('h3').innerHTML = '<span class="status-indicator error"></span>Basic Token Retrieval';
+                result.className = 'test-result error';
+                result.textContent = `❌ Basic token retrieval failed\n\nError: ${error.message}`;
+            }
+            
+            result.style.display = 'block';
+        }
+
+        async function testCustomCredentials() {
+            const section = document.getElementById('custom-credentials-test');
+            const result = document.getElementById('custom-credentials-result');
+            
+            const clientId = document.getElementById('custom-client-id').value;
+            const clientSecret = document.getElementById('custom-client-secret').value;
+            
+            try {
+                const requestBody = {
+                    grant_type: 'client_credentials'
+                };
+                
+                if (clientId) requestBody.client_id = clientId;
+                if (clientSecret) requestBody.client_secret = clientSecret;
+                
+                const response = await fetch('/api/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    section.className = 'test-section success';
+                    section.querySelector('h3').innerHTML = '<span class="status-indicator success"></span>Custom Credentials Test';
+                    
+                    currentToken = data.data.access_token;
+                    
+                    result.className = 'test-result success';
+                    result.textContent = `✅ Custom credentials test successful\n\nRequest: ${JSON.stringify(requestBody, null, 2)}\n\nResponse: ${JSON.stringify(data, null, 2)}`;
+                    
+                    showTokenDisplay(data.data);
+                } else {
+                    throw new Error(data.error || 'Custom credentials test failed');
+                }
+            } catch (error) {
+                section.className = 'test-section error';
+                section.querySelector('h3').innerHTML = '<span class="status-indicator error"></span>Custom Credentials Test';
+                result.className = 'test-result error';
+                result.textContent = `❌ Custom credentials test failed\n\nError: ${error.message}`;
+            }
+            
+            result.style.display = 'block';
+        }
+
+        async function testTokenValidation() {
+            const section = document.getElementById('token-validation-test');
+            const result = document.getElementById('token-validation-result');
+            
+            if (!currentToken) {
+                result.className = 'test-result error';
+                result.textContent = '❌ No token available. Please retrieve a token first.';
+                result.style.display = 'block';
+                return;
+            }
+            
+            try {
+                // Test the token by calling the settings endpoint
+                const response = await fetch('/api/settings', {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    section.className = 'test-section success';
+                    section.querySelector('h3').innerHTML = '<span class="status-indicator success"></span>Token Validation';
+                    
+                    result.className = 'test-result success';
+                    result.textContent = `✅ Token validation successful\n\nToken used: ${currentToken.substring(0, 50)}...\n\nSettings response: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    throw new Error('Token validation failed');
+                }
+            } catch (error) {
+                section.className = 'test-section error';
+                section.querySelector('h3').innerHTML = '<span class="status-indicator error"></span>Token Validation';
+                result.className = 'test-result error';
+                result.textContent = `❌ Token validation failed\n\nError: ${error.message}`;
+            }
+            
+            result.style.display = 'block';
+        }
+
+        async function testSwaggerIntegration() {
+            const section = document.getElementById('swagger-integration-test');
+            const result = document.getElementById('swagger-integration-result');
+            
+            try {
+                const response = await fetch('/api-docs.json');
+                const data = await response.json();
+                
+                if (data.paths && data.paths['/api/token']) {
+                    section.className = 'test-section success';
+                    section.querySelector('h3').innerHTML = '<span class="status-indicator success"></span>Swagger Integration';
+                    
+                    result.className = 'test-result success';
+                    result.textContent = `✅ Swagger integration successful\n\nToken endpoint found in Swagger documentation\n\nEndpoint: /api/token\nMethod: POST\nSummary: ${data.paths['/api/token'].post.summary}`;
+                } else {
+                    throw new Error('Token endpoint not found in Swagger documentation');
+                }
+            } catch (error) {
+                section.className = 'test-section error';
+                section.querySelector('h3').innerHTML = '<span class="status-indicator error"></span>Swagger Integration';
+                result.className = 'test-result error';
+                result.textContent = `❌ Swagger integration failed\n\nError: ${error.message}`;
+            }
+            
+            result.style.display = 'block';
+        }
+
+        async function testErrorHandling() {
+            const section = document.getElementById('error-handling-test');
+            const result = document.getElementById('error-handling-result');
+            
+            try {
+                // Test with invalid grant type
+                const response = await fetch('/api/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        grant_type: 'invalid_grant_type'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok && data.error) {
+                    section.className = 'test-section success';
+                    section.querySelector('h3').innerHTML = '<span class="status-indicator success"></span>Error Handling';
+                    
+                    result.className = 'test-result success';
+                    result.textContent = `✅ Error handling working correctly\n\nInvalid grant type test:\nStatus: ${response.status}\nError: ${data.error}\nDetails: ${JSON.stringify(data.details, null, 2)}`;
+                } else {
+                    throw new Error('Error handling not working as expected');
+                }
+            } catch (error) {
+                section.className = 'test-section error';
+                section.querySelector('h3').innerHTML = '<span class="status-indicator error"></span>Error Handling';
+                result.className = 'test-result error';
+                result.textContent = `❌ Error handling test failed\n\nError: ${error.message}`;
+            }
+            
+            result.style.display = 'block';
+        }
+
+        async function runComprehensiveTest() {
+            const section = document.getElementById('comprehensive-test');
+            const result = document.getElementById('comprehensive-result');
+            
+            result.textContent = 'Running comprehensive test...\n';
+            result.style.display = 'block';
+            
+            const tests = [
+                { name: 'Basic Token', func: testBasicToken },
+                { name: 'Swagger Integration', func: testSwaggerIntegration },
+                { name: 'Error Handling', func: testErrorHandling }
+            ];
+            
+            const results = [];
+            
+            for (const test of tests) {
+                try {
+                    await test.func();
+                    results.push({ name: test.name, status: 'success' });
+                } catch (error) {
+                    results.push({ name: test.name, status: 'error' });
+                }
+            }
+            
+            const successCount = results.filter(r => r.status === 'success').length;
+            const totalCount = results.length;
+            
+            section.className = successCount === totalCount ? 'test-section success' : 'test-section warning';
+            section.querySelector('h3').innerHTML = `<span class="status-indicator ${successCount === totalCount ? 'success' : 'warning'}"></span>Comprehensive Integration Test`;
+            result.className = `test-result ${successCount === totalCount ? 'success' : 'warning'}`;
+            result.textContent = `✅ Comprehensive test completed\n\nResults: ${successCount}/${totalCount} tests passed\n\n${results.map(r => `${r.status === 'success' ? '✅' : '❌'} ${r.name}`).join('\n')}`;
+        }
+
+        function showTokenDisplay(tokenData) {
+            const displaySection = document.getElementById('token-display');
+            const content = document.getElementById('token-display-content');
+            
+            content.innerHTML = `
+                <div class="token-info">
+                    <div class="token-info-item">
+                        <div class="token-info-label">Token Type</div>
+                        <div class="token-info-value">${tokenData.token_type}</div>
+                    </div>
+                    <div class="token-info-item">
+                        <div class="token-info-label">Expires In</div>
+                        <div class="token-info-value">${tokenData.expires_in} seconds</div>
+                    </div>
+                    <div class="token-info-item">
+                        <div class="token-info-label">Scope</div>
+                        <div class="token-info-value">${tokenData.scope}</div>
+                    </div>
+                    <div class="token-info-item">
+                        <div class="token-info-label">Expires At</div>
+                        <div class="token-info-value">${new Date(tokenData.expires_at).toLocaleString()}</div>
+                    </div>
+                </div>
+                <div class="token-display">
+                    <strong>Access Token:</strong><br>
+                    ${tokenData.access_token}
+                </div>
+            `;
+            
+            displaySection.style.display = 'block';
+        }
+
+        // Auto-run basic test on page load
+        window.addEventListener('load', () => {
+            testBasicToken();
+        });
+    </script>
+</body>
+</html> 

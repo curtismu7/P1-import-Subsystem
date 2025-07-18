@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Stability Test - PingOne Import Tool</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/vendor/bootstrap/bootstrap.min.css">
+    <style>
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .test-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .test-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .test-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .test-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .test-button {
+            margin: 5px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .test-button-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .test-button-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .test-button-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .test-button-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .log-container {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>App Stability Test</h1>
+        <p class="lead">Testing app initialization and tab switching stability after crash fixes</p>
+        
+        <div class="test-section">
+            <h3>Test Results</h3>
+            <div id="test-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Controls</h3>
+            <button class="test-button test-button-primary" onclick="runInitializationTest()">Test App Initialization</button>
+            <button class="test-button test-button-success" onclick="runTabSwitchingTest()">Test Tab Switching</button>
+            <button class="test-button test-button-warning" onclick="runErrorHandlingTest()">Test Error Handling</button>
+            <button class="test-button test-button-danger" onclick="clearResults()">Clear Results</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Log</h3>
+            <div id="test-log" class="log-container"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Navigation Test</h3>
+            <button class="test-button test-button-primary" onclick="testNavigation('home')">Home</button>
+            <button class="test-button test-button-primary" onclick="testNavigation('import')">Import</button>
+            <button class="test-button test-button-primary" onclick="testNavigation('export')">Export</button>
+            <button class="test-button test-button-primary" onclick="testNavigation('delete')">Delete</button>
+            <button class="test-button test-button-primary" onclick="testNavigation('modify')">Modify</button>
+            <button class="test-button test-button-primary" onclick="testNavigation('settings')">Settings</button>
+            <button class="test-button test-button-primary" onclick="testNavigation('progress')">Progress</button>
+        </div>
+    </div>
+
+    <script>
+        let testResults = [];
+        let appInstance = null;
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            const logContainer = document.getElementById('test-log');
+            logContainer.innerHTML += logEntry + '\n';
+            logContainer.scrollTop = logContainer.scrollHeight;
+            console.log(logEntry);
+        }
+        
+        function addResult(testName, status, message) {
+            const result = { testName, status, message, timestamp: new Date().toISOString() };
+            testResults.push(result);
+            updateResultsDisplay();
+        }
+        
+        function updateResultsDisplay() {
+            const container = document.getElementById('test-results');
+            container.innerHTML = '';
+            
+            testResults.forEach(result => {
+                const div = document.createElement('div');
+                div.className = `test-result test-${result.status}`;
+                div.innerHTML = `
+                    <strong>${result.testName}</strong> - ${result.status.toUpperCase()}<br>
+                    <small>${result.message}</small><br>
+                    <small>Time: ${result.timestamp}</small>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        function clearResults() {
+            testResults = [];
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('test-log').innerHTML = '';
+        }
+        
+        async function runInitializationTest() {
+            log('Starting App Initialization Test...', 'info');
+            addResult('App Initialization', 'info', 'Test started');
+            
+            try {
+                // Test 1: Check if app modules are available
+                log('Testing module availability...', 'info');
+                
+                if (typeof App === 'undefined') {
+                    throw new Error('App class not found');
+                }
+                
+                if (typeof Logger === 'undefined') {
+                    throw new Error('Logger module not found');
+                }
+                
+                if (typeof UIManager === 'undefined') {
+                    throw new Error('UIManager module not found');
+                }
+                
+                log('✅ All required modules are available', 'success');
+                
+                // Test 2: Create app instance
+                log('Creating app instance...', 'info');
+                appInstance = new App();
+                log('✅ App instance created successfully', 'success');
+                
+                // Test 3: Initialize app
+                log('Initializing app...', 'info');
+                await appInstance.init();
+                log('✅ App initialization completed successfully', 'success');
+                
+                addResult('App Initialization', 'success', 'App initialized without crashes');
+                
+            } catch (error) {
+                log(`❌ App initialization failed: ${error.message}`, 'error');
+                log(`Stack trace: ${error.stack}`, 'error');
+                addResult('App Initialization', 'error', `Failed: ${error.message}`);
+            }
+        }
+        
+        async function runTabSwitchingTest() {
+            log('Starting Tab Switching Test...', 'info');
+            addResult('Tab Switching', 'info', 'Test started');
+            
+            if (!appInstance) {
+                addResult('Tab Switching', 'error', 'App not initialized - run initialization test first');
+                return;
+            }
+            
+            try {
+                const testViews = ['home', 'import', 'export', 'delete', 'modify', 'settings', 'progress'];
+                
+                for (const view of testViews) {
+                    log(`Testing navigation to ${view} view...`, 'info');
+                    
+                    try {
+                        appInstance.showView(view);
+                        log(`✅ Successfully switched to ${view} view`, 'success');
+                        
+                        // Verify the view was actually shown
+                        const viewElement = document.getElementById(`${view}-view`);
+                        if (viewElement && viewElement.style.display !== 'none') {
+                            log(`✅ ${view} view is visible`, 'success');
+                        } else {
+                            log(`⚠️ ${view} view may not be visible`, 'warning');
+                        }
+                        
+                    } catch (viewError) {
+                        log(`❌ Failed to switch to ${view} view: ${viewError.message}`, 'error');
+                        throw viewError;
+                    }
+                    
+                    // Small delay between tests
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                addResult('Tab Switching', 'success', 'All tab switches completed without crashes');
+                
+            } catch (error) {
+                log(`❌ Tab switching test failed: ${error.message}`, 'error');
+                addResult('Tab Switching', 'error', `Failed: ${error.message}`);
+            }
+        }
+        
+        async function runErrorHandlingTest() {
+            log('Starting Error Handling Test...', 'info');
+            addResult('Error Handling', 'info', 'Test started');
+            
+            try {
+                // Test 1: Malformed health response
+                log('Testing malformed health response handling...', 'info');
+                
+                // Mock a malformed response
+                const originalGet = appInstance?.localClient?.get;
+                if (appInstance?.localClient) {
+                    appInstance.localClient.get = async () => {
+                        return { invalid: 'response', missing: 'server' };
+                    };
+                    
+                    await appInstance.checkServerConnectionStatus();
+                    log('✅ Handled malformed health response gracefully', 'success');
+                    
+                    // Restore original method
+                    appInstance.localClient.get = originalGet;
+                }
+                
+                // Test 2: Undefined navItems
+                log('Testing undefined navItems handling...', 'info');
+                
+                if (appInstance?.uiManager) {
+                    const originalNavItems = appInstance.uiManager.navItems;
+                    appInstance.uiManager.navItems = undefined;
+                    
+                    appInstance.showView('home');
+                    log('✅ Handled undefined navItems gracefully', 'success');
+                    
+                    // Restore original navItems
+                    appInstance.uiManager.navItems = originalNavItems;
+                }
+                
+                addResult('Error Handling', 'success', 'All error scenarios handled gracefully');
+                
+            } catch (error) {
+                log(`❌ Error handling test failed: ${error.message}`, 'error');
+                addResult('Error Handling', 'error', `Failed: ${error.message}`);
+            }
+        }
+        
+        function testNavigation(view) {
+            if (!appInstance) {
+                log('App not initialized - run initialization test first', 'error');
+                return;
+            }
+            
+            try {
+                log(`Testing navigation to ${view}...`, 'info');
+                appInstance.showView(view);
+                log(`✅ Navigation to ${view} successful`, 'success');
+            } catch (error) {
+                log(`❌ Navigation to ${view} failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Auto-run initialization test when page loads
+        window.addEventListener('load', () => {
+            log('Test page loaded, ready for testing', 'info');
+        });
+    </script>
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-content">
+        <div class="footer-logo">
+          <img src="/ping-identity-logo.svg" alt="Ping Identity Logo" height="28" width="auto" loading="lazy" />
+        </div>
+        <div class="footer-text">
+          <span>&copy; 2025 Ping Identity. All rights reserved.</span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html> 

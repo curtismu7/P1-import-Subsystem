@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Settings Debug Test</h1>
+        <p>This page tests the settings loading functionality to debug the error.</p>
+        
+        <div>
+            <button class="test-button" onclick="testDirectFetch()">Test Direct Fetch</button>
+            <button class="test-button" onclick="testLocalAPIClient()">Test LocalAPIClient</button>
+            <button class="test-button" onclick="testAppLoadSettings()">Test App loadSettings</button>
+            <button class="test-button" onclick="clearOutput()">Clear Output</button>
+        </div>
+        
+        <div id="output" class="debug-info">
+            <h3>Test Output:</h3>
+            <div id="content"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, data = null) {
+            const content = document.getElementById('content');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            if (data) {
+                logEntry.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            content.appendChild(logEntry);
+            console.log(message, data);
+        }
+        
+        function clearOutput() {
+            const content = document.getElementById('content');
+            content.innerHTML = '';
+        }
+        
+        async function testDirectFetch() {
+            log('🧪 Testing Direct Fetch to /api/settings...');
+            
+            try {
+                const response = await fetch('/api/settings');
+                log('Response status:', response.status);
+                log('Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                const data = await response.json();
+                log('Response data:', data);
+                
+                if (data.success && data.data) {
+                    log('✅ Settings loaded successfully via direct fetch');
+                } else {
+                    log('❌ Settings response format is not as expected');
+                }
+            } catch (error) {
+                log('❌ Direct fetch error:', error.message);
+            }
+        }
+        
+        async function testLocalAPIClient() {
+            log('🧪 Testing LocalAPIClient...');
+            
+            try {
+                // Mock LocalAPIClient
+                const localClient = {
+                    async get(endpoint) {
+                        log(`LocalAPIClient.get called with: ${endpoint}`);
+                        const response = await fetch(endpoint);
+                        const data = await response.json();
+                        log('LocalAPIClient response:', data);
+                        return data;
+                    }
+                };
+                
+                const response = await localClient.get('/api/settings');
+                log('LocalAPIClient response:', response);
+                
+                if (response.success && response.data) {
+                    log('✅ Settings loaded successfully via LocalAPIClient');
+                } else {
+                    log('❌ LocalAPIClient response format is not as expected');
+                }
+            } catch (error) {
+                log('❌ LocalAPIClient error:', error.message);
+            }
+        }
+        
+        async function testAppLoadSettings() {
+            log('🧪 Testing App loadSettings method...');
+            
+            try {
+                // Mock app with loadSettings method
+                const mockApp = {
+                    logger: {
+                        info: (msg, data) => log(`INFO: ${msg}`, data),
+                        warn: (msg, data) => log(`WARN: ${msg}`, data),
+                        error: (msg, data) => log(`ERROR: ${msg}`, data)
+                    },
+                    localClient: {
+                        async get(endpoint) {
+                            log(`Mock localClient.get called with: ${endpoint}`);
+                            const response = await fetch(endpoint);
+                            const data = await response.json();
+                            log('Mock localClient response:', data);
+                            return data;
+                        }
+                    },
+                    settingsManager: {
+                        async loadSettings() {
+                            log('Mock settingsManager.loadSettings called');
+                            return {
+                                environmentId: 'mock-env-id',
+                                apiClientId: 'mock-client-id',
+                                apiSecret: 'mock-secret',
+                                populationId: 'mock-pop-id',
+                                region: 'NorthAmerica',
+                                rateLimit: 90
+                            };
+                        }
+                    },
+                    populateSettingsForm(settings) {
+                        log('Mock populateSettingsForm called with:', settings);
+                    },
+                    async loadSettings() {
+                        log('🧪 Starting loadSettings test...');
+                        
+                        try {
+                            // First try to load from credentials manager (localStorage)
+                            log('Checking credentials manager...');
+                            
+                            // Fallback to server settings
+                            log('Trying server settings...');
+                            const response = await this.localClient.get('/api/settings');
+                            
+                            if (response.success && response.data) {
+                                // Convert kebab-case to camelCase for the form
+                                let populationId = response.data['population-id'] || '';
+                                if (populationId === 'not set') populationId = '';
+                                const settings = {
+                                    environmentId: response.data['environment-id'] || '',
+                                    apiClientId: response.data['api-client-id'] || '',
+                                    apiSecret: response.data['api-secret'] || '',
+                                    populationId,
+                                    region: response.data['region'] || 'NorthAmerica',
+                                    rateLimit: response.data['rate-limit'] || 90
+                                };
+                                
+                                this.populateSettingsForm(settings);
+                                this.logger.info('Settings loaded from server and populated into form');
+                                log('✅ Settings loaded from server successfully');
+                            } else {
+                                // Fallback to settings manager if server settings not available
+                                this.logger.warn('No server settings found, trying settings manager...');
+                                try {
+                                    const localSettings = await this.settingsManager.loadSettings();
+                                    if (localSettings && Object.keys(localSettings).length > 0) {
+                                        this.populateSettingsForm(localSettings);
+                                        this.logger.info('Settings loaded from settings manager and populated into form');
+                                        log('✅ Settings loaded from settings manager');
+                                    } else {
+                                        this.logger.info('No settings found in settings manager, using defaults');
+                                        log('ℹ️ No settings found, using defaults');
+                                    }
+                                } catch (localError) {
+                                    this.logger.error('Failed to load settings from settings manager:', localError);
+                                    log('❌ Settings manager error:', localError.message);
+                                }
+                            }
+                        } catch (error) {
+                            this.logger.error('Failed to load settings from server, trying settings manager...');
+                            log('❌ Server settings error:', error.message);
+                            try {
+                                const localSettings = await this.settingsManager.loadSettings();
+                                if (localSettings && Object.keys(localSettings).length > 0) {
+                                    this.populateSettingsForm(localSettings);
+                                    this.logger.info('Settings loaded from settings manager (fallback) and populated into form');
+                                    log('✅ Settings loaded from settings manager (fallback)');
+                                } else {
+                                    this.logger.info('No settings found in settings manager, using defaults');
+                                    log('ℹ️ No settings found, using defaults');
+                                }
+                            } catch (localError) {
+                                this.logger.error('Failed to load settings from settings manager:', localError);
+                                log('❌ Settings manager fallback error:', localError.message);
+                            }
+                        }
+                    }
+                };
+                
+                await mockApp.loadSettings();
+                
+            } catch (error) {
+                log('❌ App loadSettings test error:', error.message);
+            }
+        }
+        
+        // Initialize test
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🧪 Settings Debug Test Page Loaded');
+            log('Click the test buttons to debug the settings loading issue');
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Population Dropdown Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .test-success { background-color: #d4edda; color: #155724; }
+        .test-error { background-color: #f8d7da; color: #721c24; }
+        .test-info { background-color: #d1ecf1; color: #0c5460; }
+        .test-warning { background-color: #fff3cd; color: #856404; }
+        .loading { color: #007bff; }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-online { background-color: #28a745; }
+        .status-offline { background-color: #dc3545; }
+        .population-dropdown-test {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .field-status {
+            font-size: 0.875em;
+            margin-top: 5px;
+        }
+        .readonly-field {
+            background-color: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1><i class="fas fa-users"></i> Population Dropdown Test</h1>
+                <p class="lead">Testing the new population dropdown functionality in the API tester</p>
+                
+                <!-- Server Status -->
+                <div class="test-section">
+                    <h3><i class="fas fa-server"></i> Server Status</h3>
+                    <div id="server-status" class="test-result">
+                        <span class="status-indicator status-offline"></span>
+                        <span id="server-status-text">Checking server status...</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="checkServerStatus()">
+                        <i class="fas fa-sync-alt"></i> Check Server Status
+                    </button>
+                </div>
+
+                <!-- Population Dropdown Test -->
+                <div class="test-section">
+                    <h3><i class="fas fa-list"></i> Population Dropdown Test</h3>
+                    <p>This simulates the new population dropdown functionality in the API tester:</p>
+                    
+                    <div class="population-dropdown-test">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="test-population-dropdown">Select Population:</label>
+                                    <select class="form-control" id="test-population-dropdown" onchange="updateTestPopulationFields()">
+                                        <option value="">-- Select a population --</option>
+                                    </select>
+                                    <small class="form-text text-muted">Choose a population to auto-fill ID and Name fields</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Population Status:</label>
+                                    <div id="test-population-status" class="field-status">
+                                        <span class="text-muted">Click "Load Populations" to fetch available populations</span>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTestPopulations()">
+                                        <i class="fas fa-sync-alt"></i> Load Populations
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Population ID:</label>
+                                    <input type="text" class="form-control readonly-field" id="test-pop-id" placeholder="Auto-filled when population is selected" readonly>
+                                    <small class="form-text text-muted">Auto-filled when population is selected</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Population Name:</label>
+                                    <input type="text" class="form-control readonly-field" id="test-pop-name" placeholder="Auto-filled when population is selected" readonly>
+                                    <small class="form-text text-muted">Auto-filled when population is selected</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="dropdown-test-result" class="test-result" style="display: none;"></div>
+                </div>
+
+                <!-- API Test -->
+                <div class="test-section">
+                    <h3><i class="fas fa-code"></i> API Test</h3>
+                    <p>Test the populations API endpoint:</p>
+                    <button class="btn btn-info" onclick="testPopulationsAPI()">
+                        <i class="fas fa-play"></i> Test Populations API
+                    </button>
+                    <div id="api-test-result" class="test-result" style="display: none;"></div>
+                </div>
+
+                <!-- Manual Test Instructions -->
+                <div class="test-section">
+                    <h3><i class="fas fa-clipboard-list"></i> Manual Test Instructions</h3>
+                    <ol>
+                        <li><strong>Check Server Status:</strong> Click "Check Server Status" - should show server is online</li>
+                        <li><strong>Load Populations:</strong> Click "Load Populations" - should fetch and display available populations</li>
+                        <li><strong>Select Population:</strong> Choose a population from the dropdown - Population ID and Name fields should auto-fill</li>
+                        <li><strong>Test API:</strong> Click "Test Populations API" - should work without errors</li>
+                        <li><strong>Verify Read-only Fields:</strong> Population ID and Name fields should be read-only (grayed out)</li>
+                        <li><strong>Test Clear:</strong> Select "-- Select a population --" - fields should clear</li>
+                    </ol>
+                </div>
+
+                <!-- Test Results Summary -->
+                <div class="test-section">
+                    <h3><i class="fas fa-chart-bar"></i> Test Results Summary</h3>
+                    <div id="test-summary" class="test-result">
+                        <p><strong>Tests to run:</strong></p>
+                        <ul>
+                            <li>✅ Server Status Check</li>
+                            <li>✅ Population Loading</li>
+                            <li>✅ Dropdown Selection</li>
+                            <li>✅ Field Auto-fill</li>
+                            <li>✅ Read-only Fields</li>
+                            <li>✅ API Endpoint Test</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variable to store populations
+        let testPopulations = [];
+        
+        // Check server status
+        async function checkServerStatus() {
+            const statusDiv = document.getElementById('server-status');
+            const statusText = document.getElementById('server-status-text');
+            
+            statusDiv.className = 'test-result loading';
+            statusText.textContent = 'Checking server status...';
+            
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.className = 'test-result test-success';
+                    statusText.textContent = 'Server is online and responding';
+                    addTestResult('success', '✅ Server status check passed', 'Server is online and healthy');
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                statusDiv.className = 'test-result test-error';
+                statusText.textContent = 'Server is offline or not responding';
+                addTestResult('error', '❌ Server status check failed', error.message);
+            }
+        }
+        
+        // Load populations for test dropdown
+        async function loadTestPopulations() {
+            const dropdown = document.getElementById('test-population-dropdown');
+            const statusDiv = document.getElementById('test-population-status');
+            
+            // Update status
+            statusDiv.innerHTML = '<span class="text-info"><i class="fas fa-spinner fa-spin"></i> Loading populations...</span>';
+            
+            try {
+                const response = await fetch('/api/pingone/populations', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const populations = await response.json();
+                testPopulations = Array.isArray(populations) ? populations : [];
+                
+                // Clear existing options except the first one
+                dropdown.innerHTML = '<option value="">-- Select a population --</option>';
+                
+                // Add population options
+                testPopulations.forEach(population => {
+                    const option = document.createElement('option');
+                    option.value = population.id;
+                    option.textContent = `${population.name} (${population.id.slice(-8)})`;
+                    option.setAttribute('data-population-name', population.name);
+                    dropdown.appendChild(option);
+                });
+                
+                // Update status
+                if (testPopulations.length > 0) {
+                    statusDiv.innerHTML = `<span class="text-success"><i class="fas fa-check"></i> Loaded ${testPopulations.length} populations</span>`;
+                    addTestResult('success', '✅ Population loading test passed', `Loaded ${testPopulations.length} populations`);
+                } else {
+                    statusDiv.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> No populations found</span>';
+                    addTestResult('warning', '⚠️ Population loading test - no populations found', 'No populations available in the environment');
+                }
+                
+            } catch (error) {
+                console.error('Error loading test populations:', error);
+                statusDiv.innerHTML = `<span class="text-danger"><i class="fas fa-times"></i> Error loading populations: ${error.message}</span>`;
+                addTestResult('error', '❌ Population loading test failed', error.message);
+            }
+        }
+        
+        // Update population fields when dropdown selection changes
+        function updateTestPopulationFields() {
+            const dropdown = document.getElementById('test-population-dropdown');
+            const popIdField = document.getElementById('test-pop-id');
+            const popNameField = document.getElementById('test-pop-name');
+            const resultDiv = document.getElementById('dropdown-test-result');
+            
+            const selectedValue = dropdown.value;
+            
+            if (selectedValue) {
+                const selectedPopulation = testPopulations.find(pop => pop.id === selectedValue);
+                if (selectedPopulation) {
+                    popIdField.value = selectedPopulation.id;
+                    popNameField.value = selectedPopulation.name;
+                    
+                    resultDiv.style.display = 'block';
+                    resultDiv.className = 'test-result test-success';
+                    resultDiv.innerHTML = `
+                        <h5>✅ Population Selection Test Passed</h5>
+                        <p><strong>Selected Population:</strong> ${selectedPopulation.name}</p>
+                        <p><strong>Population ID:</strong> ${selectedPopulation.id}</p>
+                        <p><strong>Fields Updated:</strong> Population ID and Name fields have been auto-filled</p>
+                    `;
+                    
+                    addTestResult('success', '✅ Population selection test passed', `Selected: ${selectedPopulation.name}`);
+                }
+            } else {
+                // Clear fields if no population is selected
+                popIdField.value = '';
+                popNameField.value = '';
+                
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'test-result test-info';
+                resultDiv.innerHTML = `
+                    <h5>ℹ️ Population Selection Cleared</h5>
+                    <p>Population fields have been cleared as no population is selected.</p>
+                `;
+            }
+        }
+        
+        // Test populations API
+        async function testPopulationsAPI() {
+            const resultDiv = document.getElementById('api-test-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'test-result loading';
+            resultDiv.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Testing Populations API...</div>';
+            
+            try {
+                const response = await fetch('/api/pingone/populations', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'test-result test-success';
+                    resultDiv.innerHTML = `
+                        <h5>✅ Populations API Test Successful</h5>
+                        <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                        <p><strong>Count:</strong> ${Array.isArray(data) ? data.length : 0} populations found</p>
+                        <details>
+                            <summary>Response Details</summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    `;
+                    addTestResult('success', '✅ Populations API test passed', `Retrieved ${Array.isArray(data) ? data.length : 0} populations`);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                resultDiv.className = 'test-result test-error';
+                resultDiv.innerHTML = `
+                    <h5>❌ Populations API Test Failed</h5>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <details>
+                        <summary>Error Details</summary>
+                        <pre>${error.stack || error.toString()}</pre>
+                    </details>
+                `;
+                addTestResult('error', '❌ Populations API test failed', error.message);
+            }
+        }
+        
+        // Add test result to summary
+        function addTestResult(type, title, message) {
+            const summaryDiv = document.getElementById('test-summary');
+            const timestamp = new Date().toLocaleTimeString();
+            const resultHtml = `
+                <div class="test-result test-${type}">
+                    <strong>[${timestamp}] ${title}</strong><br>
+                    <small>${message}</small>
+                </div>
+            `;
+            summaryDiv.innerHTML = resultHtml + summaryDiv.innerHTML;
+        }
+        
+        // Auto-check server status when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                checkServerStatus();
+            }, 500);
+        });
+    </script>
+</body>
+</html> 

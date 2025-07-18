@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Button Spinner Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .test-button.loading {
+            position: relative;
+            color: transparent;
+        }
+        .test-button.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 16px;
+            height: 16px;
+            margin: -8px 0 0 -8px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Import Button Spinner Fix Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Simulate Import Button State</h2>
+        <p>This test simulates the import button behavior to identify the spinner issue.</p>
+        
+        <button id="test-import-btn" class="test-button">Start Import</button>
+        <button id="test-cancel-btn" class="test-button">Cancel Import</button>
+        <button id="test-reset-btn" class="test-button">Reset State</button>
+        
+        <div id="test-status" class="status info">Ready to test</div>
+        <div id="test-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Check Current App State</h2>
+        <p>Check if the main app has the isImporting flag stuck in true state.</p>
+        
+        <button id="check-state-btn" class="test-button">Check App State</button>
+        <button id="fix-state-btn" class="test-button">Fix App State</button>
+        
+        <div id="state-status" class="status info">Click to check app state</div>
+        <div id="state-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Test Import Button Functionality</h2>
+        <p>Test the actual import button on the main page.</p>
+        
+        <button id="test-main-btn" class="test-button">Test Main Import Button</button>
+        <button id="test-population-btn" class="test-button">Test Population Selection</button>
+        
+        <div id="main-status" class="status info">Ready to test main functionality</div>
+        <div id="main-log" class="log"></div>
+    </div>
+
+    <script>
+        // Test 1: Simulate import button state
+        let isImporting = false;
+        let importTimeout = null;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.getElementById('test-log');
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('test-status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+
+        document.getElementById('test-import-btn').addEventListener('click', function() {
+            if (isImporting) {
+                log('Import already in progress, ignoring click');
+                return;
+            }
+
+            isImporting = true;
+            this.classList.add('loading');
+            this.disabled = true;
+            
+            log('Import started - button should show spinner and be disabled');
+            updateStatus('Import in progress...', 'info');
+
+            // Simulate import process
+            importTimeout = setTimeout(() => {
+                // Simulate error that doesn't reset the state
+                log('ERROR: Import failed but isImporting flag not reset!');
+                updateStatus('Import failed - button still disabled!', 'error');
+                
+                // Don't reset isImporting here to simulate the bug
+                // isImporting = false;
+                // this.classList.remove('loading');
+                // this.disabled = false;
+            }, 3000);
+        });
+
+        document.getElementById('test-cancel-btn').addEventListener('click', function() {
+            if (importTimeout) {
+                clearTimeout(importTimeout);
+                importTimeout = null;
+            }
+            
+            isImporting = false;
+            const importBtn = document.getElementById('test-import-btn');
+            importBtn.classList.remove('loading');
+            importBtn.disabled = false;
+            
+            log('Import cancelled - button state reset');
+            updateStatus('Import cancelled', 'info');
+        });
+
+        document.getElementById('test-reset-btn').addEventListener('click', function() {
+            if (importTimeout) {
+                clearTimeout(importTimeout);
+                importTimeout = null;
+            }
+            
+            isImporting = false;
+            const importBtn = document.getElementById('test-import-btn');
+            importBtn.classList.remove('loading');
+            importBtn.disabled = false;
+            
+            log('State reset');
+            updateStatus('State reset', 'success');
+        });
+
+        // Test 2: Check app state
+        document.getElementById('check-state-btn').addEventListener('click', function() {
+            const stateLog = document.getElementById('state-log');
+            const stateStatus = document.getElementById('state-status');
+            
+            stateLog.innerHTML = '';
+            stateLog.innerHTML += 'Checking app state...\n';
+            
+            try {
+                // Check if window.app exists
+                if (typeof window.app !== 'undefined') {
+                    stateLog.innerHTML += `✅ App object found\n`;
+                    stateLog.innerHTML += `isImporting: ${window.app.isImporting}\n`;
+                    stateLog.innerHTML += `isExporting: ${window.app.isExporting}\n`;
+                    stateLog.innerHTML += `isDeleting: ${window.app.isDeleting}\n`;
+                    stateLog.innerHTML += `isModifying: ${window.app.isModifying}\n`;
+                    
+                    if (window.app.isImporting) {
+                        stateStatus.textContent = 'WARNING: isImporting is true - button may be stuck!';
+                        stateStatus.className = 'status error';
+                    } else {
+                        stateStatus.textContent = 'App state looks normal';
+                        stateStatus.className = 'status success';
+                    }
+                } else {
+                    stateLog.innerHTML += `❌ App object not found\n`;
+                    stateStatus.textContent = 'App not loaded';
+                    stateStatus.className = 'status error';
+                }
+            } catch (error) {
+                stateLog.innerHTML += `❌ Error checking app state: ${error.message}\n`;
+                stateStatus.textContent = 'Error checking state';
+                stateStatus.className = 'status error';
+            }
+        });
+
+        document.getElementById('fix-state-btn').addEventListener('click', function() {
+            const stateLog = document.getElementById('state-log');
+            const stateStatus = document.getElementById('state-status');
+            
+            stateLog.innerHTML += 'Attempting to fix app state...\n';
+            
+            try {
+                if (typeof window.app !== 'undefined') {
+                    // Reset all operation flags
+                    window.app.isImporting = false;
+                    window.app.isExporting = false;
+                    window.app.isDeleting = false;
+                    window.app.isModifying = false;
+                    
+                    // Reset any import abort controller
+                    if (window.app.importAbortController) {
+                        window.app.importAbortController = null;
+                    }
+                    
+                    // Update button states
+                    if (typeof window.app.updateImportButtonState === 'function') {
+                        window.app.updateImportButtonState();
+                    }
+                    
+                    stateLog.innerHTML += `✅ App state reset\n`;
+                    stateLog.innerHTML += `isImporting: ${window.app.isImporting}\n`;
+                    stateStatus.textContent = 'App state fixed';
+                    stateStatus.className = 'status success';
+                } else {
+                    stateLog.innerHTML += `❌ App object not found\n`;
+                    stateStatus.textContent = 'App not loaded';
+                    stateStatus.className = 'status error';
+                }
+            } catch (error) {
+                stateLog.innerHTML += `❌ Error fixing app state: ${error.message}\n`;
+                stateStatus.textContent = 'Error fixing state';
+                stateStatus.className = 'status error';
+            }
+        });
+
+        // Test 3: Test main functionality
+        document.getElementById('test-main-btn').addEventListener('click', function() {
+            const mainLog = document.getElementById('main-log');
+            const mainStatus = document.getElementById('main-status');
+            
+            mainLog.innerHTML = '';
+            mainLog.innerHTML += 'Testing main import button...\n';
+            
+            try {
+                const importBtn = document.getElementById('start-import');
+                if (importBtn) {
+                    mainLog.innerHTML += `✅ Import button found\n`;
+                    mainLog.innerHTML += `Disabled: ${importBtn.disabled}\n`;
+                    mainLog.innerHTML += `Classes: ${importBtn.className}\n`;
+                    
+                    if (importBtn.disabled) {
+                        mainStatus.textContent = 'Import button is disabled';
+                        mainStatus.className = 'status warning';
+                    } else {
+                        mainStatus.textContent = 'Import button is enabled';
+                        mainStatus.className = 'status success';
+                    }
+                } else {
+                    mainLog.innerHTML += `❌ Import button not found\n`;
+                    mainStatus.textContent = 'Import button not found';
+                    mainStatus.className = 'status error';
+                }
+            } catch (error) {
+                mainLog.innerHTML += `❌ Error testing main button: ${error.message}\n`;
+                mainStatus.textContent = 'Error testing button';
+                mainStatus.className = 'status error';
+            }
+        });
+
+        document.getElementById('test-population-btn').addEventListener('click', function() {
+            const mainLog = document.getElementById('main-log');
+            const mainStatus = document.getElementById('main-status');
+            
+            mainLog.innerHTML += 'Testing population selection...\n';
+            
+            try {
+                const populationSelect = document.getElementById('import-population-select');
+                if (populationSelect) {
+                    mainLog.innerHTML += `✅ Population select found\n`;
+                    mainLog.innerHTML += `Value: ${populationSelect.value}\n`;
+                    mainLog.innerHTML += `Options: ${populationSelect.options.length}\n`;
+                    
+                    if (populationSelect.value) {
+                        mainStatus.textContent = 'Population selected';
+                        mainStatus.className = 'status success';
+                    } else {
+                        mainStatus.textContent = 'No population selected';
+                        mainStatus.className = 'status warning';
+                    }
+                } else {
+                    mainLog.innerHTML += `❌ Population select not found\n`;
+                    mainStatus.textContent = 'Population select not found';
+                    mainStatus.className = 'status error';
+                }
+            } catch (error) {
+                mainLog.innerHTML += `❌ Error testing population: ${error.message}\n`;
+                mainStatus.textContent = 'Error testing population';
+                mainStatus.className = 'status error';
+            }
+        });
+
+        // Auto-check app state on load
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                document.getElementById('check-state-btn').click();
+            }, 1000);
+        });
+    </script>
+</body>
+</html> 

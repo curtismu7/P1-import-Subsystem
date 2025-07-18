@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Token Status Test</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        /* Critical UI Elements (hidden by default) */
+        #notification-area {
+            display: none;
+        }
+        #token-status-indicator {
+            display: none;
+        }
+        #connection-status {
+            display: none;
+        }
+        
+        /* Enhanced button styling for visibility */
+        .global-token-actions button {
+            background: #28a745 !important;
+            color: white !important;
+            border: 2px solid #1e7e34 !important;
+            padding: 8px 16px !important;
+            border-radius: 4px !important;
+            cursor: pointer !important;
+            margin: 2px !important;
+            font-weight: bold !important;
+            font-size: 12px !important;
+            text-transform: uppercase !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .global-token-actions button:hover {
+            background: #218838 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important;
+        }
+        
+        .global-token-actions button:active {
+            transform: translateY(0) !important;
+        }
+        
+        /* Make sure buttons are always visible when they should be */
+        .global-token-actions button[style*="display: inline-block"],
+        .global-token-actions button[style*="display: block"] {
+            display: inline-block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        /* Debug styling for button visibility */
+        .global-token-actions {
+            border: 2px dashed #28a745 !important;
+            padding: 5px !important;
+            background: rgba(40, 167, 69, 0.1) !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Critical UI Elements Required by App -->
+    <div id="notification-area" class="status-header"></div>
+    <div id="token-status-indicator" class="token-status-indicator sidebar-bottom" style="display: none;">
+        <div class="token-status-content">
+            <span class="token-status-icon" aria-hidden="true">⏳</span>
+            <span class="token-status-text">Checking token status...</span>
+            <span class="token-status-time"></span>
+        </div>
+        <div class="token-status-actions">
+            <button id="refresh-token-status" class="btn btn-sm btn-outline-secondary" title="Refresh token status" style="display: inline-block;">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <button id="get-token-quick" class="btn btn-sm btn-success" title="Get new token" style="display: none;">
+                <i class="fas fa-key"></i> Get Token
+            </button>
+        </div>
+    </div>
+    <div id="connection-status" class="connection-status" style="display: none;"></div>
+    
+    <!-- Global Token Status (like main app) -->
+    <div id="global-token-status" class="global-token-status" style="position: fixed; top: 10px; left: 10px; z-index: 1000; background: white; border: 1px solid #ddd; border-radius: 4px; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); min-width: 300px;">
+        <div class="global-token-header">
+            <i class="fas fa-key"></i>
+            <span class="global-token-title">Token Status</span>
+            <div class="global-token-time">
+                <span class="global-token-countdown">25:30</span>
+            </div>
+        </div>
+        <div class="global-token-content">
+            <div class="global-token-status-display">
+                <span class="global-token-icon">✅</span>
+                <span class="global-token-text">Valid Token</span>
+            </div>
+            <div class="global-token-actions">
+                <button id="global-refresh-token" class="btn btn-sm btn-outline-secondary" title="Refresh token status" style="display: inline-block; background: #28a745; color: white; border: 2px solid #1e7e34; font-weight: bold;">
+                    <i class="fas fa-sync-alt"></i> Valid Token
+                </button>
+                <button id="global-get-token" class="btn btn-sm btn-success" title="Get new token" style="display: none;">
+                    <i class="fas fa-key"></i> Get Token
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Form Elements to Reduce Warnings -->
+    <div style="display: none;">
+        <!-- Secret field elements -->
+        <input type="password" id="api-secret" name="apiSecret" placeholder="API Secret">
+        <button type="button" id="toggle-api-secret-visibility" class="toggle-password" title="Toggle password visibility">
+            <i class="fas fa-eye-slash"></i>
+        </button>
+        
+        <!-- Population select elements -->
+        <select id="import-population-select">
+            <option value="">Select Population</option>
+        </select>
+        
+        <!-- Other common form elements -->
+        <input type="text" id="environment-id" name="environmentId" placeholder="Environment ID">
+        <input type="text" id="api-client-id" name="apiClientId" placeholder="API Client ID">
+        <select id="region" name="region">
+            <option value="NorthAmerica">North America</option>
+            <option value="Europe">Europe</option>
+            <option value="AsiaPacific">Asia Pacific</option>
+        </select>
+        
+        <!-- Missing critical elements that the app expects -->
+        <input type="text" id="population-id" name="populationId" placeholder="Population ID">
+        <input type="number" id="rate-limit" name="rateLimit" placeholder="Rate Limit" value="10">
+        
+        <!-- Progress Container (required by app) -->
+        <div id="progress-container" class="progress-container" style="display: none;">
+            <div class="progress-section">
+                <div class="progress-header">
+                    <h3><i class="fas fa-cog fa-spin"></i> Import Progress</h3>
+                    <button class="close-progress-btn" type="button" aria-label="Close progress">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="progress-content">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill"></div>
+                        </div>
+                        <div class="progress-percentage">0%</div>
+                    </div>
+                    <div class="progress-status">
+                        <div class="status-message">Preparing import...</div>
+                        <div class="status-details"></div>
+                    </div>
+                    <div class="progress-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Total:</span>
+                            <span class="stat-value total">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Processed:</span>
+                            <span class="stat-value processed">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Success:</span>
+                            <span class="stat-value success">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Failed:</span>
+                            <span class="stat-value failed">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Skipped:</span>
+                            <span class="stat-value skipped">0</span>
+                        </div>
+                    </div>
+                    <div class="progress-timing">
+                        <div class="time-elapsed">
+                            <i class="fas fa-clock"></i>
+                            <span>Elapsed: <span class="elapsed-value">00:00</span></span>
+                        </div>
+                        <div class="time-remaining">
+                            <i class="fas fa-hourglass-half"></i>
+                            <span>ETA: <span class="eta-value">Calculating...</span></span>
+                        </div>
+                    </div>
+                    <div class="progress-actions">
+                        <button class="btn btn-secondary cancel-import-btn" type="button">
+                            <i class="fas fa-stop"></i> Cancel Import
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- File Input (required by app) -->
+        <input type="file" id="csv-file" name="csvFile" accept=".csv" style="display: none;">
+        <label for="csv-file" class="file-input-label">Choose CSV File</label>
+        
+        <!-- File Info (required by app) -->
+        <div id="file-info" class="file-info" style="display: none;">
+            <div class="file-details">
+                <span class="file-name"></span>
+                <span class="file-size"></span>
+                <span class="file-rows"></span>
+            </div>
+        </div>
+        
+        <!-- Preview Container (required by app) -->
+        <div id="dashboard-preview" class="dashboard-preview" style="display: none;">
+            <div class="preview-content">
+                <h3>Data Preview</h3>
+                <div class="preview-table-container">
+                    <table class="preview-table">
+                        <thead>
+                            <tr>
+                                <th>Row</th>
+                                <th>Data</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Sample data</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Get Token Button (required by app) -->
+        <button id="get-token" class="btn btn-primary" type="button" style="display: none;">
+            <i class="fas fa-key"></i> Get Token
+        </button>
+        
+        <!-- Universal Disclaimer Banner (required by app) -->
+        <div id="universal-disclaimer-banner" class="disclaimer-banner" style="display: none;">
+            <div class="disclaimer-content">
+                <span class="disclaimer-text">This is a test environment</span>
+                <button class="disclaimer-close" type="button">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Home Token Status (required by app) -->
+        <div id="home-token-status" class="home-token-status" style="display: none;">
+            <div class="token-status-display">
+                <span class="token-status-icon">⏳</span>
+                <span class="token-status-text">Checking token...</span>
+                <span class="token-status-time"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h1>Global Token Status Test</h1>
+        <p>This page tests the global token status functionality with real-time countdown timer.</p>
+        
+        <div class="test-section">
+            <h3>App Initialization Tests</h3>
+            <button class="test-button" onclick="testAppInitialization()">Test App Initialization</button>
+            <button class="test-button" onclick="testCriticalElements()">Test Critical Elements</button>
+            <button class="test-button" onclick="testGlobalTokenManager()">Test Global Token Manager</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Global Token Status Tests</h3>
+            <button class="test-button" onclick="testGlobalTokenStatus()">Test Global Token Status</button>
+            <button class="test-button" onclick="testTokenStatus()">Test Token Status</button>
+            <button class="test-button" onclick="testTokenCountdown()">Test Token Countdown</button>
+            <button class="test-button" onclick="testButtonStates()">Test Button States</button>
+            <button class="test-button" onclick="debugButtonVisibility()">Debug Button Visibility</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Initial States</h3>
+            <button class="test-button" onclick="setInitialState('valid')">Set Valid Token State</button>
+            <button class="test-button" onclick="setInitialState('expired')">Set Expired Token State</button>
+            <button class="test-button" onclick="setInitialState('expiring')">Set Expiring Soon State</button>
+            <button class="test-button" onclick="setInitialState('no-token')">Set No Token State</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Real-time Updates</h3>
+            <button class="test-button" onclick="testCountdownImmediately()">Test Countdown (30s)</button>
+            <button class="test-button" onclick="startRealTimeUpdates()">Start Real-time Updates</button>
+            <button class="test-button" onclick="stopRealTimeUpdates()">Stop Real-time Updates</button>
+            <button class="test-button" onclick="simulateTokenExpiry()">Simulate Token Expiry</button>
+            <button class="test-button" onclick="updateDebugDisplay()">Update Debug Display</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Comprehensive Test</h3>
+            <button class="test-button" onclick="runComprehensiveTest()">Run Comprehensive Test</button>
+            <button class="test-button" onclick="clearTestOutput()">Clear Test Output</button>
+        </div>
+        
+        <div id="test-output" class="debug-info">
+            <h3>Test Output:</h3>
+            <div id="test-content"></div>
+        </div>
+        
+        <!-- Global Token Status Display -->
+        <div class="test-section">
+            <h3>Global Token Status Display</h3>
+            <div id="global-token-display" style="border: 1px solid #ddd; padding: 15px; border-radius: 4px; background: #f8f9fa;">
+                <div id="token-status-display">
+                    <strong>Token Status:</strong> <span id="token-status-text">Initializing...</span>
+                </div>
+                <div id="token-time-display">
+                    <strong>Time Remaining:</strong> <span id="token-time-text">Calculating...</span>
+                </div>
+                <div id="token-color-display">
+                    <strong>Status Color:</strong> <span id="token-color-text">Default</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the main app bundle -->
+    <script src="js/bundle.js"></script>
+    
+    <!-- Mock Global Token Manager for Testing -->
+    <script>
+        // Mock GlobalTokenManager for testing
+        window.GlobalTokenManager = function() {
+            this.init = function() {
+                console.log('Mock GlobalTokenManager initialized for testing');
+                this.isInitialized = true;
+            };
+            this.init();
+        };
+        
+        // Mock GlobalStatusManager for testing
+        window.GlobalStatusManager = function() {
+            this.init = function() {
+                console.log('Mock GlobalStatusManager initialized for testing');
+                this.isInitialized = true;
+            };
+            this.init();
+        };
+        
+        // Mock CredentialsManager for testing
+        window.CredentialsManager = function() {
+            this.init = function() {
+                console.log('Mock CredentialsManager initialized for testing');
+                this.isInitialized = true;
+            };
+            this.init();
+        };
+        
+        // Mock TokenStatusIndicator for testing
+        window.TokenStatusIndicator = function() {
+            this.init = function() {
+                console.log('Mock TokenStatusIndicator initialized for testing');
+                this.isInitialized = true;
+            };
+            this.init();
+        };
+        
+        // Mock GlobalTokenManager instance with methods
+        window.globalTokenManager = {
+            getCurrentTokenInfo() {
+                // Mock token info for testing
+                return {
+                    hasToken: true,
+                    timeLeft: 1800, // 30 minutes
+                    expiresAt: new Date(Date.now() + 1800000).toISOString(),
+                    token: 'mock-token-for-testing'
+                };
+            },
+            
+            getCurrentTokenTimeRemaining() {
+                // Mock time remaining for testing
+                return '30m 0s';
+            },
+            
+            getTokenStatus() {
+                // Mock token status for testing
+                return 'Valid';
+            },
+            
+            refreshTokenStatus() {
+                console.log('Mock token refresh initiated');
+                return Promise.resolve({ success: true });
+            },
+            
+            updateStatus() {
+                console.log('Mock token status update');
+            }
+        };
+        
+        // Mock PingOneClient for testing
+        window.PingOneClient = {
+            getCurrentTokenTimeRemaining() {
+                return {
+                    token: 'mock-token',
+                    isExpired: false,
+                    timeRemaining: '30m 0s'
+                };
+            }
+        };
+    </script>
+    
+    <script>
+        let updateInterval = null;
+        
+        function log(message, data = null) {
+            const testContent = document.getElementById('test-content');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            if (data) {
+                logEntry.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            testContent.appendChild(logEntry);
+            console.log(message, data);
+        }
+        
+        function clearTestOutput() {
+            const testContent = document.getElementById('test-content');
+            testContent.innerHTML = '';
+        }
+        
+        function testAppInitialization() {
+            log('🧪 Testing App Initialization...');
+            
+            // Check if app is available
+            if (window.app) {
+                log('✅ App object available');
+                log('App methods:', Object.getOwnPropertyNames(window.app).filter(name => typeof window.app[name] === 'function'));
+            } else {
+                log('❌ App object not available');
+            }
+            
+            // Check if PingOneClient is available
+            if (window.PingOneClient) {
+                log('✅ PingOneClient available');
+            } else {
+                log('❌ PingOneClient not available');
+            }
+            
+            // Check if global token manager is available
+            if (window.GlobalTokenManager) {
+                log('✅ Global Token Manager available');
+                // Initialize the mock GlobalTokenManager by creating an instance
+                window.globalTokenManager = new window.GlobalTokenManager();
+                log('✅ Mock Global Token Manager initialized');
+            } else {
+                log('❌ Global Token Manager not available');
+            }
+        }
+        
+        function testCriticalElements() {
+            log('🧪 Testing Critical UI Elements...');
+            
+            const criticalElements = ['notification-area', 'token-status-indicator', 'connection-status'];
+            
+            criticalElements.forEach(elementId => {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    log(`✅ ${elementId} found`);
+                } else {
+                    log(`❌ ${elementId} missing`);
+                }
+            });
+        }
+        
+        function testGlobalTokenManager() {
+            log('🧪 Testing Global Token Manager...');
+            
+            if (window.globalTokenManager) {
+                log('Global Token Manager methods:', Object.getOwnPropertyNames(window.globalTokenManager));
+                
+                // Test getting current token info
+                try {
+                    const tokenInfo = window.globalTokenManager.getCurrentTokenInfo();
+                    log('Current token info:', tokenInfo);
+                } catch (error) {
+                    log('Error getting token info:', error.message);
+                }
+                
+                // Test getting time remaining
+                try {
+                    const timeRemaining = window.globalTokenManager.getCurrentTokenTimeRemaining();
+                    log('Time remaining:', timeRemaining);
+                } catch (error) {
+                    log('Error getting time remaining:', error.message);
+                }
+            } else {
+                log('Global Token Manager not available');
+            }
+        }
+        
+        function testGlobalTokenStatus() {
+            log('🧪 Testing Global Token Status Display...');
+            
+            // Test if global token status element exists
+            const globalTokenStatus = document.getElementById('global-token-status');
+            if (globalTokenStatus) {
+                log('✅ Global token status element found');
+                
+                // Test updating the display
+                const globalTokenText = document.querySelector('.global-token-text');
+                const globalTokenIcon = document.querySelector('.global-token-icon');
+                const globalCountdown = document.querySelector('.global-token-countdown');
+                
+                if (globalTokenText && globalTokenIcon && globalCountdown) {
+                    // Update with test data
+                    globalTokenText.textContent = 'Token Valid (Test)';
+                    globalTokenIcon.textContent = '✅';
+                    globalCountdown.textContent = '25:30';
+                    
+                    log('✅ Global token status updated with test data');
+                    log('Status text:', globalTokenText.textContent);
+                    log('Status icon:', globalTokenIcon.textContent);
+                    log('Countdown:', globalCountdown.textContent);
+                } else {
+                    log('❌ Global token status elements not found');
+                }
+            } else {
+                log('❌ Global token status element not found');
+            }
+        }
+        
+        function testTokenStatus() {
+            log('🧪 Testing Token Status...');
+            
+            if (window.globalTokenManager) {
+                try {
+                    const status = window.globalTokenManager.getTokenStatus();
+                    log('Token status:', status);
+                    
+                    // Update both the debug display and the global token status
+                    const tokenStatusText = document.querySelector('.token-status-text');
+                    if (tokenStatusText) {
+                        tokenStatusText.textContent = status;
+                    }
+                    
+                    // Update global token status display
+                    const globalTokenText = document.querySelector('.global-token-text');
+                    const globalTokenIcon = document.querySelector('.global-token-icon');
+                    if (globalTokenText && globalTokenIcon) {
+                        globalTokenText.textContent = status;
+                        if (status.includes('Valid')) {
+                            globalTokenIcon.textContent = '✅';
+                        } else if (status.includes('Expired')) {
+                            globalTokenIcon.textContent = '❌';
+                        } else {
+                            globalTokenIcon.textContent = '⏳';
+                        }
+                    }
+                } catch (error) {
+                    log('Error getting token status:', error.message);
+                }
+            } else {
+                log('Global Token Manager not available');
+            }
+        }
+        
+        function testTokenCountdown() {
+            log('🧪 Testing Token Countdown...');
+            
+            if (window.globalTokenManager) {
+                try {
+                    const timeRemaining = window.globalTokenManager.getCurrentTokenTimeRemaining();
+                    log('Time remaining:', timeRemaining);
+                    
+                    // Update both the debug display and the global token countdown
+                    const tokenStatusTime = document.querySelector('.token-status-time');
+                    if (tokenStatusTime) {
+                        tokenStatusTime.textContent = timeRemaining;
+                    }
+                    
+                    // Update global token countdown
+                    const globalCountdown = document.querySelector('.global-token-countdown');
+                    if (globalCountdown) {
+                        globalCountdown.textContent = timeRemaining;
+                    }
+                } catch (error) {
+                    log('Error getting token countdown:', error.message);
+                }
+            } else {
+                log('Global Token Manager not available');
+            }
+        }
+        
+        function testCountdownImmediately() {
+            log('🧪 Testing Countdown Immediately...');
+            
+            // Set a short countdown for testing (30 seconds)
+            let testTimeRemaining = 30;
+            
+            const testInterval = setInterval(() => {
+                testTimeRemaining = Math.max(0, testTimeRemaining - 1);
+                
+                // Format time as MM:SS
+                const minutes = Math.floor(testTimeRemaining / 60);
+                const seconds = testTimeRemaining % 60;
+                const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                // Update global token countdown
+                const globalCountdown = document.querySelector('.global-token-countdown');
+                if (globalCountdown) {
+                    globalCountdown.textContent = timeString;
+                    globalCountdown.style.color = testTimeRemaining <= 10 ? 'red' : 'black';
+                }
+                
+                // Update status
+                const globalTokenText = document.querySelector('.global-token-text');
+                if (globalTokenText) {
+                    globalTokenText.textContent = testTimeRemaining <= 0 ? 'Token Expired (Test)' : 'Token Valid (Test)';
+                }
+                
+                // Update token status time
+                const tokenStatusTime = document.querySelector('.token-status-time');
+                if (tokenStatusTime) {
+                    tokenStatusTime.textContent = timeString;
+                }
+                
+                // Update global token action buttons
+                const globalRefreshButton = document.getElementById('global-refresh-token');
+                const globalGetTokenButton = document.getElementById('global-get-token');
+                
+                if (globalRefreshButton && globalGetTokenButton) {
+                    if (testTimeRemaining <= 0) {
+                        // Token expired - show "Get Token" button, hide refresh
+                        globalRefreshButton.style.display = 'none';
+                        globalGetTokenButton.style.display = 'inline-block';
+                        globalGetTokenButton.textContent = '🔑 Get Token (Test)';
+                    } else if (testTimeRemaining <= 10) { // 10 seconds for test
+                        // Token expiring soon - show both buttons
+                        globalRefreshButton.style.display = 'inline-block';
+                        globalGetTokenButton.style.display = 'inline-block';
+                        globalGetTokenButton.textContent = '⚠️ Renew Token (Test)';
+                    } else {
+                        // Token valid - show refresh button, hide get token
+                        globalRefreshButton.style.display = 'inline-block';
+                        globalGetTokenButton.style.display = 'none';
+                    }
+                }
+                
+                log(`🕐 Test countdown: ${timeString}`);
+                
+                if (testTimeRemaining <= 0) {
+                    clearInterval(testInterval);
+                    log('✅ Test countdown completed');
+                }
+            }, 1000);
+        }
+        
+        function testTokenRefresh() {
+            log('🧪 Testing Token Refresh...');
+            
+            if (window.globalTokenManager) {
+                try {
+                    window.globalTokenManager.refreshTokenStatus();
+                    log('Token status refresh initiated');
+                } catch (error) {
+                    log('Error refreshing token:', error.message);
+                }
+            } else {
+                log('Global Token Manager not available');
+            }
+        }
+        
+        function startRealTimeUpdates() {
+            log('🔄 Starting Real-time Updates...');
+            
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+            
+            // Initialize mock token manager if needed
+            if (window.GlobalTokenManager && !window.globalTokenManager) {
+                window.globalTokenManager = new window.GlobalTokenManager();
+            }
+            
+            let mockTimeRemaining = 1800; // Start with 30 minutes
+            let updateCount = 0;
+            
+            updateInterval = setInterval(() => {
+                if (window.globalTokenManager) {
+                    try {
+                        // Simulate countdown
+                        mockTimeRemaining = Math.max(0, mockTimeRemaining - 1);
+                        
+                        // Format time as MM:SS
+                        const minutes = Math.floor(mockTimeRemaining / 60);
+                        const seconds = mockTimeRemaining % 60;
+                        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                        
+                        // Update debug display
+                        const tokenStatusTime = document.querySelector('.token-status-time');
+                        if (tokenStatusTime) {
+                            tokenStatusTime.textContent = timeString;
+                        }
+                        
+                        // Update global token countdown
+                        const globalCountdown = document.querySelector('.global-token-countdown');
+                        if (globalCountdown) {
+                            globalCountdown.textContent = timeString;
+                        }
+                        
+                        // Update status based on time remaining
+                        let status = 'Token Valid';
+                        let icon = '✅';
+                        if (mockTimeRemaining <= 0) {
+                            status = 'Token Expired';
+                            icon = '❌';
+                        } else if (mockTimeRemaining <= 300) { // 5 minutes
+                            status = 'Token Expiring Soon';
+                            icon = '⚠️';
+                        }
+                        
+                        // Update status displays
+                        const tokenStatusText = document.querySelector('.token-status-text');
+                        const tokenStatusIcon = document.querySelector('.token-status-icon');
+                        if (tokenStatusText) {
+                            tokenStatusText.textContent = status;
+                        }
+                        if (tokenStatusIcon) {
+                            tokenStatusIcon.textContent = icon;
+                        }
+                        
+                        // Update global token status
+                        const globalTokenText = document.querySelector('.global-token-text');
+                        const globalTokenIcon = document.querySelector('.global-token-icon');
+                        if (globalTokenText && globalTokenIcon) {
+                            globalTokenText.textContent = status;
+                            globalTokenIcon.textContent = icon;
+                        }
+                        
+                        // Update global token action buttons
+                        const globalRefreshButton = document.getElementById('global-refresh-token');
+                        const globalGetTokenButton = document.getElementById('global-get-token');
+                        
+                        if (globalRefreshButton && globalGetTokenButton) {
+                            if (mockTimeRemaining <= 0) {
+                                // Token expired - show "Get Token" button, hide refresh
+                                globalRefreshButton.style.display = 'none';
+                                globalGetTokenButton.style.display = 'inline-block';
+                                globalGetTokenButton.textContent = '🔑 Get Token';
+                            } else if (mockTimeRemaining <= 300) { // 5 minutes
+                                // Token expiring soon - show both buttons
+                                globalRefreshButton.style.display = 'inline-block';
+                                globalGetTokenButton.style.display = 'inline-block';
+                                globalGetTokenButton.textContent = '⚠️ Renew Token';
+                            } else {
+                                // Token valid - show refresh button, hide get token
+                                globalRefreshButton.style.display = 'inline-block';
+                                globalGetTokenButton.style.display = 'none';
+                            }
+                        }
+                        
+                        // Update debug display in test section
+                        const debugTokenStatusText = document.getElementById('token-status-text');
+                        const debugTokenTimeText = document.getElementById('token-time-text');
+                        const debugTokenColorText = document.getElementById('token-color-text');
+                        
+                        if (debugTokenStatusText) {
+                            debugTokenStatusText.textContent = status;
+                        }
+                        if (debugTokenTimeText) {
+                            debugTokenTimeText.textContent = timeString;
+                        }
+                        if (debugTokenColorText) {
+                            if (mockTimeRemaining <= 0) {
+                                debugTokenColorText.textContent = 'Red (Expired)';
+                            } else if (mockTimeRemaining <= 300) {
+                                debugTokenColorText.textContent = 'Orange (Warning)';
+                            } else {
+                                debugTokenColorText.textContent = 'Green (Valid)';
+                            }
+                        }
+                        
+                        // Log updates less frequently (every 10 seconds) to avoid spam
+                        updateCount++;
+                        if (updateCount % 10 === 0 || mockTimeRemaining <= 60) {
+                            log(`🕐 Real-time update: ${timeString} - ${status}`);
+                        }
+                        
+                        // Log to console for immediate feedback
+                        console.log(`🕐 Countdown: ${timeString} - ${status}`);
+                        
+                    } catch (error) {
+                        log('Error in real-time update:', error.message);
+                    }
+                } else {
+                    log('Global Token Manager not available for real-time updates');
+                }
+            }, 1000);
+            
+            log('Real-time updates started (1 second intervals)');
+        }
+        
+        function stopRealTimeUpdates() {
+            log('🛑 Stopping Real-time Updates...');
+            
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+                log('Real-time updates stopped');
+            } else {
+                log('No active real-time updates to stop');
+            }
+        }
+        
+        function simulateTokenExpiry() {
+            log('⏰ Simulating Token Expiry...');
+            
+            if (window.globalTokenManager) {
+                try {
+                    // This would need to be implemented in the global token manager
+                    // For now, just log the attempt
+                    log('Token expiry simulation requested');
+                } catch (error) {
+                    log('Error simulating token expiry:', error.message);
+                }
+            } else {
+                log('Global Token Manager not available');
+            }
+        }
+        
+        function runComprehensiveTest() {
+            log('🔍 Running Comprehensive Test...');
+            
+            // Test all aspects
+            testAppInitialization();
+            testCriticalElements();
+            testGlobalTokenManager();
+            testTokenStatus();
+            testTokenCountdown();
+            
+            // Start real-time updates
+            setTimeout(() => {
+                startRealTimeUpdates();
+            }, 1000);
+        }
+
+        function testButtonStates() {
+            log('🧪 Testing Button States...');
+            
+            const globalRefreshButton = document.getElementById('global-refresh-token');
+            const globalGetTokenButton = document.getElementById('global-get-token');
+            
+            if (globalRefreshButton && globalGetTokenButton) {
+                log('✅ Global token action buttons found');
+                
+                // Debug button properties
+                log('Button properties:', {
+                    refreshButton: {
+                        id: globalRefreshButton.id,
+                        display: globalRefreshButton.style.display,
+                        visibility: globalRefreshButton.style.visibility,
+                        opacity: globalRefreshButton.style.opacity,
+                        offsetWidth: globalRefreshButton.offsetWidth,
+                        offsetHeight: globalRefreshButton.offsetHeight,
+                        textContent: globalRefreshButton.textContent,
+                        className: globalRefreshButton.className
+                    },
+                    getTokenButton: {
+                        id: globalGetTokenButton.id,
+                        display: globalGetTokenButton.style.display,
+                        visibility: globalGetTokenButton.style.visibility,
+                        opacity: globalGetTokenButton.style.opacity,
+                        offsetWidth: globalGetTokenButton.offsetWidth,
+                        offsetHeight: globalGetTokenButton.offsetHeight,
+                        textContent: globalGetTokenButton.textContent,
+                        className: globalGetTokenButton.className
+                    }
+                });
+                
+                // Test different button states with enhanced visibility
+                log('Testing button states with enhanced styling:');
+                
+                // State 1: Valid token (normal state) - DARK GREEN
+                globalRefreshButton.style.display = 'inline-block';
+                globalRefreshButton.style.background = '#28a745';
+                globalRefreshButton.style.color = 'white';
+                globalRefreshButton.style.border = '3px solid #1e7e34';
+                globalRefreshButton.style.fontWeight = 'bold';
+                globalRefreshButton.style.fontSize = '14px';
+                globalRefreshButton.textContent = '🔄 REFRESH TOKEN (TEST)';
+                globalGetTokenButton.style.display = 'none';
+                log('State 1 - Valid Token: Dark green refresh button visible, Get Token hidden');
+                
+                setTimeout(() => {
+                    // State 2: Expiring soon (warning state) - MEDIUM GREEN
+                    globalRefreshButton.style.display = 'inline-block';
+                    globalRefreshButton.style.background = '#20c997';
+                    globalRefreshButton.textContent = '🔄 REFRESH (WARNING)';
+                    globalGetTokenButton.style.display = 'inline-block';
+                    globalGetTokenButton.style.background = '#17a2b8';
+                    globalGetTokenButton.style.color = 'white';
+                    globalGetTokenButton.style.border = '3px solid #138496';
+                    globalGetTokenButton.style.fontWeight = 'bold';
+                    globalGetTokenButton.style.fontSize = '14px';
+                    globalGetTokenButton.textContent = '⚠️ RENEW TOKEN (TEST)';
+                    log('State 2 - Expiring Soon: Both medium green buttons visible');
+                    
+                    setTimeout(() => {
+                        // State 3: Expired token (error state) - LIGHT GREEN
+                        globalRefreshButton.style.display = 'none';
+                        globalGetTokenButton.style.display = 'inline-block';
+                        globalGetTokenButton.style.background = '#6fcf97';
+                        globalGetTokenButton.style.color = 'white';
+                        globalGetTokenButton.style.border = '3px solid #5cb85c';
+                        globalGetTokenButton.textContent = '🔑 GET TOKEN (TEST)';
+                        log('State 3 - Expired: Light green get token button visible');
+                        
+                        setTimeout(() => {
+                            // Reset to normal state - FOREST GREEN
+                            globalRefreshButton.style.display = 'inline-block';
+                            globalRefreshButton.style.background = '#155724';
+                            globalRefreshButton.style.color = 'white';
+                            globalRefreshButton.style.border = '3px solid #0f5132';
+                            globalRefreshButton.textContent = '🔄 REFRESH (NORMAL)';
+                            globalGetTokenButton.style.display = 'none';
+                            log('State 4 - Reset: Forest green refresh button visible');
+                        }, 2000);
+                    }, 2000);
+                }, 2000);
+            } else {
+                log('❌ Global token action buttons not found');
+            }
+        }
+        
+        function debugButtonVisibility() {
+            log('🔍 Debugging Button Visibility...');
+            
+            const globalRefreshButton = document.getElementById('global-refresh-token');
+            const globalGetTokenButton = document.getElementById('global-get-token');
+            const globalTokenActions = document.querySelector('.global-token-actions');
+            
+            if (!globalRefreshButton || !globalGetTokenButton) {
+                log('❌ Global token action buttons not found');
+                return;
+            }
+            
+            log('✅ Global token action buttons found');
+            
+            // Check computed styles
+            const refreshComputed = window.getComputedStyle(globalRefreshButton);
+            const getTokenComputed = window.getComputedStyle(globalGetTokenButton);
+            const actionsComputed = globalTokenActions ? window.getComputedStyle(globalTokenActions) : null;
+            
+            log('Computed styles for refresh button:', {
+                display: refreshComputed.display,
+                visibility: refreshComputed.visibility,
+                opacity: refreshComputed.opacity,
+                position: refreshComputed.position,
+                zIndex: refreshComputed.zIndex,
+                width: refreshComputed.width,
+                height: refreshComputed.height,
+                backgroundColor: refreshComputed.backgroundColor,
+                color: refreshComputed.color
+            });
+            
+            log('Computed styles for get token button:', {
+                display: getTokenComputed.display,
+                visibility: getTokenComputed.visibility,
+                opacity: getTokenComputed.opacity,
+                position: getTokenComputed.position,
+                zIndex: getTokenComputed.zIndex,
+                width: getTokenComputed.width,
+                height: getTokenComputed.height,
+                backgroundColor: getTokenComputed.backgroundColor,
+                color: getTokenComputed.color
+            });
+            
+            if (actionsComputed) {
+                log('Computed styles for actions container:', {
+                    display: actionsComputed.display,
+                    visibility: actionsComputed.visibility,
+                    opacity: actionsComputed.opacity,
+                    position: actionsComputed.position,
+                    zIndex: actionsComputed.zIndex,
+                    width: actionsComputed.width,
+                    height: actionsComputed.height
+                });
+            }
+            
+            // Check if buttons are actually visible
+            const refreshRect = globalRefreshButton.getBoundingClientRect();
+            const getTokenRect = globalGetTokenButton.getBoundingClientRect();
+            
+            log('Button dimensions and visibility:', {
+                refreshButton: {
+                    width: refreshRect.width,
+                    height: refreshRect.height,
+                    top: refreshRect.top,
+                    left: refreshRect.left,
+                    visible: refreshRect.width > 0 && refreshRect.height > 0
+                },
+                getTokenButton: {
+                    width: getTokenRect.width,
+                    height: getTokenRect.height,
+                    top: getTokenRect.top,
+                    left: getTokenRect.left,
+                    visible: getTokenRect.width > 0 && getTokenRect.height > 0
+                }
+            });
+            
+            // Force make buttons visible with bright colors
+            log('🔄 Forcing buttons to be visible with bright colors...');
+            
+            // Make refresh button dark green and visible
+            globalRefreshButton.style.display = 'inline-block';
+            globalRefreshButton.style.visibility = 'visible';
+            globalRefreshButton.style.opacity = '1';
+            globalRefreshButton.style.background = '#28a745';
+            globalRefreshButton.style.color = 'white';
+            globalRefreshButton.style.border = '3px solid #1e7e34';
+            globalRefreshButton.style.fontWeight = 'bold';
+            globalRefreshButton.style.fontSize = '16px';
+            globalRefreshButton.style.padding = '10px 20px';
+            globalRefreshButton.style.margin = '5px';
+            globalRefreshButton.style.zIndex = '9999';
+            globalRefreshButton.style.position = 'relative';
+            globalRefreshButton.textContent = '🔄 FORCE VISIBLE REFRESH';
+            
+            // Make get token button light green and visible
+            globalGetTokenButton.style.display = 'inline-block';
+            globalGetTokenButton.style.visibility = 'visible';
+            globalGetTokenButton.style.opacity = '1';
+            globalGetTokenButton.style.background = '#6fcf97';
+            globalGetTokenButton.style.color = 'white';
+            globalGetTokenButton.style.border = '3px solid #5cb85c';
+            globalGetTokenButton.style.fontWeight = 'bold';
+            globalGetTokenButton.style.fontSize = '16px';
+            globalGetTokenButton.style.padding = '10px 20px';
+            globalGetTokenButton.style.margin = '5px';
+            globalGetTokenButton.style.zIndex = '9999';
+            globalGetTokenButton.style.position = 'relative';
+            globalGetTokenButton.textContent = '🔑 FORCE VISIBLE GET TOKEN';
+            
+            log('✅ Buttons forced to be visible with bright colors');
+            log('Check the top-left corner for bright red and green buttons');
+        }
+        
+        function setInitialState(state) {
+            log(`🎯 Setting Initial State: ${state}`);
+            
+            const globalTokenText = document.querySelector('.global-token-text');
+            const globalTokenIcon = document.querySelector('.global-token-icon');
+            const globalCountdown = document.querySelector('.global-token-countdown');
+            const globalRefreshButton = document.getElementById('global-refresh-token');
+            const globalGetTokenButton = document.getElementById('global-get-token');
+            
+            switch (state) {
+                case 'valid':
+                    // Valid token state - green refresh button visible
+                    if (globalTokenText) globalTokenText.textContent = 'Valid Token';
+                    if (globalTokenIcon) globalTokenIcon.textContent = '✅';
+                    if (globalCountdown) globalCountdown.textContent = '25:30';
+                    if (globalRefreshButton) {
+                        globalRefreshButton.style.display = 'inline-block';
+                        globalRefreshButton.style.background = '#28a745';
+                        globalRefreshButton.style.color = 'white';
+                        globalRefreshButton.style.border = '2px solid #1e7e34';
+                        globalRefreshButton.style.fontWeight = 'bold';
+                        globalRefreshButton.innerHTML = '<i class="fas fa-sync-alt"></i> Valid Token';
+                    }
+                    if (globalGetTokenButton) globalGetTokenButton.style.display = 'none';
+                    log('✅ Set Valid Token State');
+                    break;
+                    
+                case 'expired':
+                    // Expired token state - red get token button visible
+                    if (globalTokenText) globalTokenText.textContent = 'Token Expired';
+                    if (globalTokenIcon) globalTokenIcon.textContent = '❌';
+                    if (globalCountdown) globalCountdown.textContent = '00:00';
+                    if (globalRefreshButton) globalRefreshButton.style.display = 'none';
+                    if (globalGetTokenButton) {
+                        globalGetTokenButton.style.display = 'inline-block';
+                        globalGetTokenButton.style.background = '#dc3545';
+                        globalGetTokenButton.style.color = 'white';
+                        globalGetTokenButton.style.border = '2px solid #c82333';
+                        globalGetTokenButton.style.fontWeight = 'bold';
+                        globalGetTokenButton.innerHTML = '<i class="fas fa-key"></i> Get Token';
+                    }
+                    log('❌ Set Expired Token State');
+                    break;
+                    
+                case 'expiring':
+                    // Expiring soon state - both buttons visible
+                    if (globalTokenText) globalTokenText.textContent = 'Token Expiring Soon';
+                    if (globalTokenIcon) globalTokenIcon.textContent = '⚠️';
+                    if (globalCountdown) globalCountdown.textContent = '04:30';
+                    if (globalRefreshButton) {
+                        globalRefreshButton.style.display = 'inline-block';
+                        globalRefreshButton.style.background = '#ffc107';
+                        globalRefreshButton.style.color = 'black';
+                        globalRefreshButton.style.border = '2px solid #e0a800';
+                        globalRefreshButton.style.fontWeight = 'bold';
+                        globalRefreshButton.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh Token';
+                    }
+                    if (globalGetTokenButton) {
+                        globalGetTokenButton.style.display = 'inline-block';
+                        globalGetTokenButton.style.background = '#fd7e14';
+                        globalGetTokenButton.style.color = 'white';
+                        globalGetTokenButton.style.border = '2px solid #e55a00';
+                        globalGetTokenButton.style.fontWeight = 'bold';
+                        globalGetTokenButton.innerHTML = '<i class="fas fa-key"></i> Renew Token';
+                    }
+                    log('⚠️ Set Expiring Soon State');
+                    break;
+                    
+                case 'no-token':
+                    // No token state - blue get token button visible
+                    if (globalTokenText) globalTokenText.textContent = 'No Token Available';
+                    if (globalTokenIcon) globalTokenIcon.textContent = '🔑';
+                    if (globalCountdown) globalCountdown.textContent = '--:--';
+                    if (globalRefreshButton) globalRefreshButton.style.display = 'none';
+                    if (globalGetTokenButton) {
+                        globalGetTokenButton.style.display = 'inline-block';
+                        globalGetTokenButton.style.background = '#007bff';
+                        globalGetTokenButton.style.color = 'white';
+                        globalGetTokenButton.style.border = '2px solid #0056b3';
+                        globalGetTokenButton.style.fontWeight = 'bold';
+                        globalGetTokenButton.innerHTML = '<i class="fas fa-key"></i> Get Token';
+                    }
+                    log('🔑 Set No Token State');
+                    break;
+            }
+        }
+        
+        function updateDebugDisplay() {
+            log('🔄 Updating Debug Display...');
+            
+            // Get current mock time remaining (if available)
+            let mockTimeRemaining = 1800; // Default 30 minutes
+            
+            // Format time as MM:SS
+            const minutes = Math.floor(mockTimeRemaining / 60);
+            const seconds = mockTimeRemaining % 60;
+            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Determine status
+            let status = 'Token Valid';
+            let color = 'Green (Valid)';
+            
+            if (mockTimeRemaining <= 0) {
+                status = 'Token Expired';
+                color = 'Red (Expired)';
+            } else if (mockTimeRemaining <= 300) {
+                status = 'Token Expiring Soon';
+                color = 'Orange (Warning)';
+            }
+            
+            // Update debug display elements
+            const debugTokenStatusText = document.getElementById('token-status-text');
+            const debugTokenTimeText = document.getElementById('token-time-text');
+            const debugTokenColorText = document.getElementById('token-color-text');
+            
+            if (debugTokenStatusText) {
+                debugTokenStatusText.textContent = status;
+                log('Updated token status text');
+            }
+            if (debugTokenTimeText) {
+                debugTokenTimeText.textContent = timeString;
+                log('Updated token time text');
+            }
+            if (debugTokenColorText) {
+                debugTokenColorText.textContent = color;
+                log('Updated token color text');
+            }
+            
+            log('✅ Debug display updated with test data');
+        }
+        
+        // Initialize test when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🧪 Global Token Status Test Page Loaded');
+            log('Waiting for app to initialize...');
+            
+            // Wait for app to be ready
+            setTimeout(() => {
+                log('App initialization check complete');
+                testAppInitialization();
+                testCriticalElements();
+                
+                // Set initial state to "valid token" by default
+                setInitialState('valid');
+                log('✅ Set default initial state: Valid Token');
+            }, 2000);
+        });
+    </script>
+</body>
+</html> 

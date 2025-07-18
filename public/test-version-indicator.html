@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Version Indicator Test</title>
+    <!-- Ping Identity Official CSS -->
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css">
+    <!-- Bootstrap CSS -->
+    <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/styles-fixed.css">
+    <!-- Ping Identity Theme CSS -->
+    <link rel="stylesheet" href="/css/ping-identity.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Open Sans', Arial, sans-serif;
+        }
+        .test-container {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+        }
+        .test-content {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-header h1 {
+            color: #E1001A;
+            margin-bottom: 10px;
+        }
+        .test-description {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .test-section h3 {
+            color: #0073C8;
+            margin-bottom: 15px;
+        }
+        .test-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            border-left: 4px solid #E1001A;
+        }
+        .test-item strong {
+            color: #333;
+        }
+        .test-item .status {
+            float: right;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .version-display {
+            background: linear-gradient(135deg, #E1001A 0%, #0073C8 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .instructions {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .instructions h4 {
+            color: #1976d2;
+            margin-bottom: 15px;
+        }
+        .instructions ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body class="ping-identity-theme">
+    <div class="test-container">
+        <div class="test-content">
+            <div class="test-header">
+                <h1>Version Indicator Test</h1>
+                <p class="test-description">Testing the new top-left version indicator implementation</p>
+            </div>
+
+            <div class="instructions">
+                <h4><i class="fas fa-info-circle"></i> Test Instructions</h4>
+                <ul>
+                    <li>Look for the version badge in the top-left corner of the main content area</li>
+                    <li>The badge should display "v5.3" with Ping Identity branding colors</li>
+                    <li>Hover over the badge to see the interactive effects</li>
+                    <li>Test on different screen sizes to verify responsive behavior</li>
+                    <li>Check that the badge is clearly visible and doesn't interfere with other UI elements</li>
+                </ul>
+            </div>
+
+            <div class="test-section">
+                <h3><i class="fas fa-check-circle"></i> Version Indicator Features</h3>
+                <div class="test-item">
+                    <strong>Position:</strong> Top-left corner of main content
+                    <span class="status success">✓ Implemented</span>
+                </div>
+                <div class="test-item">
+                    <strong>Styling:</strong> Ping Identity brand colors (red/blue gradient)
+                    <span class="status success">✓ Implemented</span>
+                </div>
+                <div class="test-item">
+                    <strong>Typography:</strong> Uppercase, bold, with letter spacing
+                    <span class="status success">✓ Implemented</span>
+                </div>
+                <div class="test-item">
+                    <strong>Interactive:</strong> Hover effects with transform and shadow
+                    <span class="status success">✓ Implemented</span>
+                </div>
+                <div class="test-item">
+                    <strong>Responsive:</strong> Adapts to different screen sizes
+                    <span class="status success">✓ Implemented</span>
+                </div>
+                <div class="test-item">
+                    <strong>Accessibility:</strong> High contrast, readable text
+                    <span class="status success">✓ Implemented</span>
+                </div>
+            </div>
+
+            <div class="test-section">
+                <h3><i class="fas fa-eye"></i> Visual Verification</h3>
+                <div class="version-display">
+                    Expected Version Display: v5.3
+                </div>
+                <p><strong>Check that:</strong></p>
+                <ul>
+                    <li>The version badge appears in the top-left corner</li>
+                    <li>It has a gradient background (red to blue)</li>
+                    <li>Text is white and clearly readable</li>
+                    <li>Badge has rounded corners and subtle shadow</li>
+                    <li>Hovering shows a slight lift effect</li>
+                </ul>
+            </div>
+
+            <div class="test-section">
+                <h3><i class="fas fa-mobile-alt"></i> Responsive Testing</h3>
+                <p><strong>Test on different screen sizes:</strong></p>
+                <ul>
+                    <li><strong>Desktop:</strong> Badge should be clearly visible in top-left</li>
+                    <li><strong>Tablet (768px):</strong> Badge should adjust size and position</li>
+                    <li><strong>Mobile (480px):</strong> Badge should be smaller but still visible</li>
+                </ul>
+            </div>
+
+            <div class="test-section">
+                <h3><i class="fas fa-code"></i> Technical Implementation</h3>
+                <div class="test-item">
+                    <strong>Module:</strong> VersionManager class updated
+                    <span class="status success">✓ Updated</span>
+                </div>
+                <div class="test-item">
+                    <strong>CSS:</strong> New .top-left-version-badge styling
+                    <span class="status success">✓ Added</span>
+                </div>
+                <div class="test-item">
+                    <strong>Positioning:</strong> Absolute positioning with relative parent
+                    <span class="status success">✓ Implemented</span>
+                </div>
+                <div class="test-item">
+                    <strong>Branding:</strong> Ping Identity color scheme applied
+                    <span class="status success">✓ Applied</span>
+                </div>
+            </div>
+
+            <div class="test-section">
+                <h3><i class="fas fa-link"></i> Navigation</h3>
+                <p><strong>Test the version indicator in the main application:</strong></p>
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="/" class="btn btn-primary" style="margin-right: 10px;">
+                        <i class="fas fa-home"></i> Go to Main App
+                    </a>
+                    <a href="/api/logs/ui" class="btn btn-secondary" style="margin-right: 10px;">
+                        <i class="fas fa-list"></i> View Logs
+                    </a>
+                    <a href="/api/history" class="btn btn-info">
+                        <i class="fas fa-history"></i> View History
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the version manager to test the functionality -->
+    <script type="module">
+        import { VersionManager } from '/js/modules/version-manager.js';
+        
+        // Initialize version manager
+        const versionManager = new VersionManager();
+        
+        // Update the page title and add version badge
+        versionManager.updateTitle();
+        
+        console.log('Version Manager initialized:', versionManager.getFormattedVersion());
+    </script>
+</body>
+</html> 

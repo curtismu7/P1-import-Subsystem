@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PingOne Operations Tester (Port 4000)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .operation-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+        }
+        .result-area {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 0.25rem;
+            min-height: 100px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        .spinner-border {
+            width: 2rem;
+            height: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="mb-4">PingOne Operations Tester</h1>
+        
+        <!-- Export Users Section -->
+        <div class="operation-section" id="export-section">
+            <h2>Export Users</h2>
+            <div class="mb-3">
+                <label for="export-population" class="form-label">Population</label>
+                <div class="input-group">
+                    <select class="form-select" id="export-population">
+                        <option value="">Loading populations...</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" type="button" id="refresh-populations">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="export-format" class="form-label">Format</label>
+                <select class="form-select" id="export-format">
+                    <option value="csv">CSV</option>
+                    <option value="json">JSON</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="export-fields" class="form-label">Fields</label>
+                <select class="form-select" id="export-fields">
+                    <option value="basic">Basic Fields</option>
+                    <option value="all">All Fields</option>
+                    <option value="custom">Custom Fields</option>
+                </select>
+                <div id="custom-fields-container" class="mt-2" style="display: none;">
+                    <input type="text" class="form-control" id="custom-fields" placeholder="Enter comma-separated field names">
+                </div>
+            </div>
+            <button class="btn btn-primary" id="export-btn">Export Users</button>
+            <div class="loading" id="export-loading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Exporting users, please wait...</p>
+            </div>
+            <div class="result-area" id="export-result"></div>
+        </div>
+
+        <!-- Delete Users Section -->
+        <div class="operation-section" id="delete-section">
+            <h2>Delete Users</h2>
+            <div class="mb-3">
+                <label for="delete-type" class="form-label">Delete Type</label>
+                <select class="form-select" id="delete-type">
+                    <option value="csv">From CSV File</option>
+                    <option value="population">Entire Population</option>
+                </select>
+            </div>
+            <div class="mb-3" id="delete-file-container">
+                <label for="delete-file" class="form-label">CSV File</label>
+                <input type="file" class="form-control" id="delete-file" accept=".csv">
+            </div>
+            <div class="mb-3" id="delete-population-container" style="display: none;">
+                <label for="delete-population" class="form-label">Population</label>
+                <select class="form-select" id="delete-population">
+                    <option value="">Loading populations...</option>
+                </select>
+            </div>
+            <button class="btn btn-danger" id="delete-btn">Delete Users</button>
+            <div class="loading" id="delete-loading">
+                <div class="spinner-border text-danger" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Deleting users, please wait...</p>
+            </div>
+            <div class="result-area" id="delete-result"></div>
+        </div>
+
+        <!-- Modify Users Section -->
+        <div class="operation-section" id="modify-section">
+            <h2>Modify Users</h2>
+            <div class="mb-3">
+                <label for="modify-file" class="form-label">CSV File with Updates</label>
+                <input type="file" class="form-control" id="modify-file" accept=".csv">
+                <div class="form-text">CSV should contain 'id' or 'username' column to identify users, plus columns to update</div>
+            </div>
+            <div class="mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="dry-run">
+                    <label class="form-check-label" for="dry-run">
+                        Dry Run (Validate only, don't make changes)
+                    </label>
+                </div>
+            </div>
+            <button class="btn btn-warning" id="modify-btn">Modify Users</button>
+            <div class="loading" id="modify-loading">
+                <div class="spinner-border text-warning" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Modifying users, please wait...</p>
+            </div>
+            <div class="result-area" id="modify-result"></div>
+        </div>
+    </div>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Set base URL to port 4000
+        const API_BASE_URL = 'http://localhost:4000/api';
+        
+        // DOM Elements
+        const exportBtn = document.getElementById('export-btn');
+        const deleteBtn = document.getElementById('delete-btn');
+        const modifyBtn = document.getElementById('modify-btn');
+        const exportResult = document.getElementById('export-result');
+        const deleteResult = document.getElementById('delete-result');
+        const modifyResult = document.getElementById('modify-result');
+        const deleteType = document.getElementById('delete-type');
+        const deleteFileContainer = document.getElementById('delete-file-container');
+        const deletePopulationContainer = document.getElementById('delete-population-container');
+        const exportFields = document.getElementById('export-fields');
+        const customFieldsContainer = document.getElementById('custom-fields-container');
+
+        // Global variables
+        let populations = [];
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Load populations when page loads
+            await loadPopulations();
+            
+            // Set up refresh button
+            document.getElementById('refresh-populations').addEventListener('click', loadPopulations);
+            // Toggle delete options based on type
+            deleteType.addEventListener('change', (e) => {
+                if (e.target.value === 'population') {
+                    deleteFileContainer.style.display = 'none';
+                    deletePopulationContainer.style.display = 'block';
+                } else {
+                    deleteFileContainer.style.display = 'block';
+                    deletePopulationContainer.style.display = 'none';
+                }
+            });
+
+            // Toggle custom fields input
+            exportFields.addEventListener('change', (e) => {
+                customFieldsContainer.style.display = 
+                    e.target.value === 'custom' ? 'block' : 'none';
+            });
+
+            // Export button click
+            exportBtn.addEventListener('click', handleExport);
+            
+            // Delete button click
+            deleteBtn.addEventListener('click', handleDelete);
+            
+            // Modify button click
+            modifyBtn.addEventListener('click', handleModify);
+        });
+
+        // Handle Export Users
+        async function handleExport() {
+            const populationId = getSelectedPopulationId('export-population');
+            if (!populationId) {
+                showError(exportResult, 'Please select a population');
+                return;
+            }
+            const format = document.getElementById('export-format').value;
+            const fields = document.getElementById('export-fields').value;
+            const customFields = document.getElementById('custom-fields').value;
+            
+            if (!populationId) {
+                showError(exportResult, 'Please enter a population ID');
+                return;
+            }
+
+            const payload = {
+                populationId,
+                format,
+                fields,
+                ...(fields === 'custom' && { customFields: customFields.split(',').map(f => f.trim()) })
+            };
+
+            try {
+                showLoading('export');
+                const response = await fetch(`${API_BASE_URL}/export-users`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    if (format === 'json') {
+                        const data = await response.json();
+                        showSuccess(exportResult, 'Export successful!', data);
+                    } else {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `users_export_${new Date().toISOString()}.${format}`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        showSuccess(exportResult, 'Export completed! File download started.');
+                    }
+                } else {
+                    const error = await response.json();
+                    showError(exportResult, `Export failed: ${error.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showError(exportResult, `Error during export: ${error.message}`);
+            } finally {
+                hideLoading('export');
+            }
+        }
+
+        // Handle Delete Users
+        async function handleDelete() {
+            const deleteType = document.getElementById('delete-type').value;
+            const deleteFile = document.getElementById('delete-file').files[0];
+            const populationId = getSelectedPopulationId('delete-population');
+            if (!populationId) {
+                showError(deleteResult, 'Please select a population');
+                return;
+            }
+            
+            if (deleteType === 'csv' && !deleteFile) {
+                showError(deleteResult, 'Please select a CSV file');
+                return;
+            }
+            
+            if (deleteType === 'population' && !populationId) {
+                showError(deleteResult, 'Please enter a population ID');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('type', deleteType);
+            
+            if (deleteType === 'csv') {
+                formData.append('file', deleteFile);
+            } else {
+                formData.append('populationId', populationId);
+            }
+
+            try {
+                showLoading('delete');
+                const response = await fetch(`${API_BASE_URL}/delete-users`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showSuccess(deleteResult, 'Delete operation completed', result);
+                } else {
+                    showError(deleteResult, `Delete failed: ${result.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showError(deleteResult, `Error during delete: ${error.message}`);
+            } finally {
+                hideLoading('delete');
+            }
+        }
+
+        // Handle Modify Users
+        async function handleModify() {
+            const modifyFile = document.getElementById('modify-file').files[0];
+            const dryRun = document.getElementById('dry-run').checked;
+            
+            if (!modifyFile) {
+                showError(modifyResult, 'Please select a CSV file with user updates');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', modifyFile);
+            formData.append('dryRun', dryRun);
+
+            try {
+                showLoading('modify');
+                const response = await fetch(`${API_BASE_URL}/modify-users`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showSuccess(modifyResult, 'Modify operation completed', result);
+                } else {
+                    showError(modifyResult, `Modify failed: ${result.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showError(modifyResult, `Error during modify: ${error.message}`);
+            } finally {
+                hideLoading('modify');
+            }
+        }
+
+        // Helper Functions
+        function showLoading(operation) {
+            document.getElementById(`${operation}-loading`).style.display = 'block';
+            document.getElementById(`${operation}-result`).innerHTML = '';
+        }
+
+        function hideLoading(operation) {
+            document.getElementById(`${operation}-loading`).style.display = 'none';
+        }
+
+        function showSuccess(element, message, data = null) {
+            element.innerHTML = `<div class="alert alert-success">
+                <strong>Success!</strong> ${message}
+                ${data ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : ''}
+            </div>`;
+        }
+
+        // Load populations from API
+        async function loadPopulations() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/populations`);
+                if (!response.ok) {
+                    throw new Error('Failed to load populations');
+                }
+                const data = await response.json();
+                populations = data._embedded.populations || [];
+                
+                // Update export population dropdown
+                updatePopulationDropdown('export-population');
+                
+                // Update delete population dropdown
+                updatePopulationDropdown('delete-population');
+                
+                return populations;
+            } catch (error) {
+                console.error('Error loading populations:', error);
+                showError(document.getElementById('export-result'), `Failed to load populations: ${error.message}`);
+                return [];
+            }
+        }
+        
+        // Update a population dropdown with current populations
+        function updatePopulationDropdown(elementId) {
+            const select = document.getElementById(elementId);
+            if (!select) return;
+            
+            // Save current value
+            const currentValue = select.value;
+            
+            // Clear existing options
+            select.innerHTML = '';
+            
+            // Add default option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Select a population';
+            select.appendChild(defaultOption);
+            
+            // Add population options
+            populations.forEach(population => {
+                const option = document.createElement('option');
+                option.value = population.id;
+                option.textContent = `${population.name} (${population.id})`;
+                option.dataset.default = population.default || false;
+                select.appendChild(option);
+                
+                // Select this option if it matches the current value or is default
+                if (population.id === currentValue || (currentValue === '' && population.default)) {
+                    option.selected = true;
+                }
+            });
+        }
+        
+        // Helper function to get selected population ID
+        function getSelectedPopulationId(elementId) {
+            const select = document.getElementById(elementId);
+            return select ? select.value : '';
+        }
+        
+        function showError(element, message) {
+            if (!element) {
+                console.error('Error:', message);
+                return;
+            }
+            element.innerHTML = `<div class="alert alert-danger">
+                <strong>Error:</strong> ${message}
+            </div>`;
+        }
+    </script>
+</body>
+</html>

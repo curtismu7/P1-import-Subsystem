@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>API Tester Token Refresh Enhancement Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+        .warning { color: #ffc107; }
+        .log-area {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-online { background: #28a745; }
+        .status-offline { background: #dc3545; }
+        .status-checking { background: #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="test-section">
+        <h1>🔐 API Tester Token Refresh Enhancement Test</h1>
+        <p>This page tests the enhanced automatic token refresh functionality in the API tester.</p>
+        
+        <div class="test-section">
+            <h3>📋 Test Overview</h3>
+            <p>The API tester now includes the same enhanced token management as Swagger UI:</p>
+            <ul>
+                <li><strong>🔄 Automatic Token Validation:</strong> Checks token validity before each API request</li>
+                <li><strong>⚡ Proactive Token Refresh:</strong> Refreshes tokens 1 minute before expiry</li>
+                <li><strong>📋 Request Queue Management:</strong> Queues requests during token refresh</li>
+                <li><strong>🔄 401 Response Handling:</strong> Automatically retries with fresh token</li>
+                <li><strong>⏰ Periodic Validation:</strong> Runs every 5 minutes to proactively refresh tokens</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Test Controls</h3>
+            <button class="test-button" onclick="testServerStatus()">
+                <span class="status-indicator status-checking"></span>
+                Test Server Status
+            </button>
+            <button class="test-button" onclick="testTokenManagement()">
+                🔐 Test Token Management
+            </button>
+            <button class="test-button" onclick="testConnectionAPI()">
+                🔌 Test Connection API
+            </button>
+            <button class="test-button" onclick="testImportAPI()">
+                📤 Test Import API
+            </button>
+            <button class="test-button" onclick="testModifyAPI()">
+                ✏️ Test Modify API
+            </button>
+            <button class="test-button" onclick="simulateTokenExpiry()">
+                ⏰ Simulate Token Expiry
+            </button>
+            <button class="test-button" onclick="clearLogs()">
+                🗑️ Clear Logs
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Test Results</h3>
+            <div id="test-results" class="log-area">
+                <div class="info">Click test buttons above to start testing...</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔗 Quick Links</h3>
+            <p><a href="/api-tester.html" target="_blank">Open API Tester</a> - Test the enhanced token refresh functionality</p>
+            <p><a href="/swagger.html" target="_blank">Open Swagger UI</a> - Compare with Swagger UI token refresh</p>
+            <p><a href="/api/health" target="_blank">Server Health Check</a> - Verify server is running</p>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 Manual Test Instructions</h3>
+            <ol>
+                <li><strong>Open API Tester:</strong> Navigate to <code>/api-tester.html</code></li>
+                <li><strong>Check Token Status:</strong> Look at the token status bar in the header</li>
+                <li><strong>Test Connection API:</strong> Click "Test Connection" and observe token behavior</li>
+                <li><strong>Monitor Console:</strong> Open browser DevTools to see token refresh logs</li>
+                <li><strong>Test 401 Handling:</strong> If you have an expired token, the system should automatically refresh it</li>
+                <li><strong>Verify Periodic Refresh:</strong> Wait 5 minutes to see periodic token validation</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const results = document.getElementById('test-results');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info';
+            results.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('test-results').innerHTML = '<div class="info">Logs cleared...</div>';
+        }
+
+        async function testServerStatus() {
+            log('Testing server status...', 'info');
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                if (response.ok) {
+                    log('✅ Server is running and healthy', 'success');
+                    log(`Server info: ${data.system.node} on ${data.system.platform}`, 'info');
+                    log(`PingOne status: ${data.server.pingOne.initialized ? 'Connected' : 'Disconnected'}`, 'info');
+                } else {
+                    log('❌ Server health check failed', 'error');
+                }
+            } catch (error) {
+                log(`❌ Server test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testTokenManagement() {
+            log('Testing token management functionality...', 'info');
+            try {
+                // Test token fetch
+                const response = await fetch('/api/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Token fetch successful', 'success');
+                    log(`Token expires in: ${data.data.expires_in} seconds`, 'info');
+                } else {
+                    log('❌ Token fetch failed', 'error');
+                }
+            } catch (error) {
+                log(`❌ Token management test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testConnectionAPI() {
+            log('Testing Connection API with enhanced token management...', 'info');
+            try {
+                const response = await fetch('/api/pingone/test-connection', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('✅ Connection API test successful', 'success');
+                    log(`Response: ${data.message || 'Connection successful'}`, 'info');
+                } else if (response.status === 401) {
+                    log('⚠️ Connection API returned 401 - token should be refreshed automatically', 'warning');
+                } else {
+                    log(`❌ Connection API test failed: ${data.message || response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Connection API test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testImportAPI() {
+            log('Testing Import API with enhanced token management...', 'info');
+            try {
+                // Create a simple test file
+                const testData = 'username,email,firstName,lastName\ntestuser,test@example.com,Test,User';
+                const blob = new Blob([testData], { type: 'text/csv' });
+                const file = new File([blob], 'test-users.csv', { type: 'text/csv' });
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch('/api/import', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('✅ Import API test successful', 'success');
+                    log(`Session ID: ${data.sessionId || 'N/A'}`, 'info');
+                } else if (response.status === 401) {
+                    log('⚠️ Import API returned 401 - token should be refreshed automatically', 'warning');
+                } else {
+                    log(`❌ Import API test failed: ${data.message || response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Import API test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testModifyAPI() {
+            log('Testing Modify API with enhanced token management...', 'info');
+            try {
+                // Create a simple test file
+                const testData = 'username,email,firstName,lastName\ntestuser,test@example.com,Test,User';
+                const blob = new Blob([testData], { type: 'text/csv' });
+                const file = new File([blob], 'test-users.csv', { type: 'text/csv' });
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('populationId', 'test-population-id');
+                
+                const response = await fetch('/api/modify', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('✅ Modify API test successful', 'success');
+                    log(`Session ID: ${data.sessionId || 'N/A'}`, 'info');
+                } else if (response.status === 401) {
+                    log('⚠️ Modify API returned 401 - token should be refreshed automatically', 'warning');
+                } else {
+                    log(`❌ Modify API test failed: ${data.message || response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Modify API test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function simulateTokenExpiry() {
+            log('Simulating token expiry scenario...', 'info');
+            log('Note: This is a simulation. In real scenarios, tokens expire after 1 hour.', 'warning');
+            log('The enhanced token management should:', 'info');
+            log('1. Detect token expiry via 401 responses', 'info');
+            log('2. Automatically refresh the token', 'info');
+            log('3. Retry the original request with the fresh token', 'info');
+            log('4. Update the token status display', 'info');
+        }
+
+        // Auto-run server status test on page load
+        window.addEventListener('load', () => {
+            log('🚀 API Tester Token Refresh Enhancement Test Started', 'success');
+            testServerStatus();
+        });
+    </script>
+</body>
+</html> 

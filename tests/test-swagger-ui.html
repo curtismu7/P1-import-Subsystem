@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Swagger UI Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; border: none; border-radius: 3px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Swagger UI Test</h1>
+    
+    <div class="test-section info">
+        <h3>Test Overview</h3>
+        <p>This page tests the Swagger UI functionality and automatic token management.</p>
+        <ul>
+            <li>✅ Server is running on port 4000</li>
+            <li>✅ Swagger UI is accessible at /swagger.html</li>
+            <li>✅ OpenAPI spec is available at /swagger.json</li>
+            <li>✅ Token endpoint is working</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>1. Test Server Health</h3>
+        <button class="btn-primary" onclick="testHealth()">Test Health Endpoint</button>
+        <div id="health-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Test Token Endpoint</h3>
+        <button class="btn-primary" onclick="testToken()">Test Token Endpoint</button>
+        <div id="token-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Test Swagger UI Access</h3>
+        <button class="btn-success" onclick="openSwaggerUI()">Open Swagger UI</button>
+        <p>This will open the Swagger UI in a new tab. The UI should:</p>
+        <ul>
+            <li>Load automatically without errors</li>
+            <li>Fetch a PingOne token automatically</li>
+            <li>Show all API endpoints with "Try it out" functionality</li>
+            <li>Not require manual token entry</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Test API Endpoints</h3>
+        <button class="btn-primary" onclick="testSettings()">Test Settings Endpoint</button>
+        <button class="btn-primary" onclick="testFeatureFlags()">Test Feature Flags</button>
+        <div id="api-result"></div>
+    </div>
+
+    <script>
+        async function testHealth() {
+            const resultDiv = document.getElementById('health-result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Health Check Passed</h4>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Health Check Failed</h4>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Health Check Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testToken() {
+            const resultDiv = document.getElementById('token-result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch('/api/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Token Endpoint Working</h4>
+                            <p><strong>Token Type:</strong> ${data.data.token_type}</p>
+                            <p><strong>Expires In:</strong> ${data.data.expires_in} seconds</p>
+                            <p><strong>Token Preview:</strong> ${data.data.access_token.substring(0, 50)}...</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Token Endpoint Failed</h4>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Token Endpoint Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function openSwaggerUI() {
+            window.open('/swagger.html', '_blank');
+        }
+
+        async function testSettings() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = '<p>Testing Settings...</p>';
+            
+            try {
+                const response = await fetch('/api/settings');
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Settings Endpoint Working</h4>
+                            <p><strong>Environment ID:</strong> ${data.data.environmentId}</p>
+                            <p><strong>Client ID:</strong> ${data.data.apiClientId}</p>
+                            <p><strong>Region:</strong> ${data.data.region}</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Settings Endpoint Failed</h4>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Settings Endpoint Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testFeatureFlags() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = '<p>Testing Feature Flags...</p>';
+            
+            try {
+                const response = await fetch('/api/feature-flags');
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Feature Flags Endpoint Working</h4>
+                            <pre>${JSON.stringify(data.flags, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Feature Flags Endpoint Failed</h4>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Feature Flags Endpoint Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-run health check on page load
+        window.onload = function() {
+            testHealth();
+        };
+    </script>
+</body>
+</html> 

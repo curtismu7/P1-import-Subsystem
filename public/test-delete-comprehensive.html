@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Delete Page Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f8f9fa;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section { 
+            margin: 20px 0; 
+            padding: 20px; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .test-item {
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .test-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .status-pass { background: #28a745; color: white; }
+        .status-fail { background: #dc3545; color: white; }
+        .status-warn { background: #ffc107; color: black; }
+        .status-pending { background: #6c757d; color: white; }
+        pre { 
+            background: #f8f9fa; 
+            padding: 10px; 
+            border-radius: 3px; 
+            overflow-x: auto; 
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        button { 
+            padding: 10px 20px; 
+            margin: 5px; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-weight: bold;
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-warning { background-color: #ffc107; color: black; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        .test-log {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #000;
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .timestamp {
+            color: #888;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Comprehensive Delete Page Test Suite</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Test Overview</h3>
+            <p>This comprehensive test suite validates all aspects of the Delete page functionality including:</p>
+            <ul>
+                <li>UI Elements and DOM Structure</li>
+                <li>Delete Manager Initialization</li>
+                <li>API Endpoints and Connectivity</li>
+                <li>File Upload and Validation</li>
+                <li>Population Loading and Selection</li>
+                <li>Form Validation and Confirmation</li>
+                <li>Event Listeners and Interactions</li>
+                <li>Error Handling and Edge Cases</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>🎮 Test Controls</h3>
+            <button class="btn-primary" onclick="runAllTests()">🚀 Run All Tests</button>
+            <button class="btn-success" onclick="runUITests()">🖥️ UI Tests Only</button>
+            <button class="btn-warning" onclick="runAPITests()">🔌 API Tests Only</button>
+            <button class="btn-secondary" onclick="clearResults()">🗑️ Clear Results</button>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="overall-progress"></div>
+            </div>
+            <div id="progress-text">Ready to run tests...</div>
+        </div>
+
+        <div class="test-grid">
+            <!-- UI Tests -->
+            <div class="test-section">
+                <h3>🖥️ UI Structure Tests</h3>
+                <div id="ui-tests">
+                    <div class="test-item">
+                        <span class="test-status status-pending" id="dom-elements-status">PENDING</span>
+                        <strong>DOM Elements</strong>
+                        <div id="dom-elements-result">Not tested</div>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status status-pending" id="delete-sections-status">PENDING</span>
+                        <strong>Delete Sections</strong>
+                        <div id="delete-sections-result">Not tested</div>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status status-pending" id="form-elements-status">PENDING</span>
+                        <strong>Form Elements</strong>
+                        <div id="form-elements-result">Not tested</div>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status status-pending" id="event-listeners-status">PENDING</span>
+                        <strong>Event Listeners</strong>
+                        <div id="event-listeners-result">Not tested</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Tests -->
+            <div class="test-section">
+                <h3>🔌 API Connectivity Tests</h3>
+                <div id="api-tests">
+                    <div class="test-item">
+                        <span class="test-status status-pending" id="delete-api-status">PENDING</span>
+                        <strong>Delete API Endpoint</strong>
+                        <div id="delete-api-result">Not tested</div>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status status-pending" id="populations-api-status">PENDING</span>
+                        <strong>Populations API</strong>
+                        <div id="populations-api-result">Not tested</div>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status status-pending" id="health-api-status">PENDING</span>
+                        <strong>Health Check API</strong>
+                        <div id="health-api-result">Not tested</div>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-status status-pending" id="settings-api-status">PENDING</span>
+                        <strong>Settings API</strong>
+                        <div id="settings-api-result">Not tested</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Functionality Tests -->
+        <div class="test-section">
+            <h3>⚙️ Functionality Tests</h3>
+            <div class="test-grid">
+                <div class="test-item">
+                    <span class="test-status status-pending" id="delete-manager-status">PENDING</span>
+                    <strong>Delete Manager</strong>
+                    <div id="delete-manager-result">Not tested</div>
+                </div>
+                <div class="test-item">
+                    <span class="test-status status-pending" id="file-validation-status">PENDING</span>
+                    <strong>File Validation</strong>
+                    <div id="file-validation-result">Not tested</div>
+                </div>
+                <div class="test-item">
+                    <span class="test-status status-pending" id="form-validation-status">PENDING</span>
+                    <strong>Form Validation</strong>
+                    <div id="form-validation-result">Not tested</div>
+                </div>
+                <div class="test-item">
+                    <span class="test-status status-pending" id="confirmation-logic-status">PENDING</span>
+                    <strong>Confirmation Logic</strong>
+                    <div id="confirmation-logic-result">Not tested</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Log -->
+        <div class="test-section">
+            <h3>📝 Test Log</h3>
+            <div class="test-log" id="test-log">
+                <div class="timestamp">[Ready]</div> Test suite initialized. Click "Run All Tests" to begin.
+            </div>
+        </div>
+
+        <!-- Results Summary -->
+        <div class="test-section" id="results-summary" style="display: none;">
+            <h3>📊 Test Results Summary</h3>
+            <div id="summary-content"></div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = {};
+        let currentTestIndex = 0;
+        let totalTests = 0;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('test-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                info: '#00ff00',
+                success: '#00ff00',
+                error: '#ff0000',
+                warning: '#ffff00',
+                debug: '#00ffff'
+            };
+            
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span style="color: ${colors[type] || '#00ff00'}">${message}</span>`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        function updateProgress(current, total) {
+            const percentage = Math.round((current / total) * 100);
+            document.getElementById('overall-progress').style.width = percentage + '%';
+            document.getElementById('progress-text').textContent = `Progress: ${current}/${total} tests completed (${percentage}%)`;
+        }
+
+        function setTestStatus(testId, status, result) {
+            const statusElement = document.getElementById(testId + '-status');
+            const resultElement = document.getElementById(testId + '-result');
+            
+            if (statusElement) {
+                statusElement.className = `test-status status-${status}`;
+                statusElement.textContent = status.toUpperCase();
+            }
+            
+            if (resultElement) {
+                resultElement.innerHTML = result;
+            }
+            
+            testResults[testId] = { status, result };
+        }
+
+        async function runAllTests() {
+            log('🚀 Starting comprehensive delete page test suite...', 'info');
+            testResults = {};
+            currentTestIndex = 0;
+            totalTests = 12; // Update this based on actual test count
+            
+            document.getElementById('results-summary').style.display = 'none';
+            
+            try {
+                await runUITests();
+                await runAPITests();
+                await runFunctionalityTests();
+                
+                log('✅ All tests completed!', 'success');
+                showResultsSummary();
+            } catch (error) {
+                log(`❌ Test suite failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function runUITests() {
+            log('🖥️ Running UI structure tests...', 'info');
+            
+            // Test DOM Elements
+            await testDOMElements();
+            
+            // Test Delete Sections
+            await testDeleteSections();
+            
+            // Test Form Elements
+            await testFormElements();
+            
+            // Test Event Listeners
+            await testEventListeners();
+        }
+
+        async function testDOMElements() {
+            log('Testing DOM elements presence...', 'debug');
+            currentTestIndex++;
+            
+            const requiredElements = [
+                'delete-csv-view',
+                'delete-file-section',
+                'delete-population-section', 
+                'delete-environment-section',
+                'start-delete',
+                'delete-csv-file',
+                'delete-population-select',
+                'confirm-delete',
+                'confirm-environment-delete',
+                'environment-delete-text'
+            ];
+            
+            let found = 0;
+            let missing = [];
+            
+            for (const elementId of requiredElements) {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    found++;
+                } else {
+                    missing.push(elementId);
+                }
+            }
+            
+            const result = `Found: ${found}/${requiredElements.length} elements`;
+            
+            if (missing.length === 0) {
+                setTestStatus('dom-elements', 'pass', result + ' ✅');
+                log(`✅ DOM elements test passed: ${result}`, 'success');
+            } else {
+                setTestStatus('dom-elements', 'fail', result + `<br>Missing: ${missing.join(', ')}`);
+                log(`❌ DOM elements test failed. Missing: ${missing.join(', ')}`, 'error');
+            }
+            
+            updateProgress(currentTestIndex, totalTests);
+        }
+
+        async function testDeleteSections() {
+            log('Testing delete sections visibility...', 'debug');
+            currentTestIndex++;
+            
+            const sections = [
+                'delete-file-section',
+                'delete-population-section',
+                'delete-environment-section'
+            ];
+            
+            let visibleSections = 0;
+            let sectionStates = [];
+            
+            for (const sectionId of sections) {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    const isVisible = section.style.display !== 'none';
+                    sectionStates.push(`${sectionId}: ${isVisible ? 'visible' : 'hidden'}`);
+                    if (isVisible) visibleSections++;
+                }
+            }
+            
+            const result = `Sections found: ${sectionStates.length}<br>${sectionStates.join('<br>')}`;
+            
+            if (sectionStates.length === sections.length) {
+                setTestStatus('delete-sections', 'pass', result + ' ✅');
+                log('✅ Delete sections test passed', 'success');
+            } else {
+                setTestStatus('delete-sections', 'fail', result);
+                log('❌ Delete sections test failed', 'error');
+            }
+            
+            updateProgress(currentTestIndex, totalTests);
+        }
+
+        async function testFormElements() {
+            log('Testing form elements...', 'debug');
+            currentTestIndex++;
+            
+            const formElements = [
+                { id: 'delete-csv-file', type: 'file input' },
+                { id: 'delete-population-select', type: 'select' },
+                { id: 'confirm-delete', type: 'checkbox' },
+                { id: 'confirm-environment-delete', type: 'checkbox' },
+                { id: 'environment-delete-text', type: 'text input' },
+                { id: 'start-delete', type: 'button' }
+            ];
+            
+            let workingElements = 0;
+            let elementStatus = [];
+            
+            for (const element of formElements) {
+                const el = document.getElementById(element.id);
+                if (el) {
+                    const isDisabled = el.disabled;
+                    const hasValue = el.value !== undefined;
+                    elementStatus.push(`${element.type}: ${isDisabled ? 'disabled' : 'enabled'}`);
+                    workingElements++;
+                } else {
+                    elementStatus.push(`${element.type}: missing`);
+                }
+            }
+            
+            const result = `Working: ${workingElements}/${formElements.length}<br>${elementStatus.join('<br>')}`;
+            
+            if (workingElements === formElements.length) {
+                setTestStatus('form-elements', 'pass', result + ' ✅');
+                log('✅ Form elements test passed', 'success');
+            } else {
+                setTestStatus('form-elements', 'fail', result);
+                log('❌ Form elements test failed', 'error');
+            }
+            
+            updateProgress(currentTestIndex, totalTests);
+        }
+
+        async function testEventListeners() {
+            log('Testing event listeners...', 'debug');
+            currentTestIndex++;
+            
+            const tests = [];
+            
+            // Test radio button listeners
+            const radioButtons = document.querySelectorAll('input[name="delete-type"]');
+            tests.push(`Delete type radios: ${radioButtons.length} found`);
+            
+            // Test file input listener
+            const fileInput = document.getElementById('delete-csv-file');
+            tests.push(`File input: ${fileInput ? 'found' : 'missing'}`);
+            
+            // Test start button
+            const startButton = document.getElementById('start-delete');
+            tests.push(`Start button: ${startButton ? 'found' : 'missing'}`);
+            
+            // Test delete manager
+            const hasDeleteManager = window.deleteManager !== undefined;
+            tests.push(`Delete manager: ${hasDeleteManager ? 'initialized' : 'missing'}`);
+            
+            const result = tests.join('<br>');
+            
+            if (radioButtons.length > 0 && fileInput && startButton) {
+                setTestStatus('event-listeners', 'pass', result + ' ✅');
+                log('✅ Event listeners test passed', 'success');
+            } else {
+                setTestStatus('event-listeners', 'warn', result + ' ⚠️');
+                log('⚠️ Event listeners test has warnings', 'warning');
+            }
+            
+            updateProgress(currentTestIndex, totalTests);
+        }
+
+        async function runAPITests() {
+            log('🔌 Running API connectivity tests...', 'info');
+            
+            await testDeleteAPI();
+            await testPopulationsAPI();
+            await testHealthAPI();
+            await testSettingsAPI();
+        }
+
+        async function testDeleteAPI() {
+            log('Testing delete API endpoint...', 'debug');
+            currentTestIndex++;
+            
+            try {
+                const response = await fetch('/api/delete-users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: 'population',
+                        populationId: 'test-population-id'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.status === 401 || response.status === 400) {
+                    // Expected errors for test data
+                    setTestStatus('delete-api', 'pass', `Status: ${response.status} (Expected)<br>Response: ${JSON.stringify(data, null, 2)}`);
+                    log('✅ Delete API test passed (expected error response)', 'success');
+                } else if (response.ok) {
+                    setTestStatus('delete-api', 'pass', `Status: ${response.status}<br>Response: ${JSON.stringify(data, null, 2)}`);
+                    log('✅ Delete API test passed', 'success');
+                } else {
+                    setTestStatus('delete-api', 'warn', `Status: ${response.status}<br>Response: ${JSON.stringify(data, null, 2)}`);
+                    log(`⚠️ Delete API returned ${response.status}`, 'warning');
+                }
+            } catch (error) {
+                setTestStatus('delete-api', 'fail', `Network error: ${error.message}`);
+                log(`❌ Delete API test failed: ${error.message}`, 'error');
+            }
+            
+            updateProgress(currentTestIndex, totalTests);
+        }
+
+        async function testPopulationsAPI() {
+            log('Testing populations API endpoint...', 'debug');
+            currentTestIndex++;
+            
+            try {
+                const response = await fetch('/api/populations');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const populationCount = data.populations?.length || 0;
+                    setTestStatus('populations-api', 'pass', `Status: ${response.status}<br>Populations: ${populationCount}`);
+                    log(`✅ Populations API test passed (${populationCount} populations)`, 'success');
+                } else {
+                    setTestStatus('populations-api', 'warn', `Status: ${response.status}<br>Error: ${data.error || 'Unknown'}`);
+                    log(`⚠️ Populations API returned ${response.status}`, 'warning');
+                }
+            } catch (error) {
+                setTestStatus('populations-api', 'fail', `Network error: ${error.message}`);
+                log(`❌ Populations API test failed: ${error.message}`, 'error');
+            }
+            
+            updateProgress(currentTestIndex, totalTests);
+        }
+
+        async function testHealthAPI() {
+            log('Testing health API endpoint...', 'debug');
+            currentTestIndex++;
+            
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    setTestStatus('health-api', 'pass', `Status: ${response.status}<br>Server: ${data.status || 'unknown'}`);
+                    log('✅ Health API test passed', 'success');
+                } else {
+                    setTestStatus('health-api', 'fail', `Status: ${response.status}<br>Error: ${data.error || 'Unknown'}`);
+                    log(`❌ Health API test failed: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                setTestStatus('health-api', 'fail', `Network error: ${error.message}`);
+                log(`❌ Health API test failed: ${error.message}`, 'error');
+            }
+            
+            updateProgress(currentTestIndex, totalTests);
+        }
+
+        async function testSettingsAPI() {
+            log('Testing settings API endpoint...', 'debug');
+            currentTestIndex++;
+            
+            try {
+                const response = await fetch('/api/settings');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const hasSettings = data.success && data.data;
+                    setTestStatus('settings-api', 'pass', `Status: ${response.status}<br>Has settings: ${hasSettings}`);
+                    log('✅ Settings API test passed', 'success');
+                } else {
+                    setTestStatus('settings-api', 'warn', `Status: ${response.status}<br>Error: ${data.error || 'Unknown'}`);
+                    log(`⚠️ Settings API returned ${response.status}`, 'warning');
+                }
+            } catch (error) {
+                setTestStatus('settings-api', 'fail', `Network error: ${error.message}`);
+                log(`❌ Settings API test failed: ${error.message}`, 'error');
+            }
+            
+            updateProgress(currentTestIndex, totalTests);
+        }
+
+        async function runFunctionalityTests() {
+            log('⚙️ Running functionality tests...', 'info');
+            
+            await testDeleteManager();
+            await testFileValidation();
+            await testFormValidation();
+            await testConfirmationLogic();
+        }
+
+        async function testDeleteManager() {
+            log('Testing delete manager initialization...', 'debug');
+            currentTestIndex++;
+            
+            const hasDeleteManager = window.deleteManager !== undefined;
+            const hasDeleteManagerClass = typeof DeleteManager !== 'undefined';
+            
+            let result = `Global deleteManager: ${hasDeleteManager ? 'found' : 'missing'}<br>`;
+            result += `DeleteManager class: ${hasDeleteManagerClass ? 'available' : 'missing'}`;
+            
+            if (hasDeleteManager || hasDeleteManagerClass) {
+                setTestStatus('delete-manager', 'pass', result + ' ✅');
+                log('✅ Delete manager test passed', 'success');
+            } else {
+                setTestStatus('delete-manager', 'fail', result);
+                log('❌ Delete manager test failed', 'error');
+            }
+            
+            updateProgress(currentTestIndex, totalTests);
+        }
+
+        async function testFileValidation() {
+            log('Testing file validation logic...', 'debug');
+            currentTestIndex++;
+            
+            // Test file input acceptance
+            const fileInput = document.getElementById('delete-csv-file');
+            const acceptsCSV = fileInput && fileInput.accept.includes('.csv');
+            const acceptsTXT = fileInput && fileInput.accept.includes('.txt');
+            
+            let result = `File input found: ${!!fileInput}<br>`;
+            result += `Accepts CSV: ${acceptsCSV}<br>`;
+            result += `Accepts TXT: ${acceptsTXT}`;
+            
+            if (fileInput && acceptsCSV) {
+                setTestStatus('file-validation', 'pass', result + ' ✅');
+                log('✅ File validation test passed', 'success');
+            } else {
+                setTestStatus('file-validation', 'fail', result);
+                log('❌ File validation test failed', 'error');
+            }
+            
+            updateProgress(currentTestIndex, totalTests);
+        }
+
+        async function testFormValidation() {
+            log('Testing form validation...', 'debug');
+            currentTestIndex++;
+            
+            const startButton = document.getElementById('start-delete');
+            const isDisabled = startButton && startButton.disabled;
+            const confirmCheckbox = document.getElementById('confirm-delete');
+            const hasRequired = confirmCheckbox && confirmCheckbox.required;
+            
+            let result = `Start button disabled: ${isDisabled}<br>`;
+            result += `Confirm checkbox required: ${hasRequired}`;
+            
+            if (isDisabled && hasRequired) {
+                setTestStatus('form-validation', 'pass', result + ' ✅');
+                log('✅ Form validation test passed', 'success');
+            } else {
+                setTestStatus('form-validation', 'warn', result + ' ⚠️');
+                log('⚠️ Form validation test has warnings', 'warning');
+            }
+            
+            updateProgress(currentTestIndex, totalTests);
+        }
+
+        async function testConfirmationLogic() {
+            log('Testing confirmation logic...', 'debug');
+            currentTestIndex++;
+            
+            const standardConfirm = document.getElementById('standard-confirmation');
+            const environmentConfirm = document.getElementById('environment-confirmation');
+            const environmentText = document.getElementById('environment-delete-text');
+            
+            let result = `Standard confirmation: ${!!standardConfirm}<br>`;
+            result += `Environment confirmation: ${!!environmentConfirm}<br>`;
+            result += `Environment text input: ${!!environmentText}`;
+            
+            if (standardConfirm && environmentConfirm && environmentText) {
+                setTestStatus('confirmation-logic', 'pass', result + ' ✅');
+                log('✅ Confirmation logic test passed', 'success');
+            } else {
+                setTestStatus('confirmation-logic', 'fail', result);
+                log('❌ Confirmation logic test failed', 'error');
+            }
+            
+            updateProgress(currentTestIndex, totalTests);
+        }
+
+        function showResultsSummary() {
+            const summaryDiv = document.getElementById('results-summary');
+            const contentDiv = document.getElementById('summary-content');
+            
+            let passed = 0;
+            let failed = 0;
+            let warnings = 0;
+            
+            let summaryHTML = '<div class="test-grid">';
+            
+            for (const [testId, result] of Object.entries(testResults)) {
+                if (result.status === 'pass') passed++;
+                else if (result.status === 'fail') failed++;
+                else if (result.status === 'warn') warnings++;
+                
+                summaryHTML += `
+                    <div class="test-item ${result.status === 'pass' ? 'success' : result.status === 'fail' ? 'error' : 'warning'}">
+                        <strong>${testId.replace(/-/g, ' ').toUpperCase()}</strong>
+                        <div>${result.result}</div>
+                    </div>
+                `;
+            }
+            
+            summaryHTML += '</div>';
+            
+            const overallStatus = failed > 0 ? 'FAILED' : warnings > 0 ? 'PASSED WITH WARNINGS' : 'PASSED';
+            const statusClass = failed > 0 ? 'error' : warnings > 0 ? 'warning' : 'success';
+            
+            contentDiv.innerHTML = `
+                <div class="test-item ${statusClass}">
+                    <h4>Overall Status: ${overallStatus}</h4>
+                    <p>Passed: ${passed} | Failed: ${failed} | Warnings: ${warnings}</p>
+                </div>
+                ${summaryHTML}
+            `;
+            
+            summaryDiv.style.display = 'block';
+            log(`📊 Test Summary: ${overallStatus} (${passed} passed, ${failed} failed, ${warnings} warnings)`, 'info');
+        }
+
+        function clearResults() {
+            testResults = {};
+            currentTestIndex = 0;
+            document.getElementById('overall-progress').style.width = '0%';
+            document.getElementById('progress-text').textContent = 'Ready to run tests...';
+            document.getElementById('test-log').innerHTML = '<div class="timestamp">[Ready]</div> Test suite cleared. Click "Run All Tests" to begin.';
+            document.getElementById('results-summary').style.display = 'none';
+            
+            // Reset all test statuses
+            const statusElements = document.querySelectorAll('.test-status');
+            statusElements.forEach(el => {
+                el.className = 'test-status status-pending';
+                el.textContent = 'PENDING';
+            });
+            
+            const resultElements = document.querySelectorAll('[id$="-result"]');
+            resultElements.forEach(el => {
+                el.textContent = 'Not tested';
+            });
+            
+            log('🗑️ Test results cleared', 'info');
+        }
+
+        // Auto-run basic tests on page load
+        window.addEventListener('load', () => {
+            log('🚀 Comprehensive Delete Page Test Suite loaded', 'info');
+            log('Click "Run All Tests" to begin comprehensive testing', 'info');
+            
+            // Quick connectivity check
+            setTimeout(async () => {
+                try {
+                    const response = await fetch('/api/health');
+                    if (response.ok) {
+                        log('✅ Server connectivity confirmed', 'success');
+                    } else {
+                        log('⚠️ Server responded but may have issues', 'warning');
+                    }
+                } catch (error) {
+                    log('❌ Server connectivity failed - tests may not work properly', 'error');
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PingOne Connection Tester v1.1</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .status-box {
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        .status-connected {
+            background-color: #e6f7e6;
+            border: 1px solid #a5d6a7;
+            color: #2e7d32;
+        }
+        .status-disconnected {
+            background-color: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            color: #424242;
+        }
+        .status-connecting {
+            background-color: #e3f2fd;
+            border: 1px solid #90caf9;
+            color: #1565c0;
+        }
+        .status-error {
+            background-color: #ffebee;
+            border: 1px solid #ef9a9a;
+            color: #c62828;
+        }
+        .spinner-border {
+            width: 1rem;
+            height: 1rem;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h2 class="h5 mb-0">PingOne Connection Tester</h2>
+                            <span class="badge bg-light text-dark">v1.1</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <h3 class="h6">Connection Status</h3>
+                            <div id="connection-status" class="status-box status-disconnected">
+                                <span class="spinner-border spinner-border-sm d-none" role="status" id="status-spinner"></span>
+                                <span id="status-text">Checking connection status...</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h3 class="h6">Server Information</h3>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <tbody>
+                                        <tr>
+                                            <th style="width: 40%">Server Status</th>
+                                            <td id="server-status">Checking...</td>
+                                        </tr>
+                                        <tr>
+                                            <th>PingOne Connection</th>
+                                            <td id="pingone-status">Checking...</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Environment ID</th>
+                                            <td id="env-id">-</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Region</th>
+                                            <td id="region">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h3 class="h6">Test Controls</h3>
+                            <div class="d-flex gap-2">
+                                <button id="test-connection" class="btn btn-primary">
+                                    <span class="spinner-border spinner-border-sm d-none" id="test-spinner"></span>
+                                    Test Connection
+                                </button>
+                                <button id="view-raw" class="btn btn-outline-secondary">View Raw Response</button>
+                            </div>
+                        </div>
+
+                        <div class="d-none" id="raw-response-container">
+                            <h3 class="h6">Raw Response</h3>
+                            <pre id="raw-response"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import required modules -->
+    <script type="module">
+        import { initAPIFactory } from './js/modules/api-factory.js';
+        import { Logger } from './js/modules/logger.js';
+        import { SettingsManager } from './js/modules/settings-manager.js';
+        
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Initialize logger
+            const logger = new Logger(console);
+            
+            // Initialize settings manager
+            const settingsManager = new SettingsManager(logger);
+            
+            // Initialize API factory
+            const apiFactory = await initAPIFactory(logger, settingsManager);
+            const connectionStatus = document.getElementById('connection-status');
+            const statusText = document.getElementById('status-text');
+            const statusSpinner = document.getElementById('status-spinner');
+            const testButton = document.getElementById('test-connection');
+            const testSpinner = document.getElementById('test-spinner');
+            const viewRawButton = document.getElementById('view-raw');
+            const rawResponseContainer = document.getElementById('raw-response-container');
+            const rawResponse = document.getElementById('raw-response');
+            
+            // Server info elements
+            const serverStatus = document.getElementById('server-status');
+            const pingoneStatus = document.getElementById('pingone-status');
+            const envId = document.getElementById('env-id');
+            const region = document.getElementById('region');
+
+            let lastResponse = null;
+
+            // Update status display
+            function updateStatus(status, message) {
+                // Update status class
+                connectionStatus.className = `status-box status-${status}`;
+                
+                // Update status text
+                statusText.textContent = message;
+                
+                // Update spinner
+                if (status === 'connecting') {
+                    statusSpinner.classList.remove('d-none');
+                } else {
+                    statusSpinner.classList.add('d-none');
+                }
+            }
+
+            // Test connection to server
+            async function testConnection() {
+                try {
+                    // Show loading state
+                    testButton.disabled = true;
+                    testSpinner.classList.remove('d-none');
+                    updateStatus('connecting', 'Connecting to PingOne...');
+                    
+                    // First, get the current settings
+                    const settingsResponse = await fetch('/api/settings');
+                    const settingsData = await settingsResponse.json();
+                    
+                    // Extract the actual settings from the response
+                    const settings = settingsData.data || settingsData;
+                    
+                    // Test the connection using the test-connection endpoint with current settings
+                    const response = await fetch('/api/pingone/test-connection', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(settings)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    // Store response for raw view
+                    lastResponse = data;
+                    
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Failed to connect to server');
+                    }
+                    
+                    // Update UI with server info
+                    updateServerInfo(data);
+                    
+                    // Update status based on connection test
+                    if (data.success) {
+                        updateStatus('connected', 'Successfully connected to PingOne');
+                    } else {
+                        updateStatus('error', 'Failed to connect to PingOne');
+                    }
+                    
+                } catch (error) {
+                    console.error('Connection test failed:', error);
+                    updateStatus('error', `Error: ${error.message}`);
+                    
+                    // Update server info with error state
+                    serverStatus.textContent = 'Error';
+                    pingoneStatus.textContent = 'Error';
+                } finally {
+                    // Reset button state
+                    testButton.disabled = false;
+                    testSpinner.classList.add('d-none');
+                }
+            }
+            
+            // Update server information
+            function updateServerInfo(data) {
+                // Server status
+                serverStatus.textContent = 'Online';
+                
+                // PingOne status
+                if (data.success) {
+                    pingoneStatus.innerHTML = '<span class="text-success">Connected</span>';
+                    envId.textContent = data.environmentId || '-';
+                    region.textContent = data.region || '-';
+                } else {
+                    pingoneStatus.innerHTML = '<span class="text-danger">Disconnected</span>';
+                    envId.textContent = '-';
+                    region.textContent = '-';
+                    if (data.error) {
+                        pingoneStatus.innerHTML += `<div class="small text-muted">${data.error}</div>`;
+                    }
+                }
+            }
+            
+            // Toggle raw response view
+            function toggleRawResponse() {
+                if (rawResponseContainer.classList.contains('d-none')) {
+                    rawResponse.textContent = JSON.stringify(lastResponse, null, 2);
+                    rawResponseContainer.classList.remove('d-none');
+                    viewRawButton.textContent = 'Hide Raw Response';
+                } else {
+                    rawResponseContainer.classList.add('d-none');
+                    viewRawButton.textContent = 'View Raw Response';
+                }
+            }
+            
+            // Event listeners
+            testButton.addEventListener('click', testConnection);
+            viewRawButton.addEventListener('click', toggleRawResponse);
+            
+            // Initial test
+            testConnection();
+        });
+    </script>
+    <script>
+        // Fallback for browsers that don't support type="module"
+        if (document.querySelector('script[type="module"]')) {
+            const fallback = document.createElement('div');
+            fallback.className = 'alert alert-warning';
+            fallback.textContent = 'Your browser does not support ES modules. Please use a modern browser.';
+            document.body.prepend(fallback);
+        }
+    </script>
+</body>
+</html>

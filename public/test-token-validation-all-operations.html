@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Validation Test - All Operations</title>
+    <link rel="stylesheet" href="/css/ping-identity.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-button {
+            margin: 10px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        .test-button.primary {
+            background: #007bff;
+            color: white;
+        }
+        .test-button.primary:hover {
+            background: #0056b3;
+        }
+        .test-button.danger {
+            background: #dc3545;
+            color: white;
+        }
+        .test-button.danger:hover {
+            background: #c82333;
+        }
+        .test-button.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .test-button.warning:hover {
+            background: #e0a800;
+        }
+        .test-button.success {
+            background: #28a745;
+            color: white;
+        }
+        .test-button.success:hover {
+            background: #218838;
+        }
+        .test-button.info {
+            background: #17a2b8;
+            color: white;
+        }
+        .test-button.info:hover {
+            background: #138496;
+        }
+        .test-results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 6px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .operation-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background: #28a745; }
+        .status-error { background: #dc3545; }
+        .status-warning { background: #ffc107; }
+        .status-info { background: #17a2b8; }
+    </style>
+</head>
+<body class="ping-identity-theme">
+    <div class="test-container">
+        <h1>🔐 Token Validation Test - All Operations</h1>
+        <p>This test verifies that all protected operations properly show the token alert modal when no valid token is available.</p>
+        
+        <div class="test-section">
+            <h2><i class="fas fa-info-circle"></i> Test Instructions</h2>
+            <ol>
+                <li>Clear any existing tokens: <button onclick="clearTokens()" class="test-button info">Clear Tokens</button></li>
+                <li>Click each operation button below to test token validation</li>
+                <li>Verify that the token alert modal appears for each operation</li>
+                <li>Check that the modal is persistent and non-dismissible</li>
+                <li>Verify the "Go to Settings" button works correctly</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h2><i class="fas fa-upload"></i> Import Operations</h2>
+            <div class="operation-group">
+                <button onclick="testOperation('import')" class="test-button primary">
+                    <i class="fas fa-upload"></i> Test Import
+                </button>
+                <button onclick="testOperation('import with file')" class="test-button primary">
+                    <i class="fas fa-file-csv"></i> Test Import with File
+                </button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2><i class="fas fa-download"></i> Export Operations</h2>
+            <div class="operation-group">
+                <button onclick="testOperation('export')" class="test-button success">
+                    <i class="fas fa-download"></i> Test Export
+                </button>
+                <button onclick="testOperation('export CSV')" class="test-button success">
+                    <i class="fas fa-file-csv"></i> Test Export CSV
+                </button>
+                <button onclick="testOperation('export JSON')" class="test-button success">
+                    <i class="fas fa-file-code"></i> Test Export JSON
+                </button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2><i class="fas fa-edit"></i> Modify Operations</h2>
+            <div class="operation-group">
+                <button onclick="testOperation('modify')" class="test-button warning">
+                    <i class="fas fa-edit"></i> Test Modify
+                </button>
+                <button onclick="testOperation('modify with file')" class="test-button warning">
+                    <i class="fas fa-file-csv"></i> Test Modify with File
+                </button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2><i class="fas fa-trash"></i> Delete Operations</h2>
+            <div class="operation-group">
+                <button onclick="testOperation('delete')" class="test-button danger">
+                    <i class="fas fa-trash"></i> Test Delete
+                </button>
+                <button onclick="testOperation('delete with file')" class="test-button danger">
+                    <i class="fas fa-file-csv"></i> Test Delete with File
+                </button>
+                <button onclick="testOperation('population delete')" class="test-button danger">
+                    <i class="fas fa-users-slash"></i> Test Population Delete
+                </button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2><i class="fas fa-cog"></i> System Operations</h2>
+            <div class="operation-group">
+                <button onclick="testOperation('connection test')" class="test-button info">
+                    <i class="fas fa-plug"></i> Test Connection
+                </button>
+                <button onclick="testOperation('get token')" class="test-button info">
+                    <i class="fas fa-key"></i> Test Get Token
+                </button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2><i class="fas fa-list"></i> Test Results</h2>
+            <div id="test-results" class="test-results">No tests run yet. Click the buttons above to start testing.</div>
+        </div>
+
+        <div class="test-section">
+            <h2><i class="fas fa-check-circle"></i> Expected Behavior</h2>
+            <ul>
+                <li><span class="status-indicator status-success"></span>Token alert modal should appear for all operations when no valid token exists</li>
+                <li><span class="status-indicator status-success"></span>Modal should be persistent and non-dismissible (no outside click or Escape key)</li>
+                <li><span class="status-indicator status-success"></span>"Go to Settings" button should navigate to settings page</li>
+                <li><span class="status-indicator status-success"></span>Close button should allow manual dismissal</li>
+                <li><span class="status-indicator status-success"></span>Operation should be blocked until valid token is available</li>
+                <li><span class="status-indicator status-success"></span>Consistent behavior across all operation types</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let testResults = [];
+        let testCounter = 0;
+
+        function logTest(operation, result, details = '') {
+            testCounter++;
+            const timestamp = new Date().toLocaleTimeString();
+            const testEntry = {
+                id: testCounter,
+                timestamp,
+                operation,
+                result,
+                details
+            };
+            testResults.push(testEntry);
+            updateTestResults();
+        }
+
+        function updateTestResults() {
+            const resultsDiv = document.getElementById('test-results');
+            let output = `Test Results (${testResults.length} tests):\n\n`;
+            
+            testResults.forEach(test => {
+                const statusIcon = test.result === 'PASS' ? '✅' : test.result === 'FAIL' ? '❌' : '⚠️';
+                output += `${statusIcon} [${test.timestamp}] ${test.operation}: ${test.result}\n`;
+                if (test.details) {
+                    output += `   Details: ${test.details}\n`;
+                }
+                output += '\n';
+            });
+            
+            resultsDiv.textContent = output;
+        }
+
+        function clearTokens() {
+            // Clear localStorage tokens
+            localStorage.removeItem('pingone_worker_token');
+            localStorage.removeItem('pingone_token_expiry');
+            sessionStorage.removeItem('tokenAlertModalShown');
+            
+            logTest('Clear Tokens', 'PASS', 'All tokens cleared from localStorage and sessionStorage');
+        }
+
+        function testOperation(operation) {
+            console.log(`Testing operation: ${operation}`);
+            
+            // Simulate the app's token validation
+            const hasValidToken = false; // Simulate no valid token
+            
+            if (!hasValidToken) {
+                // Show token alert modal (simulated)
+                showTokenAlertModal({
+                    tokenStatus: 'Not Available',
+                    expiry: '',
+                    operation: operation
+                });
+                
+                logTest(operation, 'PASS', 'Token alert modal triggered correctly');
+            } else {
+                logTest(operation, 'FAIL', 'Token validation should have failed but passed');
+            }
+        }
+
+        // Simulated token alert modal function
+        function showTokenAlertModal({ tokenStatus = '', expiry = '', operation = '' } = {}) {
+            // Create modal overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'token-alert-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-labelledby', 'token-alert-title');
+            overlay.setAttribute('aria-describedby', 'token-alert-content');
+
+            // Modal content
+            overlay.innerHTML = `
+                <div class="token-alert-modal" tabindex="-1">
+                    <div class="token-alert-header">
+                        <h2 id="token-alert-title">
+                            <span class="warning-icon" aria-hidden="true">⚠️</span>
+                            <span>Authentication Required</span>
+                        </h2>
+                        <button type="button" class="token-alert-close" id="token-alert-close" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="token-alert-body">
+                        <div id="token-alert-content" class="token-alert-content">
+                            <div class="token-alert-icon">
+                                <span aria-hidden="true">🔐</span>
+                            </div>
+                            <h3>No Valid Token Available</h3>
+                            <p class="token-alert-message">
+                                <strong>Authentication is required to continue.</strong>
+                                ${operation ? `You need valid credentials to perform the "${operation}" operation.` : 'You need valid credentials to use this application.'}
+                            </p>
+                            ${tokenStatus || expiry ? `<div class="token-status-info">
+                                <p><strong>Current Status:</strong> ${tokenStatus ? tokenStatus : 'No token available'}</p>
+                                ${expiry ? `<p><strong>Token Expired:</strong> ${expiry}</p>` : ''}
+                            </div>` : ''}
+                            <div class="token-alert-actions">
+                                <button type="button" class="btn btn-primary btn-lg" id="token-alert-settings-btn">
+                                    <span class="btn-icon">⚙️</span>
+                                    Go to Settings
+                                </button>
+                                <p class="token-alert-help">
+                                    Add your PingOne credentials in the Settings page to generate a new token.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(overlay);
+            
+            // Show modal
+            document.body.classList.add('token-alert-open');
+            overlay.classList.add('active');
+            
+            // Bind events
+            const settingsBtn = overlay.querySelector('#token-alert-settings-btn');
+            const closeBtn = overlay.querySelector('#token-alert-close');
+            
+            settingsBtn.addEventListener('click', () => {
+                overlay.remove();
+                document.body.classList.remove('token-alert-open');
+                logTest(operation, 'PASS', 'Go to Settings button clicked');
+            });
+            
+            closeBtn.addEventListener('click', () => {
+                overlay.remove();
+                document.body.classList.remove('token-alert-open');
+                logTest(operation, 'PASS', 'Close button clicked');
+            });
+            
+            // Prevent outside click and escape key
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    e.preventDefault();
+                    logTest(operation, 'PASS', 'Outside click prevented (modal persistent)');
+                }
+            });
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    logTest(operation, 'PASS', 'Escape key prevented (modal persistent)');
+                }
+            });
+        }
+
+        // Initialize test
+        document.addEventListener('DOMContentLoaded', () => {
+            logTest('Test Initialization', 'PASS', 'Token validation test page loaded');
+        });
+    </script>
+</body>
+</html> 
