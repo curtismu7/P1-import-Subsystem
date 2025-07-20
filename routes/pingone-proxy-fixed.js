@@ -517,6 +517,170 @@ router.use((req, res, next) => {
 router.get('/users', getUsers);
 router.get('/populations', getPopulations);
 
+// Test connection endpoint
+router.post('/test-connection', async (req, res) => {
+    const requestId = uuidv4();
+    console.log(`[${requestId}] Testing PingOne connection...`);
+    
+    try {
+        // Get settings from environment or request
+        const settings = req.settings || {
+            environmentId: process.env.PINGONE_ENVIRONMENT_ID,
+            apiClientId: process.env.PINGONE_CLIENT_ID,
+            apiSecret: process.env.PINGONE_CLIENT_SECRET,
+            region: process.env.PINGONE_REGION || 'NorthAmerica'
+        };
+        
+        if (!settings.environmentId || !settings.apiClientId || !settings.apiSecret) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required credentials. Please configure your PingOne settings.'
+            });
+        }
+        
+        // Try to get a token to test the connection
+        const tokenUrl = 'https://auth.pingone.com/as/token.oauth2';
+        const tokenData = new URLSearchParams({
+            grant_type: 'client_credentials',
+            client_id: settings.apiClientId,
+            client_secret: settings.apiSecret
+        });
+        
+        const tokenResponse = await fetch(tokenUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: tokenData
+        });
+        
+        if (!tokenResponse.ok) {
+            const errorText = await tokenResponse.text();
+            console.error(`[${requestId}] Token request failed:`, errorText);
+            return res.status(400).json({
+                success: false,
+                error: 'Authentication failed. Please check your credentials.'
+            });
+        }
+        
+        const tokenResult = await tokenResponse.json();
+        
+        if (!tokenResult.access_token) {
+            return res.status(400).json({
+                success: false,
+                error: 'Failed to obtain access token. Please check your credentials.'
+            });
+        }
+        
+        // Test API access with the token
+        const apiBaseUrl = PINGONE_API_BASE_URLS[settings.region] || PINGONE_API_BASE_URLS.default;
+        const testUrl = `${apiBaseUrl}/v1/environments/${settings.environmentId}`;
+        
+        const testResponse = await fetch(testUrl, {
+            headers: {
+                'Authorization': `Bearer ${tokenResult.access_token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!testResponse.ok) {
+            const errorText = await testResponse.text();
+            console.error(`[${requestId}] API test failed:`, errorText);
+            return res.status(400).json({
+                success: false,
+                error: 'API access failed. Please check your environment ID and permissions.'
+            });
+        }
+        
+        console.log(`[${requestId}] Connection test successful`);
+        res.json({
+            success: true,
+            message: 'Connection test successful',
+            environmentId: settings.environmentId,
+            region: settings.region
+        });
+        
+    } catch (error) {
+        console.error(`[${requestId}] Connection test error:`, error);
+        res.status(500).json({
+            success: false,
+            error: 'Connection test failed: ' + error.message
+        });
+    }
+});
+
+// Get token endpoint
+router.post('/token', async (req, res) => {
+    const requestId = uuidv4();
+    console.log(`[${requestId}] Getting PingOne token...`);
+    
+    try {
+        // Get settings from environment or request
+        const settings = req.settings || {
+            environmentId: process.env.PINGONE_ENVIRONMENT_ID,
+            apiClientId: process.env.PINGONE_CLIENT_ID,
+            apiSecret: process.env.PINGONE_CLIENT_SECRET,
+            region: process.env.PINGONE_REGION || 'NorthAmerica'
+        };
+        
+        if (!settings.apiClientId || !settings.apiSecret) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing API credentials. Please configure your PingOne settings.'
+            });
+        }
+        
+        // Get access token
+        const tokenUrl = 'https://auth.pingone.com/as/token.oauth2';
+        const tokenData = new URLSearchParams({
+            grant_type: 'client_credentials',
+            client_id: settings.apiClientId,
+            client_secret: settings.apiSecret
+        });
+        
+        const tokenResponse = await fetch(tokenUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: tokenData
+        });
+        
+        if (!tokenResponse.ok) {
+            const errorText = await tokenResponse.text();
+            console.error(`[${requestId}] Token request failed:`, errorText);
+            return res.status(400).json({
+                success: false,
+                error: 'Failed to get token. Please check your credentials.'
+            });
+        }
+        
+        const tokenResult = await tokenResponse.json();
+        
+        if (!tokenResult.access_token) {
+            return res.status(400).json({
+                success: false,
+                error: 'No access token received. Please check your credentials.'
+            });
+        }
+        
+        console.log(`[${requestId}] Token acquired successfully`);
+        res.json({
+            success: true,
+            access_token: tokenResult.access_token,
+            token_type: tokenResult.token_type || 'Bearer',
+            expires_in: tokenResult.expires_in || 3600
+        });
+        
+    } catch (error) {
+        console.error(`[${requestId}] Token request error:`, error);
+        res.status(500).json({
+            success: false,
+            error: 'Token request failed: ' + error.message
+        });
+    }
+});
+
 // All other requests go through the proxy handler (catch-all)
 // Skip the get-token endpoint as it's handled by the main API router
 router.all('*', (req, res, next) => {

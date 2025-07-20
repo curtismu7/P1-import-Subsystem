@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PingOne User Import v5.5</title>
+    <title>PingOne User Import v6.2</title>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="/css/ping-identity.css">
     <!-- Token Status Indicator CSS -->
     <link rel="stylesheet" href="/css/token-status-indicator.css">
+    <link rel="stylesheet" href="/css/token-notification.css">
     <!-- Progress UI CSS -->
     <link rel="stylesheet" href="/css/progress-ui.css">
     <!-- Disclaimer Modal CSS -->
@@ -28,20 +29,21 @@
     <link rel="stylesheet" href="/css/credentials-modal.css">
     <!-- Status Bar CSS -->
     <link rel="stylesheet" href="/css/status-bar.css">
-    <!-- Disclaimer Banner Script -->
-    <script src="/js/modules/disclaimer-banner.js"></script>
-    <!-- Disclaimer Modal Script -->
-    <script src="/js/modules/disclaimer-modal.js"></script>
-    <!-- Credentials Modal Script -->
-    <script src="/js/modules/credentials-modal.js"></script>
-    <!-- Token Status Indicator Script -->
-    <script src="/js/modules/token-status-indicator.js"></script>
-    <!-- Global Token Manager Script -->
-    <script src="/js/modules/global-token-manager.js"></script>
-    <!-- Global Status Manager Script -->
-    <script src="/js/modules/global-status-manager.js"></script>
-    <!-- Credentials Manager Script -->
-    <script src="/js/modules/credentials-manager.js"></script>
+    <!-- Real-time Collaboration UI Styles -->
+    <link rel="stylesheet" href="/css/realtime-collaboration.css">
+    <!-- Analytics Dashboard UI Styles -->
+    <link rel="stylesheet" href="/css/analytics-dashboard.css">
+    <!-- History UI Styles -->
+    <link rel="stylesheet" href="/css/history-ui.css">
+    <!-- Logging UI Styles -->
+    <link rel="stylesheet" href="/css/logging-ui.css">
+    <!-- Testing UI Styles -->
+    <link rel="stylesheet" href="/css/testing-ui.css">
+    <!-- Status Bar Fix CSS -->
+    <link rel="stylesheet" href="/css/status-bar-fix.css">
+    <link rel="stylesheet" href="/css/version-widget.css">
+    <!-- Note: Individual ES module scripts removed - all functionality now bundled in bundle.js -->
+    <!-- ES modules are properly bundled and transpiled via Browserify + Babel -->
 </head>
 <body class="ping-identity-theme">
     <!-- Startup Wait Screen -->
@@ -53,6 +55,19 @@
             <div class="startup-text">
                 <h2>Please wait</h2>
                 <p>Initializing application...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading Overlay for Modal Transitions -->
+    <div id="modal-loading-overlay" class="modal-loading-overlay" style="display: none;">
+        <div class="modal-loading-content">
+            <div class="modal-loading-spinner">
+                <div class="spinner"></div>
+            </div>
+            <div class="modal-loading-text">
+                <h3 id="modal-loading-title">Loading...</h3>
+                <p id="modal-loading-message">Please wait while we set up your experience.</p>
             </div>
         </div>
     </div>
@@ -77,6 +92,10 @@
                         <i class="fas fa-history"></i>
                         <span>History</span>
                     </li>
+                    <li class="nav-item" data-view="analytics">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Analytics</span>
+                    </li>
                     <li class="nav-item" data-view="delete-csv">
                         <i class="fas fa-trash"></i>
                         <span>Delete</span>
@@ -97,6 +116,16 @@
                         <i class="fas fa-list"></i>
                         <span>Logs</span>
                     </li>
+                    <li class="nav-item" data-view="testing">
+                        <i class="fas fa-flask"></i>
+                        <span>Testing</span>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/test-runner.html" target="_blank" style="text-decoration: none; color: inherit;">
+                            <i class="fas fa-vial"></i>
+                            <span>Test Runner</span>
+                        </a>
+                    </li>
                 </ul>
             </div>
             <!-- Global Token Status Indicator -->
@@ -112,6 +141,7 @@
                     <div class="global-token-status-display">
                         <span class="global-token-icon">⏳</span>
                         <span class="global-token-text">Checking token status...</span>
+                        <span id="token-status-indicator" class="token-status-indicator">●</span>
                     </div>
                     <div class="global-token-actions">
                         <button id="global-refresh-token" class="btn btn-sm btn-outline-secondary" title="Refresh token status">
@@ -132,12 +162,14 @@
         <main class="main-content">
             <!-- Global Status Bar -->
             <div id="global-status-bar" class="global-status-bar" style="display: none;">
-                <div class="status-content">
-                    <i class="status-icon"></i>
-                    <span class="status-text"></span>
-                    <button class="status-close" title="Dismiss">
-                        <i class="fas fa-times"></i>
-                    </button>
+                <div class="container">
+                    <div class="status-content">
+                        <i class="status-icon"></i>
+                        <span class="status-text"></span>
+                        <button class="status-close" title="Dismiss">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
             
@@ -252,7 +284,7 @@
                                     <span class="api-url-text">Select a population to see the API URL</span>
                                 </div>
                                 <div class="population-name-display" style="margin-top: 8px;">
-                                    <span class="population-name-text" style="background-color: #ffff00; color: #000000; padding: 4px 8px; border-radius: 4px; font-weight: 500;">Population: Select a population</span>
+                                    <span class="population-name-text">Population: Select a population</span>
                                 </div>
                             </div>
                         </div>
@@ -284,7 +316,8 @@
                     </div>
 
                     <!-- Enhanced Progress Section for Import UI -->
-                    <div id="progress-container" class="progress-container" style="display:none;">
+
+            <div id="progress-container" class="progress-container" style="display:none;">
                         <div class="progress-section">
                             <div class="progress-header">
                                 <h3><i class="fas fa-cog fa-spin"></i> Import Progress</h3>
@@ -303,6 +336,7 @@
                                 
                                 <div class="progress-status">
                                     <div class="status-message">Preparing import...</div>
+                                    <div class="progress-text"></div>
                                     <div class="status-details"></div>
                                 </div>
                                 
@@ -412,6 +446,11 @@
                         <!-- History entries will be displayed here -->
                     </div>
                 </div>
+            </div>
+
+            <!-- Analytics View -->
+            <div id="analytics-view" class="view-container" style="display: none;">
+                <!-- Analytics Dashboard UI will be injected here by AnalyticsDashboardUI component -->
             </div>
 
             <!-- Delete CSV View -->
@@ -957,6 +996,163 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Testing View -->
+            <div id="testing-view" class="view">
+                <div class="testing-header">
+                    <h1><i class="fas fa-flask"></i> Testing Hub</h1>
+                    <p class="testing-description">Comprehensive testing suite for API endpoints, UI components, and system functionality</p>
+                </div>
+                
+                <div class="testing-content">
+                    <!-- Testing Categories -->
+                    <div class="testing-categories">
+                        <!-- API Testing Section -->
+                        <div class="testing-category">
+                            <div class="category-header">
+                                <h2><i class="fas fa-code"></i> API Testing</h2>
+                                <p>Test API endpoints, authentication, and data validation</p>
+                            </div>
+                            <div class="category-actions">
+                                <button class="btn btn-primary testing-btn" onclick="openAPITestingDashboard()">
+                                    <i class="fas fa-rocket"></i> Open API Testing Dashboard
+                                </button>
+                                <button class="btn btn-success testing-btn" onclick="runQuickAPITests()">
+                                    <i class="fas fa-play"></i> Run Quick API Tests
+                                </button>
+                                <button class="btn btn-info testing-btn" onclick="testAllSubsystems()">
+                                    <i class="fas fa-cogs"></i> Test All Subsystems
+                                </button>
+                            </div>
+                            <div id="api-test-results" class="test-results" style="display: none;"></div>
+                        </div>
+
+                        <!-- Swagger Documentation Section -->
+                        <div class="testing-category">
+                            <div class="category-header">
+                                <h2><i class="fas fa-book"></i> API Documentation</h2>
+                                <p>Interactive API documentation and testing interface</p>
+                            </div>
+                            <div class="category-actions">
+                                <button class="btn btn-primary testing-btn" onclick="openSwaggerUI()">
+                                    <i class="fas fa-external-link-alt"></i> Open Swagger UI
+                                </button>
+                                <button class="btn btn-success testing-btn" onclick="validateSwaggerSpec()">
+                                    <i class="fas fa-check-circle"></i> Validate OpenAPI Spec
+                                </button>
+                                <button class="btn btn-info testing-btn" onclick="downloadSwaggerSpec()">
+                                    <i class="fas fa-download"></i> Download API Spec
+                                </button>
+                            </div>
+                            <div id="swagger-test-results" class="test-results" style="display: none;"></div>
+                        </div>
+
+                        <!-- UI Component Testing Section -->
+                        <div class="testing-category">
+                            <div class="category-header">
+                                <h2><i class="fas fa-desktop"></i> UI Component Testing</h2>
+                                <p>Test user interface components and interactions</p>
+                            </div>
+                            <div class="category-actions">
+                                <button class="btn btn-primary testing-btn" onclick="testHistoryUI()">
+                                    <i class="fas fa-history"></i> Test History UI
+                                </button>
+                                <button class="btn btn-primary testing-btn" onclick="testLoggingUI()">
+                                    <i class="fas fa-list"></i> Test Logging UI
+                                </button>
+                                <button class="btn btn-primary testing-btn" onclick="testImportUI()">
+                                    <i class="fas fa-upload"></i> Test Import UI
+                                </button>
+                                <button class="btn btn-success testing-btn" onclick="runAllUITests()">
+                                    <i class="fas fa-play-circle"></i> Run All UI Tests
+                                </button>
+                            </div>
+                            <div id="ui-test-results" class="test-results" style="display: none;"></div>
+                        </div>
+
+                        <!-- System Health Testing Section -->
+                        <div class="testing-category">
+                            <div class="category-header">
+                                <h2><i class="fas fa-heartbeat"></i> System Health</h2>
+                                <p>Monitor system health, performance, and connectivity</p>
+                            </div>
+                            <div class="category-actions">
+                                <button class="btn btn-primary testing-btn" onclick="runHealthChecks()">
+                                    <i class="fas fa-stethoscope"></i> Run Health Checks
+                                </button>
+                                <button class="btn btn-success testing-btn" onclick="testConnectivity()">
+                                    <i class="fas fa-wifi"></i> Test Connectivity
+                                </button>
+                                <button class="btn btn-info testing-btn" onclick="checkPerformance()">
+                                    <i class="fas fa-tachometer-alt"></i> Performance Check
+                                </button>
+                                <button class="btn btn-warning testing-btn" onclick="validateConfiguration()">
+                                    <i class="fas fa-cog"></i> Validate Config
+                                </button>
+                            </div>
+                            <div id="health-test-results" class="test-results" style="display: none;"></div>
+                        </div>
+
+                        <!-- Integration Testing Section -->
+                        <div class="testing-category">
+                            <div class="category-header">
+                                <h2><i class="fas fa-link"></i> Integration Testing</h2>
+                                <p>Test end-to-end workflows and system integration</p>
+                            </div>
+                            <div class="category-actions">
+                                <button class="btn btn-primary testing-btn" onclick="testImportWorkflow()">
+                                    <i class="fas fa-upload"></i> Test Import Workflow
+                                </button>
+                                <button class="btn btn-primary testing-btn" onclick="testExportWorkflow()">
+                                    <i class="fas fa-download"></i> Test Export Workflow
+                                </button>
+                                <button class="btn btn-success testing-btn" onclick="testAuthFlow()">
+                                    <i class="fas fa-key"></i> Test Auth Flow
+                                </button>
+                                <button class="btn btn-info testing-btn" onclick="runE2ETests()">
+                                    <i class="fas fa-route"></i> Run E2E Tests
+                                </button>
+                            </div>
+                            <div id="integration-test-results" class="test-results" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Global Test Results -->
+                    <div class="global-test-results">
+                        <div class="results-header">
+                            <h3><i class="fas fa-chart-line"></i> Test Results Summary</h3>
+                            <div class="results-actions">
+                                <button class="btn btn-secondary" onclick="clearAllTestResults()">
+                                    <i class="fas fa-trash"></i> Clear Results
+                                </button>
+                                <button class="btn btn-info" onclick="exportTestResults()">
+                                    <i class="fas fa-file-export"></i> Export Results
+                                </button>
+                            </div>
+                        </div>
+                        <div id="global-test-summary" class="test-summary">
+                            <div class="summary-stats">
+                                <div class="stat-card">
+                                    <div class="stat-value" id="total-tests">0</div>
+                                    <div class="stat-label">Total Tests</div>
+                                </div>
+                                <div class="stat-card success">
+                                    <div class="stat-value" id="passed-tests">0</div>
+                                    <div class="stat-label">Passed</div>
+                                </div>
+                                <div class="stat-card error">
+                                    <div class="stat-value" id="failed-tests">0</div>
+                                    <div class="stat-label">Failed</div>
+                                </div>
+                                <div class="stat-card warning">
+                                    <div class="stat-value" id="skipped-tests">0</div>
+                                    <div class="stat-label">Skipped</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -969,7 +1165,6 @@
                         <img src="ping-identity-logo.png" alt="Ping Identity" class="ping-logo-img">
                         <span class="ping-trademark">PingIdentity<span class="trademark-symbol">™</span></span>
                     </div>
-                    <span class="footer-version">Version: 1.0.0</span>
                     <span class="footer-copyright">
                         &copy; 2025 Ping Identity Corporation
                     </span>
@@ -987,7 +1182,41 @@
     <!-- Socket.IO Client Library -->
     <script src="/socket.io/socket.io.js"></script>
     <!-- JavaScript -->
-    <script src="/js/bundle.js?v=1.0.1"></script>
+    <script>
+        // Fetch the bundle manifest and load the correct bundle file
+        (async function() {
+            try {
+                const response = await fetch('/api/bundle-info');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch bundle manifest');
+                }
+                const manifest = await response.json();
+                const bundleFile = manifest.bundleFile;
+                if (!bundleFile) {
+                    throw new Error('Bundle filename not found in manifest');
+                }
+
+                var script = document.createElement('script');
+                script.src = 'js/' + bundleFile;
+                script.async = true;
+                document.head.appendChild(script);
+            } catch (error) {
+                console.error('Failed to load application bundle:', error);
+                // Fallback or error message can be displayed to the user here
+                const errorDiv = document.createElement('div');
+                errorDiv.textContent = 'Error loading application. Please try refreshing the page.';
+                errorDiv.style.color = 'red';
+                errorDiv.style.textAlign = 'center';
+                errorDiv.style.padding = '20px';
+                document.body.insertBefore(errorDiv, document.body.firstChild);
+            }
+        })();
+    </script>
     <script src="/js/modules/log-manager.js"></script>
+    
+    <!-- Simple Navigation Fallback -->
+    <script src="/js/simple-navigation.js"></script>
+    
+    <div class="version-widget">v6.2</div>
 </body>
 </html>
