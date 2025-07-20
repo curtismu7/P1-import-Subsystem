@@ -16,7 +16,7 @@
  * - Feature flag management
  * 
  * @author PingOne Import Tool
- * @version 4.9
+ * @version 6.1
  */
 
 import { Router } from 'express';
@@ -2255,7 +2255,7 @@ router.post('/pingone/get-token', async (req, res, next) => {
 router.get('/version', (req, res) => {
     // You can import VersionManager or use a static version string
     // For now, use a static version
-    res.json({ version: '1.0.0' });
+    res.json({ version: '6.1.0' });
 });
 
 // --- DELETE USERS ENDPOINT ---

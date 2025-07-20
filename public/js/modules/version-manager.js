@@ -1,6 +1,6 @@
 export class VersionManager {
     constructor() {
-        this.version = '5.5'; // Update this with each new version
+        this.version = '6.1'; // Update this with each new version
         console.log(`Version Manager initialized with version ${this.version}`);
     }
 
