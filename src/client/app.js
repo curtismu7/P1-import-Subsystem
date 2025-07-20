@@ -23,15 +23,21 @@ import { SettingsManager } from '../../public/js/modules/settings-manager.js';
 import { UIManager } from './components/ui-manager.js';
 import TokenManager from '../../public/js/modules/token-manager.js';
 
+// Modal components (needed for startup flow)
+import '../../public/js/modules/disclaimer-modal.js';
+import '../../public/js/modules/credentials-modal.js';
+
 // Subsystems (new architecture)
 import { ImportSubsystem } from './subsystems/import-subsystem.js';
 import { ExportSubsystem } from './subsystems/export-subsystem.js';
 import { OperationManagerSubsystem } from './subsystems/operation-manager-subsystem.js';
 import { NavigationSubsystem } from './subsystems/navigation-subsystem.js';
 import { ConnectionManagerSubsystem } from './subsystems/connection-manager-subsystem.js';
+import { RealtimeCommunicationSubsystem } from './subsystems/realtime-communication-subsystem.js';
 import { AuthManagementSubsystem } from './subsystems/auth-management-subsystem.js';
 import { ViewManagementSubsystem } from './subsystems/view-management-subsystem.js';
-import { RealtimeCommunicationSubsystem } from './subsystems/realtime-communication-subsystem.js';
+import { GlobalTokenManagerSubsystem } from './subsystems/global-token-manager-subsystem.js';
+import { TokenNotificationSubsystem } from './subsystems/token-notification-subsystem.js';
 import { AdvancedRealtimeSubsystem } from './subsystems/advanced-realtime-subsystem.js';
 import { RealtimeCollaborationUI } from './components/realtime-collaboration-ui.js';
 import { AnalyticsDashboardSubsystem } from './subsystems/analytics-dashboard-subsystem.js';
@@ -159,7 +165,7 @@ class App {
             : new Logger();
             
         this.logger.info('Application initialization started', {
-            version: '6.1.0',
+            version: '6.2.0',
             featureFlags: FEATURE_FLAGS
         });
         
@@ -173,6 +179,9 @@ class App {
         
         // API clients
         this.localClient = null;
+        
+        // UI Components
+        this.globalTokenManager = null;
         
         // Modern subsystems (replacing legacy managers)
         this.progressSubsystem = null;
@@ -188,10 +197,12 @@ class App {
         
         // Subsystems (new architecture)
         this.subsystems = {};
+        this.analyticsDashboardSubsystem = null;
+        this.analyticsDashboardUI = null;
         
         // Application state
         this.isInitialized = false;
-        this.currentView = 'import';
+        this.currentView = 'home';
         this.socket = null;
         
         // Performance tracking
@@ -204,24 +215,35 @@ class App {
     async init() {
         try {
             this.logger.info('Starting application initialization');
+            this.updateStartupMessage('Initializing core components...');
             
             // Initialize core components
             await this.initializeCoreComponents();
+            this.updateStartupMessage('Setting up subsystems...');
             
             // Initialize subsystems
             await this.initializeSubsystems();
+            this.updateStartupMessage('Loading legacy components...');
             
             // Initialize legacy components (gradually being replaced)
             await this.initializeLegacyComponents();
+            this.updateStartupMessage('Setting up event listeners...');
             
             // Set up event listeners
             this.setupEventListeners();
+            
+            // Set up modal completion listeners
+            this.setupModalCompletionListeners();
+            this.updateStartupMessage('Finalizing user interface...');
             
             // Initialize UI
             await this.initializeUI();
             
             // Mark as initialized
             this.isInitialized = true;
+            
+            // Hide startup screen
+            this.hideStartupScreen();
             
             const initTime = this.logger.endTimer('app-initialization');
             this.logger.info('Application initialization completed', {
@@ -239,31 +261,61 @@ class App {
     }
     
     /**
+     * Hide the startup screen
+     */
+    hideStartupScreen() {
+        try {
+            const startupScreen = document.getElementById('startup-wait-screen');
+            const appContainer = document.querySelector('.app-container');
+            
+            if (startupScreen) {
+                this.logger.debug('Hiding startup wait screen');
+                startupScreen.style.display = 'none';
+            } else {
+                this.logger.warn('Startup wait screen element not found');
+            }
+            
+            if (appContainer) {
+                appContainer.classList.remove('startup-loading');
+            }
+            
+            this.logger.debug('Startup screen hidden successfully');
+        } catch (error) {
+            this.logger.error('Failed to hide startup screen', { error: error.message });
+        }
+    }
+    
+    /**
      * Initialize core components
      */
     async initializeCoreComponents() {
         this.logger.debug('Initializing core components');
-        
-        // Settings manager
-        this.settingsManager = new SettingsManager();
-        await this.settingsManager.init();
-        
-        // UI manager (enhanced with logManager)
-        this.uiManager = new UIManager({ logManager: { getLogger: (name) => this.logger } });
-        
-        // Token manager (requires logger, settings, and eventBus)
-        this.tokenManager = new TokenManager(this.logger, this.settingsManager.getAllSettings(), this.eventBus);
-        
-        // File handler (requires logger and uiManager)
-        this.fileHandler = new FileHandler(this.logger, this.uiManager);
-        
-        // Version manager
-        this.versionManager = new VersionManager();
-        
-        // API clients
+
+        // API clients must be first as other components depend on it.
         this.localClient = new LocalAPIClient(this.logger);
+
+        // Initialize UIManager first as SettingsSubsystem depends on it.
+        this.uiManager = new UIManager({ logger: this.logger });
+
+        // SettingsSubsystem is a core component and must be initialized before others that depend on it.
+        this.settingsSubsystem = new SettingsSubsystem(
+            this.logger.child({ subsystem: 'settings' }),
+            this.uiManager,
+            this.localClient,
+            null, // settingsManager - not available yet
+            this.eventBus,
+            null // credentialsManager - not available yet
+        );
+        await this.settingsSubsystem.init();
+        this.subsystems.settings = this.settingsSubsystem;
+        this.logger.debug('Settings subsystem initialized as a core component');
+
+        // Initialize other core components that may depend on the above.
+        this.tokenManager = new TokenManager(this.logger, this.subsystems.settings.getAllSettings(), this.eventBus);
+        this.fileHandler = new FileHandler(this.logger, this.uiManager);
+        this.versionManager = new VersionManager();
         this.pingOneClient = new PingOneClient();
-        
+
         this.logger.debug('Core components initialized');
     }
     
@@ -271,114 +323,38 @@ class App {
      * Initialize subsystems with feature flags
      */
     async initializeSubsystems() {
-        console.log('🚀 [DEBUG] App: initializeSubsystems() method called');
         this.logger.debug('Initializing subsystems', { featureFlags: FEATURE_FLAGS });
-        
+
         try {
-            console.log('🔧 [DEBUG] App: Starting subsystem initialization');
+            // LoggingSubsystem must be initialized before other subsystems that depend on it (e.g., PopulationSubsystem).
+            this.loggingSubsystem = new LoggingSubsystem(this.eventBus, this.logger.child({ subsystem: 'logging' }));
+            await this.loggingSubsystem.init();
+            this.subsystems.logging = this.loggingSubsystem;
+            this.logger.debug('Logging subsystem initialized');
+
             // Navigation Subsystem
             if (FEATURE_FLAGS.USE_NAVIGATION_SUBSYSTEM) {
                 this.subsystems.navigation = new NavigationSubsystem(
                     this.logger.child({ subsystem: 'navigation' }),
                     this.uiManager,
-                    this.settingsManager
+                    this.subsystems.settings
                 );
                 await this.subsystems.navigation.init();
                 this.logger.debug('Navigation subsystem initialized');
             }
-            
+
             // Connection Manager Subsystem
             if (FEATURE_FLAGS.USE_CONNECTION_MANAGER) {
                 this.subsystems.connectionManager = new ConnectionManagerSubsystem(
                     this.logger.child({ subsystem: 'connection' }),
                     this.uiManager,
-                    this.settingsManager,
+                    this.subsystems.settings,
                     this.localClient
                 );
                 await this.subsystems.connectionManager.init();
                 this.logger.debug('Connection manager subsystem initialized');
             }
-            
-            // Auth Management Subsystem
-            if (FEATURE_FLAGS.USE_AUTH_MANAGEMENT) {
-                this.subsystems.authManager = new AuthManagementSubsystem(
-                    this.logger.child({ subsystem: 'auth' }),
-                    this.uiManager,
-                    this.localClient,
-                    this.settingsManager
-                );
-                await this.subsystems.authManager.init();
-                this.logger.debug('Auth management subsystem initialized');
-            }
-            
-            // View Management Subsystem
-            if (FEATURE_FLAGS.USE_VIEW_MANAGEMENT) {
-                this.subsystems.viewManager = new ViewManagementSubsystem(
-                    this.logger.child({ subsystem: 'view' }),
-                    this.uiManager
-                );
-                await this.subsystems.viewManager.init();
-                this.logger.debug('View management subsystem initialized');
-            }
-            
-            // Operation Manager Subsystem
-            if (FEATURE_FLAGS.USE_OPERATION_MANAGER) {
-                this.subsystems.operationManager = new OperationManagerSubsystem(
-                    this.logger.child({ subsystem: 'operation' }),
-                    this.uiManager,
-                    this.settingsManager,
-                    this.localClient
-                );
-                await this.subsystems.operationManager.init();
-                this.logger.debug('Operation manager subsystem initialized');
-            }
-            
-            // Population Subsystem (needed by Import/Export subsystems)
-            this.populationSubsystem = new PopulationSubsystem(
-                this.eventBus,
-                this.settingsSubsystem,
-                this.loggingSubsystem,
-                this.localClient
-            );
-            await this.populationSubsystem.init();
-            this.subsystems.population = this.populationSubsystem;
-            this.logger.debug('Population subsystem initialized');
-            
-            // Import Subsystem
-            console.log('📋 [DEBUG] App: Checking USE_IMPORT_SUBSYSTEM feature flag:', FEATURE_FLAGS.USE_IMPORT_SUBSYSTEM);
-            if (FEATURE_FLAGS.USE_IMPORT_SUBSYSTEM) {
-                console.log('🚀 [DEBUG] App: Creating ImportSubsystem instance');
-                this.subsystems.importManager = new ImportSubsystem(
-                    this.logger.child({ subsystem: 'import' }),
-                    this.uiManager,
-                    this.localClient,
-                    this.settingsManager,
-                    this.eventBus,
-                    this.populationSubsystem,
-                    this.subsystems.authManager
-                );
-                console.log('🔧 [DEBUG] App: About to initialize ImportSubsystem');
-                await this.subsystems.importManager.init();
-                console.log('✅ [DEBUG] App: ImportSubsystem initialized successfully');
-                this.logger.debug('Import subsystem initialized');
-            } else {
-                console.log('❌ [DEBUG] App: ImportSubsystem feature flag is disabled');
-            }
-            
-            // Export Subsystem
-            if (FEATURE_FLAGS.USE_EXPORT_SUBSYSTEM) {
-                this.subsystems.exportManager = new ExportSubsystem(
-                    this.logger.child({ subsystem: 'export' }),
-                    this.uiManager,
-                    this.localClient,
-                    this.settingsManager,
-                    this.eventBus,
-                    this.populationSubsystem
-                );
-                await this.subsystems.exportManager.init();
-                this.logger.debug('Export subsystem initialized');
-            }
-            
+
             // Realtime Communication Subsystem
             if (FEATURE_FLAGS.USE_REALTIME_SUBSYSTEM) {
                 this.subsystems.realtimeManager = new RealtimeCommunicationSubsystem(
@@ -388,141 +364,113 @@ class App {
                 await this.subsystems.realtimeManager.init();
                 this.logger.debug('Realtime communication subsystem initialized');
             }
-            
-            // Modern Core Subsystems (replacing legacy managers)
-            
-            // Settings Subsystem (initialize first as other subsystems depend on it)
-            this.settingsSubsystem = new SettingsSubsystem(
-                this.logger.child({ subsystem: 'settings' }),
-                this.uiManager,
-                this.localClient,
-                this.settingsManager,
+
+            // Auth Management Subsystem
+            if (FEATURE_FLAGS.USE_AUTH_MANAGEMENT) {
+                this.subsystems.authManager = new AuthManagementSubsystem(
+                    this.logger.child({ subsystem: 'AuthManagementSubsystem' }),
+                    this.uiManager,
+                    this.localClient,
+                    this.subsystems.settings
+                );
+                await this.subsystems.authManager.init();
+                this.logger.debug('Auth management subsystem initialized');
+            }
+
+            // View Management Subsystem
+            if (FEATURE_FLAGS.USE_VIEW_MANAGEMENT) {
+                this.subsystems.viewManager = new ViewManagementSubsystem(
+                    this.logger.child({ subsystem: 'view' }),
+                    this.uiManager
+                );
+                await this.subsystems.viewManager.init();
+                this.logger.debug('View management subsystem initialized');
+            }
+
+            // Operation Manager Subsystem
+            if (FEATURE_FLAGS.USE_OPERATION_MANAGER) {
+                this.subsystems.operationManager = new OperationManagerSubsystem(
+                    this.logger.child({ subsystem: 'operation' }),
+                    this.uiManager,
+                    this.subsystems.settings,
+                    this.localClient
+                );
+                await this.subsystems.operationManager.init();
+                this.logger.debug('Operation manager subsystem initialized');
+            }
+
+            // Population Subsystem (needed by Import/Export subsystems)
+            this.populationSubsystem = new PopulationSubsystem(
                 this.eventBus,
-                null // credentialsManager - will be set later if needed
+                this.subsystems.settings,
+                this.subsystems.logging, // Correctly passing the initialized logging subsystem
+                this.localClient
             );
-            await this.settingsSubsystem.init();
-            this.subsystems.settings = this.settingsSubsystem;
-            this.logger.debug('Settings subsystem initialized');
-            
-            // Progress Subsystem
-            this.progressSubsystem = new ProgressSubsystem(
-                this.logger.child({ subsystem: 'progress' }),
-                this.uiManager,
-                this.eventBus,
-                null // realtimeComm - will be set later when realtime subsystem is initialized
-            );
-            await this.progressSubsystem.init();
-            this.subsystems.progress = this.progressSubsystem;
-            this.logger.debug('Progress subsystem initialized');
-            
-            // Session Subsystem
-            this.sessionSubsystem = new SessionSubsystem(
-                this.logger.child({ subsystem: 'session' }),
-                this.settingsSubsystem,
-                this.eventBus
-            );
-            await this.sessionSubsystem.init();
-            this.subsystems.session = this.sessionSubsystem;
-            this.logger.debug('Session subsystem initialized');
-            
-            // Logging Subsystem
-            this.loggingSubsystem = new LoggingSubsystem(
-                this.eventBus,
-                this.settingsSubsystem
-            );
-            await this.loggingSubsystem.init();
-            this.subsystems.logging = this.loggingSubsystem;
-            this.logger.debug('Logging subsystem initialized');
-            
-            // History Subsystem
-            this.historySubsystem = new HistorySubsystem(
-                this.eventBus,
-                this.settingsSubsystem,
-                this.loggingSubsystem
-            );
-            await this.historySubsystem.init();
-            this.subsystems.history = this.historySubsystem;
-            this.logger.debug('History subsystem initialized');
-            
-            // Population Subsystem already initialized above for Import/Export dependencies
-            
-            // Initialize advanced real-time subsystem and UI
-            this.advancedRealtimeSubsystem = new AdvancedRealtimeSubsystem(
-                this.logger.child({ subsystem: 'advanced-realtime' }),
-                this.eventBus,
-                this.subsystems.realtimeManager,
-                this.sessionSubsystem,
-                this.progressSubsystem
-            );
-            
-            this.realtimeCollaborationUI = new RealtimeCollaborationUI(
-                this.logger.child({ subsystem: 'realtime-collaboration-ui' }),
-                this.eventBus,
-                this.advancedRealtimeSubsystem,
-                this.uiManager
-            );
-            
-            // Initialize analytics dashboard subsystem and UI
-            this.analyticsDashboardSubsystem = new AnalyticsDashboardSubsystem(
-                this.logger.child({ subsystem: 'analytics-dashboard' }),
-                this.eventBus,
-                this.advancedRealtimeSubsystem,
-                this.progressSubsystem,
-                this.sessionSubsystem
-            );
-            
-            this.analyticsDashboardUI = new AnalyticsDashboardUI(
-                this.eventBus,
-                this.analyticsDashboardSubsystem
-            );
-            
-            // Initialize History UI Component
-            this.historyUIComponent = new HistoryUIComponent(
-                this.historySubsystem,
-                this.eventBus,
-                this.logger.child({ component: 'history-ui' })
-            );
-            
-            // Initialize Enhanced Logging UI Component
-            this.loggingUIComponent = new EnhancedLoggingUIComponent(
-                this.loggingSubsystem,
-                this.eventBus,
-                this.logger.child({ component: 'enhanced-logging-ui' })
-            );
-            
-            // Initialize Testing Hub
-            this.testingHub = new TestingHub(
-                this.eventBus,
-                {
-                    import: this.importSubsystem,
-                    export: this.exportSubsystem,
-                    history: this.historySubsystem,
-                    logging: this.loggingSubsystem,
-                    settings: this.settingsSubsystem,
-                    auth: this.authManagementSubsystem
-                }
-            );
-            
-            // Make testing hub globally available
-            window.testingHub = this.testingHub;
-            
-            // Initialize subsystems
-            await this.advancedRealtimeSubsystem.init();
-            await this.analyticsDashboardSubsystem.init();
-            
-            // Initialize UI components
-            await this.realtimeCollaborationUI.init();
-            await this.analyticsDashboardUI.init();
-            await this.historyUIComponent.init();
-            await this.loggingUIComponent.init();
-            
-            this.logger.debug('Advanced real-time and analytics subsystems initialized');
-            
-            this.logger.info('All subsystems initialized successfully', {
-                subsystemCount: Object.keys(this.subsystems).length,
-                enabledSubsystems: Object.keys(this.subsystems)
-            });
-        
+            await this.populationSubsystem.init();
+            this.subsystems.population = this.populationSubsystem;
+            this.logger.debug('Population subsystem initialized');
+
+            // Import Subsystem
+            if (FEATURE_FLAGS.USE_IMPORT_SUBSYSTEM) {
+                this.subsystems.importManager = new ImportSubsystem(
+                    this.logger.child({ subsystem: 'import' }),
+                    this.uiManager,
+                    this.localClient,
+                    this.subsystems.settings,
+                    this.eventBus,
+                    this.subsystems.population,
+                    this.subsystems.authManager
+                );
+                await this.subsystems.importManager.init();
+                this.logger.debug('Import subsystem initialized');
+            }
+
+            // Export Subsystem
+            if (FEATURE_FLAGS.USE_EXPORT_SUBSYSTEM) {
+                this.subsystems.exportManager = new ExportSubsystem(
+                    this.logger.child({ subsystem: 'export' }),
+                    this.uiManager,
+                    this.localClient,
+                    this.subsystems.settings,
+                    this.eventBus,
+                    this.subsystems.population
+                );
+                await this.subsystems.exportManager.init();
+                this.logger.debug('Export subsystem initialized');
+            }
+
+            // Advanced Real-time Subsystem
+            if (FEATURE_FLAGS.USE_ADVANCED_REALTIME) {
+                this.advancedRealtimeSubsystem = new AdvancedRealtimeSubsystem(
+                    this.eventBus,
+                    this.logger.child({ subsystem: 'advanced-realtime' })
+                );
+                await this.advancedRealtimeSubsystem.init();
+                this.subsystems.advancedRealtime = this.advancedRealtimeSubsystem;
+
+                this.realtimeCollaborationUI = new RealtimeCollaborationUI(
+                    this.eventBus,
+                    this.logger.child({ component: 'RealtimeCollaborationUI' })
+                );
+                this.realtimeCollaborationUI.init();
+            }
+
+            // Analytics Dashboard Subsystem
+            if (FEATURE_FLAGS.USE_ANALYTICS_DASHBOARD) {
+                this.analyticsDashboardSubsystem = new AnalyticsDashboardSubsystem(
+                    this.eventBus,
+                    this.logger.child({ subsystem: 'analytics-dashboard' })
+                );
+                await this.analyticsDashboardSubsystem.init();
+                this.subsystems.analyticsDashboard = this.analyticsDashboardSubsystem;
+
+                this.analyticsDashboardUI = new AnalyticsDashboardUI(
+                    this.eventBus,
+                    this.logger.child({ component: 'AnalyticsDashboardUI' })
+                );
+                this.analyticsDashboardUI.init();
+            }
+
         } catch (error) {
             this.logger.error('Subsystem initialization failed', {
                 error: error.message,
@@ -530,6 +478,28 @@ class App {
             });
             throw error;
         }
+
+        // Global Token Manager Subsystem
+        this.subsystems.globalTokenManager = new GlobalTokenManagerSubsystem(
+            this.logger.child({ subsystem: 'globalTokenManager' }),
+            this.eventBus
+        );
+        await this.subsystems.globalTokenManager.init();
+        this.logger.debug('Global Token Manager subsystem initialized');
+
+        // Initialize Token Notification Subsystem
+        this.subsystems.tokenNotification = new TokenNotificationSubsystem(
+            this.logger.child({ subsystem: 'token-notification' }),
+            this.eventBus,
+            this.subsystems.navigation
+        );
+        await this.subsystems.tokenNotification.init();
+        this.logger.debug('Token Notification subsystem initialized');
+
+        this.logger.info('All subsystems initialized successfully', {
+            subsystemCount: Object.keys(this.subsystems).length,
+            enabledSubsystems: Object.keys(this.subsystems)
+        });
     }
     
     /**
@@ -543,7 +513,6 @@ class App {
         
         this.logger.debug('Legacy components initialized (minimal set)');
     }
-    
     /**
      * Set up event listeners and EventBus patterns
      */
@@ -582,11 +551,108 @@ class App {
             this.logger.info('Page load completed', performanceData);
             this.eventBus.emit('app:page-loaded', performanceData);
         });
+
+        // Settings save feedback event listeners
+        window.addEventListener('settings:save-success', (event) => {
+            const statusBox = document.getElementById('settings-status-box');
+            if (statusBox) {
+                statusBox.textContent = event.detail.message;
+                statusBox.className = 'status-message status-success';
+                statusBox.style.display = 'flex';
+                setTimeout(() => {
+                    statusBox.style.display = 'none';
+                }, 5000);
+            }
+        });
+
+        window.addEventListener('settings:save-error', (event) => {
+            const statusBox = document.getElementById('settings-status-box');
+            if (statusBox) {
+                statusBox.textContent = event.detail.message;
+                statusBox.className = 'status-message status-error';
+                statusBox.style.display = 'flex';
+                setTimeout(() => {
+                    statusBox.style.display = 'none';
+                }, 8000);
+            }
+        });
         
         // EventBus listeners for subsystem coordination
         this.setupEventBusListeners();
         
+        // Setup main UI button event listeners
+        this.setupMainUIEventListeners();
+        
         this.logger.debug('Event listeners and EventBus patterns set up');
+    }
+    
+    /**
+     * Set up main UI event listeners for navigation and buttons
+     */
+    setupMainUIEventListeners() {
+        this.logger.debug('Setting up main UI event listeners');
+        
+        try {
+            // Note: Navigation cards are handled by ViewManagementSubsystem
+            // Only set up non-navigation UI event listeners here
+            
+            // File input handlers for import
+            const fileInput = document.getElementById('csv-file');
+            if (fileInput) {
+                fileInput.addEventListener('change', (e) => {
+                    this.logger.debug('File input changed');
+                    this.handleFileSelection(e);
+                });
+            }
+            
+            // Drop zone handlers for import
+            const dropZone = document.getElementById('import-drop-zone');
+            if (dropZone) {
+                dropZone.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.logger.debug('Drop zone clicked');
+                    if (fileInput) {
+                        fileInput.click();
+                    }
+                });
+                
+                dropZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('dragover');
+                });
+                
+                dropZone.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('dragover');
+                });
+                
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('dragover');
+                    this.logger.debug('File dropped');
+                    this.handleFileDrop(e);
+                });
+            }
+            
+            // Cancel import button
+            const cancelImportBtn = document.getElementById('cancel-import-btn');
+            if (cancelImportBtn) {
+                cancelImportBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.logger.debug('Cancel import button clicked');
+                    this.cancelImport();
+                });
+            }
+            
+            // DIRECT NAVIGATION FIX - Add navigation event listeners as fallback
+            this.logger.debug('Setting up direct navigation event listeners as fallback');
+            this.setupDirectNavigation();
+            
+            this.logger.debug('Main UI event listeners set up successfully');
+            
+        } catch (error) {
+            this.logger.error('Failed to set up main UI event listeners', { error: error.message });
+        }
     }
     
     /**
@@ -614,6 +680,19 @@ class App {
         });
         
         // Operation lifecycle events
+        this.eventBus.on('navigation:view-changed', ({ newView }) => {
+            this.currentView = newView;
+            this.logger.info(`View changed to: ${newView}`);
+
+            if (isFeatureEnabled('ANALYTICS_DASHBOARD') && this.analyticsDashboardUI) {
+                if (newView === 'analytics') {
+                    this.analyticsDashboardUI.show();
+                } else {
+                    this.analyticsDashboardUI.hide();
+                }
+            }
+        });
+        
         this.eventBus.on('operation:started', (data) => {
             this.logger.info('Operation started', data);
         });
@@ -636,6 +715,508 @@ class App {
         });
         
         this.logger.debug('EventBus listeners set up for subsystem coordination');
+    }
+    
+    /**
+     * Set up modal completion listeners
+     */
+    setupModalCompletionListeners() {
+        try {
+            // Listen for credentials modal completion
+            document.addEventListener('credentials-modal-completed', (event) => {
+                this.logger.info('🔄 LOADING: Credentials modal completed', event.detail);
+                this.showModalLoading('Finalizing Setup...', 'Completing your PingOne Import Tool configuration.');
+                
+                // Hide loading after a brief delay
+                setTimeout(() => {
+                    this.hideModalLoading();
+                }, 1500);
+            });
+            
+            // Listen for any modal events that might indicate completion
+            document.addEventListener('application_enabled_after_credentials', (event) => {
+                this.logger.info('🔄 LOADING: Application enabled after credentials');
+                this.showModalLoading('Almost Ready...', 'Finalizing your workspace setup.');
+                
+                setTimeout(() => {
+                    this.hideModalLoading();
+                }, 1000);
+            });
+            
+            this.logger.debug('Modal completion listeners set up');
+            
+        } catch (error) {
+            this.logger.error('Failed to set up modal completion listeners', { error: error.message });
+        }
+    }
+    
+    /**
+     * Show modal loading overlay
+     */
+    showModalLoading(title = 'Loading...', message = 'Please wait while we set up your experience.') {
+        try {
+            const overlay = document.getElementById('modal-loading-overlay');
+            const titleElement = document.getElementById('modal-loading-title');
+            const messageElement = document.getElementById('modal-loading-message');
+            
+            if (overlay && titleElement && messageElement) {
+                titleElement.textContent = title;
+                messageElement.textContent = message;
+                
+                overlay.classList.remove('fade-out');
+                overlay.classList.add('fade-in');
+                overlay.style.display = 'flex';
+                
+                this.logger.debug('🔄 LOADING: Modal loading shown', { title, message });
+            }
+        } catch (error) {
+            this.logger.error('🔄 LOADING: Failed to show modal loading', { error: error.message });
+        }
+    }
+    
+    /**
+     * Hide modal loading overlay
+     */
+    hideModalLoading() {
+        try {
+            const overlay = document.getElementById('modal-loading-overlay');
+            
+            if (overlay) {
+                overlay.classList.remove('fade-in');
+                overlay.classList.add('fade-out');
+                
+                // Hide after animation completes
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    overlay.classList.remove('fade-out');
+                }, 300);
+                
+                this.logger.debug('🔄 LOADING: Modal loading hidden');
+            }
+        } catch (error) {
+            this.logger.error('🔄 LOADING: Failed to hide modal loading', { error: error.message });
+        }
+    }
+    
+    /**
+     * Update startup screen message
+     */
+    updateStartupMessage(message) {
+        try {
+            const startupScreen = document.getElementById('startup-wait-screen');
+            const textElement = startupScreen?.querySelector('.startup-text p');
+            
+            if (textElement) {
+                textElement.textContent = message;
+                this.logger.debug('🔄 LOADING: Startup message updated', { message });
+            }
+        } catch (error) {
+            this.logger.error('🔄 LOADING: Failed to update startup message', { error: error.message });
+        }
+    }
+    
+    /**
+     * Set up direct navigation event listeners as fallback
+     * This is used when the ViewManagementSubsystem is not working properly
+     */
+    setupDirectNavigation() {
+        this.logger.debug('🔧 DIRECT NAV: Setting up direct navigation event listeners');
+        
+        try {
+            // Find all navigation elements
+            const navElements = document.querySelectorAll('[data-view]');
+            this.logger.debug(`🔧 DIRECT NAV: Found ${navElements.length} navigation elements`);
+            
+            if (navElements.length === 0) {
+                this.logger.warn('🔧 DIRECT NAV: No navigation elements found with [data-view] attribute');
+                return;
+            }
+            
+            // Add click listeners to navigation elements
+            navElements.forEach((element, index) => {
+                const view = element.getAttribute('data-view');
+                this.logger.debug(`🔧 DIRECT NAV: Setting up listener for ${view} (element ${index})`);
+                
+                // Remove any existing listeners first
+                element.removeEventListener('click', this.handleDirectNavigation);
+                
+                // Add new listener
+                const clickHandler = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.logger.info(`🔧 DIRECT NAV: Navigation clicked: ${view}`);
+                    this.directShowView(view);
+                };
+                
+                element.addEventListener('click', clickHandler);
+                
+                // Store the handler for cleanup if needed
+                element._directNavHandler = clickHandler;
+            });
+            
+            this.logger.info('🔧 DIRECT NAV: Direct navigation setup completed successfully');
+            
+            // Also set up settings page buttons
+            this.setupSettingsPageButtons();
+            
+        } catch (error) {
+            this.logger.error('🔧 DIRECT NAV: Failed to set up direct navigation', { error: error.message });
+        }
+    }
+    
+    /**
+     * Set up settings page button event listeners
+     */
+    setupSettingsPageButtons() {
+        this.logger.debug('🔧 SETTINGS: Setting up settings page button listeners');
+        
+        try {
+            // Save Settings button
+            const saveSettingsBtn = document.getElementById('save-settings');
+            if (saveSettingsBtn) {
+                saveSettingsBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.logger.info('🔧 SETTINGS: Save Settings clicked');
+                    this.handleSaveSettings();
+                });
+                this.logger.debug('🔧 SETTINGS: Save Settings button listener added');
+            }
+            
+            // Test Connection button
+            const testConnectionBtn = document.getElementById('test-connection-btn');
+            if (testConnectionBtn) {
+                testConnectionBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.logger.info('🔧 SETTINGS: Test Connection clicked');
+                    this.handleTestConnection();
+                });
+                this.logger.debug('🔧 SETTINGS: Test Connection button listener added');
+            }
+            
+            // Get Token button
+            const getTokenBtn = document.getElementById('get-token-btn');
+            if (getTokenBtn) {
+                getTokenBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.logger.info('🔧 SETTINGS: Get Token clicked');
+                    this.handleGetToken();
+                });
+                this.logger.debug('🔧 SETTINGS: Get Token button listener added');
+            }
+            
+            // Toggle API Secret Visibility button
+            const toggleSecretBtn = document.getElementById('toggle-api-secret-visibility');
+            if (toggleSecretBtn) {
+                toggleSecretBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.logger.info('🔧 SETTINGS: Toggle Secret Visibility clicked');
+                    this.handleToggleSecretVisibility();
+                });
+                this.logger.debug('🔧 SETTINGS: Toggle Secret Visibility button listener added');
+            }
+            
+            this.logger.info('🔧 SETTINGS: Settings page buttons setup completed');
+            
+        } catch (error) {
+            this.logger.error('🔧 SETTINGS: Failed to set up settings page buttons', { error: error.message });
+        }
+    }
+    
+    /**
+     * Handle Save Settings button click
+     */
+    async handleSaveSettings() {
+        this.logger.info('🔧 SETTINGS: Saving settings...');
+        
+        try {
+            // Get form values
+            const environmentId = document.getElementById('environment-id')?.value;
+            const clientId = document.getElementById('api-client-id')?.value;
+            const clientSecret = document.getElementById('api-secret')?.value;
+            const region = document.getElementById('region')?.value;
+            const rateLimit = document.getElementById('rate-limit')?.value;
+            const populationId = document.getElementById('population-id')?.value;
+            
+            const settings = {
+                environmentId,
+                apiClientId: clientId,  // Fix: use apiClientId instead of clientId
+                apiSecret: clientSecret,  // Fix: use apiSecret instead of clientSecret
+                region,
+                rateLimit: parseInt(rateLimit) || 90,
+                populationId
+            };
+            
+            this.logger.debug('🔧 SETTINGS: Settings to save', { ...settings, clientSecret: '[HIDDEN]' });
+            
+            // Use settings manager if available
+            if (this.settingsManager && typeof this.settingsManager.saveSettings === 'function') {
+                await this.settingsManager.saveSettings(settings);
+                this.showSettingsStatus('Settings saved successfully!', 'success');
+            } else {
+                // Fallback: save to localStorage and send to server
+                localStorage.setItem('pingone-settings', JSON.stringify(settings));
+                
+                // Send to server
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    this.showSettingsStatus('Settings saved successfully!', 'success');
+                    this.logger.info('🔧 SETTINGS: Settings saved successfully', result);
+                } else {
+                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+            }
+            
+        } catch (error) {
+            this.logger.error('🔧 SETTINGS: Failed to save settings', { error: error.message });
+            this.showSettingsStatus(`Failed to save settings: ${error.message}`, 'error');
+        }
+    }
+    
+    /**
+     * Handle Test Connection button click
+     */
+    async handleTestConnection() {
+        this.logger.info('🔧 SETTINGS: Testing connection...');
+        
+        try {
+            this.showSettingsStatus('Testing connection...', 'info');
+            
+            // Use connection manager if available
+            if (this.subsystems.connectionManager && typeof this.subsystems.connectionManager.testConnection === 'function') {
+                const result = await this.subsystems.connectionManager.testConnection();
+                if (result.success) {
+                    this.showSettingsStatus('Connection test successful!', 'success');
+                } else {
+                    this.showSettingsStatus(`Connection test failed: ${result.error}`, 'error');
+                }
+            } else {
+                // Fallback: test connection directly
+                const response = await fetch('/api/pingone/test-connection', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    this.showSettingsStatus('Connection test successful!', 'success');
+                } else {
+                    this.showSettingsStatus(`Connection test failed: ${result.error}`, 'error');
+                }
+            }
+            
+        } catch (error) {
+            this.logger.error('🔧 SETTINGS: Connection test failed', { error: error.message });
+            this.showSettingsStatus(`Connection test failed: ${error.message}`, 'error');
+        }
+    }
+    
+    /**
+     * Handle Get Token button click
+     */
+    async handleGetToken() {
+        this.logger.info('🔧 SETTINGS: Getting token...');
+        
+        try {
+            this.showSettingsStatus('Getting token...', 'info');
+            
+            // Use token manager if available
+            if (this.tokenManager && typeof this.tokenManager.getToken === 'function') {
+                const token = await this.tokenManager.getToken();
+                if (token) {
+                    this.showSettingsStatus('Token acquired successfully!', 'success');
+                } else {
+                    this.showSettingsStatus('Failed to get token', 'error');
+                }
+            } else {
+                // Fallback: get token directly
+                const response = await fetch('/api/pingone/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.access_token) {
+                    this.showSettingsStatus('Token acquired successfully!', 'success');
+                } else {
+                    this.showSettingsStatus('Failed to get token', 'error');
+                }
+            }
+            
+        } catch (error) {
+            this.logger.error('🔧 SETTINGS: Failed to get token', { error: error.message });
+            this.showSettingsStatus(`Failed to get token: ${error.message}`, 'error');
+        }
+    }
+    
+    /**
+     * Handle Toggle Secret Visibility button click
+     */
+    handleToggleSecretVisibility() {
+        this.logger.debug('🔧 SETTINGS: Toggling secret visibility');
+        
+        try {
+            const secretInput = document.getElementById('api-secret');
+            const toggleBtn = document.getElementById('toggle-api-secret-visibility');
+            const icon = toggleBtn?.querySelector('i');
+            
+            if (secretInput && toggleBtn && icon) {
+                if (secretInput.type === 'password') {
+                    secretInput.type = 'text';
+                    icon.className = 'fas fa-eye-slash';
+                    this.logger.debug('🔧 SETTINGS: Secret visibility: shown');
+                } else {
+                    secretInput.type = 'password';
+                    icon.className = 'fas fa-eye';
+                    this.logger.debug('🔧 SETTINGS: Secret visibility: hidden');
+                }
+            }
+            
+        } catch (error) {
+            this.logger.error('🔧 SETTINGS: Failed to toggle secret visibility', { error: error.message });
+        }
+    }
+    
+    /**
+     * Show status message in settings page
+     */
+    showSettingsStatus(message, type = 'info') {
+        try {
+            const statusElement = document.getElementById('settings-action-status');
+            const messageElement = statusElement?.querySelector('.status-message');
+            const iconElement = statusElement?.querySelector('.status-icon');
+            
+            if (statusElement && messageElement && iconElement) {
+                // Set message
+                messageElement.textContent = message;
+                
+                // Set icon based on type
+                const icons = {
+                    'success': 'fas fa-check-circle',
+                    'error': 'fas fa-exclamation-circle',
+                    'info': 'fas fa-info-circle',
+                    'warning': 'fas fa-exclamation-triangle'
+                };
+                
+                iconElement.className = icons[type] || icons.info;
+                
+                // Set CSS class for styling
+                statusElement.className = `action-status ${type}`;
+                statusElement.style.display = 'block';
+                
+                // Auto-hide after 5 seconds for success/info messages
+                if (type === 'success' || type === 'info') {
+                    setTimeout(() => {
+                        statusElement.style.display = 'none';
+                    }, 5000);
+                }
+                
+                this.logger.debug(`🔧 SETTINGS: Status shown: ${type} - ${message}`);
+            }
+            
+        } catch (error) {
+            this.logger.error('🔧 SETTINGS: Failed to show status', { error: error.message });
+        }
+    }
+    
+    /**
+     * Direct view switching (bypasses subsystems)
+     */
+    async directShowView(view) {
+        this.logger.info(`🔧 DIRECT NAV: Switching to view: ${view}`);
+        
+        try {
+            // Hide all views
+            const allViews = document.querySelectorAll('.view, .view-container');
+            this.logger.debug(`🔧 DIRECT NAV: Found ${allViews.length} view containers to hide`);
+            
+            allViews.forEach(viewElement => {
+                viewElement.style.display = 'none';
+                viewElement.classList.remove('active');
+            });
+            
+            // Show target view
+            const targetView = document.getElementById(`${view}-view`);
+            if (targetView) {
+                targetView.style.display = 'block';
+                targetView.classList.add('active');
+                this.logger.info(`🔧 DIRECT NAV: Successfully showed ${view}-view`);
+                
+                // Update navigation state
+                this.updateDirectNavigationState(view);
+                
+                // Update current view
+                this.currentView = view;
+                
+                // Update page title
+                this.updatePageTitle(view);
+                
+                this.logger.info(`🔧 DIRECT NAV: Navigation to ${view} completed successfully`);
+                
+            } else {
+                this.logger.error(`🔧 DIRECT NAV: View element not found: ${view}-view`);
+            }
+            
+        } catch (error) {
+            this.logger.error(`🔧 DIRECT NAV: Failed to show view ${view}`, { error: error.message });
+        }
+    }
+    
+    /**
+     * Update navigation state for direct navigation
+     */
+    updateDirectNavigationState(view) {
+        try {
+            // Update active navigation items
+            const navElements = document.querySelectorAll('[data-view]');
+            navElements.forEach(element => {
+                const elementView = element.getAttribute('data-view');
+                if (elementView === view) {
+                    element.classList.add('active');
+                } else {
+                    element.classList.remove('active');
+                }
+            });
+            
+            this.logger.debug(`🔧 DIRECT NAV: Updated navigation state for ${view}`);
+            
+        } catch (error) {
+            this.logger.error('🔧 DIRECT NAV: Failed to update navigation state', { error: error.message });
+        }
+    }
+    
+    /**
+     * Update page title
+     */
+    updatePageTitle(view) {
+        try {
+            const titles = {
+                'home': 'Home',
+                'import': 'Import Users',
+                'export': 'Export Users',
+                'modify': 'Modify Users',
+                'delete-csv': 'Delete Users',
+                'settings': 'Settings',
+                'logs': 'Logs',
+                'history': 'History'
+            };
+            
+            const title = titles[view] || 'PingOne Import Tool';
+            document.title = `${title} - PingOne Import Tool v6.2`;
+            
+            this.logger.debug(`🔧 DIRECT NAV: Updated page title to: ${document.title}`);
+            
+        } catch (error) {
+            this.logger.error('🔧 DIRECT NAV: Failed to update page title', { error: error.message });
+        }
     }
     
     /**
@@ -736,6 +1317,168 @@ class App {
     }
     
     /**
+     * Navigate to a specific view
+     */
+    navigateToView(viewName) {
+        this.logger.debug('Navigating to view', { viewName });
+        
+        try {
+            // Use view management subsystem if available
+            if (this.subsystems.viewManager) {
+                this.subsystems.viewManager.showView(viewName);
+            } else {
+                // Fallback to legacy view management
+                this.legacyShowView(viewName);
+            }
+            
+            this.currentView = viewName;
+            this.logger.info('Navigation completed', { viewName });
+            
+        } catch (error) {
+            this.logger.error('Navigation failed', { viewName, error: error.message });
+        }
+    }
+    
+    /**
+     * Handle file selection from input
+     */
+    handleFileSelection(event) {
+        this.logger.debug('Handling file selection');
+        
+        try {
+            const files = event.target.files;
+            if (files && files.length > 0) {
+                const file = files[0];
+                this.logger.info('File selected', { 
+                    fileName: file.name, 
+                    fileSize: file.size, 
+                    fileType: file.type 
+                });
+                
+                // Use import subsystem if available
+                if (this.subsystems.importManager) {
+                    this.subsystems.importManager.handleFileSelection(file);
+                } else {
+                    this.logger.warn('Import subsystem not available, using legacy import');
+                    this.legacyHandleFileSelection(file);
+                }
+            }
+        } catch (error) {
+            this.logger.error('File selection handling failed', { error: error.message });
+        }
+    }
+    
+    /**
+     * Handle file drop from drag and drop
+     */
+    handleFileDrop(event) {
+        this.logger.debug('Handling file drop');
+        
+        try {
+            const files = event.dataTransfer.files;
+            if (files && files.length > 0) {
+                const file = files[0];
+                this.logger.info('File dropped', { 
+                    fileName: file.name, 
+                    fileSize: file.size, 
+                    fileType: file.type 
+                });
+                
+                // Use import subsystem if available
+                if (this.subsystems.importManager) {
+                    this.subsystems.importManager.handleFileSelection(file);
+                } else {
+                    this.logger.warn('Import subsystem not available, using legacy import');
+                    this.legacyHandleFileSelection(file);
+                }
+            }
+        } catch (error) {
+            this.logger.error('File drop handling failed', { error: error.message });
+        }
+    }
+    
+    /**
+     * Cancel import operation
+     */
+    cancelImport() {
+        this.logger.debug('Cancelling import operation');
+        
+        try {
+            // Use import subsystem if available
+            if (this.subsystems.importManager) {
+                this.subsystems.importManager.cancelImport();
+            } else {
+                this.logger.warn('Import subsystem not available, using legacy cancel');
+                this.legacyCancelImport();
+            }
+            
+            this.logger.info('Import cancellation requested');
+            
+        } catch (error) {
+            this.logger.error('Import cancellation failed', { error: error.message });
+        }
+    }
+    
+    /**
+     * Enable tool after disclaimer acceptance
+     */
+    enableToolAfterDisclaimer() {
+        this.logger.info('Enabling tool after disclaimer acceptance');
+        
+        try {
+            // Show loading overlay during transition
+            this.showModalLoading('Setting up...', 'Preparing your PingOne Import Tool experience.');
+            
+            // Hide startup screen if still visible
+            this.hideStartupScreen();
+            
+            // Ensure UI is properly initialized and responsive
+            if (this.uiManager && typeof this.uiManager.enableUI === 'function') {
+                this.uiManager.enableUI();
+            }
+            
+            // Initialize event listeners if not already done
+            if (!this.eventListenersSetup) {
+                this.setupEventListeners();
+                this.eventListenersSetup = true;
+            }
+            
+            // Enable all subsystems
+            Object.values(this.subsystems).forEach(subsystem => {
+                if (subsystem && typeof subsystem.enable === 'function') {
+                    subsystem.enable();
+                }
+            });
+            
+            // Remove any disabled states from the app container
+            const appContainer = document.querySelector('.app-container');
+            if (appContainer) {
+                appContainer.classList.remove('disabled', 'modal-active');
+                appContainer.style.pointerEvents = 'auto';
+            }
+            
+            // Enable all buttons and interactive elements
+            const buttons = document.querySelectorAll('button, .btn');
+            buttons.forEach(button => {
+                button.disabled = false;
+                button.style.pointerEvents = 'auto';
+            });
+            
+            this.logger.info('Tool enabled successfully after disclaimer');
+            
+            // Hide loading overlay after a brief delay to show completion
+            setTimeout(() => {
+                this.hideModalLoading();
+            }, 1000);
+            
+        } catch (error) {
+            this.logger.error('Failed to enable tool after disclaimer', { error: error.message });
+            // Hide loading overlay on error too
+            this.hideModalLoading();
+        }
+    }
+    
+    /**
      * Get application health status
      */
     getHealthStatus() {
@@ -758,11 +1501,50 @@ const app = new App();
 // Global app reference for debugging
 window.app = app;
 
+// Expose enableToolAfterDisclaimer function globally for modal access
+window.enableToolAfterDisclaimer = () => {
+    if (window.app && typeof window.app.enableToolAfterDisclaimer === 'function') {
+        window.app.enableToolAfterDisclaimer();
+    } else {
+        console.warn('App not available or enableToolAfterDisclaimer method not found');
+    }
+};
+
+// Expose loading functions for testing
+window.testLoading = {
+    show: (title, message) => {
+        if (window.app) {
+            window.app.showModalLoading(title, message);
+        }
+    },
+    hide: () => {
+        if (window.app) {
+            window.app.hideModalLoading();
+        }
+    },
+    testSequence: () => {
+        if (window.app) {
+            console.log('🔄 Testing loading sequence...');
+            window.app.showModalLoading('Step 1', 'Testing loading overlay...');
+            setTimeout(() => {
+                window.app.showModalLoading('Step 2', 'Updating message...');
+                setTimeout(() => {
+                    window.app.showModalLoading('Step 3', 'Almost done...');
+                    setTimeout(() => {
+                        window.app.hideModalLoading();
+                        console.log('🔄 Loading test completed');
+                    }, 1500);
+                }, 1500);
+            }, 1500);
+        }
+    }
+};
+
 // Start the application when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await app.init();
-        console.log('🚀 PingOne Import Tool v6.0 initialized successfully');
+        console.log('🚀 PingOne Import Tool v6.2 initialized successfully');
         console.log('📊 Health Status:', app.getHealthStatus());
     } catch (error) {
         console.error('❌ Application initialization failed:', error);

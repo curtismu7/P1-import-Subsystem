@@ -1,13 +1,13 @@
 {
   "name": "pingone-import-cursor",
-  "version": "6.1.0",
+  "version": "6.2.0",
   "description": "A modern web application for importing users into PingOne using the PingOne Admin API.",
   "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "node --experimental-modules --experimental-json-modules server.js",
     "dev": "nodemon --experimental-modules --experimental-json-modules server.js",
-    "build:bundle": "npx browserify src/client/app.js -t [ babelify --configFile ./config/babel.config.json --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -o public/js/bundle.js",
+    "build:bundle": "TIMESTAMP=$(date +%s) && npx browserify src/client/app.js -o public/js/bundle-${TIMESTAMP}.js && echo '{\"bundleFile\": \"bundle-'${TIMESTAMP}'.js\"}' > public/js/bundle-manifest.json",
     "build:bundle:legacy": "npx browserify public/js/app.js -t [ babelify --configFile ./babel.config.json --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -o public/js/bundle-legacy.js",
     "test": "jest --detectOpenHandles --forceExit --config=jest.config.js",
     "test:unit": "cross-env NODE_ENV=test jest tests/unit/**/*.test.js --config=jest.config.mjs",
@@ -48,6 +48,22 @@
   ],
   "author": "",
   "license": "ISC",
+  "browserify": {
+    "transform": [
+      [
+        "babelify",
+        {
+          "configFile": "./config/babel.config.json",
+          "presets": [
+            "@babel/preset-env"
+          ],
+          "plugins": [
+            "@babel/plugin-transform-runtime"
+          ]
+        }
+      ]
+    ]
+  },
   "dependencies": {
     "@babel/core": "^7.28.0",
     "@babel/plugin-transform-runtime": "^7.28.0",

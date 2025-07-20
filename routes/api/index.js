@@ -25,7 +25,7 @@ import { isFeatureEnabled, setFeatureFlag, getAllFeatureFlags, resetFeatureFlags
 import { v4 as uuidv4 } from 'uuid';
 // SSE imports removed - using Socket.IO instead
 import fetch from 'node-fetch'; // Add this if not already present
-import { logSeparator, logTag } from '../../server/winston-config.js';
+import { logSeparator, logTag, apiLogger, apiLogHelpers } from '../../server/winston-config.js';
 import serverMessageFormatter from '../../server/message-formatter.js';
 import { sendProgressEvent, sendCompletionEvent, sendErrorEvent } from '../../server/connection-manager.js';
 import { promises as fs } from 'fs';
@@ -47,6 +47,30 @@ const router = Router();
 
 // Enable debug logging in development mode
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
+
+// API Request/Response Logging Middleware
+router.use((req, res, next) => {
+    const startTime = Date.now();
+    
+    // Log incoming request
+    const requestId = apiLogHelpers.logApiRequest(req);
+    req.requestId = requestId;
+    req.startTime = startTime;
+    
+    // Override res.end to log response
+    const originalEnd = res.end;
+    res.end = function(chunk, encoding) {
+        const duration = Date.now() - startTime;
+        
+        // Log API response
+        apiLogHelpers.logApiResponse(req, res, requestId, duration);
+        
+        // Call original end method
+        originalEnd.call(res, chunk, encoding);
+    };
+    
+    next();
+});
 
 // ============================================================================
 // HEALTH CHECK ENDPOINT
@@ -130,9 +154,9 @@ function debugLog(area, message, data = null) {
     const timestamp = new Date().toISOString();
     const formatted = `[DEBUG - ${area}] ${message}`;
     if (data !== null) {
-        console.log(`${timestamp} ${formatted}`, data);
+        apiLogger.info(`${timestamp} ${formatted}`, data);
     } else {
-        console.log(`${timestamp} ${formatted}`);
+        apiLogger.info(`${timestamp} ${formatted}`);
     }
 }
 
@@ -171,7 +195,7 @@ const upload = multer({
  */
 async function runImportProcess(sessionId, app) {
     try {
-        const logger = app.get('importLogger') || console;
+        const logger = app.get('importLogger') || apiLogger;
         logger.info(logSeparator());
         logger.info(logTag('START OF IMPORT'), { tag: logTag('START OF IMPORT'), separator: logSeparator() });
         logger.info(`[${new Date().toISOString()}] [INFO] Import process started`, { sessionId });
@@ -452,7 +476,7 @@ async function runImportProcess(sessionId, app) {
                             }
                             
                             // Log error to console for visibility
-                            console.error('[USER CREATE ERROR]', {
+                            apiLogger.error('[USER CREATE ERROR]', {
                                 sessionId,
                                 username,
                                 status: createResponse.status,
@@ -475,7 +499,7 @@ async function runImportProcess(sessionId, app) {
                         created++;
                     } catch (err) {
                         // Log error to console for visibility
-                        console.error('[USER CREATE EXCEPTION]', {
+                        apiLogger.error('[USER CREATE EXCEPTION]', {
                             sessionId,
                             username,
                             error: err,
@@ -567,14 +591,14 @@ async function runImportProcess(sessionId, app) {
                 });
             }
         } catch (historyError) {
-            console.error('Failed to log import to history:', historyError);
+            apiLogger.error('Failed to log import to history:', historyError);
         }
         
         // Clean up session
         importSessions.delete(sessionId);
         
     } catch (error) {
-        const logger = app.get('importLogger') || console;
+        const logger = app.get('importLogger') || apiLogger;
         logger.error(logSeparator());
         logger.error(logTag('ERROR'), { tag: logTag('ERROR'), separator: logSeparator() });
         logger.error(`[${new Date().toISOString()}] [ERROR] Import failed: ${error.message}`, {
@@ -913,7 +937,7 @@ router.post('/feature-flags/reset', (req, res) => {
  */
 router.post('/import', upload.single('file'), async (req, res, next) => {
     try {
-        const logger = req.app.get('importLogger') || console;
+        const logger = req.app.get('importLogger') || apiLogger;
         logger.info(logSeparator());
         logger.info(logTag('IMPORT ENDPOINT HIT'), { tag: logTag('IMPORT ENDPOINT HIT'), separator: logSeparator() });
         logger.info(`[${new Date().toISOString()}] [INFO] Import endpoint triggered`, {
@@ -2030,7 +2054,7 @@ function decodeJWT(token) {
  * Log export token generation for audit
  */
 function logExportTokenGeneration(req, environmentId, expiresAt) {
-    const logger = req.app.get('importLogger') || console;
+    const logger = req.app.get('importLogger') || apiLogger;
     
     logger.info(logSeparator());
     logger.info(logTag('EXPORT TOKEN GENERATION'), { tag: logTag('EXPORT TOKEN GENERATION'), separator: logSeparator() });
@@ -2106,7 +2130,7 @@ async function logOperationToHistory(req, operationData) {
 }
 
 function logExportOperation(req, operationData) {
-    const logger = req.app.get('importLogger') || console;
+    const logger = req.app.get('importLogger') || apiLogger;
     
     logger.info(logSeparator());
     logger.info(logTag('EXPORT OPERATION SUMMARY'), { tag: logTag('EXPORT OPERATION SUMMARY'), separator: logSeparator('-') });
@@ -2255,7 +2279,7 @@ router.post('/pingone/get-token', async (req, res, next) => {
 router.get('/version', (req, res) => {
     // You can import VersionManager or use a static version string
     // For now, use a static version
-    res.json({ version: '6.1.0' });
+    res.json({ version: '6.2.0' });
 });
 
 // --- DELETE USERS ENDPOINT ---

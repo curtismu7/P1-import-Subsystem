@@ -98,15 +98,15 @@ class CredentialsModal {
 
     createCredentialsContent() {
         return `
-            <h3>📋 Current Credentials Found</h3>
-            <p>We found the following PingOne credentials in your settings:</p>
+            <h3>🔐 PingOne Credentials Found</h3>
+            <p>The following PingOne credentials are available. Would you like to use them or configure new ones?</p>
             
             <div class="credentials-display">
                 <div class="credential-item">
                     <label>Environment ID:</label>
                     <div class="credential-value">
-                        <code>${this.maskCredential(this.credentials.environmentId)}</code>
-                        <button class="btn btn-sm btn-outline-secondary copy-btn" data-value="${this.credentials.environmentId}" title="Copy to clipboard">
+                        <code class="credential-visible">${this.credentials.environmentId}</code>
+                        <button class="btn btn-sm btn-outline-secondary copy-btn" data-value="${this.credentials.environmentId}" title="Copy Environment ID">
                             <i class="fas fa-copy"></i>
                         </button>
                     </div>
@@ -115,28 +115,34 @@ class CredentialsModal {
                 <div class="credential-item">
                     <label>Client ID:</label>
                     <div class="credential-value">
-                        <code>${this.maskCredential(this.credentials.clientId)}</code>
-                        <button class="btn btn-sm btn-outline-secondary copy-btn" data-value="${this.credentials.clientId}" title="Copy to clipboard">
+                        <code class="credential-visible">${this.credentials.clientId}</code>
+                        <button class="btn btn-sm btn-outline-secondary copy-btn" data-value="${this.credentials.clientId}" title="Copy Client ID">
                             <i class="fas fa-copy"></i>
                         </button>
                     </div>
                 </div>
                 
                 <div class="credential-item">
+                    <label>Client Secret:</label>
+                    <div class="credential-value">
+                        <code class="credential-masked">••••••••••••••••••••</code>
+                        <span class="credential-status">✅ Configured</span>
+                    </div>
+                </div>
+                
+                <div class="credential-item">
                     <label>Region:</label>
                     <div class="credential-value">
-                        <code>${this.credentials.region}</code>
+                        <code class="credential-visible">${this.credentials.region}</code>
                     </div>
                 </div>
             </div>
             
-            <div class="credentials-warning">
-                <h4>⚠️ Important Notes:</h4>
+            <div class="credentials-info">
+                <h4>💡 What would you like to do?</h4>
                 <ul>
-                    <li>These credentials will be used to authenticate with PingOne APIs</li>
-                    <li>Make sure these are the correct credentials for your environment</li>
-                    <li>You can change these credentials later in the Settings page</li>
-                    <li>Credentials are stored locally and not shared with Ping Identity</li>
+                    <li><strong>Use These Credentials:</strong> Continue with the stored credentials</li>
+                    <li><strong>Go to Settings:</strong> Configure new or different credentials</li>
                 </ul>
             </div>
         `;
@@ -172,13 +178,17 @@ class CredentialsModal {
 
     createCredentialsActions() {
         return `
+            <button type="button" class="credentials-btn credentials-btn-primary" id="use-credentials-btn">
+                <i class="fas fa-play"></i>
+                Use These Credentials
+            </button>
             <button type="button" class="credentials-btn credentials-btn-secondary" id="configure-credentials-btn">
                 <i class="fas fa-cog"></i>
-                Configure Different Credentials
+                Go to Settings
             </button>
-            <button type="button" class="credentials-btn credentials-btn-primary" id="use-credentials-btn">
-                <i class="fas fa-check"></i>
-                Use These Credentials
+            <button type="button" class="credentials-btn credentials-btn-outline" id="skip-credentials-btn">
+                <i class="fas fa-times"></i>
+                Skip for Now
             </button>
         `;
     }
@@ -327,6 +337,13 @@ class CredentialsModal {
             clientId: this.credentials?.clientId ? 'set' : 'not_set'
         });
         
+        // Show loading state on button
+        const useButton = document.getElementById('use-credentials-btn');
+        if (useButton) {
+            useButton.disabled = true;
+            useButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating Credentials...';
+        }
+        
         try {
             // Save credentials to settings and get token
             await this.saveCredentialsAndGetToken();
@@ -344,8 +361,37 @@ class CredentialsModal {
             this.showSuccessMessage('Credentials saved and token acquired successfully!');
             
         } catch (error) {
+            // Restore button state on error
+            const useButton = document.getElementById('use-credentials-btn');
+            if (useButton) {
+                useButton.disabled = false;
+                useButton.innerHTML = '<i class="fas fa-play"></i> Use These Credentials';
+            }
             console.error('Error using credentials:', error);
-            this.showError('Failed to use credentials', error.message);
+            
+            // Show user-friendly error messages
+            let userMessage = '';
+            let userTitle = 'Credentials Error';
+            
+            if (error.message.includes('PingOne client not available')) {
+                userTitle = 'Credentials Invalid';
+                userMessage = 'The stored credentials appear to be invalid or incomplete. Please go to Settings to configure valid PingOne credentials.';
+            } else if (error.message.includes('Missing required credentials')) {
+                userTitle = 'Incomplete Credentials';
+                userMessage = 'Some required credential fields are missing. Please go to Settings to complete your PingOne configuration.';
+            } else if (error.message.includes('Failed to get token')) {
+                userTitle = 'Authentication Failed';
+                userMessage = 'Unable to authenticate with PingOne using these credentials. Please verify your credentials in Settings.';
+            } else if (error.message.includes('Failed to save credentials')) {
+                userTitle = 'Save Failed';
+                userMessage = 'Unable to save credentials to the server. Please try again or go to Settings to configure manually.';
+            } else {
+                userTitle = 'Credentials Error';
+                userMessage = 'There was a problem using these credentials. Please go to Settings to verify your PingOne configuration.';
+            }
+            
+            // Show the user-friendly error in the modal
+            this.showModalError(userTitle, userMessage);
         }
     }
     
@@ -475,6 +521,48 @@ class CredentialsModal {
                 notification.remove();
             }, 8000);
         }
+    }
+    
+    showModalError(title, message) {
+        // Show error directly in the modal
+        const modal = document.querySelector('.credentials-modal');
+        if (!modal) return;
+        
+        // Remove any existing error messages
+        const existingError = modal.querySelector('.credentials-error-message');
+        if (existingError) {
+            existingError.remove();
+        }
+        
+        // Create error message element
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'credentials-error-message';
+        errorDiv.innerHTML = `
+            <div class="error-content">
+                <i class="fas fa-exclamation-triangle error-icon"></i>
+                <div class="error-text">
+                    <h4>${title}</h4>
+                    <p>${message}</p>
+                </div>
+            </div>
+            <div class="error-actions">
+                <button type="button" class="btn btn-primary" onclick="this.closest('.credentials-modal-overlay').querySelector('#configure-credentials-btn').click()">
+                    <i class="fas fa-cog"></i> Go to Settings
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="this.closest('.credentials-error-message').remove()">
+                    <i class="fas fa-times"></i> Dismiss
+                </button>
+            </div>
+        `;
+        
+        // Insert error message after the modal body
+        const modalBody = modal.querySelector('.credentials-modal-body');
+        if (modalBody) {
+            modalBody.insertAdjacentElement('afterend', errorDiv);
+        }
+        
+        // Also call the regular showError for notifications
+        this.showError(title, message);
     }
     
     updateTokenStatusAfterCredentialsUse() {
@@ -698,45 +786,28 @@ class CredentialsModal {
      * @returns {Promise<boolean>} True if modal should be shown
      */
     static async shouldShowCredentialsModal() {
-        try {
-            // Check if modal was already shown in this session
-            const modalShown = sessionStorage.getItem('credentials_modal_shown');
-            if (modalShown === 'true') {
-                console.log('Credentials modal already shown in this session');
-                return false;
-            }
-            
-            // Check if credentials are already saved and working
-            const credentialsSaved = await this.areCredentialsSaved();
-            if (credentialsSaved) {
-                console.log('Credentials are already saved and working');
-                return false;
-            }
-            
-            // Check if we have any credentials at all
-            const response = await fetch('/api/settings');
-            if (!response.ok) {
-                console.log('No settings endpoint available');
-                return true; // Show modal if we can't check
-            }
-            
-            const data = await response.json();
-            const settings = data.data || data.settings || {};
-            
-            // Show modal if we have partial credentials (some but not all required)
-            const hasPartialCredentials = settings.environmentId || settings.apiClientId || settings.apiSecret;
-            if (hasPartialCredentials) {
-                console.log('Partial credentials found, showing modal for completion');
-                return true;
-            }
-            
-            // Show modal if no credentials at all
-            console.log('No credentials found, showing modal');
-            return true;
-        } catch (error) {
-            console.error('Error checking if credentials modal should be shown:', error);
-            return true; // Show modal on error to be safe
-        }
+        // TEMPORARY: Force credentials modal to always show for debugging
+        console.log('DEBUGGING: Forcing credentials modal to show');
+        return true;
+        
+        // Original logic (commented out for debugging):
+        // try {
+        //     // Check if modal was already shown in this session
+        //     const modalShown = sessionStorage.getItem('credentials_modal_shown');
+        //     if (modalShown === 'true') {
+        //         console.log('Credentials modal already shown in this session');
+        //         return false;
+        //     }
+        //     
+        //     // Always show modal on startup to ask user about stored credentials
+        //     // This gives users the choice to use stored credentials or configure new ones
+        //     console.log('Showing credentials modal on startup to ask about stored credentials');
+        //     return true;
+        //     
+        // } catch (error) {
+        //     console.error('Error checking if credentials modal should be shown:', error);
+        //     return true; // Show modal on error to be safe
+        // }
     }
 
     /**
