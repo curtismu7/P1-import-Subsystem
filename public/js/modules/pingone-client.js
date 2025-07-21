@@ -443,6 +443,33 @@ class PingOneClient {
     }
     
     /**
+     * Get populations from PingOne API
+     */
+    async getPopulations(options = {}) {
+        try {
+            this.logger.info('Getting populations from PingOne API');
+            
+            const url = '/api/pingone/populations';
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch populations: ${response.status} ${response.statusText}`);
+            }
+            
+            return response;
+            
+        } catch (error) {
+            this.logger.error('Failed to get populations', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
      * Import users from CSV data
      */
     async importUsers(csvData, options = {}) {
