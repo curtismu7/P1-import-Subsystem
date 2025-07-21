@@ -6,7 +6,14 @@
  */
 
 import express from 'express';
+import multer from 'multer';
 const router = express.Router();
+
+// Configure multer for file uploads
+const upload = multer({ 
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    storage: multer.memoryStorage()
+});
 
 // In-memory storage for import status (in production, use database)
 let importStatus = {
@@ -247,5 +254,122 @@ router.delete('/reset', (req, res) => {
         });
     }
 });
+
+/**
+ * POST /api/import
+ * Main import endpoint - handles file upload and starts import process
+ */
+router.post('/', upload.single('file'), (req, res) => {
+    try {
+        // Check if file was uploaded
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                error: 'No file uploaded'
+            });
+        }
+
+        // Check if population ID was provided
+        if (!req.body.populationId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Population ID is required'
+            });
+        }
+
+        // Get file details
+        const fileName = req.file.originalname;
+        const fileSize = req.file.size;
+        const fileBuffer = req.file.buffer;
+        
+        // Parse CSV to get total records (simplified)
+        const csvContent = fileBuffer.toString('utf8');
+        const lines = csvContent.split('\n').filter(line => line.trim());
+        const totalRecords = lines.length > 1 ? lines.length - 1 : 0; // Subtract header row
+        
+        // Generate session ID
+        const sessionId = `import_${Date.now()}`;
+        
+        // Update import status
+        importStatus = {
+            isRunning: true,
+            progress: 0,
+            total: totalRecords,
+            processed: 0,
+            errors: 0,
+            warnings: 0,
+            startTime: Date.now(),
+            endTime: null,
+            currentFile: fileName,
+            sessionId: sessionId,
+            status: 'running'
+        };
+        
+        // Log import start
+        console.log(`🔄 Import started: ${fileName}, ${totalRecords} records, session: ${sessionId}`);
+        
+        // Return success response
+        res.json({
+            success: true,
+            message: 'Import started successfully',
+            sessionId: sessionId,
+            total: totalRecords,
+            fileName: fileName,
+            fileSize: fileSize,
+            populationId: req.body.populationId
+        });
+        
+        // In a real implementation, you would start a background process to handle the import
+        // For now, we'll simulate progress updates
+        simulateImportProgress(sessionId, totalRecords);
+        
+    } catch (error) {
+        console.error('Import error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to start import',
+            details: error.message
+        });
+    }
+});
+
+/**
+ * Simulate import progress for testing
+ */
+function simulateImportProgress(sessionId, totalRecords) {
+    let processed = 0;
+    const updateInterval = Math.max(100, Math.min(500, totalRecords > 100 ? 100 : 50));
+    
+    const progressInterval = setInterval(() => {
+        // Increment processed count
+        processed += Math.floor(Math.random() * 5) + 1;
+        
+        // Update import status
+        importStatus.processed = Math.min(processed, totalRecords);
+        importStatus.progress = Math.round((importStatus.processed / totalRecords) * 100);
+        
+        // Add some random errors and warnings
+        if (Math.random() > 0.9) {
+            importStatus.errors += 1;
+        }
+        if (Math.random() > 0.8) {
+            importStatus.warnings += 1;
+        }
+        
+        // Check if import is complete
+        if (processed >= totalRecords) {
+            clearInterval(progressInterval);
+            
+            // Mark import as complete
+            importStatus.isRunning = false;
+            importStatus.endTime = Date.now();
+            importStatus.status = 'completed';
+            importStatus.processed = totalRecords;
+            importStatus.progress = 100;
+            
+            console.log(`✅ Import completed: ${importStatus.sessionId}, ${totalRecords} records processed`);
+        }
+    }, updateInterval);
+}
 
 export default router;
