@@ -40,7 +40,7 @@ class PopulationService {
      * @param {Object} tokenManager - Token manager for authentication
      * @param {Object} logger - Logger for logging messages
      */
-    constructor(apiClient, tokenManager, logger) {
+    constructor(apiClient, tokenManager, logger, eventBus) {
         // Validate required dependencies
         if (!apiClient) {
             throw new Error('API client is required for PopulationService');
@@ -49,6 +49,7 @@ class PopulationService {
         this.apiClient = apiClient;
         this.tokenManager = tokenManager || null;
         this.logger = logger || console;
+        this.eventBus = eventBus;
         
         // Initialize cache
         this.cache = {
@@ -131,6 +132,14 @@ class PopulationService {
             sortedPopulations.forEach(pop => {
                 this.cache.populations.byId[pop.id] = pop;
             });
+            
+            // Emit population change event
+            if (this.eventBus) {
+                this.eventBus.emit('populationsChanged', {
+                    populations: sortedPopulations,
+                    count: sortedPopulations.length
+                });
+            }
             
             this.logger.info(`Successfully fetched ${sortedPopulations.length} populations`);
             

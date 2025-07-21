@@ -12,6 +12,7 @@
 import { spawn } from 'child_process';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import fetch from 'node-fetch';
 import { 
     isPortAvailable, 
     getProcessesUsingPort, 
@@ -214,8 +215,38 @@ async function startServer(port = DEFAULT_PORT, options = {}) {
         console.log('\n🛑 Stopping server...');
         serverProcess.kill('SIGTERM');
     });
-    
+
+    const healthCheckUrl = `http://localhost:${port}/api/health`;
+    console.log(`🩺 Performing health check at ${healthCheckUrl}...`);
+    await waitForServerReady(healthCheckUrl);
+
     return serverProcess;
+}
+
+/**
+ * Wait for the server to be ready by polling the health check endpoint
+ */
+async function waitForServerReady(url, timeout = 30000) {
+    const startTime = Date.now();
+    const interval = 1000;
+
+    while (Date.now() - startTime < timeout) {
+        try {
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    console.log('✅ Server is healthy and ready!');
+                    return;
+                }
+            }
+        } catch (error) {
+            // Ignore connection errors and try again
+        }
+        await new Promise(resolve => setTimeout(resolve, interval));
+    }
+
+    throw new Error('Server did not become ready in time.');
 }
 
 /**

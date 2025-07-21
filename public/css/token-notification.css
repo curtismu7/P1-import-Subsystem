@@ -1,0 +1,260 @@
+/* Token Notification Styles */
+
+.token-notification-container {
+    position: relative;
+    z-index: 1000;
+    margin: 0 0 20px 0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Notification content layout */
+.token-notification-content {
+    display: flex;
+    align-items: flex-start;
+    padding: 16px 20px;
+    gap: 16px;
+}
+
+.token-notification-icon {
+    font-size: 24px;
+    min-width: 32px;
+    text-align: center;
+    margin-top: 4px;
+}
+
+.token-notification-text {
+    flex: 1;
+    line-height: 1.5;
+}
+
+.token-notification-text h4 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.token-notification-text p {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+}
+
+.token-notification-text ul {
+    margin: 8px 0 0 0;
+    padding-left: 20px;
+    font-size: 14px;
+}
+
+.token-notification-text li {
+    margin-bottom: 4px;
+}
+
+.token-notification-actions {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin-top: 4px;
+}
+
+.token-notification-actions .btn {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.token-notification-actions .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Notification type styles */
+
+/* No Token - Red */
+.token-notification-container.no-token {
+    background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    color: white;
+}
+
+.token-notification-container.no-token .btn-primary {
+    background: rgba(255, 255, 255, 0.9);
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.token-notification-container.no-token .btn-primary:hover {
+    background: white;
+    color: #c82333;
+}
+
+.token-notification-container.no-token .btn-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.token-notification-container.no-token .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Expired Token - Red */
+.token-notification-container.expired-token {
+    background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    color: white;
+}
+
+.token-notification-container.expired-token .btn-warning {
+    background: #ffc107;
+    color: #212529;
+    font-weight: 600;
+}
+
+.token-notification-container.expired-token .btn-warning:hover {
+    background: #e0a800;
+    color: #000;
+}
+
+.token-notification-container.expired-token .btn-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.token-notification-container.expired-token .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Expiring Token - Yellow */
+.token-notification-container.expiring-token {
+    background: linear-gradient(135deg, #ffc107 0%, #ffca2c 100%);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    color: #212529;
+}
+
+.token-notification-container.expiring-token .btn-warning {
+    background: #fd7e14;
+    color: white;
+    font-weight: 600;
+}
+
+.token-notification-container.expiring-token .btn-warning:hover {
+    background: #e8680e;
+}
+
+.token-notification-container.expiring-token .btn-secondary {
+    background: rgba(0, 0, 0, 0.1);
+    color: #212529;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.token-notification-container.expiring-token .btn-secondary:hover {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* Error Token - Red */
+.token-notification-container.error-token {
+    background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    color: white;
+}
+
+.token-notification-container.error-token .btn-primary {
+    background: rgba(255, 255, 255, 0.9);
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.token-notification-container.error-token .btn-primary:hover {
+    background: white;
+    color: #c82333;
+}
+
+.token-notification-container.error-token .btn-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.token-notification-container.error-token .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .token-notification-content {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .token-notification-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+    
+    .token-notification-actions .btn {
+        font-size: 11px;
+        padding: 5px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .token-notification-container {
+        margin: 0 0 15px 0;
+        border-radius: 6px;
+    }
+    
+    .token-notification-content {
+        padding: 12px 16px;
+    }
+    
+    .token-notification-text h4 {
+        font-size: 15px;
+    }
+    
+    .token-notification-text p,
+    .token-notification-text ul {
+        font-size: 13px;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .token-notification-container {
+        border-width: 2px;
+    }
+    
+    .token-notification-actions .btn {
+        border-width: 2px;
+        font-weight: 600;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .token-notification-container {
+        animation: none;
+    }
+    
+    .token-notification-actions .btn:hover {
+        transform: none;
+    }
+}

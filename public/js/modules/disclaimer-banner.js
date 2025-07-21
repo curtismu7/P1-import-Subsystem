@@ -246,13 +246,75 @@ class DisclaimerBanner {
     }
     this.init();
   }
+
+  /**
+   * Set dismissal status in localStorage
+   * @param {boolean} dismissed
+   */
+  setDismissalStatus(dismissed) {
+    try {
+      localStorage.setItem(this.storageKey, dismissed.toString());
+    } catch (error) {
+      console.warn('Could not save disclaimer status to localStorage:', error);
+    }
+  }
+
+  /**
+   * Announce banner to screen readers
+   */
+  announceToScreenReader() {
+    const message = 'Disclaimer: This tool is unsupported and provided as-is. Ping Identity is not liable for any harm or data loss. Please backup your PingOne account and test in non-production environments only.';
+    
+    // Create temporary element for announcement
+    const announcement = document.createElement('div');
+    announcement.setAttribute('aria-live', 'assertive');
+    announcement.setAttribute('aria-atomic', 'true');
+    announcement.style.position = 'absolute';
+    announcement.style.left = '-10000px';
+    announcement.style.width = '1px';
+    announcement.style.height = '1px';
+    announcement.style.overflow = 'hidden';
+    announcement.textContent = message;
+    
+    document.body.appendChild(announcement);
+    
+    // Remove after announcement
+    setTimeout(() => {
+      if (announcement.parentNode) {
+        announcement.parentNode.removeChild(announcement);
+      }
+    }, 1000);
+  }
+
+  /**
+   * Reset dismissal status (for testing)
+   */
+  reset() {
+    this.setDismissalStatus(false);
+    if (this.banner) {
+      this.removeBanner();
+    }
+    this.init();
+  }
+
+  /**
+   * Force show banner (for testing)
+   */
+  forceShow() {
+    this.setDismissalStatus(false);
+    if (this.banner) {
+      this.removeBanner();
+    }
+    this.init();
+  }
 }
 
 // Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = DisclaimerBanner;
-} else {
-  // Browser environment
+export { DisclaimerBanner };
+export default DisclaimerBanner;
+
+// Browser global fallback for legacy compatibility
+if (typeof window !== 'undefined') {
   window.DisclaimerBanner = DisclaimerBanner;
 }
 

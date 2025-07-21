@@ -67,19 +67,33 @@ const GlobalTokenManager = {
      * Update the global token status display
      */
     updateGlobalTokenStatus() {
+        console.log('🔄 Updating global token status in sidebar...');
         const statusBox = document.getElementById('global-token-status');
         if (!statusBox) {
+            console.warn('❌ Global token status box not found, creating...');
             this.createGlobalTokenStatus();
             return;
         }
+        console.log('✅ Found global token status box:', statusBox);
 
         const countdown = statusBox.querySelector('.global-token-countdown');
         const icon = statusBox.querySelector('.global-token-icon');
         const text = statusBox.querySelector('.global-token-text');
         const getTokenBtn = document.getElementById('global-get-token');
 
+        console.log('🔍 Token status elements found:', {
+            countdown: !!countdown,
+            icon: !!icon,
+            text: !!text,
+            getTokenBtn: !!getTokenBtn
+        });
+
         if (!countdown || !icon || !text) {
-            console.warn('Global token status elements not found');
+            console.warn('❌ Global token status elements not found:', {
+                countdown: !!countdown,
+                icon: !!icon,
+                text: !!text
+            });
             return;
         }
 
@@ -92,6 +106,7 @@ const GlobalTokenManager = {
             const formattedTime = this.formatTime(timeLeft);
             
             // Update countdown with color coding
+            console.log('⏰ Setting countdown to:', formattedTime);
             countdown.textContent = formattedTime;
             if (timeLeft <= 300) { // 5 minutes or less
                 countdown.style.color = 'rgb(255, 107, 107)'; // Red
@@ -106,15 +121,18 @@ const GlobalTokenManager = {
 
             // Update icon and text
             if (timeLeft <= 0) {
+                console.log('❌ Token expired, updating status');
                 icon.textContent = '❌';
                 text.textContent = '';
                 text.style.visibility = 'hidden';
                 statusBox.className = 'global-token-status expired';
             } else if (timeLeft <= 300) {
+                console.log('⚠️ Token expiring soon, updating status');
                 icon.textContent = '⚠️';
                 text.textContent = 'Token expiring soon';
                 statusBox.className = 'global-token-status warning';
             } else {
+                console.log('✅ Token valid, updating status to: Token valid');
                 icon.textContent = '✅';
                 text.textContent = 'Token valid';
                 statusBox.className = 'global-token-status valid';
@@ -344,9 +362,11 @@ const GlobalTokenManager = {
     }
 };
 
-// Export the module for browserify
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = GlobalTokenManager;
-} else if (typeof window !== 'undefined') {
+// ES Modules export
+export { GlobalTokenManager };
+export default GlobalTokenManager;
+
+// Browser global fallback for legacy compatibility
+if (typeof window !== 'undefined') {
     window.GlobalTokenManager = GlobalTokenManager;
-} 
+}

@@ -12,6 +12,7 @@
 
 // Browser-compatible logging system
 import { createLogger } from './utils/browser-logging-service.js';
+import { debugLog } from './utils/debug-logger.js';
 
 // Core utilities
 import { Logger } from '../../public/js/modules/logger.js';
@@ -165,8 +166,15 @@ class App {
             : new Logger();
             
         this.logger.info('Application initialization started', {
-            version: '6.2.0',
+            version: '6.3.0',
             featureFlags: FEATURE_FLAGS
+        });
+        
+        // Debug logging
+        debugLog.systemState('app', 'initialization_started', {
+            version: '6.3.0',
+            featureFlags: FEATURE_FLAGS,
+            userAgent: navigator.userAgent
         });
         
         // Core components
@@ -314,9 +322,22 @@ class App {
         this.tokenManager = new TokenManager(this.logger, this.subsystems.settings.getAllSettings(), this.eventBus);
         this.fileHandler = new FileHandler(this.logger, this.uiManager);
         this.versionManager = new VersionManager();
-        this.pingOneClient = new PingOneClient();
+        try {
+            this.pingOneClient = new PingOneClient();
+            this.logger.debug('PingOne client created successfully');
+        } catch (error) {
+            this.logger.error('Failed to create PingOne client:', error);
+            this.pingOneClient = null;
+        }
 
         this.logger.debug('Core components initialized');
+    }
+    
+    /**
+     * Check if PingOne client is available and ready
+     */
+    isPingOneClientAvailable() {
+        return this.pingOneClient !== null && typeof this.pingOneClient === 'object';
     }
     
     /**
@@ -928,6 +949,11 @@ class App {
     async handleSaveSettings() {
         this.logger.info('🔧 SETTINGS: Saving settings...');
         
+        // Debug logging
+        debugLog.userAction('save_settings', 'save-settings-button', {
+            timestamp: Date.now()
+        });
+        
         try {
             // Get form values
             const environmentId = document.getElementById('environment-id')?.value;
@@ -975,6 +1001,13 @@ class App {
             
         } catch (error) {
             this.logger.error('🔧 SETTINGS: Failed to save settings', { error: error.message });
+            
+            // Debug logging
+            debugLog.error('settings', 'Save settings failed', error, {
+                action: 'save_settings',
+                timestamp: Date.now()
+            });
+            
             this.showSettingsStatus(`Failed to save settings: ${error.message}`, 'error');
         }
     }
@@ -984,6 +1017,11 @@ class App {
      */
     async handleTestConnection() {
         this.logger.info('🔧 SETTINGS: Testing connection...');
+        
+        // Debug logging
+        debugLog.userAction('test_connection', 'test-connection-btn', {
+            timestamp: Date.now()
+        });
         
         try {
             this.showSettingsStatus('Testing connection...', 'info');
@@ -1023,6 +1061,11 @@ class App {
      */
     async handleGetToken() {
         this.logger.info('🔧 SETTINGS: Getting token...');
+        
+        // Debug logging
+        debugLog.userAction('get_token', 'get-token-btn', {
+            timestamp: Date.now()
+        });
         
         try {
             this.showSettingsStatus('Getting token...', 'info');
@@ -1132,6 +1175,12 @@ class App {
      */
     async directShowView(view) {
         this.logger.info(`🔧 DIRECT NAV: Switching to view: ${view}`);
+        
+        // Debug logging
+        debugLog.navigation(this.currentView, view, {
+            method: 'direct_navigation',
+            timestamp: Date.now()
+        });
         
         try {
             // Hide all views
@@ -1360,7 +1409,12 @@ class App {
                     this.subsystems.importManager.handleFileSelection(file);
                 } else {
                     this.logger.warn('Import subsystem not available, using legacy import');
-                    this.legacyHandleFileSelection(file);
+                    if (this.fileHandler && typeof this.fileHandler.handleFile === 'function') {
+                        this.fileHandler.handleFile(file);
+                    } else {
+                        this.logger.error('No file handling method available');
+                        this.showMessage('File handling is not available. Please refresh the page.', 'error');
+                    }
                 }
             }
         } catch (error) {
@@ -1389,7 +1443,12 @@ class App {
                     this.subsystems.importManager.handleFileSelection(file);
                 } else {
                     this.logger.warn('Import subsystem not available, using legacy import');
-                    this.legacyHandleFileSelection(file);
+                    if (this.fileHandler && typeof this.fileHandler.handleFile === 'function') {
+                        this.fileHandler.handleFile(file);
+                    } else {
+                        this.logger.error('No file handling method available');
+                        this.showMessage('File handling is not available. Please refresh the page.', 'error');
+                    }
                 }
             }
         } catch (error) {

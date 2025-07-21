@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PingOne Import Tool - Operation History</title>
+    
+    <!-- Modern Application Styles -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/css/app.css">
+    <link rel="stylesheet" href="/css/ping-identity.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        /* Modern History Page Styles */
+        .history-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .history-header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        
+        .history-controls {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .history-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .btn-modern {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .history-list {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .history-entry {
+            border-bottom: 1px solid #f1f3f4;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .history-entry:hover {
+            background: #f8f9fa;
+        }
+        
+        .no-history {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="history-container">
+        <!-- Header -->
+        <div class="history-header">
+            <h1>📊 Operation History</h1>
+            <p>Track and manage all operations using HistorySubsystem</p>
+        </div>
+
+        <!-- History Controls -->
+        <div class="history-controls">
+            <div class="history-filters">
+                <div class="filter-group">
+                    <label for="category-filter">📂 Category</label>
+                    <select id="category-filter">
+                        <option value="">All Categories</option>
+                        <option value="import">Import</option>
+                        <option value="export">Export</option>
+                        <option value="delete">Delete</option>
+                        <option value="modify">Modify</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="status-filter">📈 Status</label>
+                    <select id="status-filter">
+                        <option value="">All Statuses</option>
+                        <option value="completed">Completed</option>
+                        <option value="failed">Failed</option>
+                        <option value="in_progress">In Progress</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="search-filter">🔍 Search</label>
+                    <input type="text" id="history-search-filter-static" placeholder="Search...">
+                </div>
+            </div>
+            
+            <div class="history-actions">
+                <button class="btn-modern" onclick="refreshHistory()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button class="btn-modern" onclick="exportHistory()">
+                    <i class="fas fa-download"></i> Export
+                </button>
+                <button class="btn-modern" onclick="clearHistory()">
+                    <i class="fas fa-trash"></i> Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- History List -->
+        <div class="history-list" id="history-list">
+            <div class="no-history">
+                <div class="loading-spinner"></div>
+                <h3>Loading History...</h3>
+                <p>Fetching from HistorySubsystem...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modern JavaScript with HistorySubsystem Integration -->
+    <script type="module">
+        class HistoryPageManager {
+            constructor() {
+                this.historySubsystem = null;
+                this.eventBus = null;
+                this.currentHistory = [];
+                this.isLoading = false;
+            }
+
+            async initialize() {
+                try {
+                    console.log('🚀 Initializing Modern History Page');
+                    
+                    // Wait for main app
+                    await this.waitForApp();
+                    
+                    // Get subsystem references
+                    this.historySubsystem = window.app?.subsystems?.history;
+                    this.eventBus = window.app?.eventBus;
+                    
+                    if (!this.historySubsystem) {
+                        throw new Error('HistorySubsystem not available');
+                    }
+                    
+                    // Setup event listeners
+                    this.setupEventListeners();
+                    
+                    // Load initial history
+                    await this.loadHistory();
+                    
+                    console.log('✅ History page initialized');
+                    
+                } catch (error) {
+                    console.error('❌ Failed to initialize:', error);
+                    this.showError('Failed to initialize', error.message);
+                }
+            }
+
+            async waitForApp() {
+                return new Promise((resolve) => {
+                    const checkApp = () => {
+                        if (window.app?.subsystems?.history) {
+                            resolve();
+                        } else {
+                            setTimeout(checkApp, 100);
+                        }
+                    };
+                    checkApp();
+                });
+            }
+
+            setupEventListeners() {
+                if (this.eventBus) {
+                    this.eventBus.on('historyUpdated', () => this.loadHistory());
+                    this.eventBus.on('historyEntryAdded', () => this.loadHistory());
+                }
+            }
+
+            async loadHistory() {
+                if (this.isLoading) return;
+                
+                try {
+                    this.isLoading = true;
+                    this.showLoadingState();
+                    
+                    const historyData = await this.historySubsystem.getHistory();
+                    this.currentHistory = historyData.history || [];
+                    
+                    this.displayHistory();
+                    
+                } catch (error) {
+                    console.error('❌ Failed to load history:', error);
+                    this.showError('Failed to load history', error.message);
+                } finally {
+                    this.isLoading = false;
+                }
+            }
+
+            displayHistory() {
+                const historyList = document.getElementById('history-list');
+                
+                if (this.currentHistory.length === 0) {
+                    historyList.innerHTML = `
+                        <div class="no-history">
+                            <i class="fas fa-history"></i>
+                            <h3>No History Found</h3>
+                            <p>No operations recorded yet.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                this.currentHistory.forEach(entry => {
+                    const timestamp = new Date(entry.timestamp).toLocaleString();
+                    html += `
+                        <div class="history-entry">
+                            <div class="history-entry-header">
+                                <div class="history-entry-info">
+                                    <div class="history-entry-title">
+                                        ${this.getCategoryIcon(entry.category)} ${entry.description}
+                                    </div>
+                                    <div class="history-entry-meta">
+                                        <span><i class="fas fa-clock"></i> ${timestamp}</span>
+                                        <span><i class="fas fa-tag"></i> ${entry.category}</span>
+                                        <span class="status-${entry.status}">${entry.status}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                historyList.innerHTML = html;
+            }
+
+            getCategoryIcon(category) {
+                const icons = {
+                    import: '📥',
+                    export: '📤', 
+                    delete: '🗑️',
+                    modify: '✏️',
+                    settings: '⚙️',
+                    auth: '🔐',
+                    system: '🖥️'
+                };
+                return icons[category] || '📄';
+            }
+
+            showLoadingState() {
+                document.getElementById('history-list').innerHTML = `
+                    <div class="no-history">
+                        <div class="loading-spinner"></div>
+                        <h3>Loading History...</h3>
+                        <p>Fetching from HistorySubsystem...</p>
+                    </div>
+                `;
+            }
+
+            showError(title, message) {
+                document.getElementById('history-list').innerHTML = `
+                    <div class="no-history">
+                        <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>
+                        <h3>${title}</h3>
+                        <p>${message}</p>
+                        <button class="btn-modern" onclick="historyPage.loadHistory()">
+                            <i class="fas fa-retry"></i> Retry
+                        </button>
+                    </div>
+                `;
+            }
+
+            async exportHistory() {
+                try {
+                    await this.historySubsystem.exportHistory({ format: 'csv' });
+                } catch (error) {
+                    alert('Export failed: ' + error.message);
+                }
+            }
+
+            async clearHistory() {
+                if (!confirm('Clear all history? This cannot be undone.')) return;
+                
+                try {
+                    await this.historySubsystem.clearHistory();
+                    await this.loadHistory();
+                } catch (error) {
+                    alert('Clear failed: ' + error.message);
+                }
+            }
+        }
+
+        // Initialize when DOM is ready
+        const historyPage = new HistoryPageManager();
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => historyPage.initialize());
+        } else {
+            historyPage.initialize();
+        }
+
+        // Global functions for button handlers
+        window.refreshHistory = () => historyPage.loadHistory();
+        window.exportHistory = () => historyPage.exportHistory();
+        window.clearHistory = () => historyPage.clearHistory();
+        window.historyPage = historyPage;
+    </script>
+</body>
+</html>

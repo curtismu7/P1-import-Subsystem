@@ -14,12 +14,13 @@
 
 import PingOneAuth from './pingone-auth.js';
 import CredentialEncryptor from './credential-encryptor.js';
+import { authLogger } from '../../server/winston-config.js';
 import { promises as fs } from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 
 class EnhancedServerAuth extends PingOneAuth {
-    constructor(logger) {
+    constructor(logger = authLogger) {
         super(logger);
         this.credentialSources = ['env', 'settings', 'fallback'];
         this.startupToken = null;

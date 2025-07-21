@@ -448,6 +448,44 @@ a:hover, a:focus {
     font-weight: bold;
 }
 
+/* Population Display Styling - Better Label/Value Distinction */
+.population-label {
+    font-weight: 600;
+    color: var(--ping-gray);
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.population-value {
+    font-weight: 700;
+    color: var(--ping-white);
+    font-size: 16px;
+    background: linear-gradient(135deg, var(--ping-primary-red), var(--ping-dark-red));
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--ping-dark-red);
+    margin-left: 8px;
+    box-shadow: 0 2px 4px rgba(225, 0, 26, 0.2);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.population-placeholder {
+    font-weight: 400;
+    color: var(--ping-gray);
+    font-style: italic;
+    font-size: 14px;
+    margin-left: 8px;
+}
+
+/* Hover effect for population value */
+.population-value:hover {
+    background: linear-gradient(135deg, var(--ping-dark-red), #8B0000);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(225, 0, 26, 0.3);
+    transition: var(--transition);
+}
+
 .log-detail-json {
     background: rgba(255, 255, 255, 0.8);
     border: 1px solid rgba(0, 0, 0, 0.1);
@@ -1596,13 +1634,26 @@ body.drag-over::after {
     transition: all 0.3s ease;
 }
 
-/* Loading states */
-.btn:disabled {
+/* Disabled button states */
+.btn:disabled, .btn[disabled] {
+    background-color: var(--ping-gray-lighter) !important;
+    border-color: var(--ping-gray-light) !important;
+    color: var(--ping-gray) !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+    pointer-events: none;
     position: relative;
 }
 
-.btn:disabled::after {
+/* Remove spinner from disabled buttons by default */
+.btn:disabled::after, .btn[disabled]::after {
+    display: none;
+}
+
+/* Only show spinner on buttons with loading class */
+.btn.loading:disabled::after {
     content: '';
+    display: block;
     position: absolute;
     top: 50%;
     left: 50%;
@@ -2016,4 +2067,89 @@ body.drag-over::after {
 .history-details strong {
     color: #495057;
     font-weight: 600;
+}
+
+/* Modal Loading Overlay Styles */
+.modal-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(34, 34, 34, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.modal-loading-content {
+    text-align: center;
+    color: var(--ping-white);
+    max-width: 400px;
+    padding: var(--spacing-lg);
+}
+
+.modal-loading-spinner {
+    margin-bottom: var(--spacing-lg);
+}
+
+.modal-loading-spinner .spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(225, 0, 26, 0.2);
+    border-left: 4px solid var(--ping-primary-red);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+.modal-loading-text h3 {
+    font-size: 24px;
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--spacing-sm);
+    color: var(--ping-white);
+}
+
+.modal-loading-text p {
+    font-size: var(--font-size-base);
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.5;
+}
+
+/* Enhanced startup screen spinner */
+.startup-spinner .spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(225, 0, 26, 0.2);
+    border-left: 3px solid var(--ping-primary-red);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Fade in/out animations for loading states */
+.modal-loading-overlay.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.modal-loading-overlay.fade-out {
+    animation: fadeOut 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
 }

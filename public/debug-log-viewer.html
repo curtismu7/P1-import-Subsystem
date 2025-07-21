@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Log Viewer - PingOne Import Tool</title>
+    <style>
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .controls input, .controls select, .controls button {
+            padding: 5px 10px;
+            background: #333;
+            color: #e0e0e0;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+        
+        .controls button {
+            cursor: pointer;
+        }
+        
+        .controls button:hover {
+            background: #444;
+        }
+        
+        .log-container {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 15px;
+            height: 70vh;
+            overflow-y: auto;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .log-entry {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-left: 3px solid #333;
+        }
+        
+        .log-entry.error {
+            border-left-color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+        }
+        
+        .log-entry.warn {
+            border-left-color: #ffaa00;
+            background: rgba(255, 170, 0, 0.1);
+        }
+        
+        .log-entry.info {
+            border-left-color: #44ff44;
+            background: rgba(68, 255, 68, 0.1);
+        }
+        
+        .log-entry.debug {
+            border-left-color: #4444ff;
+            background: rgba(68, 68, 255, 0.1);
+        }
+        
+        .log-entry.event {
+            border-left-color: #ff44ff;
+            background: rgba(255, 68, 255, 0.1);
+        }
+        
+        .log-entry.perf {
+            border-left-color: #44ffff;
+            background: rgba(68, 255, 255, 0.1);
+        }
+        
+        .timestamp {
+            color: #888;
+        }
+        
+        .category {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+        
+        .message {
+            color: #e0e0e0;
+        }
+        
+        .data {
+            color: #aaa;
+            font-size: 11px;
+            margin-top: 5px;
+            white-space: pre-wrap;
+        }
+        
+        .status {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #333;
+            border-radius: 4px;
+        }
+        
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Debug Log Viewer</h1>
+        <div class="controls">
+            <input type="text" id="filter" placeholder="Filter logs..." />
+            <select id="lines">
+                <option value="50">50 lines</option>
+                <option value="100" selected>100 lines</option>
+                <option value="200">200 lines</option>
+                <option value="500">500 lines</option>
+            </select>
+            <div class="auto-refresh">
+                <input type="checkbox" id="autoRefresh" checked />
+                <label for="autoRefresh">Auto-refresh</label>
+            </div>
+            <button onclick="refreshLogs()">Refresh</button>
+            <button onclick="clearLogs()" style="background: #cc4444;">Clear</button>
+        </div>
+    </div>
+    
+    <div class="status" id="status">
+        Loading debug logs...
+    </div>
+    
+    <div class="log-container" id="logContainer">
+        <!-- Logs will be loaded here -->
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+        
+        async function refreshLogs() {
+            try {
+                const filter = document.getElementById('filter').value;
+                const lines = document.getElementById('lines').value;
+                
+                const params = new URLSearchParams();
+                params.append('lines', lines);
+                if (filter) {
+                    params.append('filter', filter);
+                }
+                
+                const response = await fetch(`/api/debug-log?${params}`);
+                const data = await response.json();
+                
+                displayLogs(data.entries);
+                updateStatus(`Showing ${data.showing} of ${data.total} entries`);
+                
+            } catch (error) {
+                console.error('Failed to load debug logs:', error);
+                updateStatus('Failed to load debug logs: ' + error.message);
+            }
+        }
+        
+        function displayLogs(entries) {
+            const container = document.getElementById('logContainer');
+            container.innerHTML = '';
+            
+            if (entries.length === 0) {
+                container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No log entries found</div>';
+                return;
+            }
+            
+            entries.forEach(entry => {
+                const logDiv = document.createElement('div');
+                logDiv.className = 'log-entry';
+                
+                // Parse the log entry to extract components
+                const match = entry.match(/\\[(.*?)\\] \\[(.*?)\\] \\[(.*?)\\] \\[(.*?)\\] \\[(.*?)\\] (.*)/);
+                if (match) {
+                    const [, timestamp, sessionId, env, level, category, message] = match;
+                    
+                    logDiv.classList.add(level.toLowerCase());
+                    
+                    logDiv.innerHTML = `
+                        <div>
+                            <span class="timestamp">[${timestamp}]</span>
+                            <span class="category">[${category}]</span>
+                            <span class="message">${message}</span>
+                        </div>
+                    `;
+                    
+                    // Check if there's data on the next lines
+                    const dataMatch = entry.match(/Data: ({[\\s\\S]*?})(?=\\n-|$)/);
+                    if (dataMatch) {
+                        const dataDiv = document.createElement('div');
+                        dataDiv.className = 'data';
+                        dataDiv.textContent = dataMatch[1];
+                        logDiv.appendChild(dataDiv);
+                    }
+                } else {
+                    // Fallback for entries that don't match the expected format
+                    logDiv.innerHTML = `<div class="message">${entry}</div>`;
+                }
+                
+                container.appendChild(logDiv);
+            });
+            
+            // Scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+        
+        async function clearLogs() {
+            if (!confirm('Are you sure you want to clear all debug logs?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/debug-log', { method: 'DELETE' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateStatus('Debug logs cleared');
+                    refreshLogs();
+                } else {
+                    updateStatus('Failed to clear logs: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Failed to clear debug logs:', error);
+                updateStatus('Failed to clear logs: ' + error.message);
+            }
+        }
+        
+        function setupAutoRefresh() {
+            const checkbox = document.getElementById('autoRefresh');
+            
+            function toggleAutoRefresh() {
+                if (checkbox.checked) {
+                    autoRefreshInterval = setInterval(refreshLogs, 5000); // Refresh every 5 seconds
+                } else {
+                    if (autoRefreshInterval) {
+                        clearInterval(autoRefreshInterval);
+                        autoRefreshInterval = null;
+                    }
+                }
+            }
+            
+            checkbox.addEventListener('change', toggleAutoRefresh);
+            toggleAutoRefresh(); // Initialize
+        }
+        
+        // Event listeners
+        document.getElementById('filter').addEventListener('input', () => {
+            clearTimeout(window.filterTimeout);
+            window.filterTimeout = setTimeout(refreshLogs, 500);
+        });
+        
+        document.getElementById('lines').addEventListener('change', refreshLogs);
+        
+        // Initialize
+        setupAutoRefresh();
+        refreshLogs();
+    </script>
+</body>
+</html>

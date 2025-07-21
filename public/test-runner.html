@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PingOne User Import v6.1 - Test Runner</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .header {
+            background-color: #0275d8;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .test-section {
+            background-color: white;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .test-group {
+            margin-bottom: 15px;
+            border-left: 4px solid #0275d8;
+            padding-left: 15px;
+        }
+        .test-item {
+            margin: 8px 0;
+            padding: 8px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .test-item:hover {
+            background-color: #e9ecef;
+        }
+        .test-name {
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+        .test-status {
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .status-pending {
+            background-color: #f8f9fa;
+            color: #6c757d;
+        }
+        .status-running {
+            background-color: #cce5ff;
+            color: #004085;
+        }
+        .status-passed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-failed {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .test-output {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+        .test-output.show {
+            display: block;
+        }
+        .test-controls {
+            margin-bottom: 20px;
+        }
+        .summary {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+        .summary-item {
+            display: inline-block;
+            margin-right: 20px;
+            font-weight: bold;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .log-debug { color: #6c757d; }
+        .log-info { color: #0275d8; }
+        .log-warn { color: #ffc107; }
+        .log-error { color: #dc3545; }
+        .spinner-border {
+            width: 1rem;
+            height: 1rem;
+            margin-right: 5px;
+        }
+        .test-description {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        .test-duration {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-left: 10px;
+        }
+        .test-toggle {
+            cursor: pointer;
+            color: #0275d8;
+            margin-left: 10px;
+            font-size: 0.8rem;
+        }
+        .test-toggle:hover {
+            text-decoration: underline;
+        }
+        .subsystem-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+        .progress {
+            height: 5px;
+            margin-top: 10px;
+        }
+        .test-filter {
+            margin-bottom: 15px;
+        }
+        .version-info {
+            font-size: 0.8rem;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>PingOne Import Tool - Test Runner</h1>
+            <div class="version-info">v6.0</div>
+        </div>
+        
+        <div class="test-section">
+            <div class="test-controls">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="text" id="test-filter" class="form-control" placeholder="Filter tests...">
+                            <button class="btn btn-outline-secondary" type="button" id="clear-filter">Clear</button>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <button id="run-all-tests" class="btn btn-primary">Run All Tests</button>
+                        <button id="run-selected-tests" class="btn btn-outline-primary">Run Selected</button>
+                        <button id="stop-tests" class="btn btn-outline-danger" disabled>Stop</button>
+                        <button id="clear-all-tests" class="btn btn-outline-secondary">Clear All</button>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="show-passed-tests" checked>
+                            <label class="form-check-label" for="show-passed-tests">Show Passed</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="show-failed-tests" checked>
+                            <label class="form-check-label" for="show-failed-tests">Show Failed</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="show-pending-tests" checked>
+                            <label class="form-check-label" for="show-pending-tests">Show Pending</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="auto-expand-failed" checked>
+                            <label class="form-check-label" for="auto-expand-failed">Auto-expand Failed</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="stop-on-failure">
+                            <label class="form-check-label" for="stop-on-failure">Stop on Failure</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="progress" id="overall-progress">
+                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+            </div>
+            
+            <div class="summary">
+                <div class="summary-item">Total: <span id="total-count">0</span></div>
+                <div class="summary-item">Running: <span id="running-count">0</span></div>
+                <div class="summary-item">Passed: <span id="passed-count">0</span></div>
+                <div class="summary-item">Failed: <span id="failed-count">0</span></div>
+                <div class="summary-item">Pending: <span id="pending-count">0</span></div>
+                <div class="summary-item">Duration: <span id="total-duration">0s</span></div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Subsystems Tests</h3>
+            
+            <!-- Navigation Subsystem -->
+            <div class="test-group" data-subsystem="navigation">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="navigation-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/signpost.svg" alt="Navigation" class="subsystem-icon">
+                    Navigation Subsystem
+                </h4>
+                <div class="test-description">Tests for navigation, routing, and view switching</div>
+                <div class="test-items" id="navigation-tests"></div>
+            </div>
+            
+            <!-- View Management Subsystem -->
+            <div class="test-group" data-subsystem="view-management">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="view-management-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/layout-wtf.svg" alt="View Management" class="subsystem-icon">
+                    View Management Subsystem
+                </h4>
+                <div class="test-description">Tests for view transitions and management</div>
+                <div class="test-items" id="view-management-tests"></div>
+            </div>
+            
+            <!-- Auth Management Subsystem -->
+            <div class="test-group" data-subsystem="auth-management">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="auth-management-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/shield-lock.svg" alt="Auth" class="subsystem-icon">
+                    Auth Management Subsystem
+                </h4>
+                <div class="test-description">Tests for authentication and token management</div>
+                <div class="test-items" id="auth-management-tests"></div>
+            </div>
+            
+            <!-- Connection Manager Subsystem -->
+            <div class="test-group" data-subsystem="connection-manager">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="connection-manager-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/ethernet.svg" alt="Connection" class="subsystem-icon">
+                    Connection Manager Subsystem
+                </h4>
+                <div class="test-description">Tests for API connection management and health checks</div>
+                <div class="test-items" id="connection-manager-tests"></div>
+            </div>
+            
+            <!-- Operation Manager Subsystem -->
+            <div class="test-group" data-subsystem="operation-manager">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="operation-manager-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/cpu.svg" alt="Operations" class="subsystem-icon">
+                    Operation Manager Subsystem
+                </h4>
+                <div class="test-description">Tests for CRUD operation management</div>
+                <div class="test-items" id="operation-manager-tests"></div>
+            </div>
+            
+            <!-- Realtime Communication Subsystem -->
+            <div class="test-group" data-subsystem="realtime-communication">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="realtime-communication-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/broadcast.svg" alt="Realtime" class="subsystem-icon">
+                    Realtime Communication Subsystem
+                </h4>
+                <div class="test-description">Tests for WebSocket and Socket.IO communication</div>
+                <div class="test-items" id="realtime-communication-tests"></div>
+            </div>
+            
+            <!-- Import Subsystem -->
+            <div class="test-group" data-subsystem="import-subsystem">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="import-subsystem-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/upload.svg" alt="Import" class="subsystem-icon">
+                    Import Subsystem
+                </h4>
+                <div class="test-description">Tests for user import functionality</div>
+                <div class="test-items" id="import-subsystem-tests"></div>
+            </div>
+            
+            <!-- Export Subsystem -->
+            <div class="test-group" data-subsystem="export-subsystem">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="export-subsystem-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/download.svg" alt="Export" class="subsystem-icon">
+                    Export Subsystem
+                </h4>
+                <div class="test-description">Tests for user export functionality</div>
+                <div class="test-items" id="export-subsystem-tests"></div>
+            </div>
+            
+            <!-- API Client Subsystem -->
+            <div class="test-group" data-subsystem="api-client">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="api-client-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/hdd-network.svg" alt="API" class="subsystem-icon">
+                    API Client Subsystem
+                </h4>
+                <div class="test-description">Tests for API communication, request handling, and PingOne integration</div>
+                <div class="test-items" id="api-client-tests"></div>
+            </div>
+            
+            <!-- Error Logging Subsystem -->
+            <div class="test-group" data-subsystem="error-logging">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="error-logging-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/exclamation-triangle.svg" alt="Error" class="subsystem-icon">
+                    Error Logging Subsystem
+                </h4>
+                <div class="test-description">Tests for error handling, logging, and reporting functionality</div>
+                <div class="test-items" id="error-logging-tests"></div>
+            </div>
+            
+            <!-- File Processing Subsystem -->
+            <div class="test-group" data-subsystem="file-processing">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="file-processing-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/file-earmark-text.svg" alt="File" class="subsystem-icon">
+                    File Processing Subsystem
+                </h4>
+                <div class="test-description">Tests for file validation, parsing, and transformation</div>
+                <div class="test-items" id="file-processing-tests"></div>
+            </div>
+            
+            <!-- Population Subsystem -->
+            <div class="test-group" data-subsystem="population">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="population-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/people.svg" alt="Population" class="subsystem-icon">
+                    Population Subsystem
+                </h4>
+                <div class="test-description">Tests for population management and user-to-population mapping</div>
+                <div class="test-items" id="population-tests"></div>
+            </div>
+            
+            <!-- Progress Subsystem -->
+            <div class="test-group" data-subsystem="progress">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="progress-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/bar-chart-steps.svg" alt="Progress" class="subsystem-icon">
+                    Progress Subsystem
+                </h4>
+                <div class="test-description">Tests for progress tracking and status updates</div>
+                <div class="test-items" id="progress-tests"></div>
+            </div>
+            
+            <!-- Settings Subsystem -->
+            <div class="test-group" data-subsystem="settings">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="settings-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/gear.svg" alt="Settings" class="subsystem-icon">
+                    Settings Subsystem
+                </h4>
+                <div class="test-description">Tests for settings management and persistence</div>
+                <div class="test-items" id="settings-tests"></div>
+            </div>
+            
+            <!-- UI Subsystem -->
+            <div class="test-group" data-subsystem="ui">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="ui-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/window.svg" alt="UI" class="subsystem-icon">
+                    UI Subsystem
+                </h4>
+                <div class="test-description">Tests for UI components and user interactions</div>
+                <div class="test-items" id="ui-tests"></div>
+            </div>
+            
+            <!-- WebSocket Subsystem -->
+            <div class="test-group" data-subsystem="websocket">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="websocket-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/arrow-repeat.svg" alt="WebSocket" class="subsystem-icon">
+                    WebSocket Subsystem
+                </h4>
+                <div class="test-description">Tests for real-time communication and fallback strategies</div>
+                <div class="test-items" id="websocket-tests"></div>
+            </div>
+            
+            <!-- Comprehensive Tests -->
+            <div class="test-group" data-subsystem="comprehensive">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="comprehensive-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/check2-all.svg" alt="Comprehensive" class="subsystem-icon">
+                    Comprehensive Tests
+                </h4>
+                <div class="test-description">Integration tests across multiple subsystems</div>
+                <div class="test-items" id="comprehensive-tests"></div>
+            </div>
+            
+            <!-- PingOne API Tests -->
+            <div class="test-group" data-subsystem="pingone-api">
+                <h4>
+                    <input type="checkbox" class="subsystem-checkbox" id="pingone-api-checkbox" checked>
+                    <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/icons/cloud-arrow-up.svg" alt="PingOne API" class="subsystem-icon">
+                    PingOne API Tests
+                </h4>
+                <div class="test-description">Real API integration tests with PingOne services</div>
+                <div class="test-items" id="pingone-api-tests"></div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Logs</h3>
+            <div class="mb-3">
+                <button id="clear-logs" class="btn btn-outline-secondary btn-sm">Clear Logs</button>
+                <button id="export-logs" class="btn btn-outline-primary btn-sm">Export Logs</button>
+            </div>
+            <div id="test-logs" class="test-output show" style="max-height: 400px; display: block !important;"></div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/test-runner.js"></script>
+</body>
+</html>

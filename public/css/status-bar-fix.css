@@ -1,0 +1,106 @@
+/* Global Status Bar Fix */
+.global-status-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 auto;
+}
+
+.global-status-bar .container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+    display: flex;
+    justify-content: center;
+}
+
+.global-status-bar .status-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: auto;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.global-status-bar .status-text {
+    flex: 0 1 auto;
+    line-height: 1.4;
+    text-align: center;
+    overflow: visible;
+    white-space: normal;
+    word-break: normal;
+    word-wrap: normal;
+    max-width: 80%;
+}
+
+.global-status-bar .status-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.global-status-bar .status-close {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+    opacity: 0.8;
+    margin-left: 10px;
+}
+
+.global-status-bar .status-close:hover {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Status colors */
+.global-status-bar.success {
+    background-color: #4caf50;
+    color: white;
+}
+
+.global-status-bar.error {
+    background-color: #f44336;
+    color: white;
+}
+
+.global-status-bar.warning {
+    background-color: #ff9800;
+    color: white;
+}
+
+.global-status-bar.info {
+    background-color: #2196f3;
+    color: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .global-status-bar {
+        padding: 10px 15px;
+        font-size: 13px;
+    }
+    
+    .global-status-bar .status-content {
+        max-width: 95%;
+    }
+}

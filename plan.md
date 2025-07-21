@@ -55,6 +55,9 @@
 - [x] Fix settings page buttons (Save Settings, Test Connection, Get Token, Toggle Secret) - event listeners added and API field mapping fixed
 - [x] Add loading spinners during app startup, modal transitions, and setup completion - comprehensive loading states implemented
 - [x] Fix credentials modal error handling - enhanced user-friendly error messages and in-modal status display
+- [x] Fix Settings page API endpoints (Test Connection, Get Token) - added missing endpoints and resolved 400 Bad Request errors
+- [x] Update version to 6.2 and commit to GitHub - updated all version references and pushed release v6.2.0
+- [x] Implement debug logging system - created debug.log file system with client/server logging, API endpoints, and web viewer
 
 - Navigation functionality now working: Direct navigation system implemented in app.js successfully handles view switching; both main app navigation and simple navigation fallback are functional; buttons are now fully responsive and view switching works properly.
 - Settings page buttons now working: Added event listeners for Save Settings, Test Connection, Get Token, and Toggle Secret Visibility buttons; fixed API field mapping issue (clientId -> apiClientId, clientSecret -> apiSecret); enhanced error handling to show actual server error messages.
@@ -134,6 +137,9 @@
 - Enhanced debugging capabilities for future maintenance
 
 - Credentials modal error handling improved: Enhanced error messages to show user-friendly text instead of technical errors; "PingOne client not available" now shows "Credentials invalid, go to settings" with proper status display in modal; added loading state to "Use These Credentials" button; created showModalError() method for in-modal error display with action buttons.
+- Settings page API endpoints fixed: Added missing /api/pingone/test-connection and /api/pingone/token endpoints to resolve 400 Bad Request errors; Test Connection and Get Token buttons now functional with proper error handling and user feedback.
+- Version updated to 6.2.0: Updated all version references across package.json, HTML title, version widgets, health API, logging service, and navigation subsystem; committed to GitHub with comprehensive release notes.
+- Debug logging system implemented: Created dedicated debug.log file system with structured logging for errors, events, debug info, and user actions; includes client-side logger that sends to server, server-side API endpoint for log management, and web-based debug log viewer at /debug-log-viewer.html; integrated debug logging into key app areas including navigation, settings, and error handling.
 
 ## Current Goal
 Complete remaining tasks: Debug readable.log runtime creation (file still missing at runtime)

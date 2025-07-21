@@ -183,10 +183,9 @@ class SettingsManager {
             if (settings) {
                 this.settings = { ...this.settings, ...settings };
             }
-            
-            // Always try to save without encryption first as fallback
+
             const jsonData = JSON.stringify(this.settings);
-            
+
             if (!this.encryptionInitialized) {
                 this.logger.warn('Encryption not initialized, saving settings without encryption');
                 localStorage.setItem(this.storageKey, jsonData);
@@ -195,32 +194,42 @@ class SettingsManager {
                     hasApiClientId: !!this.settings.apiClientId,
                     region: this.settings.region
                 });
+                window.dispatchEvent(new CustomEvent('settings:save-success', {
+                    detail: { message: 'Settings saved successfully (unencrypted).' }
+                }));
                 return;
             }
-            
+
             try {
                 const encryptedData = await CryptoUtils.encrypt(jsonData, this.encryptionKey);
                 localStorage.setItem(this.storageKey, encryptedData);
-                
                 this.logger.info('Settings saved successfully (encrypted)', {
                     hasEnvironmentId: !!this.settings.environmentId,
                     hasApiClientId: !!this.settings.apiClientId,
                     region: this.settings.region
                 });
+                window.dispatchEvent(new CustomEvent('settings:save-success', {
+                    detail: { message: 'Settings saved successfully.' }
+                }));
             } catch (encryptionError) {
                 this.logger.warn('Encryption failed, saving settings without encryption', { 
                     error: encryptionError.message 
                 });
-                // Fallback to unencrypted storage
                 localStorage.setItem(this.storageKey, jsonData);
                 this.logger.info('Settings saved successfully (unencrypted fallback)', {
                     hasEnvironmentId: !!this.settings.environmentId,
                     hasApiClientId: !!this.settings.apiClientId,
                     region: this.settings.region
                 });
+                window.dispatchEvent(new CustomEvent('settings:save-success', {
+                    detail: { message: 'Settings saved successfully (encryption failed, used fallback).' }
+                }));
             }
         } catch (error) {
             this.logger.error('Failed to save settings', { error: error.message });
+            window.dispatchEvent(new CustomEvent('settings:save-error', {
+                detail: { message: `Failed to save settings: ${error.message}` }
+            }));
             throw error;
         }
     }

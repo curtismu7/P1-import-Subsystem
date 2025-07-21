@@ -615,23 +615,49 @@ router.post('/token', async (req, res) => {
     console.log(`[${requestId}] Getting PingOne token...`);
     
     try {
-        // Get settings from environment or request
-        const settings = req.settings || {
-            environmentId: process.env.PINGONE_ENVIRONMENT_ID,
-            apiClientId: process.env.PINGONE_CLIENT_ID,
-            apiSecret: process.env.PINGONE_CLIENT_SECRET,
-            region: process.env.PINGONE_REGION || 'NorthAmerica'
-        };
+        // First try to get settings from the settings file
+        let settings = null;
+        try {
+            const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
+            const fs = await import('fs');
+            const settingsData = await fs.promises.readFile(settingsPath, 'utf8');
+            const parsedSettings = JSON.parse(settingsData);
+            settings = {
+                environmentId: parsedSettings.environmentId,
+                apiClientId: parsedSettings.apiClientId,
+                apiSecret: parsedSettings.apiSecret,
+                region: parsedSettings.region || 'NorthAmerica'
+            };
+            console.log(`[${requestId}] Loaded settings from file`);
+        } catch (fileError) {
+            console.log(`[${requestId}] Could not load settings from file, using environment variables`);
+        }
+        
+        // Fallback to environment variables or request settings
+        if (!settings || !settings.apiClientId || !settings.apiSecret) {
+            settings = req.settings || {
+                environmentId: process.env.PINGONE_ENVIRONMENT_ID,
+                apiClientId: process.env.PINGONE_CLIENT_ID,
+                apiSecret: process.env.PINGONE_CLIENT_SECRET,
+                region: process.env.PINGONE_REGION || 'NorthAmerica'
+            };
+        }
         
         if (!settings.apiClientId || !settings.apiSecret) {
+            console.log(`[${requestId}] Missing credentials - clientId: ${!!settings.apiClientId}, secret: ${!!settings.apiSecret}, envId: ${!!settings.environmentId}`);
             return res.status(400).json({
                 success: false,
                 error: 'Missing API credentials. Please configure your PingOne settings.'
             });
         }
         
-        // Get access token
-        const tokenUrl = 'https://auth.pingone.com/as/token.oauth2';
+        // Log what we're using (safely)
+        console.log(`[${requestId}] Using credentials - clientId: ${settings.apiClientId?.substring(0, 8)}..., secret: ${settings.apiSecret?.substring(0, 5)}***, envId: ${settings.environmentId?.substring(0, 8)}..., region: ${settings.region}`);
+        
+        // Get access token using the correct PingOne endpoint for the environment
+        const tokenUrl = `https://auth.pingone.com/${settings.environmentId}/as/token`;
+        console.log(`[${requestId}] Token URL: ${tokenUrl}`);
+        
         const tokenData = new URLSearchParams({
             grant_type: 'client_credentials',
             client_id: settings.apiClientId,
@@ -648,10 +674,19 @@ router.post('/token', async (req, res) => {
         
         if (!tokenResponse.ok) {
             const errorText = await tokenResponse.text();
-            console.error(`[${requestId}] Token request failed:`, errorText);
+            console.error(`[${requestId}] Token request failed (${tokenResponse.status}):`, errorText);
+            
+            let errorMessage = 'Failed to get token. Please check your credentials.';
+            if (tokenResponse.status === 401) {
+                errorMessage = 'Invalid credentials. Please verify your Client ID and Secret.';
+            } else if (tokenResponse.status === 404) {
+                errorMessage = 'PingOne environment not found. Please verify your Environment ID.';
+            }
+            
             return res.status(400).json({
                 success: false,
-                error: 'Failed to get token. Please check your credentials.'
+                error: errorMessage,
+                details: process.env.NODE_ENV !== 'production' ? errorText : undefined
             });
         }
         

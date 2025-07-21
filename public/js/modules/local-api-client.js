@@ -561,6 +561,163 @@ export class LocalAPIClient {
     delete(endpoint, options = {}) {
         return this.request('DELETE', endpoint, null, options);
     }
+
+    // Token Management Methods
+    
+    /**
+     * Retrieve PingOne worker token
+     * @returns {Promise<Object>} Token data with expiration info
+     */
+    async getWorkerToken() {
+        this.logger.debug('🔐 Retrieving PingOne worker token...');
+        
+        try {
+            const response = await this.post('/api/auth/worker-token', {}, {
+                timeout: 15000, // 15 second timeout for token retrieval
+                retries: 2 // Fewer retries for token operations
+            });
+            
+            this.logger.debug('✅ Worker token retrieved successfully');
+            return response;
+            
+        } catch (error) {
+            this.logger.error('❌ Failed to retrieve worker token:', error);
+            throw new Error(`Token retrieval failed: ${error.message}`);
+        }
+    }
+    
+    /**
+     * Refresh existing PingOne worker token
+     * @param {string} currentToken - Current token for authorization
+     * @returns {Promise<Object>} Refreshed token data
+     */
+    async refreshWorkerToken(currentToken) {
+        this.logger.debug('🔄 Refreshing PingOne worker token...');
+        
+        if (!currentToken) {
+            throw new Error('Current token is required for refresh');
+        }
+        
+        try {
+            const response = await this.post('/api/auth/refresh-token', {}, {
+                headers: {
+                    'Authorization': `Bearer ${currentToken}`
+                },
+                timeout: 10000, // 10 second timeout for refresh
+                retries: 1 // Single retry for refresh operations
+            });
+            
+            this.logger.debug('✅ Worker token refreshed successfully');
+            return response;
+            
+        } catch (error) {
+            this.logger.error('❌ Failed to refresh worker token:', error);
+            throw new Error(`Token refresh failed: ${error.message}`);
+        }
+    }
+    
+    /**
+     * Get current token status without retrieving the actual token
+     * @returns {Promise<Object>} Token status information
+     */
+    async getTokenStatus() {
+        this.logger.debug('🔍 Checking worker token status...');
+        
+        try {
+            const response = await this.get('/api/auth/token-status', {
+                timeout: 5000, // 5 second timeout for status check
+                retries: 1 // Single retry for status check
+            });
+            
+            this.logger.debug('✅ Token status retrieved successfully');
+            return response;
+            
+        } catch (error) {
+            this.logger.debug('ℹ️ Could not retrieve token status:', error.message);
+            // Don't throw for status checks - return null status
+            return {
+                success: false,
+                hasToken: false,
+                error: error.message
+            };
+        }
+    }
+    
+    /**
+     * Clear/invalidate current worker token
+     * @returns {Promise<Object>} Clear operation result
+     */
+    async clearWorkerToken() {
+        this.logger.debug('🗑️ Clearing worker token...');
+        
+        try {
+            const response = await this.delete('/api/auth/worker-token', {
+                timeout: 5000, // 5 second timeout for clear operation
+                retries: 1 // Single retry for clear operation
+            });
+            
+            this.logger.debug('✅ Worker token cleared successfully');
+            return response;
+            
+        } catch (error) {
+            this.logger.error('❌ Failed to clear worker token:', error);
+            throw new Error(`Token clear failed: ${error.message}`);
+        }
+    }
+    
+    /**
+     * Validate worker token and get detailed information
+     */
+    async validateToken(token = null) {
+        try {
+            const payload = token ? { token: token } : {};
+            const response = await this.post('/api/auth/validate-credentials', payload, {
+                timeout: 5000, // 5 second timeout for validation
+                retries: 1 // Single retry for validation
+            });
+            
+            return {
+                success: true,
+                valid: response.valid || false,
+                details: response.details || {},
+                message: response.message || 'Token validation completed'
+            };
+        } catch (error) {
+            return {
+                success: false,
+                valid: false,
+                error: error.message,
+                message: 'Token validation failed'
+            };
+        }
+    }
+    
+    /**
+     * Test API connection
+     * @returns {Promise<Object>} Connection test result
+     */
+    async testConnection() {
+        try {
+            const response = await this.post('/api/auth/test-connection', {}, {
+                timeout: 10000, // 10 second timeout for connection test
+                retries: 1 // Single retry for connection test
+            });
+            
+            return {
+                success: true,
+                connected: true,
+                details: response.details || {},
+                message: response.message || 'Connection successful'
+            };
+        } catch (error) {
+            return {
+                success: false,
+                connected: false,
+                error: error.message,
+                message: 'Connection test failed'
+            };
+        }
+    }
 }
 
 // Export a singleton instance

@@ -5,7 +5,7 @@
  * including request/response schemas, authentication, and examples.
  * 
  * @author PingOne Import Tool
- * @version 5.5
+ * @version 6.1
  */
 
 import swaggerJsdoc from 'swagger-jsdoc';
@@ -21,7 +21,7 @@ const swaggerOptions = {
     openapi: '3.0.0',
     info: {
       title: 'PingOne Import Tool API',
-      version: '5.5',
+      version: '6.1',
       description: `
         Comprehensive API for importing, exporting, and managing users in PingOne.
         
@@ -939,6 +939,165 @@ const swaggerOptions = {
             },
           },
         },
+        // Logging schemas
+        LogEntry: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Unique log entry identifier',
+              example: 'log_12345678-1234-1234-1234-123456789012',
+            },
+            timestamp: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Log entry timestamp',
+              example: '2025-07-19T16:45:32.115Z',
+            },
+            level: {
+              type: 'string',
+              enum: ['error', 'warn', 'info', 'debug', 'trace'],
+              description: 'Log level',
+              example: 'info',
+            },
+            category: {
+              type: 'string',
+              description: 'Log category',
+              example: 'IMPORT',
+            },
+            message: {
+              type: 'string',
+              description: 'Log message',
+              example: 'User import operation started',
+            },
+            data: {
+              type: 'object',
+              description: 'Additional log data',
+              example: {
+                sessionId: 'session_123',
+                userId: 'user_456',
+                operation: 'import'
+              },
+            },
+            source: {
+              type: 'string',
+              description: 'Log source component',
+              example: 'ImportSubsystem',
+            },
+          },
+          required: ['id', 'timestamp', 'level', 'message'],
+        },
+        LogsResponse: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: true,
+            },
+            count: {
+              type: 'number',
+              description: 'Number of logs returned',
+              example: 25,
+            },
+            total: {
+              type: 'number',
+              description: 'Total number of logs available',
+              example: 150,
+            },
+            logs: {
+              type: 'array',
+              items: {
+                $ref: '#/components/schemas/LogEntry',
+              },
+            },
+            filters: {
+              type: 'object',
+              description: 'Applied filters',
+              properties: {
+                level: {
+                  type: 'string',
+                  example: 'info',
+                },
+                category: {
+                  type: 'string',
+                  example: 'IMPORT',
+                },
+                startDate: {
+                  type: 'string',
+                  format: 'date-time',
+                },
+                endDate: {
+                  type: 'string',
+                  format: 'date-time',
+                },
+              },
+            },
+          },
+        },
+        LogStatsResponse: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: true,
+            },
+            stats: {
+              type: 'object',
+              properties: {
+                total: {
+                  type: 'number',
+                  example: 150,
+                },
+                byLevel: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'number',
+                      example: 5,
+                    },
+                    warn: {
+                      type: 'number',
+                      example: 12,
+                    },
+                    info: {
+                      type: 'number',
+                      example: 98,
+                    },
+                    debug: {
+                      type: 'number',
+                      example: 35,
+                    },
+                  },
+                },
+                byCategory: {
+                  type: 'object',
+                  additionalProperties: {
+                    type: 'number',
+                  },
+                  example: {
+                    IMPORT: 45,
+                    EXPORT: 23,
+                    AUTH: 15,
+                    SYSTEM: 67,
+                  },
+                },
+                timeRange: {
+                  type: 'object',
+                  properties: {
+                    oldest: {
+                      type: 'string',
+                      format: 'date-time',
+                    },
+                    newest: {
+                      type: 'string',
+                      format: 'date-time',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         // SSE Event schemas
         SSEEvent: {
           type: 'object',
@@ -999,7 +1158,12 @@ const swaggerOptions = {
     './routes/api/index.js',
     './routes/settings.js',
     './routes/logs.js',
+    './routes/api/history.js',
+    './routes/api/logging.js',
+    './routes/api/import.js',
+    './routes/api/export.js',
     './routes/pingone-proxy.js',
+    './auth-subsystem/server/index.js',
     './server.js',
   ],
 };

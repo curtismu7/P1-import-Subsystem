@@ -486,4 +486,6 @@ class PingOneAPI {
     }
 }
 
-module.exports = { PingOneAPI };
+// ES Modules export
+export { PingOneAPI };
+export default PingOneAPI;

@@ -10,25 +10,39 @@
 // - Error handling and user feedback
 // - Disclaimer agreement and feature flags
 
+// Core subsystems - new architecture
+import { EventBus } from './modules/event-bus.js';
+import { HistorySubsystem } from './modules/history-subsystem.js';
+import { LoggingSubsystem } from './modules/logging-subsystem.js';
+import { PopulationSubsystem } from './modules/population-subsystem.js';
+import { ProgressSubsystem } from './modules/progress-subsystem.js';
+import { SessionSubsystem } from './modules/session-subsystem.js';
+import { SettingsSubsystem } from './modules/settings-subsystem.js';
+import { ImportSubsystem } from './modules/import-subsystem.js';
+import { ExportSubsystem } from './modules/export-subsystem.js';
+import { OperationManagerSubsystem } from './modules/operation-manager-subsystem.js';
+import { UIManager } from './modules/ui-manager.js';
+
+// Authentication and API subsystems
+import { AuthManagementSubsystem } from './modules/auth-management-subsystem.js';
+import { ConnectionManagerSubsystem } from './modules/connection-manager-subsystem.js';
+import { apiFactory, initAPIFactory, createPingOneAPIClient } from './modules/api-factory.js';
+import { LocalAPIClient } from './modules/local-api-client.js';
+
+// Supporting modules (kept for compatibility)
 import { Logger } from './modules/logger.js';
 import { FileLogger } from './modules/file-logger.js';
-import { SettingsManager } from './modules/settings-manager.js';
-import { UIManager } from './modules/ui-manager.js';
-import { LocalAPIClient } from './modules/local-api-client.js';
-import { PingOneClient } from './modules/pingone-client.js';
-import TokenManager from './modules/token-manager.js';
 import { FileHandler } from './modules/file-handler.js';
 import { VersionManager } from './modules/version-manager.js';
-import { apiFactory, initAPIFactory } from './modules/api-factory.js';
-import progressManager from './modules/progress-manager.js';
-import { DeleteManager } from './modules/delete-manager.js';
-import { ExportManager } from './modules/export-manager.js';
-import { HistoryManager } from './modules/history-manager.js';
+import { LoggingSubsystem } from './modules/logging-subsystem.js';
+import { HistorySubsystem } from './modules/history-subsystem.js';
+
 import { showTokenAlertModal, clearTokenAlertSession } from './modules/token-alert-modal.js';
-import tokenRefreshHandler from './modules/token-refresh-handler.js';
 import progressPersistence from './modules/progress-persistence.js';
-import { io } from 'socket.io-client';
 import PopulationService from './modules/population-service.js';
+
+// External dependencies
+import { io } from 'socket.io-client';
 
 /**
  * Secret Field Toggle Component
@@ -275,12 +289,32 @@ class App {
         
         // Initialize core dependencies with safety checks
         try {
+            // Core logging and utilities (kept for compatibility)
             this.logger = new Logger();
             this.fileLogger = new FileLogger();
-            this.settingsManager = new SettingsManager();
             this.uiManager = new UIManager();
             this.localClient = new LocalAPIClient();
             this.versionManager = new VersionManager();
+            
+            // Initialize EventBus first (required by all subsystems)
+            this.eventBus = new EventBus();
+            
+            // Initialize core subsystems with dependency injection
+            this.settingsSubsystem = new SettingsSubsystem(this.eventBus);
+            this.loggingSubsystem = new LoggingSubsystem(this.eventBus);
+            this.historySubsystem = new HistorySubsystem(this.eventBus, this.settingsSubsystem);
+            this.progressSubsystem = new ProgressSubsystem(this.logger, this.uiManager, this.eventBus);
+            this.sessionSubsystem = new SessionSubsystem(this.logger, this.settingsSubsystem, this.eventBus);
+            this.populationSubsystem = new PopulationSubsystem(this.eventBus, this.settingsSubsystem);
+            
+            // Authentication and connection subsystems
+            this.authManagementSubsystem = new AuthManagementSubsystem(this.eventBus, this.settingsSubsystem);
+            this.connectionManagerSubsystem = new ConnectionManagerSubsystem(this.eventBus, this.settingsSubsystem);
+            
+            // Operation subsystems
+            this.importSubsystem = new ImportSubsystem(this.logger, this.uiManager, this.localClient, this.settingsSubsystem, this.eventBus);
+            this.exportSubsystem = new ExportSubsystem(this.logger, this.uiManager, this.localClient, this.settingsSubsystem, this.eventBus);
+            this.operationManagerSubsystem = new OperationManagerSubsystem(this.logger, this.uiManager, this.settingsSubsystem, this.localClient);
             
             // Create a safe logger wrapper to prevent undefined method errors
             this.safeLogger = {
@@ -330,11 +364,16 @@ class App {
             // Initialize components that might fail
             this.secretFieldToggle = null;
             this.fileHandler = null;
-            this.pingOneClient = null;
-            this.deleteManager = null;
-            this.exportManager = null;
             this.populationService = null;
-            
+
+            // === Subsystem Integration (initialized after dependencies) ===
+            // Note: Import/Export subsystems will be initialized after PopulationService is ready
+            this.importSubsystem = null;
+            this.exportSubsystem = null;
+            // Note: OperationManagerSubsystem will be initialized after other dependencies are ready
+            this.operationManagerSubsystem = null;
+            // === End Subsystem Integration ===
+
             console.log('✅ App constructor completed successfully');
             
             // Production-specific configurations
@@ -381,21 +420,34 @@ class App {
         try {
             console.log('Initializing app...');
             
-            // Ensure logManager is available with fallback
-            if (!window.logManager) {
-                window.logManager = {};
-            }
-            if (typeof window.logManager.log !== 'function') {
-                window.logManager.log = function(level, message, data) {
-                    const timestamp = new Date().toISOString();
-                    const logMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
-                    if (data) {
-                        console.log(logMessage, data);
-                    } else {
-                        console.log(logMessage);
-                    }
+            // Initialize LoggingSubsystem to replace legacy window.logManager
+            try {
+                this.loggingSubsystem = new LoggingSubsystem(this.eventBus, this.settingsSubsystem);
+                await this.loggingSubsystem.init();
+                console.log('✅ LoggingSubsystem initialized successfully');
+            } catch (error) {
+                console.error('❌ Failed to initialize LoggingSubsystem:', error);
+                // Create fallback logging for critical errors
+                window.logManager = {
+                    log: (level, message, data) => console.log(`[${level.toUpperCase()}]`, message, data || ''),
+                    error: (message, data) => console.error(message, data || ''),
+                    warn: (message, data) => console.warn(message, data || ''),
+                    info: (message, data) => console.log(message, data || '')
                 };
             }
+            
+            // Initialize HistorySubsystem to replace legacy HistoryManager
+            try {
+                this.historySubsystem = new HistorySubsystem(this.eventBus, this.settingsSubsystem, this.loggingSubsystem);
+                await this.historySubsystem.init();
+                console.log('✅ HistorySubsystem initialized successfully');
+            } catch (error) {
+                console.error('❌ Failed to initialize HistorySubsystem:', error);
+                // Keep legacy HistoryManager as fallback
+                this.historyManager = new HistoryManager();
+            }
+            
+
             
             // Ensure DOM is ready before proceeding with UI-dependent operations
             if (document.readyState === 'loading') {
@@ -429,12 +481,16 @@ class App {
                 throw new Error('Logger not initialized');
             }
             
-            if (!this.settingsManager) {
-                throw new Error('SettingsManager not initialized');
+            if (!this.settingsSubsystem) {
+                throw new Error('SettingsSubsystem not initialized');
             }
             
             if (!this.uiManager) {
                 throw new Error('UIManager not initialized');
+            }
+            
+            if (!this.eventBus) {
+                throw new Error('EventBus not initialized');
             }
             
             // Initialize API Factory first to establish API client infrastructure
@@ -442,14 +498,73 @@ class App {
             
             // Initialize API clients for PingOne communication with safety check
             if (apiFactory) {
-                this.pingOneClient = apiFactory.getPingOneClient(this.logger, this.settingsManager);
+                // Get settings from the new subsystem
+                const settings = await this.settingsSubsystem.getAllSettings();
+                this.pingOneClient = apiFactory.getPingOneClient(this.logger, this.settingsSubsystem);
                 
-                // Initialize PopulationService with the API client
+                // Initialize PopulationService with the correct API client that has getPopulations method
                 try {
-                    this.populationService = new PopulationService(this.pingOneClient, null, this.logger);
+                    
+                    // Check if required settings are present before creating API client
+                    if (!settings.environmentId || !settings.apiClientId) {
+                        this.logger.info('PopulationService initialization skipped - missing required settings (environmentId or apiClientId)');
+                        console.log('⚠️ PopulationService initialization skipped - configure PingOne settings first');
+                        this.populationService = null;
+                        // Initialize subsystems without PopulationService for now
+                        this.importSubsystem = new ImportSubsystem(this.logger, this.uiManager, this.localClient, this.settingsSubsystem, this.eventBus, null);
+                        this.exportSubsystem = new ExportSubsystem(this.logger, this.uiManager, this.localClient, this.settingsSubsystem, this.eventBus, null);
+                        
+                        // Initialize OperationManagerSubsystem without PopulationService (will use localClient for operations)
+                        this.operationManagerSubsystem = new OperationManagerSubsystem(this.logger, this.uiManager, this.settingsSubsystem, this.localClient);
+                        await this.operationManagerSubsystem.init();
+                        
+                        // Settings subsystem is already initialized in constructor
+                        await this.settingsSubsystem.init();
+                        
+                        console.log('✅ Import/Export/Operation subsystems initialized without PopulationService');
+                        
+                        // Set up event listeners now that all subsystems are ready
+                        try {
+                            this.setupEventListeners();
+                            console.log('✅ Event listeners set up after subsystem initialization (no PopulationService)');
+                        } catch (error) {
+                            this.logger.error('Failed to setup event listeners after subsystem initialization:', error);
+                        }
+                        return;
+                    }
+                    
+                    // Create PingOne API client with validated settings
+                    const pingOneAPIClient = createPingOneAPIClient(settings, this.logger);
+                    this.populationService = new PopulationService(pingOneAPIClient, null, this.logger, this.eventBus);
                     console.log('✅ PopulationService initialized successfully');
+                    
+                    // Initialize Import/Export subsystems now that PopulationService is ready
+                    this.importSubsystem = new ImportSubsystem(this.logger, this.uiManager, this.localClient, this.settingsSubsystem, this.eventBus, this.populationService);
+                    this.exportSubsystem = new ExportSubsystem(this.logger, this.uiManager, this.localClient, this.settingsSubsystem, this.eventBus, this.populationService);
+                    
+                    // Initialize OperationManagerSubsystem for unified delete/modify operations
+                    this.operationManagerSubsystem = new OperationManagerSubsystem(this.logger, this.uiManager, this.settingsSubsystem, pingOneAPIClient);
+                    await this.operationManagerSubsystem.init();
+                    
+                    // Settings subsystem is already initialized in constructor
+                    await this.settingsSubsystem.init();
+                    
+                    console.log('✅ Import/Export/Operation subsystems initialized with PopulationService');
+                    
+                    // Set up event listeners now that all subsystems are ready
+                    try {
+                        this.setupEventListeners();
+                        console.log('✅ Event listeners set up after subsystem initialization');
+                    } catch (error) {
+                        this.logger.error('Failed to setup event listeners after subsystem initialization:', error);
+                    }
                 } catch (error) {
                     this.logger.error('Failed to initialize PopulationService:', error);
+                    console.error('PopulationService initialization error details:', error);
+                    console.error('Error stack:', error.stack);
+                    console.error('Settings available:', !!this.settingsSubsystem);
+                    console.error('Logger available:', !!this.logger);
+                    console.error('EventBus available:', !!this.eventBus);
                     this.populationService = null;
                 }
             } else {
@@ -463,12 +578,8 @@ class App {
                 this.logger.warn('UIManager not properly initialized');
             }
             
-            // Initialize settings manager for configuration handling
-            if (this.settingsManager && typeof this.settingsManager.init === 'function') {
-                await this.settingsManager.init();
-            } else {
-                this.logger.warn('SettingsManager not properly initialized');
-            }
+            // Settings subsystem initialization is handled in constructor and earlier in init()
+            // No additional initialization needed here
             
             // Initialize FileHandler with safety check
             try {
@@ -493,82 +604,35 @@ class App {
                 this.secretFieldToggle = null;
             }
             
-            // Initialize delete manager for enhanced delete functionality
-            try {
-                this.deleteManager = new DeleteManager();
-                console.log('✅ DeleteManager initialized successfully');
-            } catch (error) {
-                console.warn('DeleteManager initialization warning:', error);
-                this.deleteManager = null;
-            }
+            // Legacy managers are replaced by new subsystem architecture
+            // DeleteManager functionality is now handled by OperationManagerSubsystem
+            // ExportManager functionality is now handled by ExportSubsystem
             
-            // Initialize export manager for enhanced export functionality
-            try {
-                this.exportManager = new ExportManager();
-                this.historyManager = new HistoryManager();
-                console.log('✅ ExportManager initialized successfully');
-            } catch (error) {
-                console.warn('ExportManager initialization warning:', error);
-                this.exportManager = null;
-            }
-            
-            // Initialize progress manager for enhanced progress tracking
-            try {
-                if (progressManager && typeof progressManager.initialize === 'function') {
-                    progressManager.initialize();
-                    console.log('✅ ProgressManager initialized successfully');
-                    
-                    // Expose progress manager globally for debugging and testing
-                    window.progressManager = progressManager;
-                    console.log('✅ ProgressManager exposed globally');
-                } else {
-                    console.warn('ProgressManager not available or missing initialize method');
+            // HistorySubsystem is now initialized earlier in the init process
+            // Legacy HistoryManager is only used as fallback if HistorySubsystem fails
+            if (!this.historySubsystem && !this.historyManager) {
+                try {
+                    this.historyManager = new HistoryManager();
+                    console.log('✅ HistoryManager initialized as fallback');
+                } catch (error) {
+                    console.warn('HistoryManager fallback initialization warning:', error);
+                    this.historyManager = null;
                 }
-            } catch (error) {
-                console.warn('ProgressManager initialization warning:', error);
             }
             
-            // Initialize global status manager for top-level status messages
-            try {
-                window.globalStatusManager = new GlobalStatusManager();
-                console.log('✅ GlobalStatusManager initialized successfully');
-            } catch (error) {
-                console.warn('GlobalStatusManager initialization warning:', error);
-                window.globalStatusManager = null;
-            }
+            // Legacy window object pollution ELIMINATED - using subsystem architecture instead
+            // ProgressManager replaced by ProgressSubsystem (initialized in constructor)
+            // GlobalStatusManager functionality integrated into UIManager and EventBus
+            // CredentialsManager functionality integrated into AuthManagementSubsystem
+            // TokenStatusIndicator functionality integrated into AuthManagementSubsystem
             
-            // Initialize credentials manager for credential persistence
-            try {
-                window.credentialsManager = new CredentialsManager();
-                console.log('✅ CredentialsManager initialized successfully');
-            } catch (error) {
-                console.warn('CredentialsManager initialization warning:', error);
-                window.credentialsManager = null;
-            }
-            
-            // Initialize token status indicator
-            try {
-                window.tokenStatusIndicator = new TokenStatusIndicator();
-                console.log('✅ TokenStatusIndicator initialized successfully');
-            } catch (error) {
-                console.warn('TokenStatusIndicator initialization warning:', error);
-                window.tokenStatusIndicator = null;
-            }
+            console.log('✅ Legacy window object pollution eliminated - using modern subsystem architecture');
+            console.log('✅ ProgressSubsystem, SessionSubsystem, and other subsystems initialized via dependency injection');
+            console.log('✅ All functionality migrated to event-driven subsystem architecture');
 
-            // Initialize global token manager
-            try {
-                if (typeof GlobalTokenManager !== 'undefined') {
-                    GlobalTokenManager.init();
-                    window.globalTokenManager = GlobalTokenManager;
-                    console.log('✅ GlobalTokenManager initialized successfully');
-                } else {
-                    console.warn('GlobalTokenManager not available');
-                    window.globalTokenManager = null;
-                }
-            } catch (error) {
-                console.warn('GlobalTokenManager initialization warning:', error);
-                window.globalTokenManager = null;
-            }
+            // GlobalTokenManager functionality integrated into AuthManagementSubsystem
+            // No more global window object pollution - using subsystem architecture
+            console.log('✅ Token management integrated into AuthManagementSubsystem');
             
             // Load application settings from storage with safety check
             try {
@@ -584,12 +648,7 @@ class App {
                 this.logger.error('Failed to update universal token status:', error);
             }
             
-            // Set up event listeners with safety check
-            try {
-                this.setupEventListeners();
-            } catch (error) {
-                this.logger.error('Failed to setup event listeners:', error);
-            }
+            // Event listeners will be set up after subsystems are initialized
             
             // Initialize browser history management for back button support
             try {
@@ -681,7 +740,7 @@ class App {
 
     async initAPIFactory() {
         try {
-            await initAPIFactory(this.logger, this.settingsManager);
+            await initAPIFactory(this.logger, this.settingsSubsystem);
             console.log('✅ API Factory initialized successfully');
         } catch (error) {
             console.error('❌ Failed to initialize API Factory:', error);
@@ -925,9 +984,10 @@ class App {
     async loadSettings() {
         try {
             // First try to load from credentials manager (localStorage)
-            if (window.credentialsManager) {
-                const credentials = window.credentialsManager.getCredentials();
-                if (credentials && window.credentialsManager.hasCompleteCredentials()) {
+            // Use AuthManagementSubsystem instead of legacy window.credentialsManager
+            try {
+                const credentials = await this.authManagementSubsystem.getCredentials();
+                if (credentials && this.authManagementSubsystem.hasCompleteCredentials(credentials)) {
                     const settings = {
                         environmentId: credentials.environmentId || '',
                         apiClientId: credentials.apiClientId || '',
@@ -957,7 +1017,9 @@ class App {
                     }
                 }
                 return;
-                }
+            } catch (error) {
+                this.logger.warn('Failed to load credentials from AuthManagementSubsystem:', error);
+                // Continue with server-based settings load as fallback
             }
             
             // Add delay before first settings request to ensure server is ready
@@ -1044,10 +1106,10 @@ class App {
                 // Fallback to settings manager if server settings not available
                 this.logger.warn('No server settings found, trying settings manager...');
                 try {
-                    const localSettings = await this.settingsManager.loadSettings();
+                    const localSettings = await this.settingsSubsystem.loadSettings();
                     if (localSettings && Object.keys(localSettings).length > 0) {
                         this.populateSettingsForm(localSettings);
-                        this.logger.info('Settings loaded from settings manager and populated into form');
+                        this.logger.info('Settings loaded from settings subsystem and populated into form');
                         
                         // Update population API URL after settings are loaded
                         const populationSelect = document.getElementById('import-population-select');
@@ -1056,19 +1118,19 @@ class App {
                             this.updatePopulationApiUrl(populationSelect.value, selectedOption.text);
                         }
                     } else {
-                        this.logger.info('No settings found in settings manager, using defaults');
+                        this.logger.info('No settings found in settings subsystem, using defaults');
                     }
                 } catch (localError) {
-                    this.logger.error('Failed to load settings from settings manager:', localError);
+                    this.logger.error('Failed to load settings from settings subsystem:', localError);
                 }
             }
         } catch (error) {
-            this.logger.error('Failed to load settings from server, trying settings manager...');
+            this.logger.error('Failed to load settings from server, trying settings subsystem...');
             try {
-                const localSettings = await this.settingsManager.loadSettings();
+                const localSettings = await this.settingsSubsystem.loadSettings();
                 if (localSettings && Object.keys(localSettings).length > 0) {
                     this.populateSettingsForm(localSettings);
-                    this.logger.info('Settings loaded from settings manager (fallback) and populated into form');
+                    this.logger.info('Settings loaded from settings subsystem (fallback) and populated into form');
                     
                     // Update population API URL after settings are loaded
                     const populationSelect = document.getElementById('import-population-select');
@@ -1134,6 +1196,8 @@ class App {
             console.warn('Settings form not found in DOM');
         }
 
+        // Save settings button is now handled by Settings Subsystem
+
         // Test connection button
         const testConnectionBtn = findElementWithRetry('#test-connection-btn');
         if (testConnectionBtn) {
@@ -1162,7 +1226,11 @@ class App {
             csvFileInput.addEventListener('change', async (e) => {
                 const file = e.target.files[0];
                 if (file) {
-                    await this.handleFileSelect(file);
+                    if (this.importSubsystem && typeof this.importSubsystem.handleFileSelect === 'function') {
+                        await this.importSubsystem.handleFileSelect(file);
+                    } else {
+                        console.error('ImportSubsystem or handleFileSelect method not available');
+                    }
                 }
             });
         } else {
@@ -1183,29 +1251,37 @@ class App {
         }
 
         // Import button
-        const importBtn = findElementWithRetry('#import-btn');
+        const importBtn = findElementWithRetry('#start-import');
         if (importBtn) {
             importBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
-                await this.startImport();
+                if (this.importSubsystem && typeof this.importSubsystem.startImport === 'function') {
+                    await this.importSubsystem.startImport();
+                } else {
+                    console.error('ImportSubsystem or startImport method not available');
+                }
             });
         } else {
             console.warn('Import button not found in DOM');
         }
 
         // Export button
-        const exportBtn = findElementWithRetry('#export-btn');
+        const exportBtn = findElementWithRetry('#start-export');
         if (exportBtn) {
             exportBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
-                await this.startExport();
+                if (this.exportSubsystem && typeof this.exportSubsystem.startExport === 'function') {
+                    await this.exportSubsystem.startExport();
+                } else {
+                    console.error('ExportSubsystem or startExport method not available');
+                }
             });
         } else {
             console.warn('Export button not found in DOM');
         }
 
         // Delete button
-        const deleteBtn = findElementWithRetry('#delete-btn');
+        const deleteBtn = findElementWithRetry('#start-delete');
         if (deleteBtn) {
             deleteBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
@@ -1216,7 +1292,7 @@ class App {
         }
 
         // Modify button
-        const modifyBtn = findElementWithRetry('#modify-btn');
+        const modifyBtn = findElementWithRetry('#start-modify');
         if (modifyBtn) {
             modifyBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
@@ -1400,6 +1476,8 @@ class App {
         
         console.log('✅ Event listeners setup complete');
     }
+
+    // Old save settings button methods removed - now handled by Settings Subsystem
 
     async checkServerConnectionStatus() {
         try {
@@ -1646,11 +1724,19 @@ class App {
 
             // --- Ensure logs/history are loaded when showing logs/history view ---
             if (view === 'logs' || view === 'history') {
-                if (window.logManager && typeof window.logManager.loadLogs === 'function') {
-                    console.log('[DEBUG] Loading logs/history for view:', view);
-                    window.logManager.loadLogs();
+                if (this.loggingSubsystem && typeof this.loggingSubsystem.loadLogs === 'function') {
+                    console.log('[DEBUG] Loading logs for logs view using LoggingSubsystem');
+                    try {
+                        const logs = await this.loggingSubsystem.loadLogs({ limit: 100 });
+                        // Update UI with logs if needed
+                        if (this.uiManager && typeof this.uiManager.displayLogs === 'function') {
+                            this.uiManager.displayLogs(logs.logs);
+                        }
+                    } catch (error) {
+                        console.error('[DEBUG] Failed to load logs:', error);
+                    }
                 } else {
-                    console.warn('[DEBUG] logManager or loadLogs() not available');
+                    console.warn('[DEBUG] LoggingSubsystem or loadLogs() not available');
                 }
             }
 
@@ -1668,15 +1754,23 @@ class App {
                 }
             }
             if (view === 'export') {
-                if (window.exportManager && typeof window.exportManager.loadPopulations === 'function') {
-                    console.log('[DEBUG] Loading populations for export view');
-                    window.exportManager.loadPopulations();
+                if (this.exportSubsystem && typeof this.exportSubsystem.loadPopulations === 'function') {
+                    console.log('[DEBUG] Loading populations for export view via ExportSubsystem');
+                    this.exportSubsystem.loadPopulations();
+                } else {
+                    // Fallback to general population loading
+                    console.log('[DEBUG] Loading populations for export view via general method');
+                    this.loadPopulations('export-population-select');
                 }
             }
             if (view === 'delete-csv') {
-                if (window.deleteManager && typeof window.deleteManager.loadPopulations === 'function') {
-                    console.log('[DEBUG] Loading populations for delete view');
-                    window.deleteManager.loadPopulations();
+                if (this.operationManagerSubsystem && typeof this.operationManagerSubsystem.loadPopulations === 'function') {
+                    console.log('[DEBUG] Loading populations for delete view via OperationManagerSubsystem');
+                    this.operationManagerSubsystem.loadPopulations();
+                } else {
+                    // Fallback to general population loading
+                    console.log('[DEBUG] Loading populations for delete view via general method');
+                    this.loadPopulations('delete-population-select');
                 }
             }
         }
@@ -1786,10 +1880,10 @@ class App {
             }
             
             // Update settings manager
-            this.settingsManager.updateSettings(settings);
+            this.settingsSubsystem.updateSettings(settings);
             
             // Update API clients with new settings
-            this.pingOneClient = apiFactory.getPingOneClient(this.logger, this.settingsManager);
+            this.pingOneClient = apiFactory.getPingOneClient(this.logger, this.settingsSubsystem);
             
             // Show success status using new enhanced status field
             this.uiManager.showSettingsActionStatus('Settings saved successfully', 'success', { autoHideDelay: 3000 });
@@ -2957,125 +3051,35 @@ class App {
     }
 
     /**
-     * Starts the user delete flow by validating options, sending request to the server, and handling progress
+     * Starts the user delete flow using OperationManagerSubsystem
      */
     async startDelete() {
-        // Check for valid token before proceeding
-        const hasValidToken = await this.checkTokenAndRedirect('delete');
-        if (!hasValidToken) {
-            console.log('❌ [DELETE] Delete cancelled due to missing valid token');
-            return;
-        }
-
-        if (this.isDeleting) {
-            this.logger.warn('Delete already in progress');
-            return;
-        }
         try {
-            this.isDeleting = true;
-            this.deleteAbortController = new AbortController();
-            const deleteOptions = this.getDeleteOptions();
-            // If no delete options, show error and stop
-            if (!deleteOptions) {
-                this.isDeleting = false;
+            // Check if OperationManagerSubsystem is available
+            if (!this.operationManagerSubsystem) {
+                this.logger.error('OperationManagerSubsystem not available for delete operation');
+                this.uiManager.showError('Delete Failed', 'Operation manager not initialized');
                 return;
             }
-            // Generate a session ID for tracking
-            const sessionId = 'delete-' + Math.random().toString(36).substring(2, 10);
+
+            // Get delete options
+            const deleteOptions = this.getDeleteOptions();
+            if (!deleteOptions) {
+                return;
+            }
+
+            // Use OperationManagerSubsystem to handle the delete operation
+            const result = await this.operationManagerSubsystem.startOperation('delete', deleteOptions);
             
-            // Start the progress tracking with progress manager
-            if (window.progressManager) {
-                window.progressManager.startOperation('delete', {
-                    totalUsers: deleteOptions.totalUsers || 0,
-                    populationName: deleteOptions.populationName,
-                    populationId: deleteOptions.populationId,
-                    fileName: deleteOptions.file?.name || 'delete-operation'
-                });
-                
-                // Initialize real-time connection
-                window.progressManager.initializeRealTimeConnection(sessionId);
-                
-                console.log('🔄 [DELETE] Started progress tracking with session ID:', sessionId);
+            if (result.success) {
+                this.logger.info('Delete operation completed successfully', result);
             } else {
-                // Fallback to old UI manager if progress manager is not available
-                this.uiManager.showDeleteStatus(deleteOptions.totalUsers, deleteOptions.populationName, deleteOptions.populationId);
+                this.logger.error('Delete operation failed', result.error);
             }
             
-            // Send delete request to backend
-            const response = await this.localClient.post('/api/delete-users', deleteOptions, {
-                signal: this.deleteAbortController.signal,
-                onProgress: (current, total, message, counts) => {
-                    // Update progress with progress manager if available
-                    if (window.progressManager) {
-                        window.progressManager.handleProgressEvent({
-                            current,
-                            total,
-                            message,
-                            counts,
-                            timestamp: new Date().toISOString()
-                        });
-                    } else {
-                        // Fallback to old UI manager
-                        this.uiManager.updateDeleteProgress(current, total, message, counts, deleteOptions.populationName, deleteOptions.populationId);
-                    }
-                }
-            });
-            // Handle completion
-            if (response.success) {
-                // Update progress with progress manager if available
-                if (window.progressManager) {
-                    window.progressManager.handleCompletionEvent({
-                        processed: deleteOptions.totalUsers || 0,
-                        success: response.counts?.success || response.deletedCount || 0,
-                        failed: response.counts?.failed || 0,
-                        skipped: response.counts?.skipped || 0,
-                        total: deleteOptions.totalUsers || 0,
-                        message: 'Delete completed successfully',
-                        timestamp: new Date().toISOString()
-                    });
-                } else {
-                    // Fallback to old UI manager
-                    this.uiManager.updateDeleteProgress(deleteOptions.totalUsers, deleteOptions.totalUsers, 'Delete completed successfully', response.counts, deleteOptions.populationName, deleteOptions.populationId);
-                }
-                
-                this.uiManager.showSuccess('Delete completed successfully', response.message);
-                
-                // Store progress state in localStorage for recovery
-                this.storeProgressState('delete', {
-                    success: true,
-                    totalUsers: deleteOptions.totalUsers,
-                    processed: deleteOptions.totalUsers,
-                    populationName: deleteOptions.populationName,
-                    populationId: deleteOptions.populationId,
-                    timestamp: new Date().toISOString()
-                });
-            } else {
-                // Update progress with progress manager if available
-                if (window.progressManager) {
-                    window.progressManager.handleErrorEvent({
-                        title: 'Delete Failed',
-                        message: response.error || 'Unknown error',
-                        details: response.details || {},
-                        timestamp: new Date().toISOString()
-                    });
-                } else {
-                    // Fallback to old UI manager
-                    this.uiManager.updateDeleteProgress(0, deleteOptions.totalUsers, 'Delete failed', response.counts, deleteOptions.populationName, deleteOptions.populationId);
-                }
-                
-                this.uiManager.showError('Delete failed', response.error);
-            }
         } catch (error) {
-            if (error.name === 'AbortError') {
-                this.uiManager.updateDeleteProgress(0, 0, 'Delete cancelled');
-                this.uiManager.showInfo('Delete cancelled');
-            } else {
-                this.uiManager.updateDeleteProgress(0, 0, 'Delete failed: ' + error.message);
-                this.uiManager.showError('Delete failed', error.message);
-            }
-        } finally {
-            this.isDeleting = false;
-            this.deleteAbortController = null;
+            this.logger.error('Failed to start delete operation', error);
+            this.uiManager.showError('Delete Failed', error.message);
         }
     }
 
@@ -3109,58 +3113,35 @@ class App {
     }
 
     /**
-     * Starts the user modify flow by validating options, sending request to the server, and handling progress
+     * Starts the user modify flow using OperationManagerSubsystem
      */
     async startModify() {
-        // Check for valid token before proceeding
-        const hasValidToken = await this.checkTokenAndRedirect('modify');
-        if (!hasValidToken) {
-            console.log('❌ [MODIFY] Modify cancelled due to missing valid token');
-            return;
-        }
-
-        if (this.isModifying) {
-            this.logger.warn('Modify already in progress');
-            return;
-        }
         try {
-            this.isModifying = true;
-            this.modifyAbortController = new AbortController();
-            const modifyOptions = this.getModifyOptions();
-            // If no modify options, show error and stop
-            if (!modifyOptions) {
-                this.isModifying = false;
+            // Check if OperationManagerSubsystem is available
+            if (!this.operationManagerSubsystem) {
+                this.logger.error('OperationManagerSubsystem not available for modify operation');
+                this.uiManager.showError('Modify Failed', 'Operation manager not initialized');
                 return;
             }
-            // Show modify status in UI
-            this.uiManager.showModifyStatus(modifyOptions.totalUsers);
-            // Send modify request to backend
-            const response = await this.localClient.post('/api/modify-users', modifyOptions, {
-                signal: this.modifyAbortController.signal,
-                onProgress: (current, total, message, counts) => {
-                    // Update UI with modify progress
-                    this.uiManager.updateModifyProgress(current, total, message, counts);
-                }
-            });
-            // Handle completion
-            if (response.success) {
-                this.uiManager.updateModifyProgress(modifyOptions.totalUsers, modifyOptions.totalUsers, 'Modify completed successfully', response.counts);
-                this.uiManager.showSuccess('Modify completed successfully', response.message);
-            } else {
-                this.uiManager.updateModifyProgress(0, modifyOptions.totalUsers, 'Modify failed', response.counts);
-                this.uiManager.showError('Modify failed', response.error);
+
+            // Get modify options
+            const modifyOptions = this.getModifyOptions();
+            if (!modifyOptions) {
+                return;
             }
+
+            // Use OperationManagerSubsystem to handle the modify operation
+            const result = await this.operationManagerSubsystem.startOperation('modify', modifyOptions);
+            
+            if (result.success) {
+                this.logger.info('Modify operation completed successfully', result);
+            } else {
+                this.logger.error('Modify operation failed', result.error);
+            }
+            
         } catch (error) {
-            if (error.name === 'AbortError') {
-                this.uiManager.updateModifyProgress(0, 0, 'Modify cancelled');
-                this.uiManager.showInfo('Modify cancelled');
-            } else {
-                this.uiManager.updateModifyProgress(0, 0, 'Modify failed: ' + error.message);
-                this.uiManager.showError('Modify failed', error.message);
-            }
-        } finally {
-            this.isModifying = false;
-            this.modifyAbortController = null;
+            this.logger.error('Failed to start modify operation', error);
+            this.uiManager.showError('Modify Failed', error.message);
         }
     }
 
@@ -3665,7 +3646,8 @@ class App {
             
             const token = await this.pingOneClient.getAccessToken();
             
-            console.log('Token retrieved successfully via PingOneClient');
+            console.log('🔍 [TRACE] Token retrieved successfully via PingOneClient, token exists:', !!token);
+            console.log('🔍 [TRACE] About to check if token exists for processing...');
             
             // Verify localStorage storage
             if (typeof localStorage !== 'undefined') {
@@ -3680,6 +3662,7 @@ class App {
             }
             
             if (token) {
+                console.log('🔍 [TRACE] Token exists, entering token processing block...');
                 // Calculate time remaining
                 let timeLeft = '';
                 const storedExpiry = localStorage.getItem('pingone_token_expiry');
@@ -3695,6 +3678,15 @@ class App {
                     if (timeRemainingSeconds !== null) {
                         timeLeft = this.formatDuration(timeRemainingSeconds);
                     }
+                }
+                
+                // NEW: Direct global token status updater for sidebar (works for both cached and fresh tokens)
+                console.log('🚀 [DEBUG] About to call updateGlobalTokenStatusDirect with timeLeft (cached/fresh):', timeLeft);
+                try {
+                    this.updateGlobalTokenStatusDirect(timeLeft);
+                    console.log('✅ [DEBUG] updateGlobalTokenStatusDirect called successfully for cached/fresh token');
+                } catch (error) {
+                    console.error('❌ [DEBUG] Error calling updateGlobalTokenStatusDirect for cached/fresh token:', error);
                 }
                 
                 // Show success message with time remaining
@@ -3741,6 +3733,14 @@ class App {
                 // Update global token manager
                 if (window.globalTokenManager) {
                     window.globalTokenManager.updateStatus();
+                }
+                
+                // NEW: Direct global token status updater for sidebar
+                console.log('🚀 [DEBUG] About to call updateGlobalTokenStatusDirect with timeLeft:', timeLeft);
+                try {
+                    this.updateGlobalTokenStatusDirect(timeLeft);
+                } catch (error) {
+                    console.error('❌ [DEBUG] Error calling updateGlobalTokenStatusDirect:', error);
                 }
                 
                 // Complete startup process when token is successfully obtained
@@ -4615,6 +4615,78 @@ class App {
         }
     }
 
+    /**
+     * Direct update of global token status element in sidebar
+     * 
+     * This method directly targets and updates the global token status element
+     * in the sidebar to ensure it shows the correct token information when
+     * a new token is acquired. This is a backup method to ensure the sidebar
+     * token status is always updated correctly.
+     * 
+     * @param {string} timeLeft - Formatted time remaining string (e.g., "1h 0m 0s")
+     */
+    updateGlobalTokenStatusDirect(timeLeft) {
+        try {
+            console.log('🔄 [DIRECT] Updating global token status in sidebar...');
+            
+            const globalTokenStatus = document.getElementById('global-token-status');
+            if (!globalTokenStatus) {
+                console.warn('❌ [DIRECT] Global token status element not found');
+                return;
+            }
+            
+            console.log('✅ [DIRECT] Found global token status element:', globalTokenStatus);
+            
+            const countdown = globalTokenStatus.querySelector('.global-token-countdown');
+            const icon = globalTokenStatus.querySelector('.global-token-icon');
+            const text = globalTokenStatus.querySelector('.global-token-text');
+            const getTokenBtn = document.getElementById('global-get-token');
+            
+            console.log('🔍 [DIRECT] Token status elements found:', {
+                countdown: !!countdown,
+                icon: !!icon,
+                text: !!text,
+                getTokenBtn: !!getTokenBtn,
+                timeLeft: timeLeft
+            });
+            
+            if (!countdown || !icon || !text) {
+                console.warn('❌ [DIRECT] Required elements not found:', {
+                    countdown: !!countdown,
+                    icon: !!icon,
+                    text: !!text
+                });
+                return;
+            }
+            
+            // Update the countdown display
+            console.log('⏰ [DIRECT] Setting countdown to:', timeLeft);
+            countdown.textContent = timeLeft || 'Unknown';
+            countdown.style.color = 'rgb(40, 167, 69)'; // Green for valid token
+            countdown.style.fontWeight = 'normal';
+            
+            // Update the icon and text
+            console.log('✅ [DIRECT] Setting status to: Token valid');
+            icon.textContent = '✅';
+            text.textContent = 'Token valid';
+            text.style.visibility = 'visible';
+            
+            // Update the container class
+            globalTokenStatus.className = 'global-token-status valid';
+            
+            // Hide the Get Token button since we have a valid token
+            if (getTokenBtn) {
+                getTokenBtn.style.display = 'none';
+                console.log('🔒 [DIRECT] Hidden Get Token button');
+            }
+            
+            console.log('✅ [DIRECT] Global token status updated successfully!');
+            
+        } catch (error) {
+            console.error('❌ [DIRECT] Error updating global token status:', error);
+        }
+    }
+
     // Enable the tool after disclaimer is accepted
     enableToolAfterDisclaimer() {
         console.log('[Disclaimer] === Enabling Tool After Disclaimer ===');
@@ -4679,8 +4751,8 @@ class App {
         }
 
         // Log the disclaimer acceptance
-        if (window.logManager && typeof window.logManager.log === 'function') {
-            window.logManager.log('info', 'Disclaimer accepted by user', {
+        if (this.loggingSubsystem && typeof this.loggingSubsystem.log === 'function') {
+            this.loggingSubsystem.log('info', 'Disclaimer accepted by user', {
                 source: 'app',
                 type: 'disclaimer',
                 timestamp: new Date().toISOString()

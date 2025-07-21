@@ -73,6 +73,7 @@ class GlobalStatusManager {
         // Update classes
         this.statusBar.className = `global-status-bar ${type}`;
         this.statusBar.classList.add('show');
+        this.statusBar.classList.add('visible');
 
         // Store current message
         this.currentMessage = { message, type, options };
@@ -101,6 +102,7 @@ class GlobalStatusManager {
 
         // Hide the status bar
         this.statusBar.classList.remove('show');
+        this.statusBar.classList.remove('visible');
         
         // Add a small delay before hiding completely to allow animation to complete
         setTimeout(() => {

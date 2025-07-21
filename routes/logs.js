@@ -3,6 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
+import { writeClientLog, writeServerLog, getCombinedLogs, getClientLogs, getServerLogs, clearAllLogs, getLogStats } from '../server/combined-logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,6 +14,8 @@ const join = path.join;
 // Ensure logs directory exists
 const LOGS_DIR = join(process.cwd(), 'logs');
 const CLIENT_LOGS_FILE = join(LOGS_DIR, 'client.log');
+const SERVER_LOGS_FILE = join(LOGS_DIR, 'server.log');
+const COMBINED_LOGS_FILE = join(LOGS_DIR, 'combined.log');
 
 // In-memory storage for UI logs
 const uiLogs = [];
@@ -568,12 +571,8 @@ router.post('/disk', express.json(), async (req, res) => {
             userAgent: req.get('user-agent')
         };
 
-        // Write to log file
-        await fs.appendFile(
-            CLIENT_LOGS_FILE, 
-            JSON.stringify(logEntry) + '\n',
-            'utf8'
-        );
+        // Write to client log using combined logger
+        await writeClientLog(logEntry);
 
         res.json({ 
             success: true, 
@@ -634,6 +633,153 @@ router.get('/operations/history', async (req, res) => {
 });
 
 /**
+ * Post client log entry (from centralized logging service)
+ * POST /api/logs/client
+ */
+router.post('/client', async (req, res) => {
+    try {
+        const logEntry = req.body;
+        
+        // Validate log entry
+        if (!logEntry.message || !logEntry.level) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: message, level'
+            });
+        }
+        
+        // Write to client log using combined logger
+        const success = await writeClientLog(logEntry);
+        
+        if (success) {
+            res.json({ success: true });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: 'Failed to write log entry'
+            });
+        }
+        
+    } catch (error) {
+        console.error('Error posting client log:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to process log entry',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * Get client logs
+ * GET /api/logs/client
+ */
+router.get('/client', async (req, res) => {
+    try {
+        const { limit = 100 } = req.query;
+        const limitNum = Math.min(parseInt(limit, 10) || 100, 1000);
+        
+        const logs = await getClientLogs({ limit: limitNum });
+        
+        res.json({
+            success: true,
+            count: logs.length,
+            logs: logs
+        });
+        
+    } catch (error) {
+        console.error('Error retrieving client logs:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to retrieve client logs',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * Get server logs
+ * GET /api/logs/server
+ */
+router.get('/server', async (req, res) => {
+    try {
+        const { limit = 100 } = req.query;
+        const limitNum = Math.min(parseInt(limit, 10) || 100, 1000);
+        
+        const logs = await getServerLogs({ limit: limitNum });
+        
+        res.json({
+            success: true,
+            count: logs.length,
+            logs: logs
+        });
+        
+    } catch (error) {
+        console.error('Error retrieving server logs:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to retrieve server logs',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * Get combined logs
+ * GET /api/logs/combined
+ */
+router.get('/combined', async (req, res) => {
+    try {
+        const { limit = 100 } = req.query;
+        const limitNum = Math.min(parseInt(limit, 10) || 100, 1000);
+        
+        const logs = await getCombinedLogs({ limit: limitNum });
+        
+        res.json({
+            success: true,
+            count: logs.length,
+            logs: logs
+        });
+        
+    } catch (error) {
+        console.error('Error retrieving combined logs:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to retrieve combined logs',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * Get log statistics
+ * GET /api/logs/stats
+ */
+router.get('/stats', async (req, res) => {
+    try {
+        const stats = await getLogStats();
+        
+        res.json({
+            success: true,
+            stats: stats,
+            summary: {
+                uiLogsCount: uiLogs.length,
+                maxUiLogs: MAX_UI_LOGS,
+                logsDirectory: LOGS_DIR
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error retrieving log stats:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to retrieve log stats',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
  * Get logs summary and available endpoints
  * GET /api/logs
  * Returns a summary of available logs and endpoints
@@ -648,7 +794,11 @@ router.get('/', (req, res) => {
                 'GET /api/logs/ui': 'Get UI logs (in-memory)',
                 'POST /api/logs/ui': 'Post UI log entry',
                 'DELETE /api/logs/ui': 'Clear UI logs',
-                'GET /api/logs/disk': 'Get disk logs',
+                'GET /api/logs/client': 'Get client logs from file',
+                'GET /api/logs/server': 'Get server logs from file',
+                'GET /api/logs/combined': 'Get combined logs from file',
+                'GET /api/logs/stats': 'Get log file statistics',
+                'GET /api/logs/disk': 'Get disk logs (legacy)',
                 'POST /api/logs/disk': 'Post disk log entry',
                 'POST /api/logs/error': 'Post error log',
                 'POST /api/logs/warning': 'Post warning log',
