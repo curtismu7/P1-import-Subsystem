@@ -142,7 +142,59 @@
 - Debug logging system implemented: Created dedicated debug.log file system with structured logging for errors, events, debug info, and user actions; includes client-side logger that sends to server, server-side API endpoint for log management, and web-based debug log viewer at /debug-log-viewer.html; integrated debug logging into key app areas including navigation, settings, and error handling.
 
 ## Current Goal
-Phase 3 in progress: Continuing with performance optimization after successful bundle size reduction.
+Phase 4 in progress: Fixing critical UI issues and improving user experience after successful bundle optimization.
+
+## Phase 4 Progress Summary
+
+### ✅ Import Button and File Handling Fix (COMPLETED)
+**Problem**: Import button not enabling when both file and population are selected
+**Root Cause**: Event listeners not properly detecting file and population selection
+**Solution Implemented**:
+- Created `public/js/file-handling-fix.js` to fix file input handling
+- Added dedicated population select change listener
+- Implemented periodic checks to ensure button state is updated
+- Added force enable mechanism for the import button
+- Added multiple delayed checks to catch any timing issues
+- Improved error handling and notifications
+
+### ✅ API URL Subsystem Improvements (COMPLETED)
+**Problem**: Excessive logging and duplicate event listeners in API URL subsystem
+**Root Cause**: Missing tracking for event listeners and no throttling for checks
+**Solution Implemented**:
+- Created `public/js/api-url-subsystem-client.js` with improved event handling
+- Added tracking to prevent duplicate event listeners
+- Implemented throttling to prevent excessive checks
+- Enhanced the event handling logic
+
+### ✅ Import API Endpoint Fix (COMPLETED)
+**Problem**: 400 Bad Request error when clicking import button
+**Root Cause**: Missing POST handler for the main /api/import endpoint
+**Solution Implemented**:
+- Added POST handler for the main `/api/import` endpoint in routes/api/import.js
+- Created client-side fix in `public/js/import-api-fix.js` to redirect API calls
+- Implemented file upload handling using multer
+- Added validation for required fields (file and populationId)
+- Added simulation of import progress for testing
+
+### ✅ Progress Window Fix (COMPLETED)
+**Problem**: Progress window not showing during import operations with incorrect styling
+**Root Cause**: Missing event handling for import progress updates and CSS styling issues
+**Solution Implemented**:
+- Created `public/js/progress-window-fix.js` to handle progress display
+- Applied enhanced progress styles from the enhanced-progress-subsystem
+- Implemented real-time updates using WebSockets, SSE, and polling fallback
+- Added proper timing calculations for elapsed time and ETA
+- Improved error handling and cancellation support
+- Enhanced the UI with better visual feedback and animations
+
+### ✅ Version Update (COMPLETED)
+**Problem**: Version inconsistency across the application
+**Solution Implemented**:
+- Updated version from 6.2/6.3 to 6.4.0 in package.json
+- Updated version references in src/client/app.js
+- Updated version in src/client/subsystems/navigation-subsystem.js
+- Updated HTML title and version widget in public/index.html
+- Updated Swagger version widget in public/swagger/index.html
 
 ## Phase 3 Progress Summary
 
