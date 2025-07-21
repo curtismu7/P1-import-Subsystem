@@ -15,6 +15,7 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createReadableFormatter } from './log-formatter.js';
 
@@ -315,6 +316,21 @@ export function createWinstonLogger(options = {}) {
     }
 
     // Always add readable.log transport for debugging with tail -f (even in test mode)
+    // Ensure the logs directory exists
+    try {
+        if (!fs.existsSync(logsDir)) {
+            fs.mkdirSync(logsDir, { recursive: true });
+        }
+        
+        // Create an empty readable.log file if it doesn't exist
+        const readableLogPath = path.join(logsDir, 'readable.log');
+        if (!fs.existsSync(readableLogPath)) {
+            fs.writeFileSync(readableLogPath, '');
+        }
+    } catch (error) {
+        console.error('Failed to create logs directory or readable.log file:', error.message);
+    }
+    
     logger.add(new winston.transports.File({
         filename: path.join(logsDir, 'readable.log'),
         level: 'debug',

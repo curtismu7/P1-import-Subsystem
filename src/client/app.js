@@ -49,6 +49,8 @@ import TestingHub from './components/testing-hub.js';
 
 // Modern subsystems (replacing legacy modules)
 import { ProgressSubsystem } from '../../public/js/modules/progress-subsystem.js';
+import { EnhancedProgressSubsystem } from './subsystems/enhanced-progress-subsystem.js';
+import { EnhancedTokenStatusSubsystem } from './subsystems/enhanced-token-status-subsystem.js';
 import { SessionSubsystem } from '../../public/js/modules/session-subsystem.js';
 import { LoggingSubsystem } from '../../public/js/modules/logging-subsystem.js';
 import { HistorySubsystem } from '../../public/js/modules/history-subsystem.js';
@@ -193,6 +195,8 @@ class App {
         
         // Modern subsystems (replacing legacy managers)
         this.progressSubsystem = null;
+        this.enhancedProgressSubsystem = null;
+        this.enhancedTokenStatusSubsystem = null;
         this.sessionSubsystem = null;
         this.loggingSubsystem = null;
         this.historySubsystem = null;
@@ -516,6 +520,28 @@ class App {
         );
         await this.subsystems.tokenNotification.init();
         this.logger.debug('Token Notification subsystem initialized');
+
+        // Initialize Enhanced Progress Subsystem
+        // Fixed progress subsystem initialization
+        this.enhancedProgressSubsystem = new EnhancedProgressSubsystem(
+            this.logger.child({ subsystem: 'enhanced-progress' }),
+            this.uiManager,
+            this.eventBus,
+            this.subsystems.realtimeManager
+        );
+        await this.enhancedProgressSubsystem.init();
+        this.subsystems.enhancedProgress = this.enhancedProgressSubsystem;
+        this.logger.debug('Enhanced Progress subsystem initialized');
+
+        // Initialize Enhanced Token Status Subsystem
+        this.enhancedTokenStatusSubsystem = new EnhancedTokenStatusSubsystem(
+            this.logger.child({ subsystem: 'enhanced-token-status' }),
+            this.eventBus,
+            this.uiManager
+        );
+        await this.enhancedTokenStatusSubsystem.init();
+        this.subsystems.enhancedTokenStatus = this.enhancedTokenStatusSubsystem;
+        this.logger.debug('Enhanced Token Status subsystem initialized');
 
         this.logger.info('All subsystems initialized successfully', {
             subsystemCount: Object.keys(this.subsystems).length,
@@ -1259,7 +1285,7 @@ class App {
             };
             
             const title = titles[view] || 'PingOne Import Tool';
-            document.title = `${title} - PingOne Import Tool v6.2`;
+            document.title = `${title} - PingOne Import Tool v6.4`;
             
             this.logger.debug(`🔧 DIRECT NAV: Updated page title to: ${document.title}`);
             
@@ -1603,7 +1629,7 @@ window.testLoading = {
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await app.init();
-        console.log('🚀 PingOne Import Tool v6.2 initialized successfully');
+        console.log('🚀 PingOne Import Tool v6.4 initialized successfully');
         console.log('📊 Health Status:', app.getHealthStatus());
     } catch (error) {
         console.error('❌ Application initialization failed:', error);
