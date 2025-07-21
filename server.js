@@ -526,11 +526,20 @@ app.use(async (err, req, res, next) => {
     });
 });
 
+// Import the logs directory check
+import { ensureLogsDirectory } from './scripts/ensure-logs-directory.js';
+
 // Server startup with enhanced logging
 const startServer = async () => {
     const startTime = Date.now();
     
     try {
+        // Ensure logs directory exists and is writable before starting server
+        const logsReady = await ensureLogsDirectory();
+        if (!logsReady) {
+            console.error('⚠️ Warning: Logs directory setup failed. Logging may not work correctly.');
+        }
+        
         logger.info('Starting server initialization', {
             port: PORT,
             env: process.env.NODE_ENV || 'development',
