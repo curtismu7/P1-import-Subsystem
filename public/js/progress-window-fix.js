@@ -1,10 +1,22 @@
 /**
  * Progress Window Fix
  * 
- * This script fixes the progress window display issue by setting up real-time progress updates.
+ * This script fixes the progress window display issue by integrating with the enhanced progress subsystem
+ * and setting up real-time progress updates using WebSockets or SSE.
  */
 (function() {
   console.log('🔧 Progress Window Fix: Initializing...');
+  
+  // Configuration
+  const USE_WEBSOCKET = true; // Use WebSocket for real-time updates if available
+  const USE_SSE = true; // Use Server-Sent Events as fallback
+  const POLLING_INTERVAL = 1000; // Polling interval in ms (fallback)
+  
+  // State
+  let currentSessionId = null;
+  let socket = null;
+  let eventSource = null;
+  let pollingInterval = null;
   
   // Wait for DOM to be fully loaded
   document.addEventListener('DOMContentLoaded', initializeProgressWindowFix);
@@ -20,11 +32,108 @@
   function initializeProgressWindowFix() {
     console.log('🔧 Progress Window Fix: Initialized');
     
+    // Apply enhanced progress styles to the progress container
+    applyEnhancedProgressStyles();
+    
     // Set up event listener for import API responses
     setupImportResponseListener();
     
-    // Set up periodic progress polling
-    setupProgressPolling();
+    // Set up WebSocket connection if available
+    if (USE_WEBSOCKET) {
+      setupWebSocketConnection();
+    }
+    
+    // Set up close button handler
+    setupCloseButtonHandler();
+    
+    // Set up cancel button handler
+    setupCancelButtonHandler();
+  }
+  
+  /**
+   * Apply enhanced progress styles to the progress container
+   */
+  function applyEnhancedProgressStyles() {
+    const progressContainer = document.getElementById('progress-container');
+    if (progressContainer) {
+      // Add enhanced-progress class
+      progressContainer.classList.add('enhanced-progress');
+      
+      // Make sure the progress container has the correct structure
+      if (!progressContainer.querySelector('.progress-section')) {
+        // If the container doesn't have the enhanced structure, rebuild it
+        const originalContent = progressContainer.innerHTML;
+        progressContainer.innerHTML = `
+          <div class="progress-section">
+            <div class="progress-header">
+              <h3><i class="fas fa-cog fa-spin"></i> Import Progress</h3>
+              <button class="close-progress-btn" type="button" aria-label="Close progress">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <div class="progress-content">
+              <div class="progress-bar-container">
+                <div class="progress-bar">
+                  <div class="progress-bar-fill"></div>
+                </div>
+                <div class="progress-percentage">0%</div>
+              </div>
+              
+              <div class="progress-status">
+                <div class="status-message">Preparing import...</div>
+                <div class="progress-text"></div>
+                <div class="status-details"></div>
+              </div>
+              
+              <div class="progress-stats">
+                <div class="stat-item">
+                  <span class="stat-label">Total:</span>
+                  <span class="stat-value total">0</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Processed:</span>
+                  <span class="stat-value processed">0</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Success:</span>
+                  <span class="stat-value success">0</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Failed:</span>
+                  <span class="stat-value failed">0</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Skipped:</span>
+                  <span class="stat-value skipped">0</span>
+                </div>
+              </div>
+              
+              <div class="progress-timing">
+                <div class="time-elapsed">
+                  <i class="fas fa-clock"></i>
+                  <span>Elapsed: <span class="elapsed-value">00:00</span></span>
+                </div>
+                <div class="time-remaining">
+                  <i class="fas fa-hourglass-half"></i>
+                  <span>ETA: <span class="eta-value">Calculating...</span></span>
+                </div>
+              </div>
+              
+              <div class="progress-actions">
+                <button class="btn btn-secondary cancel-import-btn" type="button">
+                  <i class="fas fa-stop"></i> Cancel Import
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
+      console.log('🔧 Progress Window Fix: Enhanced progress styles applied');
+    } else {
+      console.warn('🔧 Progress Window Fix: Progress container not found');
+    }
   }
   
   /**
@@ -54,25 +163,26 @@
           if (data.success && data.sessionId) {
             console.log('🔧 Progress Window Fix: Import started with session ID', data.sessionId);
             
+            // Store the session ID
+            currentSessionId = data.sessionId;
+            
             // Show progress container
-            const progressContainer = document.getElementById('progress-container');
-            if (progressContainer) {
-              progressContainer.style.display = 'block';
-              
-              // Update initial progress UI
-              updateProgressUI({
-                status: 'started',
-                message: 'Import started successfully',
-                total: data.total || 0,
-                processed: 0,
-                success: 0,
-                failed: 0,
-                skipped: 0
-              });
-              
-              // Start polling for progress updates
-              startProgressPolling(data.sessionId);
-            }
+            showProgressContainer();
+            
+            // Update initial progress UI
+            updateProgressUI({
+              status: 'running',
+              message: 'Import started successfully',
+              total: data.total || 0,
+              processed: 0,
+              success: 0,
+              failed: 0,
+              skipped: 0,
+              startTime: Date.now()
+            });
+            
+            // Start real-time updates
+            startRealTimeUpdates(data.sessionId);
           }
         } catch (error) {
           console.error('🔧 Progress Window Fix: Error parsing response', error);
@@ -82,25 +192,163 @@
       // Return the original response
       return response;
     };
+    
+    console.log('🔧 Progress Window Fix: Import API response listener set up');
   }
   
   /**
-   * Set up periodic progress polling
+   * Set up WebSocket connection
    */
-  function setupProgressPolling() {
-    // Nothing to do here, polling is started when an import is initiated
+  function setupWebSocketConnection() {
+    try {
+      // Check if Socket.IO is available
+      if (window.io) {
+        // Connect to Socket.IO server
+        socket = window.io();
+        
+        // Set up event listeners
+        socket.on('connect', () => {
+          console.log('🔧 Progress Window Fix: WebSocket connected');
+        });
+        
+        socket.on('disconnect', () => {
+          console.log('🔧 Progress Window Fix: WebSocket disconnected');
+          
+          // Fall back to polling if WebSocket disconnects
+          if (currentSessionId && !eventSource) {
+            startPolling(currentSessionId);
+          }
+        });
+        
+        socket.on('progress', (data) => {
+          console.log('🔧 Progress Window Fix: WebSocket progress update', data);
+          handleProgressUpdate(data);
+        });
+        
+        socket.on('import-complete', (data) => {
+          console.log('🔧 Progress Window Fix: WebSocket import complete', data);
+          handleImportComplete(data);
+        });
+        
+        socket.on('import-error', (data) => {
+          console.log('🔧 Progress Window Fix: WebSocket import error', data);
+          handleImportError(data);
+        });
+        
+        console.log('🔧 Progress Window Fix: WebSocket connection set up');
+      } else {
+        console.log('🔧 Progress Window Fix: Socket.IO not available, falling back to SSE or polling');
+      }
+    } catch (error) {
+      console.error('🔧 Progress Window Fix: Error setting up WebSocket connection', error);
+    }
+  }
+  
+  /**
+   * Start real-time updates
+   */
+  function startRealTimeUpdates(sessionId) {
+    // Clean up any existing connections
+    cleanupConnections();
+    
+    // Store the session ID
+    currentSessionId = sessionId;
+    
+    // Try WebSocket first
+    if (socket && socket.connected) {
+      console.log('🔧 Progress Window Fix: Using WebSocket for real-time updates');
+      socket.emit('register-session', sessionId);
+      return;
+    }
+    
+    // Try SSE next
+    if (USE_SSE && typeof EventSource !== 'undefined') {
+      console.log('🔧 Progress Window Fix: Using SSE for real-time updates');
+      startSSE(sessionId);
+      return;
+    }
+    
+    // Fall back to polling
+    console.log('🔧 Progress Window Fix: Using polling for updates');
+    startPolling(sessionId);
+  }
+  
+  /**
+   * Start Server-Sent Events (SSE) connection
+   */
+  function startSSE(sessionId) {
+    try {
+      // Create EventSource
+      eventSource = new EventSource(`/api/import/progress/${sessionId}`);
+      
+      // Set up event listeners
+      eventSource.addEventListener('open', () => {
+        console.log('🔧 Progress Window Fix: SSE connection opened');
+      });
+      
+      eventSource.addEventListener('error', (error) => {
+        console.error('🔧 Progress Window Fix: SSE connection error', error);
+        
+        // Close the connection
+        eventSource.close();
+        eventSource = null;
+        
+        // Fall back to polling
+        startPolling(sessionId);
+      });
+      
+      eventSource.addEventListener('message', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('🔧 Progress Window Fix: SSE progress update', data);
+          handleProgressUpdate(data);
+        } catch (error) {
+          console.error('🔧 Progress Window Fix: Error parsing SSE message', error);
+        }
+      });
+      
+      eventSource.addEventListener('complete', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('🔧 Progress Window Fix: SSE import complete', data);
+          handleImportComplete(data);
+        } catch (error) {
+          console.error('🔧 Progress Window Fix: Error parsing SSE complete message', error);
+        }
+      });
+      
+      eventSource.addEventListener('error', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('🔧 Progress Window Fix: SSE import error', data);
+          handleImportError(data);
+        } catch (error) {
+          console.error('🔧 Progress Window Fix: Error parsing SSE error message', error);
+        }
+      });
+    } catch (error) {
+      console.error('🔧 Progress Window Fix: Error setting up SSE connection', error);
+      
+      // Fall back to polling
+      startPolling(sessionId);
+    }
   }
   
   /**
    * Start polling for progress updates
    */
-  function startProgressPolling(sessionId) {
-    console.log('🔧 Progress Window Fix: Starting progress polling for session', sessionId);
+  function startPolling(sessionId) {
+    // Clear any existing polling interval
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+    }
     
-    // Store the session ID
-    window.currentImportSessionId = sessionId;
+    // Set up polling interval
+    pollingInterval = setInterval(() => {
+      pollProgress(sessionId);
+    }, POLLING_INTERVAL);
     
-    // Start polling
+    // Start first poll immediately
     pollProgress(sessionId);
   }
   
@@ -109,8 +357,9 @@
    */
   function pollProgress(sessionId) {
     // Check if we should continue polling
-    if (!window.currentImportSessionId || window.currentImportSessionId !== sessionId) {
+    if (!currentSessionId || currentSessionId !== sessionId) {
       console.log('🔧 Progress Window Fix: Stopping progress polling for session', sessionId);
+      clearInterval(pollingInterval);
       return;
     }
     
@@ -118,12 +367,11 @@
     fetch(`/api/import/status`)
       .then(response => response.json())
       .then(data => {
-        console.log('🔧 Progress Window Fix: Progress update', data);
+        console.log('🔧 Progress Window Fix: Polling progress update', data);
         
-        // Update progress UI
-        updateProgressUI({
+        // Handle progress update
+        handleProgressUpdate({
           status: data.status,
-          message: getStatusMessage(data.status),
           total: data.progress?.total || 0,
           processed: data.progress?.current || 0,
           success: data.statistics?.processed - (data.statistics?.errors || 0) - (data.statistics?.warnings || 0) || 0,
@@ -136,37 +384,233 @@
         if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
           console.log('🔧 Progress Window Fix: Import complete with status', data.status);
           
-          // Clear session ID
-          window.currentImportSessionId = null;
-          
-          // Show completion message
-          const statusMessage = document.querySelector('.progress-container .status-message');
-          if (statusMessage) {
-            statusMessage.textContent = getStatusMessage(data.status);
-          }
-          
-          // Add completion class to progress container
-          const progressContainer = document.getElementById('progress-container');
-          if (progressContainer) {
-            progressContainer.classList.add('import-' + data.status);
-          }
-          
-          // Show close button
-          const closeButton = document.querySelector('.progress-container .close-progress-btn');
-          if (closeButton) {
-            closeButton.style.display = 'block';
-          }
-        } else {
-          // Continue polling
-          setTimeout(() => pollProgress(sessionId), 1000);
+          // Handle import complete
+          handleImportComplete({
+            status: data.status,
+            success: data.status === 'completed',
+            stats: {
+              processed: data.progress?.current || 0,
+              total: data.progress?.total || 0,
+              success: data.statistics?.processed - (data.statistics?.errors || 0) - (data.statistics?.warnings || 0) || 0,
+              failed: data.statistics?.errors || 0,
+              skipped: data.statistics?.warnings || 0
+            }
+          });
         }
       })
       .catch(error => {
         console.error('🔧 Progress Window Fix: Error polling progress', error);
-        
-        // Continue polling despite error
-        setTimeout(() => pollProgress(sessionId), 2000);
       });
+  }
+  
+  /**
+   * Handle progress update
+   */
+  function handleProgressUpdate(data) {
+    // Update progress UI
+    updateProgressUI({
+      status: data.status || 'running',
+      message: getStatusMessage(data.status || 'running'),
+      total: data.total || 0,
+      processed: data.processed || 0,
+      success: data.success || 0,
+      failed: data.failed || 0,
+      skipped: data.skipped || 0,
+      percentage: data.percentage || calculatePercentage(data.processed, data.total)
+    });
+  }
+  
+  /**
+   * Handle import complete
+   */
+  function handleImportComplete(data) {
+    // Clear session ID
+    currentSessionId = null;
+    
+    // Clean up connections
+    cleanupConnections();
+    
+    // Update progress UI with completion state
+    updateProgressUI({
+      status: data.status || (data.success ? 'completed' : 'failed'),
+      message: getStatusMessage(data.status || (data.success ? 'completed' : 'failed')),
+      total: data.stats?.total || 0,
+      processed: data.stats?.processed || 0,
+      success: data.stats?.success || 0,
+      failed: data.stats?.failed || 0,
+      skipped: data.stats?.skipped || 0,
+      percentage: 100
+    });
+    
+    // Add completion class to progress container
+    const progressContainer = document.getElementById('progress-container');
+    if (progressContainer) {
+      progressContainer.classList.add('import-' + (data.success ? 'completed' : 'failed'));
+    }
+    
+    // Auto-hide after delay for successful imports
+    if (data.success && data.stats?.failed === 0) {
+      setTimeout(() => {
+        hideProgressContainer();
+      }, 5000);
+    }
+  }
+  
+  /**
+   * Handle import error
+   */
+  function handleImportError(data) {
+    // Update progress UI with error state
+    updateProgressUI({
+      status: 'failed',
+      message: data.error || 'Import failed',
+      statusDetails: data.details || 'An error occurred during import'
+    });
+    
+    // Add error class to progress container
+    const progressContainer = document.getElementById('progress-container');
+    if (progressContainer) {
+      progressContainer.classList.add('import-failed');
+    }
+  }
+  
+  /**
+   * Clean up connections
+   */
+  function cleanupConnections() {
+    // Clear polling interval
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      pollingInterval = null;
+    }
+    
+    // Close SSE connection
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
+    
+    // Unregister from WebSocket
+    if (socket && socket.connected && currentSessionId) {
+      socket.emit('unregister-session', currentSessionId);
+    }
+  }
+  
+  /**
+   * Set up close button handler
+   */
+  function setupCloseButtonHandler() {
+    const progressContainer = document.getElementById('progress-container');
+    if (!progressContainer) return;
+    
+    const closeButton = progressContainer.querySelector('.close-progress-btn');
+    if (closeButton && !closeButton._hasClickHandler) {
+      closeButton.addEventListener('click', () => {
+        hideProgressContainer();
+      });
+      closeButton._hasClickHandler = true;
+      
+      console.log('🔧 Progress Window Fix: Close button handler set up');
+    }
+  }
+  
+  /**
+   * Set up cancel button handler
+   */
+  function setupCancelButtonHandler() {
+    const progressContainer = document.getElementById('progress-container');
+    if (!progressContainer) return;
+    
+    const cancelButton = progressContainer.querySelector('.cancel-import-btn');
+    if (cancelButton && !cancelButton._hasClickHandler) {
+      cancelButton.addEventListener('click', () => {
+        cancelImport();
+      });
+      cancelButton._hasClickHandler = true;
+      
+      console.log('🔧 Progress Window Fix: Cancel button handler set up');
+    }
+  }
+  
+  /**
+   * Cancel import
+   */
+  function cancelImport() {
+    if (!currentSessionId) return;
+    
+    console.log('🔧 Progress Window Fix: Cancelling import', currentSessionId);
+    
+    // Update UI to show cancelling state
+    updateProgressUI({
+      status: 'cancelling',
+      message: 'Cancelling import...',
+      statusDetails: 'Please wait while the operation is cancelled'
+    });
+    
+    // Send cancel request
+    fetch('/api/import/cancel', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ sessionId: currentSessionId })
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('🔧 Progress Window Fix: Import cancelled', data);
+      
+      // Handle cancel response
+      handleImportComplete({
+        status: 'cancelled',
+        success: false,
+        stats: {
+          processed: data.processed || 0,
+          total: data.total || 0,
+          success: data.success || 0,
+          failed: data.failed || 0,
+          skipped: data.skipped || 0
+        }
+      });
+    })
+    .catch(error => {
+      console.error('🔧 Progress Window Fix: Error cancelling import', error);
+      
+      // Update UI to show error
+      updateProgressUI({
+        status: 'failed',
+        message: 'Failed to cancel import',
+        statusDetails: error.message || 'An error occurred while cancelling the import'
+      });
+    });
+  }
+  
+  /**
+   * Show progress container
+   */
+  function showProgressContainer() {
+    const progressContainer = document.getElementById('progress-container');
+    if (progressContainer) {
+      progressContainer.style.display = 'block';
+      progressContainer.classList.add('active');
+      
+      console.log('🔧 Progress Window Fix: Progress container shown');
+    }
+  }
+  
+  /**
+   * Hide progress container
+   */
+  function hideProgressContainer() {
+    const progressContainer = document.getElementById('progress-container');
+    if (progressContainer) {
+      progressContainer.style.display = 'none';
+      progressContainer.classList.remove('active');
+      
+      console.log('🔧 Progress Window Fix: Progress container hidden');
+    }
+    
+    // Clean up connections
+    cleanupConnections();
   }
   
   /**
@@ -184,8 +628,35 @@
         return 'Import failed';
       case 'cancelled':
         return 'Import cancelled';
+      case 'cancelling':
+        return 'Cancelling import...';
       default:
         return 'Unknown status';
+    }
+  }
+  
+  /**
+   * Calculate percentage
+   */
+  function calculatePercentage(processed, total) {
+    if (!processed || !total) return 0;
+    return Math.round((processed / total) * 100);
+  }
+  
+  /**
+   * Format time in seconds to human readable format
+   */
+  function formatTime(seconds) {
+    if (seconds < 60) {
+      return `${Math.round(seconds)}s`;
+    } else if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = Math.round(seconds % 60);
+      return `${minutes}m ${remainingSeconds}s`;
+    } else {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return `${hours}h ${minutes}m`;
     }
   }
   
@@ -228,39 +699,60 @@
                                `${data.processed} of ${data.total} processed` : '';
     }
     
+    // Update status details
+    const statusDetails = progressContainer.querySelector('.status-details');
+    if (statusDetails && data.statusDetails) {
+      statusDetails.textContent = data.statusDetails;
+    }
+    
     // Update stats
     const totalStat = progressContainer.querySelector('.stat-value.total');
-    if (totalStat) {
-      totalStat.textContent = data.total || 0;
+    if (totalStat && data.total !== undefined) {
+      totalStat.textContent = data.total;
     }
     
     const processedStat = progressContainer.querySelector('.stat-value.processed');
-    if (processedStat) {
-      processedStat.textContent = data.processed || 0;
+    if (processedStat && data.processed !== undefined) {
+      processedStat.textContent = data.processed;
     }
     
     const successStat = progressContainer.querySelector('.stat-value.success');
-    if (successStat) {
-      successStat.textContent = data.success || 0;
+    if (successStat && data.success !== undefined) {
+      successStat.textContent = data.success;
     }
     
     const failedStat = progressContainer.querySelector('.stat-value.failed');
-    if (failedStat) {
-      failedStat.textContent = data.failed || 0;
+    if (failedStat && data.failed !== undefined) {
+      failedStat.textContent = data.failed;
     }
     
     const skippedStat = progressContainer.querySelector('.stat-value.skipped');
-    if (skippedStat) {
-      skippedStat.textContent = data.skipped || 0;
+    if (skippedStat && data.skipped !== undefined) {
+      skippedStat.textContent = data.skipped;
     }
     
-    // Set up close button handler if not already set
-    const closeButton = progressContainer.querySelector('.close-progress-btn');
-    if (closeButton && !closeButton._hasClickHandler) {
-      closeButton.addEventListener('click', () => {
-        progressContainer.style.display = 'none';
-      });
-      closeButton._hasClickHandler = true;
+    // Update timing
+    if (data.startTime) {
+      // Store start time for elapsed time calculation
+      progressContainer._startTime = data.startTime;
+    }
+    
+    // Update elapsed time
+    const elapsedValue = progressContainer.querySelector('.elapsed-value');
+    if (elapsedValue && progressContainer._startTime) {
+      const elapsed = (Date.now() - progressContainer._startTime) / 1000;
+      elapsedValue.textContent = formatTime(elapsed);
+    }
+    
+    // Update ETA
+    const etaValue = progressContainer.querySelector('.eta-value');
+    if (etaValue && data.processed && data.total && progressContainer._startTime) {
+      const elapsed = (Date.now() - progressContainer._startTime) / 1000;
+      const rate = data.processed / elapsed; // items per second
+      const remaining = data.total - data.processed;
+      const eta = rate > 0 ? remaining / rate : 0;
+      
+      etaValue.textContent = eta > 0 ? formatTime(eta) : 'Calculating...';
     }
   }
   
