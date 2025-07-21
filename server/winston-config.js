@@ -105,6 +105,42 @@ export function createWinstonLogger(options = {}) {
         enableFileLogging = env !== 'test'
     } = options;
 
+    // Enhanced formatter for all logs with colors and separators
+    const enhancedFormatter = winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
+        const separator = '═'.repeat(80);
+        const levelColors = {
+            error: '🔴',
+            warn: '🟡', 
+            info: '🟢',
+            debug: '🔵',
+            verbose: '🟣',
+            silly: '⚪'
+        };
+        
+        const icon = levelColors[level] || '⚪';
+        const levelUpper = level.toUpperCase().padEnd(7);
+        const serviceUpper = (service || 'SYSTEM').toUpperCase();
+        
+        let logLine = `\n${separator}\n`;
+        logLine += `${icon} [${timestamp}] [${serviceUpper}] [${levelUpper}] ${message}\n`;
+        
+        // Add metadata if present
+        if (Object.keys(meta).length > 0) {
+            // Filter out standard winston fields
+            const cleanMeta = { ...meta };
+            delete cleanMeta.env;
+            delete cleanMeta.pid;
+            delete cleanMeta.version;
+            
+            if (Object.keys(cleanMeta).length > 0) {
+                logLine += `📋 Metadata: ${JSON.stringify(cleanMeta, null, 2)}\n`;
+            }
+        }
+        
+        logLine += `${separator}\n`;
+        return logLine;
+    });
+
     // Base configuration
     const logger = winston.createLogger({
         level: process.env.LOG_LEVEL || (env === 'production' ? 'info' : 'debug'),
@@ -214,12 +250,46 @@ export function createWinstonLogger(options = {}) {
             )
         }));
         
-        // Combined logs with daily rotation
+        // Server logs with enhanced formatting
+        logger.add(new winston.transports.File({
+            filename: path.join(__dirname, '../logs/server.log'),
+            level: 'info',
+            maxsize: 10 * 1024 * 1024, // 10MB
+            maxFiles: 5,
+            tailable: true,
+            zippedArchive: true,
+            format: winston.format.combine(
+                winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss.SSS'
+                }),
+                winston.format.errors({ stack: true }),
+                enhancedFormatter
+            )
+        }));
+        
+        // Combined logs with daily rotation and enhanced formatting
         logger.add(new DailyRotateFile({
             filename: path.join(__dirname, '../logs/combined-%DATE%.log'),
             datePattern: 'YYYY-MM-DD',
             maxSize: '20m',
             maxFiles: '14d',
+            zippedArchive: true,
+            format: winston.format.combine(
+                winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss.SSS'
+                }),
+                winston.format.errors({ stack: true }),
+                enhancedFormatter
+            )
+        }));
+        
+        // Combined logs (non-rotating for immediate access)
+        logger.add(new winston.transports.File({
+            filename: path.join(__dirname, '../logs/combined.log'),
+            level: 'debug',
+            maxsize: 20 * 1024 * 1024, // 20MB
+            maxFiles: 3,
+            tailable: true,
             zippedArchive: true,
             format: winston.format.combine(
                 winston.format.timestamp({
@@ -290,8 +360,42 @@ export function createWinstonLogger(options = {}) {
 export function createComponentLogger(component, options = {}) {
     const logger = createWinstonLogger(options);
     
-    // Add component-specific file transport
+    // Add component-specific file transport with enhanced formatting
     if (options.enableFileLogging !== false) {
+        // Custom formatter for API logs with colors and separators
+        const apiFormatter = winston.format.printf(({ timestamp, level, message, ...meta }) => {
+            const separator = '═'.repeat(80);
+            const levelColors = {
+                error: '🔴',
+                warn: '🟡', 
+                info: '🟢',
+                debug: '🔵'
+            };
+            
+            const icon = levelColors[level] || '⚪';
+            const levelUpper = level.toUpperCase().padEnd(5);
+            
+            let logLine = `\n${separator}\n`;
+            logLine += `${icon} [${timestamp}] [${component.toUpperCase()}] [${levelUpper}] ${message}\n`;
+            
+            // Add metadata if present
+            if (Object.keys(meta).length > 0) {
+                // Filter out standard winston fields
+                const cleanMeta = { ...meta };
+                delete cleanMeta.service;
+                delete cleanMeta.env;
+                delete cleanMeta.pid;
+                delete cleanMeta.version;
+                
+                if (Object.keys(cleanMeta).length > 0) {
+                    logLine += `📋 Metadata: ${JSON.stringify(cleanMeta, null, 2)}\n`;
+                }
+            }
+            
+            logLine += `${separator}\n`;
+            return logLine;
+        });
+        
         logger.add(new winston.transports.File({
             filename: path.join(__dirname, `../logs/${component}.log`),
             level: 'info',
@@ -303,7 +407,8 @@ export function createComponentLogger(component, options = {}) {
                 winston.format.timestamp({
                     format: 'YYYY-MM-DD HH:mm:ss.SSS'
                 }),
-                winston.format.json()
+                winston.format.errors({ stack: true }),
+                apiFormatter
             )
         }));
     }
@@ -441,8 +546,200 @@ export function createPerformanceLogger(logger) {
 // Export default logger instance
 export const defaultLogger = createWinstonLogger();
 
-// Export specialized loggers
+// Create a server-specific logger that writes to server.log with enhanced formatting
+export function createServerLogger() {
+    const logger = createWinstonLogger({ service: 'pingone-import-server' });
+    
+    // Enhanced formatter for server logs
+    const serverFormatter = winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
+        const separator = '═'.repeat(80);
+        const levelColors = {
+            error: '🔴',
+            warn: '🟡', 
+            info: '🟢',
+            debug: '🔵',
+            verbose: '🟣',
+            silly: '⚪'
+        };
+        
+        const icon = levelColors[level] || '⚪';
+        const levelUpper = level.toUpperCase().padEnd(7);
+        const serviceUpper = (service || 'SERVER').toUpperCase();
+        
+        let logLine = `\n${separator}\n`;
+        logLine += `${icon} [${timestamp}] [${serviceUpper}] [${levelUpper}] 🖥️  ${message}\n`;
+        
+        // Add metadata if present
+        if (Object.keys(meta).length > 0) {
+            // Filter out standard winston fields
+            const cleanMeta = { ...meta };
+            delete cleanMeta.env;
+            delete cleanMeta.pid;
+            delete cleanMeta.version;
+            
+            if (Object.keys(cleanMeta).length > 0) {
+                logLine += `📋 Server Metadata: ${JSON.stringify(cleanMeta, null, 2)}\n`;
+            }
+        }
+        
+        logLine += `${separator}\n`;
+        return logLine;
+    });
+    
+    // Add server-specific file transport with enhanced formatting
+    logger.add(new winston.transports.File({
+        filename: path.join(__dirname, '../logs/server.log'),
+        level: 'info',
+        maxsize: 10 * 1024 * 1024, // 10MB
+        maxFiles: 5,
+        tailable: true,
+        zippedArchive: true,
+        format: winston.format.combine(
+            winston.format.timestamp({
+                format: 'YYYY-MM-DD HH:mm:ss.SSS'
+            }),
+            winston.format.errors({ stack: true }),
+            serverFormatter
+        )
+    }));
+    
+    return logger;
+}
+
+/**
+ * Create a client-specific logger that writes to client.log with enhanced formatting
+ */
+export function createClientLogger() {
+    const logger = createWinstonLogger({ service: 'pingone-import-client' });
+    
+    // Enhanced formatter for client logs
+    const clientFormatter = winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
+        const separator = '═'.repeat(80);
+        const levelColors = {
+            error: '🔴',
+            warn: '🟡', 
+            info: '🟢',
+            debug: '🔵',
+            verbose: '🟣',
+            silly: '⚪'
+        };
+        
+        const icon = levelColors[level] || '⚪';
+        const levelUpper = level.toUpperCase().padEnd(7);
+        const serviceUpper = (service || 'CLIENT').toUpperCase();
+        
+        let logLine = `\n${separator}\n`;
+        logLine += `${icon} [${timestamp}] [${serviceUpper}] [${levelUpper}] 📱 ${message}\n`;
+        
+        // Add metadata if present
+        if (Object.keys(meta).length > 0) {
+            // Filter out standard winston fields
+            const cleanMeta = { ...meta };
+            delete cleanMeta.env;
+            delete cleanMeta.pid;
+            delete cleanMeta.version;
+            
+            if (Object.keys(cleanMeta).length > 0) {
+                logLine += `📋 Client Metadata: ${JSON.stringify(cleanMeta, null, 2)}\n`;
+            }
+        }
+        
+        logLine += `${separator}\n`;
+        return logLine;
+    });
+    
+    // Add client-specific file transport with enhanced formatting
+    logger.add(new winston.transports.File({
+        filename: path.join(__dirname, '../logs/client.log'),
+        level: 'info',
+        maxsize: 10 * 1024 * 1024, // 10MB
+        maxFiles: 5,
+        tailable: true,
+        zippedArchive: true,
+        format: winston.format.combine(
+            winston.format.timestamp({
+                format: 'YYYY-MM-DD HH:mm:ss.SSS'
+            }),
+            winston.format.errors({ stack: true }),
+            clientFormatter
+        )
+    }));
+    
+    return logger;
+}
+
+/**
+ * API-specific logging helpers with enhanced formatting
+ */
+export const apiLogHelpers = {
+    logApiRequest: (req, additionalData = {}) => {
+        const requestData = {
+            method: req.method,
+            url: req.originalUrl || req.url,
+            ip: req.ip || req.connection?.remoteAddress,
+            userAgent: req.get('user-agent'),
+            contentType: req.get('content-type'),
+            contentLength: req.get('content-length'),
+            body: req.body && Object.keys(req.body).length > 0 ? req.body : null,
+            query: req.query && Object.keys(req.query).length > 0 ? req.query : null,
+            params: req.params && Object.keys(req.params).length > 0 ? req.params : null,
+            requestId: req.id || Date.now().toString(),
+            timestamp: new Date().toISOString(),
+            ...additionalData
+        };
+        
+        apiLogger.info(`🚀 API REQUEST: ${req.method} ${req.originalUrl || req.url}`, requestData);
+        return requestData.requestId;
+    },
+    
+    logApiResponse: (req, res, requestId, duration, additionalData = {}) => {
+        const responseData = {
+            requestId,
+            method: req.method,
+            url: req.originalUrl || req.url,
+            statusCode: res.statusCode,
+            statusMessage: res.statusMessage,
+            duration: `${duration}ms`,
+            contentType: res.get('content-type'),
+            contentLength: res.get('content-length'),
+            timestamp: new Date().toISOString(),
+            ...additionalData
+        };
+        
+        const statusIcon = res.statusCode >= 400 ? '❌' : res.statusCode >= 300 ? '⚠️' : '✅';
+        const level = res.statusCode >= 400 ? 'error' : res.statusCode >= 300 ? 'warn' : 'info';
+        
+        apiLogger[level](`${statusIcon} API RESPONSE: ${req.method} ${req.originalUrl || req.url} [${res.statusCode}]`, responseData);
+    },
+    
+    logApiError: (req, error, additionalData = {}) => {
+        const errorData = {
+            method: req.method,
+            url: req.originalUrl || req.url,
+            error: error.message,
+            stack: error.stack,
+            code: error.code,
+            statusCode: error.statusCode || 500,
+            timestamp: new Date().toISOString(),
+            ...additionalData
+        };
+        
+        apiLogger.error(`💥 API ERROR: ${req.method} ${req.originalUrl || req.url}`, errorData);
+    },
+    
+    logApiOperation: (operation, data = {}) => {
+        apiLogger.info(`⚙️ API OPERATION: ${operation}`, {
+            operation,
+            timestamp: new Date().toISOString(),
+            ...data
+        });
+    }
+};
+
+// Export specialized loggers with enhanced formatting
 export const apiLogger = createComponentLogger('api');
 export const sseLogger = createComponentLogger('sse');
 export const importLogger = createComponentLogger('import');
-export const authLogger = createComponentLogger('auth'); 
+export const authLogger = createComponentLogger('auth');
+export const serverLogger = createServerLogger();
+export const clientLogger = createClientLogger(); 

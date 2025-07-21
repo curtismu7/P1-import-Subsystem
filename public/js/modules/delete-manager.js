@@ -224,7 +224,7 @@ class DeleteManager {
 
     async loadPopulations() {
         try {
-            // Check if population select element exists before making API call
+            // Check if population select element exists before loading
             const populationSelect = document.getElementById('delete-population-select');
             if (!populationSelect) {
                 console.log('Delete population select not found, skipping population load');
@@ -232,6 +232,22 @@ class DeleteManager {
             }
             
             this.logPopulationLoadStart();
+            
+            // Try to use the modern PopulationSubsystem first
+            if (window.app && window.app.populationSubsystem) {
+                try {
+                    const populations = await window.app.populationSubsystem.loadPopulations();
+                    if (Array.isArray(populations) && populations.length > 0) {
+                        this.populatePopulationSelect(populations);
+                        this.logPopulationLoadSuccess(populations.length);
+                        return;
+                    }
+                } catch (error) {
+                    console.warn('Failed to load populations via PopulationSubsystem, falling back to direct API:', error);
+                }
+            }
+            
+            // Fallback to direct API call if PopulationSubsystem is not available
             const response = await fetch('/api/populations');
             if (response.ok) {
                 const data = await response.json();

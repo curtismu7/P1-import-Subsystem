@@ -3,7 +3,7 @@
 ## 📊 Current State Analysis
 
 ### Application Overview
-- **Version**: 6.1.0
+- **Version**: 6.3.0
 - **Architecture**: Node.js/Express backend with vanilla JavaScript frontend
 - **Main Issues**: Monolithic structure, complex dependencies, scattered functionality
 - **Core Functionality**: User import/export/modify/delete operations for PingOne

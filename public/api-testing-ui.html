@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PingOne Import Tool - API Testing Dashboard</title>
+    
+    <!-- Modern CSS with Ping Identity Branding -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/css/app.css">
+    <link rel="stylesheet" href="/css/swagger-custom.css">
+    
+    <style>
+        /* Modern API Testing UI Styles */
+        .api-testing-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .status-card {
+            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .status-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-success { background-color: #28a745; }
+        .status-warning { background-color: #ffc107; }
+        .status-error { background-color: #dc3545; }
+        .status-info { background-color: #17a2b8; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .test-section {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .test-section h3 {
+            color: #2c3e50;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+        
+        .btn-modern {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-modern:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+        }
+        
+        .btn-success:hover {
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+            color: #212529;
+        }
+        
+        .btn-warning:hover {
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+        }
+        
+        .result-container {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 16px;
+            margin-top: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .result-success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border-color: #28a745;
+            color: #155724;
+        }
+        
+        .result-error {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        
+        .result-warning {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border-color: #ffc107;
+            color: #856404;
+        }
+        
+        .subsystem-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .subsystem-card {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .subsystem-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .api-endpoint-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+        
+        .endpoint-card {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .endpoint-card:hover {
+            border-color: #007bff;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+        }
+        
+        .endpoint-method {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        .method-get { background: #e3f2fd; color: #1976d2; }
+        .method-post { background: #e8f5e8; color: #388e3c; }
+        .method-put { background: #fff3e0; color: #f57c00; }
+        .method-delete { background: #ffebee; color: #d32f2f; }
+        
+        @media (max-width: 768px) {
+            .api-testing-container {
+                padding: 10px;
+            }
+            
+            .subsystem-status {
+                grid-template-columns: 1fr;
+            }
+            
+            .api-endpoint-list {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="api-testing-container">
+        <!-- Header -->
+        <div class="status-card">
+            <h1>🚀 PingOne Import Tool - API Testing Dashboard</h1>
+            <p>Modern API testing interface powered by subsystem architecture and ES modules</p>
+            <div id="overall-status">
+                <span class="status-indicator status-info"></span>
+                <span>Initializing subsystem integration...</span>
+            </div>
+        </div>
+
+        <!-- Subsystem Status Overview -->
+        <div class="test-section">
+            <h3>📊 Subsystem Status Overview</h3>
+            <div class="subsystem-status" id="subsystem-status">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+        <!-- Core API Tests -->
+        <div class="test-section">
+            <h3>🔧 Core API Tests</h3>
+            <div>
+                <button class="btn-modern" onclick="testHealth()">
+                    <span>🏥</span> Test Health Endpoint
+                </button>
+                <button class="btn-modern" onclick="testToken()">
+                    <span>🔐</span> Test Authentication
+                </button>
+                <button class="btn-modern" onclick="testSettings()">
+                    <span>⚙️</span> Test Settings API
+                </button>
+                <button class="btn-modern" onclick="testFeatureFlags()">
+                    <span>🚩</span> Test Feature Flags
+                </button>
+            </div>
+            <div id="core-api-result" class="result-container" style="display: none;"></div>
+        </div>
+
+        <!-- Subsystem API Tests -->
+        <div class="test-section">
+            <h3>🔗 Subsystem API Tests</h3>
+            <div>
+                <button class="btn-modern" onclick="testImportSubsystem()">
+                    <span>📥</span> Test Import Subsystem
+                </button>
+                <button class="btn-modern" onclick="testExportSubsystem()">
+                    <span>📤</span> Test Export Subsystem
+                </button>
+                <button class="btn-modern" onclick="testOperationManager()">
+                    <span>⚡</span> Test Operation Manager
+                </button>
+                <button class="btn-modern" onclick="testPopulationManager()">
+                    <span>👥</span> Test Population Manager
+                </button>
+                <button class="btn-modern" onclick="testHistorySubsystem()">
+                    <span>📚</span> Test History Subsystem
+                </button>
+                <button class="btn-modern" onclick="testLoggingSubsystem()">
+                    <span>📝</span> Test Logging Subsystem
+                </button>
+            </div>
+            <div id="subsystem-api-result" class="result-container" style="display: none;"></div>
+        </div>
+
+        <!-- Real-time Features Tests -->
+        <div class="test-section">
+            <h3>⚡ Real-time Features Tests</h3>
+            <div>
+                <button class="btn-modern" onclick="testRealtimeCommunication()">
+                    <span>📡</span> Test Real-time Communication
+                </button>
+                <button class="btn-modern" onclick="testAnalyticsDashboard()">
+                    <span>📈</span> Test Analytics Dashboard
+                </button>
+                <button class="btn-modern" onclick="testCollaborationFeatures()">
+                    <span>🤝</span> Test Collaboration Features
+                </button>
+            </div>
+            <div id="realtime-result" class="result-container" style="display: none;"></div>
+        </div>
+
+        <!-- Swagger UI Integration -->
+        <div class="test-section">
+            <h3>📚 Swagger UI Integration</h3>
+            <div>
+                <button class="btn-success" onclick="openModernSwaggerUI()">
+                    <span>🚀</span> Open Modern Swagger UI
+                </button>
+                <button class="btn-modern" onclick="testSwaggerSpec()">
+                    <span>📄</span> Test OpenAPI Spec
+                </button>
+                <button class="btn-warning" onclick="validateSwaggerIntegration()">
+                    <span>✅</span> Validate Integration
+                </button>
+            </div>
+            <div id="swagger-result" class="result-container" style="display: none;"></div>
+        </div>
+
+        <!-- Available API Endpoints -->
+        <div class="test-section">
+            <h3>🛠️ Available API Endpoints</h3>
+            <div class="api-endpoint-list" id="endpoint-list">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <img src="/ping-identity-logo.svg" alt="Ping Identity Logo" height="28" width="auto" loading="lazy" />
+                </div>
+                <div class="footer-text">
+                    <span>&copy; 2025 Ping Identity. All rights reserved.</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modern JavaScript with ES Module Patterns -->
+    <script type="module">
+        /**
+         * Modern API Testing Dashboard with Subsystem Integration
+         * Uses ES modules and modern JavaScript patterns
+         */
+        
+        class APITestingDashboard {
+            constructor() {
+                this.subsystems = new Map();
+                this.testResults = new Map();
+                this.isInitialized = false;
+            }
+
+            /**
+             * Initialize the dashboard with subsystem integration
+             */
+            async initialize() {
+                try {
+                    console.log('🚀 Initializing API Testing Dashboard');
+                    
+                    // Update overall status
+                    this.updateOverallStatus('info', 'Loading subsystem status...');
+                    
+                    // Load subsystem status
+                    await this.loadSubsystemStatus();
+                    
+                    // Load available endpoints
+                    await this.loadAvailableEndpoints();
+                    
+                    // Setup event listeners
+                    this.setupEventListeners();
+                    
+                    // Auto-run health check
+                    await this.testHealth();
+                    
+                    this.isInitialized = true;
+                    this.updateOverallStatus('success', 'Dashboard initialized successfully');
+                    
+                    console.log('✅ API Testing Dashboard initialized');
+                    
+                } catch (error) {
+                    console.error('❌ Failed to initialize dashboard:', error);
+                    this.updateOverallStatus('error', `Initialization failed: ${error.message}`);
+                }
+            }
+
+            /**
+             * Update overall status indicator
+             */
+            updateOverallStatus(type, message) {
+                const statusElement = document.getElementById('overall-status');
+                const indicator = statusElement.querySelector('.status-indicator');
+                const textElement = statusElement.querySelector('span:last-child');
+                
+                indicator.className = `status-indicator status-${type}`;
+                textElement.textContent = message;
+            }
+
+            /**
+             * Load and display subsystem status
+             */
+            async loadSubsystemStatus() {
+                const subsystemContainer = document.getElementById('subsystem-status');
+                
+                const subsystems = [
+                    { name: 'Authentication', endpoint: '/api/token', icon: '🔐' },
+                    { name: 'Settings', endpoint: '/api/settings', icon: '⚙️' },
+                    { name: 'Health', endpoint: '/api/health', icon: '🏥' },
+                    { name: 'Feature Flags', endpoint: '/api/feature-flags', icon: '🚩' },
+                    { name: 'Import', endpoint: '/api/import/status', icon: '📥' },
+                    { name: 'Export', endpoint: '/api/export/status', icon: '📤' }
+                ];
+
+                for (const subsystem of subsystems) {
+                    const card = this.createSubsystemCard(subsystem);
+                    subsystemContainer.appendChild(card);
+                    
+                    // Test subsystem asynchronously
+                    this.testSubsystemStatus(subsystem, card);
+                }
+            }
+
+            /**
+             * Create a subsystem status card
+             */
+            createSubsystemCard(subsystem) {
+                const card = document.createElement('div');
+                card.className = 'subsystem-card';
+                card.innerHTML = `
+                    <div style="font-size: 24px; margin-bottom: 8px;">${subsystem.icon}</div>
+                    <h4 style="margin: 0 0 8px 0;">${subsystem.name}</h4>
+                    <div class="status-indicator status-info"></div>
+                    <span>Testing...</span>
+                `;
+                return card;
+            }
+
+            /**
+             * Test individual subsystem status
+             */
+            async testSubsystemStatus(subsystem, card) {
+                try {
+                    const response = await fetch(subsystem.endpoint);
+                    const indicator = card.querySelector('.status-indicator');
+                    const status = card.querySelector('span');
+                    
+                    if (response.ok) {
+                        indicator.className = 'status-indicator status-success';
+                        status.textContent = 'Online';
+                        this.subsystems.set(subsystem.name, { status: 'online', response });
+                    } else {
+                        indicator.className = 'status-indicator status-warning';
+                        status.textContent = `Warning (${response.status})`;
+                        this.subsystems.set(subsystem.name, { status: 'warning', response });
+                    }
+                } catch (error) {
+                    const indicator = card.querySelector('.status-indicator');
+                    const status = card.querySelector('span');
+                    
+                    indicator.className = 'status-indicator status-error';
+                    status.textContent = 'Offline';
+                    this.subsystems.set(subsystem.name, { status: 'offline', error });
+                }
+            }
+
+            /**
+             * Load available API endpoints from Swagger spec
+             */
+            async loadAvailableEndpoints() {
+                try {
+                    const response = await fetch('/swagger.json');
+                    if (response.ok) {
+                        const spec = await response.json();
+                        this.displayEndpoints(spec.paths);
+                    }
+                } catch (error) {
+                    console.warn('Could not load API endpoints:', error);
+                }
+            }
+
+            /**
+             * Display API endpoints
+             */
+            displayEndpoints(paths) {
+                const container = document.getElementById('endpoint-list');
+                
+                Object.entries(paths).forEach(([path, methods]) => {
+                    Object.entries(methods).forEach(([method, details]) => {
+                        const card = document.createElement('div');
+                        card.className = 'endpoint-card';
+                        card.innerHTML = `
+                            <div>
+                                <span class="endpoint-method method-${method}">${method.toUpperCase()}</span>
+                                <strong>${path}</strong>
+                            </div>
+                            <p style="margin: 8px 0 0 0; color: #666; font-size: 14px;">
+                                ${details.summary || details.description || 'No description'}
+                            </p>
+                        `;
+                        container.appendChild(card);
+                    });
+                });
+            }
+
+            /**
+             * Setup event listeners for real-time updates
+             */
+            setupEventListeners() {
+                // Listen for subsystem events
+                window.addEventListener('subsystem-status-updated', (event) => {
+                    this.handleSubsystemUpdate(event.detail);
+                });
+                
+                // Listen for API test results
+                window.addEventListener('api-test-completed', (event) => {
+                    this.handleTestResult(event.detail);
+                });
+            }
+
+            /**
+             * Handle subsystem status updates
+             */
+            handleSubsystemUpdate(detail) {
+                console.log('Subsystem status updated:', detail);
+                // Update UI accordingly
+            }
+
+            /**
+             * Handle API test results
+             */
+            handleTestResult(detail) {
+                console.log('API test completed:', detail);
+                this.testResults.set(detail.test, detail.result);
+            }
+
+            /**
+             * Generic API test method
+             */
+            async testAPI(endpoint, resultContainerId, testName) {
+                const container = document.getElementById(resultContainerId);
+                container.style.display = 'block';
+                container.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="loading-spinner"></div>
+                        <span>Testing ${testName}...</span>
+                    </div>
+                `;
+
+                try {
+                    const startTime = Date.now();
+                    const response = await fetch(endpoint);
+                    const endTime = Date.now();
+                    const data = await response.json();
+                    
+                    const duration = endTime - startTime;
+                    
+                    if (response.ok) {
+                        container.className = 'result-container result-success';
+                        container.innerHTML = `
+                            <h4>✅ ${testName} - Success</h4>
+                            <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                            <p><strong>Duration:</strong> ${duration}ms</p>
+                            <details>
+                                <summary>Response Data</summary>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </details>
+                        `;
+                    } else {
+                        container.className = 'result-container result-error';
+                        container.innerHTML = `
+                            <h4>❌ ${testName} - Failed</h4>
+                            <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                            <p><strong>Duration:</strong> ${duration}ms</p>
+                            <details>
+                                <summary>Error Details</summary>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </details>
+                        `;
+                    }
+                    
+                    // Dispatch event for logging
+                    window.dispatchEvent(new CustomEvent('api-test-completed', {
+                        detail: { test: testName, result: { success: response.ok, status: response.status, duration } }
+                    }));
+                    
+                } catch (error) {
+                    container.className = 'result-container result-error';
+                    container.innerHTML = `
+                        <h4>❌ ${testName} - Error</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Could not connect to the API endpoint.</p>
+                    `;
+                }
+            }
+
+            // API Test Methods
+            async testHealth() {
+                return this.testAPI('/api/health', 'core-api-result', 'Health Check');
+            }
+
+            async testToken() {
+                return this.testAPI('/api/token', 'core-api-result', 'Authentication Token');
+            }
+
+            async testSettings() {
+                return this.testAPI('/api/settings', 'core-api-result', 'Settings API');
+            }
+
+            async testFeatureFlags() {
+                return this.testAPI('/api/feature-flags', 'core-api-result', 'Feature Flags');
+            }
+
+            async testImportSubsystem() {
+                return this.testAPI('/api/import/status', 'subsystem-api-result', 'Import Subsystem');
+            }
+
+            async testExportSubsystem() {
+                return this.testAPI('/api/export/status', 'subsystem-api-result', 'Export Subsystem');
+            }
+
+            async testOperationManager() {
+                return this.testAPI('/api/operations/status', 'subsystem-api-result', 'Operation Manager');
+            }
+
+            async testPopulationManager() {
+                return this.testAPI('/api/populations', 'subsystem-api-result', 'Population Manager');
+            }
+
+            async testHistorySubsystem() {
+                const container = document.getElementById('subsystem-api-result');
+                container.style.display = 'block';
+                container.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="loading-spinner"></div>
+                        <span>Testing History Subsystem...</span>
+                    </div>
+                `;
+
+                try {
+                    // Test multiple history endpoints
+                    const tests = [
+                        { name: 'History API', endpoint: '/api/history' },
+                        { name: 'History Stats', endpoint: '/api/history/stats' },
+                        { name: 'History Export', endpoint: '/api/history/export' }
+                    ];
+
+                    const results = [];
+                    for (const test of tests) {
+                        try {
+                            const response = await fetch(test.endpoint);
+                            const data = response.ok ? await response.json() : null;
+                            results.push({
+                                name: test.name,
+                                status: response.status,
+                                success: response.ok,
+                                data: data
+                            });
+                        } catch (error) {
+                            results.push({
+                                name: test.name,
+                                status: 'Error',
+                                success: false,
+                                error: error.message
+                            });
+                        }
+                    }
+
+                    const allSuccess = results.every(r => r.success);
+                    container.className = `result-container ${allSuccess ? 'result-success' : 'result-error'}`;
+                    
+                    let html = `<h4>${allSuccess ? '✅' : '❌'} History Subsystem Test Results</h4>`;
+                    results.forEach(result => {
+                        html += `
+                            <div style="margin: 8px 0; padding: 8px; border-left: 3px solid ${result.success ? '#28a745' : '#dc3545'}; background: ${result.success ? '#f8fff9' : '#fff8f8'};">
+                                <strong>${result.name}:</strong> 
+                                <span style="color: ${result.success ? '#28a745' : '#dc3545'};">
+                                    ${result.success ? '✅ Success' : '❌ Failed'} (${result.status})
+                                </span>
+                                ${result.error ? `<br><small style="color: #dc3545;">Error: ${result.error}</small>` : ''}
+                                ${result.data && result.data.history ? `<br><small>Found ${result.data.history.length} history entries</small>` : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    container.innerHTML = html;
+                    
+                } catch (error) {
+                    container.className = 'result-container result-error';
+                    container.innerHTML = `
+                        <h4>❌ History Subsystem Test Failed</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    `;
+                }
+            }
+
+            async testLoggingSubsystem() {
+                const container = document.getElementById('subsystem-api-result');
+                container.style.display = 'block';
+                container.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="loading-spinner"></div>
+                        <span>Testing Logging Subsystem...</span>
+                    </div>
+                `;
+
+                try {
+                    // Test multiple logging endpoints
+                    const tests = [
+                        { name: 'Logs API', endpoint: '/api/logs' },
+                        { name: 'Log Levels', endpoint: '/api/logs/levels' },
+                        { name: 'Log Categories', endpoint: '/api/logs/categories' },
+                        { name: 'Log Stats', endpoint: '/api/logs/stats' }
+                    ];
+
+                    const results = [];
+                    for (const test of tests) {
+                        try {
+                            const response = await fetch(test.endpoint);
+                            const data = response.ok ? await response.json() : null;
+                            results.push({
+                                name: test.name,
+                                status: response.status,
+                                success: response.ok,
+                                data: data
+                            });
+                        } catch (error) {
+                            results.push({
+                                name: test.name,
+                                status: 'Error',
+                                success: false,
+                                error: error.message
+                            });
+                        }
+                    }
+
+                    const allSuccess = results.every(r => r.success);
+                    container.className = `result-container ${allSuccess ? 'result-success' : 'result-error'}`;
+                    
+                    let html = `<h4>${allSuccess ? '✅' : '❌'} Logging Subsystem Test Results</h4>`;
+                    results.forEach(result => {
+                        html += `
+                            <div style="margin: 8px 0; padding: 8px; border-left: 3px solid ${result.success ? '#28a745' : '#dc3545'}; background: ${result.success ? '#f8fff9' : '#fff8f8'};">
+                                <strong>${result.name}:</strong> 
+                                <span style="color: ${result.success ? '#28a745' : '#dc3545'};">
+                                    ${result.success ? '✅ Success' : '❌ Failed'} (${result.status})
+                                </span>
+                                ${result.error ? `<br><small style="color: #dc3545;">Error: ${result.error}</small>` : ''}
+                                ${result.data && result.data.logs ? `<br><small>Found ${result.data.logs.length} log entries</small>` : ''}
+                                ${result.data && result.data.levels ? `<br><small>Available levels: ${result.data.levels.join(', ')}</small>` : ''}
+                                ${result.data && result.data.categories ? `<br><small>Available categories: ${result.data.categories.join(', ')}</small>` : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    container.innerHTML = html;
+                    
+                } catch (error) {
+                    container.className = 'result-container result-error';
+                    container.innerHTML = `
+                        <h4>❌ Logging Subsystem Test Failed</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    `;
+                }
+            }
+
+            async testRealtimeCommunication() {
+                return this.testAPI('/api/realtime/status', 'realtime-result', 'Real-time Communication');
+            }
+
+            async testAnalyticsDashboard() {
+                return this.testAPI('/api/analytics/status', 'realtime-result', 'Analytics Dashboard');
+            }
+
+            async testCollaborationFeatures() {
+                return this.testAPI('/api/collaboration/status', 'realtime-result', 'Collaboration Features');
+            }
+
+            async testSwaggerSpec() {
+                return this.testAPI('/swagger.json', 'swagger-result', 'OpenAPI Specification');
+            }
+
+            openModernSwaggerUI() {
+                window.open('/swagger.html', '_blank');
+            }
+
+            async validateSwaggerIntegration() {
+                const container = document.getElementById('swagger-result');
+                container.style.display = 'block';
+                container.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="loading-spinner"></div>
+                        <span>Validating Swagger integration...</span>
+                    </div>
+                `;
+
+                try {
+                    // Test multiple Swagger-related endpoints
+                    const tests = [
+                        { name: 'OpenAPI Spec', endpoint: '/swagger.json' },
+                        { name: 'Swagger UI HTML', endpoint: '/swagger.html' },
+                        { name: 'Swagger Assets', endpoint: '/swagger/swagger-ui-bundle.js' }
+                    ];
+
+                    const results = [];
+                    for (const test of tests) {
+                        try {
+                            const response = await fetch(test.endpoint);
+                            results.push({
+                                name: test.name,
+                                status: response.status,
+                                success: response.ok
+                            });
+                        } catch (error) {
+                            results.push({
+                                name: test.name,
+                                status: 'Error',
+                                success: false,
+                                error: error.message
+                            });
+                        }
+                    }
+
+                    const allSuccess = results.every(r => r.success);
+                    container.className = `result-container ${allSuccess ? 'result-success' : 'result-warning'}`;
+                    
+                    let html = `<h4>${allSuccess ? '✅' : '⚠️'} Swagger Integration Validation</h4>`;
+                    results.forEach(result => {
+                        html += `
+                            <p>
+                                <span style="color: ${result.success ? '#28a745' : '#dc3545'};">
+                                    ${result.success ? '✅' : '❌'}
+                                </span>
+                                <strong>${result.name}:</strong> ${result.status}
+                                ${result.error ? ` - ${result.error}` : ''}
+                            </p>
+                        `;
+                    });
+                    
+                    container.innerHTML = html;
+                    
+                } catch (error) {
+                    container.className = 'result-container result-error';
+                    container.innerHTML = `
+                        <h4>❌ Validation Failed</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    `;
+                }
+            }
+        }
+
+        // Initialize dashboard when DOM is ready
+        const dashboard = new APITestingDashboard();
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => dashboard.initialize());
+        } else {
+            dashboard.initialize();
+        }
+
+        // Make dashboard methods available globally for button onclick handlers
+        window.testHealth = () => dashboard.testHealth();
+        window.testToken = () => dashboard.testToken();
+        window.testSettings = () => dashboard.testSettings();
+        window.testFeatureFlags = () => dashboard.testFeatureFlags();
+        window.testImportSubsystem = () => dashboard.testImportSubsystem();
+        window.testExportSubsystem = () => dashboard.testExportSubsystem();
+        window.testOperationManager = () => dashboard.testOperationManager();
+        window.testPopulationManager = () => dashboard.testPopulationManager();
+        window.testHistorySubsystem = () => dashboard.testHistorySubsystem();
+        window.testLoggingSubsystem = () => dashboard.testLoggingSubsystem();
+        window.testRealtimeCommunication = () => dashboard.testRealtimeCommunication();
+        window.testAnalyticsDashboard = () => dashboard.testAnalyticsDashboard();
+        window.testCollaborationFeatures = () => dashboard.testCollaborationFeatures();
+        window.openModernSwaggerUI = () => dashboard.openModernSwaggerUI();
+        window.testSwaggerSpec = () => dashboard.testSwaggerSpec();
+        window.validateSwaggerIntegration = () => dashboard.validateSwaggerIntegration();
+        
+        // Make dashboard available globally for debugging
+        window.apiTestingDashboard = dashboard;
+    </script>
+</body>
+</html>

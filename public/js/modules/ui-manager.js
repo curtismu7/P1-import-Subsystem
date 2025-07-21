@@ -441,39 +441,13 @@ class UIManager {
                     }
                 });
             } catch (e) {
-                // Last resort
+                // If we can't even show the error message, just give up
                 console.error('Completely failed to show error:', e);
             }
         }
-    }
-    
-    /**
-     * Show a temporary success message with auto-dismiss
-     * @param {string} message - Success message to display
-     * @param {string} details - Additional details (optional)
-     */
-    showSuccess(message, details = '') {
-        this.showStatusBar(message, 'success', { 
-            autoDismiss: true, 
-            duration: 4000 
-        });
-        
-        if (details) {
-            this.logger.info('Success message shown', { message, details });
-        }
-    }
-    
 
-     * Show loading indicator with message
-     * @param {string} message - Loading message to display
-     */
-    showLoading(message = 'Processing...') {
-        this.showStatusBar(message, 'info', { autoDismiss: false });
-        this.logger.debug('Loading indicator shown', { message });
-    }
-    
     /**
-     * Hide loading indicator and optionally show success message
+     * Hide loading indicator dand optionally show success message
      * @param {string} successMessage - Optional success message to show after hiding loading
      */
     hideLoading(successMessage = null) {
@@ -745,7 +719,8 @@ class UIManager {
                     } else if (typeof this.getNewToken === 'function') {
                         this.getNewToken();
                     } else {
-                        alert('Get New Token functionality is not available.');
+                        // TODO: Refactor: Use Notification or Modal from UI subsystem instead of alert.
+// alert('Get New Token functionality is not available.');
                     }
                 });
             }

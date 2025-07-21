@@ -1,71 +1,54 @@
 /**
- * @fileoverview Jest configuration for ESM support
- * 
- * This configuration enables Jest to work with ES modules and provides
- * proper support for the project's testing requirements.
- * 
- * @author PingOne Import Tool
- * @version 4.9
+ * Jest configuration for PingOne Import Tool
+ * Supports both CommonJS and ES modules for comprehensive testing
  */
 
-export default {
-  // Enable ESM support
-  extensionsToTreatAsEsm: ['.jsx'],
-  testEnvironment: 'node',
-  
-  // Transform configuration for ES modules
-  transform: {
-    '^.+\\.(js|jsx|mjs)$': ['babel-jest', {
-      presets: [
-        ['@babel/preset-env', { 
-          targets: { node: 'current' },
-          modules: false
-        }],
-        '@babel/preset-react'
-      ],
-      plugins: [
-        '@babel/plugin-transform-runtime'
-      ]
-    }]
+const config = {
+  // Enable ES modules support (already configured in package.json)
+  globals: {
+    'ts-jest': {
+      useESM: true
+    }
   },
   
-  transformIgnorePatterns: [
-    'node_modules/(?!(uuid|whatwg-url|node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill|winston|winston-daily-rotate-file)/)'
-  ],
+  // Node options for ES modules
+  testEnvironmentOptions: {
+    customExportConditions: ['node', 'node-addons']
+  },
   
-  // Test matching patterns
+  // Test environment
+  testEnvironment: 'jsdom',
+  
+  // Test file patterns
   testMatch: [
     '**/test/**/*.test.js',
-    '**/test/**/*.test.mjs',
-    '**/test/**/*.test.jsx'
+    '**/tests/**/*.test.js',
+    '**/__tests__/**/*.js'
   ],
   
-  // Module file extensions
-  moduleFileExtensions: ['js', 'mjs', 'json'],
+  // Setup files
+  setupFilesAfterEnv: ['<rootDir>/test/setup-jest.js'],
   
-  // Test setup
-  setupFilesAfterEnv: ['<rootDir>/test/setup-tests.js'],
-  
-  // Test timeout
-  testTimeout: 60000,
-  
-  // Verbose output
-  verbose: true,
-  
-  // Test environment options
-  testEnvironmentOptions: {
-    url: 'http://localhost:4000'
+  // Module name mapping for ES modules
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/public/js/$1',
+    '^@modules/(.*)$': '<rootDir>/public/js/modules/$1'
   },
+  
+  // Transform configuration
+  transform: {
+    '^.+\\.js$': 'babel-jest'
+  },
+  
+  // Module file extensions
+  moduleFileExtensions: ['js', 'json'],
   
   // Coverage configuration
   collectCoverageFrom: [
-    'server.js',
-    'routes/**/*.js',
     'public/js/modules/**/*.js',
-    'server/**/*.js',
-    '!**/node_modules/**',
-    '!**/coverage/**',
-    '!**/test/**'
+    '!public/js/modules/**/*.test.js',
+    '!public/js/bundle.js',
+    '!**/node_modules/**'
   ],
   
   // Coverage thresholds
@@ -78,38 +61,14 @@ export default {
     }
   },
   
-  // Coverage reporters
-  coverageReporters: ['text', 'lcov', 'html'],
+  // Verbose output
+  verbose: true,
   
-  // Test path ignore patterns
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/dist/',
-    '/coverage/'
-  ],
+  // Clear mocks between tests
+  clearMocks: true,
   
-  // Module name mapping for .js extensions
-  moduleNameMapper: {
-    // Handle ES module imports
-    '^(\\.{1,2}/.*)\\.js$': '$1'
-  },
-  
-  // Global test setup
-  globals: {
-    'ts-jest': {
-      useESM: true
-    }
-  },
-  
-  // Module resolution
-  moduleDirectories: ['node_modules'],
-  
-  // Test runner options
-  runner: 'jest-runner',
-  
-  // Detect open handles
-  detectOpenHandles: true,
-  
-  // Force exit
-  forceExit: true
-}; 
+  // Timeout for tests
+  testTimeout: 10000
+};
+
+export default config;

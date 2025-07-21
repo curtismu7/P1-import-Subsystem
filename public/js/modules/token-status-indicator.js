@@ -431,8 +431,24 @@ class TokenStatusIndicator {
             }
             
             console.log('✅ Token status updated successfully');
-            return tokenInfo;
             
+            // NEW: Direct global token status updater for sidebar
+            console.log('🚀 [DEBUG] TokenStatusIndicator: About to call updateGlobalTokenStatusDirect');
+            try {
+                // Get the main app instance to call the direct updater
+                if (window.app && typeof window.app.updateGlobalTokenStatusDirect === 'function') {
+                    // Calculate time left from token info
+                    const timeLeft = tokenInfo.timeRemaining ? this.formatTimeRemaining(tokenInfo.timeRemaining) : '';
+                    window.app.updateGlobalTokenStatusDirect(timeLeft);
+                    console.log('✅ [DEBUG] TokenStatusIndicator: updateGlobalTokenStatusDirect called successfully with timeLeft:', timeLeft);
+                } else {
+                    console.warn('⚠️ [DEBUG] TokenStatusIndicator: window.app.updateGlobalTokenStatusDirect not available');
+                }
+            } catch (error) {
+                console.error('❌ [DEBUG] TokenStatusIndicator: Error calling updateGlobalTokenStatusDirect:', error);
+            }
+            
+            return tokenInfo;
         } catch (error) {
             console.error('❌ Error updating token status:', error);
             
@@ -553,17 +569,23 @@ class TokenStatusIndicator {
     }
 }
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = TokenStatusIndicator;
-} else {
-    // Browser environment
+// ES Modules export
+export { TokenStatusIndicator };
+export default TokenStatusIndicator;
+
+// Browser global fallback for legacy compatibility
+if (typeof window !== 'undefined') {
     window.TokenStatusIndicator = TokenStatusIndicator;
+}
+
+// Browser global fallback for legacy compatibility
+if (typeof window !== 'undefined') {
+window.TokenStatusIndicator = TokenStatusIndicator;
 }
 
 // Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
         window.tokenStatusIndicator = new TokenStatusIndicator();
     });
 } else {

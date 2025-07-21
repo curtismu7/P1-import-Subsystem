@@ -38,11 +38,13 @@ function handleClientError(error) {
  */
 class PingOneClient {
     constructor() {
-        // Initialize Winston logger
-        this.logger = createWinstonLogger({
-            service: 'pingone-import-client',
-            environment: process.env.NODE_ENV || 'development'
-        });
+        // Initialize browser-compatible logger
+        this.logger = {
+            info: (msg, data) => console.log(`[PingOneClient] ${msg}`, data || ''),
+            debug: (msg, data) => console.debug(`[PingOneClient] ${msg}`, data || ''),
+            warn: (msg, data) => console.warn(`[PingOneClient] ${msg}`, data || ''),
+            error: (msg, data) => console.error(`[PingOneClient] ${msg}`, data || '')
+        };
         
         this.accessToken = null;
         this.tokenExpiry = null;

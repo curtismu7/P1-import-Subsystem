@@ -16,10 +16,11 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createWinstonLogger, createRequestLogger, createErrorLogger, createPerformanceLogger } from './server/winston-config.js';
-import TokenManager from './server/token-manager.js';
+import { createWinstonLogger, createRequestLogger, createErrorLogger, createPerformanceLogger, serverLogger, apiLogger } from './server/winston-config.js';
 import { createConnectionManager } from './server/connection-manager.js';
 import { router as authSubsystemRouter, pingOneAuth } from './auth-subsystem/server/index.js';
+import EnhancedServerAuth from './auth-subsystem/server/enhanced-server-auth.js';
+import credentialManagementRouter, { initializeCredentialRoutes } from './routes/api/credential-management.js';
 import { 
     isPortAvailable, 
     findAvailablePort, 
@@ -32,8 +33,12 @@ import {
 import pingoneProxyRouter from './routes/pingone-proxy-fixed.js';
 import apiRouter from './routes/api/index.js';
 import settingsRouter from './routes/settings.js';
+import debugLogRouter from './routes/api/debug-log.js';
 import logsRouter from './routes/logs.js';
 import indexRouter from './routes/index.js';
+import testRunnerRouter from './routes/test-runner.js';
+import importRouter from './routes/api/import.js';
+import exportRouter from './routes/api/export.js';
 import { setupSwagger } from './swagger.js';
 import session from 'express-session';
 import fs from 'fs/promises';
@@ -94,8 +99,15 @@ const requestLogger = createRequestLogger(logger);
 const errorLogger = createErrorLogger(logger);
 const performanceLogger = createPerformanceLogger(logger);
 
-// Initialize TokenManager with enhanced logging
-const tokenManager = new TokenManager(logger);
+// Use pingOneAuth from auth subsystem for token management
+// This replaces the legacy TokenManager with the new auth subsystem
+const tokenManager = pingOneAuth;
+
+// Initialize Enhanced Server Authentication
+const enhancedAuth = new EnhancedServerAuth(logger);
+
+// Initialize credential management routes with enhanced auth
+initializeCredentialRoutes(enhancedAuth);
 
 // Server state management
 const serverState = {
@@ -111,6 +123,10 @@ let PORT = process.env.PORT || 4000;
 
 // Attach token manager to app for route access
 app.set('tokenManager', tokenManager);
+
+// Attach API logger to app for route access
+app.set('apiLogger', apiLogger);
+app.set('importLogger', apiLogger); // For backward compatibility with existing routes
 
 // Set skip duplicate check flag if environment variable is set
 if (process.env.SKIP_DUPLICATE_CHECK === 'true') {
@@ -270,6 +286,19 @@ console.log('📄 Swagger JSON available at http://localhost:4000/swagger.json')
  *               error: "Health check failed"
  *               timestamp: "2025-07-12T15:35:29.053Z"
  */
+// Endpoint to get the latest bundle filename for cache-busting
+app.get('/api/bundle-info', async (req, res) => {
+    try {
+        const manifestPath = path.join(__dirname, 'public', 'js', 'bundle-manifest.json');
+        const manifestData = await fs.readFile(manifestPath, 'utf8');
+        const manifest = JSON.parse(manifestData);
+        res.json(manifest);
+    } catch (error) {
+        logger.error('Failed to read bundle manifest', { error: error.message });
+        res.status(500).json({ error: 'Could not retrieve bundle information.' });
+    }
+});
+
 // Health check endpoint with enhanced logging
 app.get('/api/health', async (req, res) => {
     const startTime = Date.now();
@@ -353,7 +382,12 @@ app.use('/api', apiRouter);
 app.use('/api/pingone', pingoneProxyRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/logs', logsRouter);
+app.use('/api/debug-log', debugLogRouter);
 app.use('/api/v1/auth', authSubsystemRouter);
+app.use('/api/auth', credentialManagementRouter);
+app.use('/api/test-runner', testRunnerRouter);
+app.use('/api/import', importRouter);
+app.use('/api/export', exportRouter);
 app.use('/', indexRouter);
 
 // Enhanced error handling middleware (structured, safe, Winston-logged)
@@ -503,6 +537,13 @@ const startServer = async () => {
             pid: process.pid
         });
         
+        // Also log to server.log
+        serverLogger.info('Server initialization started', {
+            port: PORT,
+            env: process.env.NODE_ENV || 'development',
+            pid: process.pid
+        });
+        
         if (serverState.isInitializing) {
             throw new Error('Server initialization already in progress');
         }
@@ -517,47 +558,45 @@ const startServer = async () => {
         // Load settings from file at startup
         await loadSettingsFromFile();
         
-        // Initialize PingOne connection using the auth subsystem
-        logger.info('Initializing PingOne connection using auth subsystem');
+        // Initialize Enhanced Server Authentication System
+        logger.info('🚀 Initializing Enhanced Server Authentication System...');
         try {
-            // Try to get token using the auth subsystem with retry logic
-            let retryCount = 0;
-            const maxRetries = 2;
-            let success = false;
+            const authResult = await enhancedAuth.initializeOnStartup();
             
-            while (retryCount <= maxRetries && !success) {
-                try {
-                    await pingOneAuth.getAccessToken();
-                    success = true;
-                    serverState.pingOneInitialized = true;
-                    logger.info('PingOne connection established successfully via auth subsystem');
-                } catch (error) {
-                    retryCount++;
-                    if (retryCount <= maxRetries) {
-                        logger.warn(`PingOne connection attempt ${retryCount} failed, retrying...`, {
-                            error: error.message
-                        });
-                        // Exponential backoff
-                        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-                    } else {
-                        throw error;
-                    }
-                }
-            }
-            
-            // Also initialize the legacy token manager for backward compatibility
-            if (success) {
+            if (authResult.success) {
+                serverState.pingOneInitialized = true;
+                logger.info('✅ Enhanced authentication initialized successfully', {
+                    credentialSource: authResult.credentialSource,
+                    environmentId: authResult.environmentId,
+                    tokenExpiresAt: authResult.expiresAt
+                });
+                
+                // Also initialize the legacy token manager for backward compatibility
                 try {
                     await tokenManager.getAccessToken();
                     logger.info('Legacy token manager initialized successfully');
                 } catch (legacyError) {
-                    logger.warn('Legacy token manager initialization failed, but auth subsystem is working', {
+                    logger.warn('Legacy token manager initialization failed, but enhanced auth is working', {
                         error: legacyError.message
+                    });
+                }
+            } else {
+                serverState.pingOneInitialized = false;
+                logger.error('❌ Enhanced authentication initialization failed', {
+                    error: authResult.error,
+                    recommendations: authResult.recommendations
+                });
+                
+                // Log setup recommendations for the user
+                if (authResult.recommendations) {
+                    logger.info('📋 Setup Recommendations:');
+                    authResult.recommendations.forEach((rec, index) => {
+                        logger.info(`   ${index + 1}. ${rec}`);
                     });
                 }
             }
         } catch (error) {
-            logger.warn('Failed to initialize PingOne connection', {
+            logger.error('Failed to initialize Enhanced Server Authentication', {
                 error: error.message,
                 code: error.code,
                 stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
@@ -628,8 +667,10 @@ const startServer = async () => {
                 node: process.version,
                 platform: process.platform,
                 env: process.env.NODE_ENV || 'development',
+                appVersion: '6.3.0',
                 pingOneInitialized: serverState.pingOneInitialized,
-                duration: `${duration}ms`
+                duration: `${duration}ms`,
+                critical: true
             });
             
             // Console output for development
@@ -641,6 +682,7 @@ const startServer = async () => {
                 console.log(`   Node: ${process.version}`);
                 console.log(`   Platform: ${process.platform}`);
                 console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+                console.log(`   Version: 6.3.0`);
                 console.log(`   PingOne: ${serverState.pingOneInitialized ? '✅ Connected' : '⚠️  Not connected'}`);
                 console.log(`   📚 Swagger UI: ${url}/swagger.html`);
                 console.log(`   📄 Swagger JSON: ${url}/swagger.json`);
@@ -677,9 +719,11 @@ const startServer = async () => {
 
     // --- Socket.IO server for primary real-time updates ---
     const io = new SocketIOServer(server, {
+        wsEngine: WebSocketServer,
         cors: {
-            origin: "*",
-            methods: ["GET", "POST"]
+            origin: [`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`],
+            methods: ['GET', 'POST'],
+            credentials: true
         },
         pingTimeout: 60000, // 60 seconds - increased from default
         pingInterval: 25000, // 25 seconds - increased from default
@@ -1023,13 +1067,17 @@ process.on('uncaughtException', (error) => {
     logger.error('Uncaught Exception', {
         error: error.message,
         stack: error.stack,
-        code: error.code
+        code: error.code,
+        appVersion: '6.3.0',
+        critical: true
     });
     
-    // Don't exit for WebSocket-related errors
-    if (error.message && error.message.includes('WebSocket')) {
-        logger.warn('Ignoring WebSocket error to prevent server crash', {
-            error: error.message
+    // Don't exit for non-fatal errors like WebSocket issues or broken pipes
+    if ((error.message && error.message.includes('WebSocket')) || error.code === 'EPIPE') {
+        logger.warn('Ignoring non-fatal error to prevent server crash', {
+            error: error.message,
+            code: error.code,
+            appVersion: '6.3.0'
         });
         return;
     }
@@ -1042,7 +1090,9 @@ process.on('unhandledRejection', (reason, promise) => {
     logger.error('Unhandled Promise Rejection', {
         reason: reason?.message || reason,
         stack: reason?.stack,
-        promise: promise
+        promise: promise,
+        appVersion: '6.3.0',
+        critical: true
     });
     
     process.exit(1);

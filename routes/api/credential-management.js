@@ -10,9 +10,40 @@
  */
 
 import express from 'express';
+import { apiLogger, apiLogHelpers } from '../../server/winston-config.js';
 import EnhancedServerAuth from '../../auth-subsystem/server/enhanced-server-auth.js';
 
 const router = express.Router();
+
+// API Request/Response Logging Middleware for Credential Management
+router.use((req, res, next) => {
+    const startTime = Date.now();
+    
+    // Log incoming request with credential management context
+    const requestId = apiLogHelpers.logApiRequest(req, {
+        subsystem: 'credential-management',
+        endpoint: req.path
+    });
+    req.requestId = requestId;
+    req.startTime = startTime;
+    
+    // Override res.end to log response
+    const originalEnd = res.end;
+    res.end = function(chunk, encoding) {
+        const duration = Date.now() - startTime;
+        
+        // Log API response with credential management context
+        apiLogHelpers.logApiResponse(req, res, requestId, duration, {
+            subsystem: 'credential-management',
+            endpoint: req.path
+        });
+        
+        // Call original end method
+        originalEnd.call(res, chunk, encoding);
+    };
+    
+    next();
+});
 
 // Initialize enhanced authentication (will be set by server startup)
 let enhancedAuth = null;
@@ -53,7 +84,7 @@ router.get('/status', requireAuth, async (req, res) => {
             serverTime: new Date().toISOString()
         });
     } catch (error) {
-        console.error('Error getting auth status:', error);
+        apiLogger.error('Error getting auth status:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to get authentication status',
@@ -90,7 +121,7 @@ router.get('/current-credentials', requireAuth, async (req, res) => {
             credentials: sanitizedCredentials
         });
     } catch (error) {
-        console.error('Error getting current credentials:', error);
+        apiLogger.error('Error getting current credentials:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to get current credentials',
@@ -135,7 +166,7 @@ router.post('/validate-credentials', requireAuth, async (req, res) => {
             } : null
         });
     } catch (error) {
-        console.error('Error validating credentials:', error);
+        apiLogger.error('Error validating credentials:', error);
         res.status(500).json({
             success: false,
             error: 'Credential validation failed',
@@ -203,7 +234,7 @@ router.post('/save-credentials', requireAuth, async (req, res) => {
             results: saveResults
         });
     } catch (error) {
-        console.error('Error saving credentials:', error);
+        apiLogger.error('Error saving credentials:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to save credentials',
@@ -239,7 +270,7 @@ router.post('/clear-credentials', requireAuth, async (req, res) => {
             note: 'Client-side localStorage must be cleared separately'
         });
     } catch (error) {
-        console.error('Error clearing credentials:', error);
+        apiLogger.error('Error clearing credentials:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to clear credentials',
@@ -276,7 +307,7 @@ router.post('/refresh-token', requireAuth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error refreshing token:', error);
+        apiLogger.error('Error refreshing token:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to refresh token',
@@ -311,7 +342,7 @@ router.get('/token-info', requireAuth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error getting token info:', error);
+        apiLogger.error('Error getting token info:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to get token information',
@@ -340,7 +371,7 @@ router.get('/setup-recommendations', (req, res) => {
             recommendations: recommendations
         });
     } catch (error) {
-        console.error('Error getting setup recommendations:', error);
+        apiLogger.error('Error getting setup recommendations:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to get setup recommendations',
@@ -408,7 +439,7 @@ router.post('/test-connection', requireAuth, async (req, res) => {
             });
         }
     } catch (error) {
-        console.error('Error testing connection:', error);
+        apiLogger.error('Error testing connection:', error);
         res.status(500).json({
             success: false,
             error: 'Connection test failed',

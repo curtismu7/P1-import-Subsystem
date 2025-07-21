@@ -125,7 +125,7 @@ class CredentialsModal {
                 <div class="credential-item">
                     <label>Client Secret:</label>
                     <div class="credential-value">
-                        <code class="credential-masked">••••••••••••••••••••</code>
+                        <code class="credential-masked">${this.credentials.clientSecret ? this.credentials.clientSecret.substring(0, 5) + '•'.repeat(Math.max(0, 15)) : '••••••••••••••••••••'}</code>
                         <span class="credential-status">✅ Configured</span>
                     </div>
                 </div>
@@ -345,8 +345,8 @@ class CredentialsModal {
         }
         
         try {
-            // Save credentials to settings and get token
-            await this.saveCredentialsAndGetToken();
+            // Just save credentials without trying to get a token
+            await this.saveCredentialsOnly();
             
             // Mark modal as shown since credentials are now saved
             CredentialsModal.setCredentialsModalShown();
@@ -358,7 +358,7 @@ class CredentialsModal {
             this.updateTokenStatusAfterCredentialsUse();
             
             // Show success message
-            this.showSuccessMessage('Credentials saved and token acquired successfully!');
+            this.showSuccessMessage('Credentials saved successfully!');
             
         } catch (error) {
             // Restore button state on error
@@ -374,8 +374,8 @@ class CredentialsModal {
             let userTitle = 'Credentials Error';
             
             if (error.message.includes('PingOne client not available')) {
-                userTitle = 'Credentials Invalid';
-                userMessage = 'The stored credentials appear to be invalid or incomplete. Please go to Settings to configure valid PingOne credentials.';
+                userTitle = 'Authentication System Not Ready';
+                userMessage = 'The PingOne authentication system is not fully initialized. Please refresh the page and try again, or go to Settings to configure credentials manually.';
             } else if (error.message.includes('Missing required credentials')) {
                 userTitle = 'Incomplete Credentials';
                 userMessage = 'Some required credential fields are missing. Please go to Settings to complete your PingOne configuration.';
@@ -484,24 +484,218 @@ class CredentialsModal {
             }
         }
         
-        // Get a new token with the saved credentials
-        if (window.app && window.app.pingOneClient) {
+        // Get a new token with the saved credentials - with retry logic
+        let tokenResult = null;
+        let lastError = null;
+        
+        // Wait a moment for credentials to be processed by the server
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Try multiple approaches to get a token
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            console.log(`Token acquisition attempt ${attempt}/3`);
+            
+            // First try: Direct API call (most reliable)
             try {
-                // Update the PingOne client with new credentials
-                window.app.pingOneClient.updateCredentials(settings);
+                console.log('Trying direct API call approach...');
+                const response = await fetch('/api/pingone/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
                 
-                // Get a new token
-                const token = await window.app.pingOneClient.getAccessToken();
-                console.log('New token acquired with saved credentials');
-                
-                return token;
-            } catch (error) {
-                console.error('Failed to get token with saved credentials:', error);
-                throw new Error(`Failed to get token: ${error.message}`);
+                if (response.ok) {
+                    const tokenData = await response.json();
+                    if (tokenData.access_token) {
+                        console.log('Token acquired via direct API call');
+                        tokenResult = tokenData.access_token;
+                        break; // Success!
+                    }
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    lastError = new Error(errorData.error || 'Failed to get token from API');
+                    console.error(`Direct API approach failed (attempt ${attempt}):`, lastError.message);
+                }
+            } catch (apiError) {
+                console.error(`Direct API approach failed (attempt ${attempt}):`, apiError);
+                lastError = apiError;
             }
-        } else {
-            throw new Error('PingOne client not available');
+            
+            // Second try: Use PingOne client if available (fallback)
+            if (!tokenResult && window.app && window.app.pingOneClient) {
+                try {
+                    console.log('Trying PingOne client approach as fallback...');
+                    // Update the PingOne client with new credentials
+                    if (typeof window.app.pingOneClient.updateCredentials === 'function') {
+                        window.app.pingOneClient.updateCredentials(settings);
+                    }
+                    
+                    // Get a new token
+                    const token = await window.app.pingOneClient.getAccessToken();
+                    console.log('New token acquired with saved credentials via PingOne client');
+                    
+                    tokenResult = token;
+                    break; // Success!
+                } catch (error) {
+                    console.error(`PingOne client approach failed (attempt ${attempt}):`, error);
+                    lastError = error;
+                }
+            } else if (!tokenResult) {
+                console.log('PingOne client not available, skipping client approach');
+            }
+            
+            // Third try: Enhanced server auth endpoint
+            if (!tokenResult) {
+                try {
+                    console.log('Trying enhanced server auth approach...');
+                    const response = await fetch('/api/v1/auth/token', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            environmentId: settings.environmentId,
+                            clientId: settings.apiClientId,
+                            clientSecret: settings.apiSecret,
+                            region: settings.region
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const tokenData = await response.json();
+                        if (tokenData.access_token || tokenData.token) {
+                            console.log('Token acquired via enhanced server auth');
+                            tokenResult = tokenData.access_token || tokenData.token;
+                            break; // Success!
+                        }
+                    } else {
+                        const errorData = await response.json().catch(() => ({}));
+                        lastError = new Error(errorData.error || 'Failed to get token from enhanced auth');
+                        console.error(`Enhanced server auth approach failed (attempt ${attempt}):`, lastError.message);
+                    }
+                } catch (authError) {
+                    console.error(`Enhanced server auth approach failed (attempt ${attempt}):`, authError);
+                    lastError = authError;
+                }
+            }
+            
+            // Wait before retry (exponential backoff)
+            if (attempt < 3 && !tokenResult) {
+                const waitTime = 1000 * attempt;
+                console.log(`Waiting ${waitTime}ms before retry...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+            }
         }
+        
+        // Check if we got a token
+        if (!tokenResult) {
+            console.error('All token acquisition attempts failed');
+            
+            // Provide helpful error message based on the last error
+            let errorMessage = 'Unable to acquire PingOne access token after multiple attempts.';
+            
+            if (lastError) {
+                if (lastError.message.includes('401') || lastError.message.includes('unauthorized')) {
+                    errorMessage = 'Invalid credentials. Please verify your PingOne Client ID and Secret are correct.';
+                } else if (lastError.message.includes('404') || lastError.message.includes('not found')) {
+                    errorMessage = 'PingOne environment not found. Please verify your Environment ID is correct.';
+                } else if (lastError.message.includes('network') || lastError.message.includes('fetch')) {
+                    errorMessage = 'Network error connecting to PingOne. Please check your internet connection.';
+                } else if (lastError.message.includes('PingOne client not available')) {
+                    errorMessage = 'PingOne authentication system is not properly initialized. Please refresh the page and try again.';
+                } else {
+                    errorMessage = `Authentication failed: ${lastError.message}`;
+                }
+            }
+            
+            throw new Error(errorMessage);
+        }
+        
+        console.log('Token acquisition successful');
+        return tokenResult;
+    }
+    
+    async saveCredentialsOnly() {
+        if (!this.credentials) {
+            throw new Error('No credentials available to save');
+        }
+        
+        // Convert credentials to settings format
+        const settings = {
+            environmentId: this.credentials.environmentId,
+            apiClientId: this.credentials.clientId,
+            apiSecret: this.credentials.clientSecret,
+            populationId: this.credentials.populationId || '',
+            region: this.credentials.region || 'NorthAmerica',
+            rateLimit: this.credentials.rateLimit || 90
+        };
+        
+        // Validate required fields before saving
+        if (!settings.environmentId || !settings.apiClientId || !settings.apiSecret) {
+            throw new Error('Missing required credentials: Environment ID, Client ID, and Client Secret are required');
+        }
+        
+        // Save to server via API endpoint
+        try {
+            console.log('Saving credentials to server...', {
+                hasEnvironmentId: !!settings.environmentId,
+                hasApiClientId: !!settings.apiClientId,
+                hasApiSecret: !!settings.apiSecret,
+                region: settings.region
+            });
+            
+            const response = await fetch('/api/settings', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(settings)
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`Failed to save credentials to server: ${errorData.error || response.statusText}`);
+            }
+            
+            const result = await response.json();
+            console.log('Credentials saved to server successfully:', result);
+            
+        } catch (error) {
+            console.error('Failed to save credentials to server:', error);
+            throw new Error(`Failed to save credentials: ${error.message}`);
+        }
+        
+        // Save to credentials manager if available
+        if (window.credentialsManager) {
+            try {
+                window.credentialsManager.saveCredentials(settings);
+                console.log('Credentials saved to credentials manager');
+            } catch (error) {
+                console.warn('Failed to save to credentials manager:', error);
+            }
+        }
+        
+        // Save to localStorage as backup
+        try {
+            localStorage.setItem('pingone_credentials', JSON.stringify(settings));
+            console.log('Credentials saved to localStorage as backup');
+        } catch (error) {
+            console.warn('Failed to save to localStorage:', error);
+        }
+        
+        // Update settings form if on settings page
+        if (window.app && window.app.populateSettingsForm) {
+            try {
+                window.app.populateSettingsForm(settings);
+                console.log('Settings form updated with credentials');
+            } catch (error) {
+                console.warn('Failed to update settings form:', error);
+            }
+        }
+        
+        console.log('Credentials saved successfully without token acquisition');
+        return true;
     }
     
     showError(title, message) {
@@ -567,19 +761,33 @@ class CredentialsModal {
     
     updateTokenStatusAfterCredentialsUse() {
         try {
-            // Access the global app instance to update token status
-            if (window.app && typeof window.app.updateUniversalTokenStatus === 'function') {
-                console.log('Credentials Modal: Updating token status after credentials use');
-                window.app.updateUniversalTokenStatus();
+            console.log('Credentials Modal: Updating token status after credentials use');
+            
+            // Force a token refresh to get current status
+            if (window.app && window.app.pingOneClient) {
+                // Clear any existing token to force refresh
+                window.app.pingOneClient.clearToken();
                 
-                // Also trigger a token check to get fresh status
-                if (window.app.pingOneClient && typeof window.app.pingOneClient.getCurrentTokenTimeRemaining === 'function') {
-                    const tokenInfo = window.app.pingOneClient.getCurrentTokenTimeRemaining();
-                    console.log('Credentials Modal: Current token info after credentials use:', tokenInfo);
-                }
-            } else {
-                console.warn('Credentials Modal: App instance not available for token status update');
+                // Get a fresh token
+                window.app.pingOneClient.getAccessToken().then(token => {
+                    console.log('Credentials Modal: Fresh token acquired');
+                    
+                    // Update the universal token status
+                    if (typeof window.app.updateUniversalTokenStatus === 'function') {
+                        window.app.updateUniversalTokenStatus();
+                    }
+                }).catch(error => {
+                    console.warn('Credentials Modal: Could not get fresh token:', error);
+                });
             }
+            
+            // Also try to update status directly
+            if (window.app && typeof window.app.updateUniversalTokenStatus === 'function') {
+                setTimeout(() => {
+                    window.app.updateUniversalTokenStatus();
+                }, 1000);
+            }
+            
         } catch (error) {
             console.error('Credentials Modal: Error updating token status:', error);
         }

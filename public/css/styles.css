@@ -510,7 +510,23 @@ a:hover, a:focus {
     animation: fadeOut 0.3s ease-in forwards;
 }
 
-/* Main Content Styles */
+/* Main Content Area */
+
+#settings-status-box {
+    display: none; /* Initially hidden */
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    border-radius: var(--border-radius);
+    min-height: 80px; /* Doubled height */
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+#settings-form .form-group input {
+    width: 50%;
+}
+
 .main-content {
     flex: 1;
     margin-left: var(--sidebar-width);
@@ -644,6 +660,44 @@ h1 {
     align-items: center;
     gap: 16px;
     margin-bottom: 0.5rem;
+}
+
+/* Population Display Styling - Better Label/Value Distinction */
+.population-label {
+    font-weight: 600;
+    color: var(--ping-gray);
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.population-value {
+    font-weight: 700;
+    color: var(--ping-white);
+    font-size: 16px;
+    background: linear-gradient(135deg, var(--ping-primary-red), var(--ping-dark-red));
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--ping-dark-red);
+    margin-left: 8px;
+    box-shadow: 0 2px 4px rgba(225, 0, 26, 0.2);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.population-placeholder {
+    font-weight: 400;
+    color: var(--ping-gray);
+    font-style: italic;
+    font-size: 14px;
+    margin-left: 8px;
+}
+
+/* Hover effect for population value */
+.population-value:hover {
+    background: linear-gradient(135deg, var(--ping-dark-red), #8B0000);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(225, 0, 26, 0.3);
+    transition: var(--transition);
 }
 
 /* Button styles */
