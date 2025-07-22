@@ -257,7 +257,7 @@ export class NavigationSubsystem {
             'history': 'History'
         };
         
-        const baseTitle = 'PingOne User Import v6.5.1.0';
+        const baseTitle = 'PingOne User Import v6.5.1.1';
         const viewTitle = titles[view];
         
         if (viewTitle) {

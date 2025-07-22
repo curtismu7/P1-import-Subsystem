@@ -240,38 +240,121 @@ export class AuthManagementSubsystem {
     }
     
     /**
-     * Check initial token status
+     * Check initial token status and automatically acquire new token if expired
+     * CRITICAL: This method provides automatic token acquisition at startup
+     * DO NOT REMOVE OR MODIFY without understanding the startup authentication flow
      */
     async checkInitialTokenStatus() {
         try {
+            this.logger.debug('🔍 [STARTUP] Checking initial token status...');
             const response = await this.localClient.get('/api/v1/auth/status');
             
             if (response.success && response.isValid) {
+                // Token is valid - set authentication state
                 this.tokenStatus = response.status;
                 this.tokenExpiry = response.expiresIn;
                 this.isAuthenticated = true;
                 this.updateTokenStatusUI(true, `Token is ${response.status}`);
+                this.logger.info('✅ [STARTUP] Valid token found, authentication ready');
+                
             } else if (response.success && response.hasToken) {
-                // Token exists but is expired
+                // Token exists but is expired - attempt automatic refresh
+                this.logger.warn('⚠️ [STARTUP] Token expired, attempting automatic refresh...');
                 this.tokenStatus = response.status;
                 this.tokenExpiry = response.expiresIn;
-                this.isAuthenticated = false;
-                this.updateTokenStatusUI(false, `Token is ${response.status}`);
+                
+                // Attempt automatic token acquisition
+                const refreshSuccess = await this.attemptAutomaticTokenRefresh();
+                
+                if (refreshSuccess) {
+                    this.logger.info('✅ [STARTUP] Token automatically refreshed, authentication ready');
+                } else {
+                    this.logger.warn('❌ [STARTUP] Automatic token refresh failed, user intervention required');
+                    this.isAuthenticated = false;
+                    this.updateTokenStatusUI(false, 'Token expired - refresh required');
+                }
+                
             } else {
-                // No token available
-                this.isAuthenticated = false;
-                this.updateTokenStatusUI(false, response.status || 'No valid token');
+                // No token available - attempt automatic acquisition if credentials exist
+                this.logger.warn('⚠️ [STARTUP] No token found, attempting automatic acquisition...');
+                
+                const acquisitionSuccess = await this.attemptAutomaticTokenRefresh();
+                
+                if (acquisitionSuccess) {
+                    this.logger.info('✅ [STARTUP] Token automatically acquired, authentication ready');
+                } else {
+                    this.logger.warn('❌ [STARTUP] No token available and automatic acquisition failed');
+                    this.isAuthenticated = false;
+                    this.updateTokenStatusUI(false, response.status || 'No valid token');
+                }
             }
             
         } catch (error) {
-            this.logger.error('Failed to check token status', error);
+            this.logger.error('❌ [STARTUP] Failed to check token status', error);
             this.isAuthenticated = false;
             this.updateTokenStatusUI(false, 'Token status unknown');
         }
     }
     
     /**
+     * Attempt automatic token refresh/acquisition at startup
+     * CRITICAL: This method enables automatic token acquisition when credentials are available
+     * DO NOT REMOVE - Required for seamless startup authentication flow
+     */
+    async attemptAutomaticTokenRefresh() {
+        try {
+            this.logger.debug('🔄 [STARTUP] Attempting automatic token acquisition...');
+            
+            // Load current settings to check if credentials are available
+            await this.settingsSubsystem.loadCurrentSettings();
+            const settings = this.settingsSubsystem.currentSettings;
+            
+            // Validate that we have the required credentials
+            if (!this.validateSettings(settings)) {
+                this.logger.debug('❌ [STARTUP] No valid credentials available for automatic token acquisition');
+                return false;
+            }
+            
+            this.logger.debug('✅ [STARTUP] Valid credentials found, attempting token acquisition...');
+            
+            // Request token from server using available credentials
+            const response = await this.localClient.post('/api/v1/auth/token', {
+                clientId: settings.clientId,
+                clientSecret: settings.clientSecret,
+                environmentId: settings.environmentId,
+                region: settings.region
+            });
+            
+            if (response.success && response.token) {
+                // Token acquisition successful - update authentication state
+                this.tokenStatus = response.token;
+                this.tokenExpiry = response.expiry;
+                this.isAuthenticated = true;
+                
+                // Update UI to reflect successful authentication
+                this.updateTokenStatusUI(true, 'Token obtained automatically');
+                
+                // Set up refresh timer for the new token
+                this.setupTokenRefreshTimer();
+                
+                this.logger.info('✅ [STARTUP] Automatic token acquisition successful');
+                return true;
+                
+            } else {
+                this.logger.warn('❌ [STARTUP] Token acquisition failed:', response.error || 'Unknown error');
+                return false;
+            }
+            
+        } catch (error) {
+            this.logger.error('❌ [STARTUP] Error during automatic token acquisition:', error);
+            return false;
+        }
+    }
+    
+    /**
      * Set up automatic token refresh timer
+     * CRITICAL: This method manages token refresh scheduling
+     * DO NOT REMOVE - Required for automatic token maintenance
      */
     setupTokenRefreshTimer() {
         // Clear existing timer
