@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PingOne User Import v6.4</title>
+    <title>PingOne User Import v6.5.1.0</title>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
@@ -1198,35 +1198,33 @@
     <!-- API URL Subsystem Client Script -->
     <script src="/js/api-url-subsystem-client.js"></script>
     <!-- JavaScript -->
+    <!-- CRITICAL: Direct bundle loading - no more dynamic manifest system -->
+    <!-- This loads the latest bundle directly without complex API calls -->
+    <!-- Last fixed: 2025-07-22 - Replaced broken dynamic loading system -->
+    <script src="js/bundle-1753180255.js"></script>
+    
+    <!-- Fallback error handling for bundle loading -->
     <script>
-        // Fetch the bundle manifest and load the correct bundle file
-        (async function() {
-            try {
-                const response = await fetch('/api/bundle-info');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch bundle manifest');
-                }
-                const manifest = await response.json();
-                const bundleFile = manifest.bundleFile;
-                if (!bundleFile) {
-                    throw new Error('Bundle filename not found in manifest');
-                }
-
-                var script = document.createElement('script');
-                script.src = 'js/' + bundleFile;
-                script.async = true;
-                document.head.appendChild(script);
-            } catch (error) {
-                console.error('Failed to load application bundle:', error);
-                // Fallback or error message can be displayed to the user here
+        // Simple fallback if bundle fails to load
+        window.addEventListener('error', function(e) {
+            if (e.filename && e.filename.includes('bundle-')) {
+                console.error('Bundle loading failed:', e);
                 const errorDiv = document.createElement('div');
-                errorDiv.textContent = 'Error loading application. Please try refreshing the page.';
-                errorDiv.style.color = 'red';
-                errorDiv.style.textAlign = 'center';
-                errorDiv.style.padding = '20px';
+                errorDiv.innerHTML = `
+                    <div style="color: red; text-align: center; padding: 20px; background: #ffe6e6; border: 1px solid #ff0000; margin: 10px;">
+                        <h3>Application Loading Error</h3>
+                        <p>The application bundle failed to load. Please:</p>
+                        <ul style="text-align: left; display: inline-block;">
+                            <li>Refresh the page (Ctrl+F5 or Cmd+Shift+R)</li>
+                            <li>Clear your browser cache</li>
+                            <li>Check your internet connection</li>
+                        </ul>
+                        <button onclick="location.reload(true)" style="padding: 10px 20px; margin-top: 10px;">Reload Page</button>
+                    </div>
+                `;
                 document.body.insertBefore(errorDiv, document.body.firstChild);
             }
-        })();
+        });
     </script>
     <script src="/js/modules/log-manager.js"></script>
     
@@ -1235,6 +1233,6 @@
     <script src="/js/import-api-fix.js"></script>
 
     
-    <div class="version-widget">v6.4</div>
+    <div class="version-widget">v6.5.1.0</div>
 </body>
 </html>

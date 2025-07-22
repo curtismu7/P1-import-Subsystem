@@ -1,6 +1,6 @@
 {
   "name": "pingone-import-cursor",
-  "version": "6.5.0",
+  "version": "6.5.1.0",
   "description": "A modern web application for importing users into PingOne using the PingOne Admin API.",
   "main": "server.js",
   "type": "module",
@@ -16,7 +16,8 @@
     "fix:population-dropdown": "node --experimental-modules --experimental-json-modules scripts/fix-population-dropdown.js",
     "fix:token-status": "node --experimental-modules --experimental-json-modules scripts/fix-token-status-widget.js",
     "fix:progress": "node --experimental-modules --experimental-json-modules scripts/fix-progress-subsystem.js",
-    "build:bundle": "TIMESTAMP=$(date +%s) && npx browserify src/client/app.js -t [ babelify --configFile ./config/babel.config.json --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -o public/js/bundle-${TIMESTAMP}.js && echo '{\"bundleFile\": \"bundle-'${TIMESTAMP}'.js\"}' > public/js/bundle-manifest.json",
+    "build:bundle": "TIMESTAMP=$(date +%s) && npx browserify src/client/app.js -t [ babelify --configFile ./config/babel.config.json --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -o public/js/bundle-${TIMESTAMP}.js && echo '{\"bundleFile\": \"bundle-'${TIMESTAMP}'.js\"}' > public/js/bundle-manifest.json && node scripts/update-bundle-reference.js",
+    "build:bundle:direct": "TIMESTAMP=$(date +%s) && npx browserify src/client/app.js -t [ babelify --configFile ./config/babel.config.json --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -o public/js/bundle-${TIMESTAMP}.js && echo '{\"bundleFile\": \"bundle-'${TIMESTAMP}'.js\"}' > public/js/bundle-manifest.json && node scripts/update-bundle-reference.js && echo '✅ Bundle built and HTML updated with direct loading'",
     "build:bundle:legacy": "npx browserify public/js/app.js -t [ babelify --configFile ./config/babel.config.json --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -o public/js/bundle-legacy.js",
     "test": "jest --detectOpenHandles --forceExit --config=jest.config.js",
     "test:unit": "cross-env NODE_ENV=test jest tests/unit/**/*.test.js --config=jest.config.mjs",

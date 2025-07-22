@@ -483,9 +483,16 @@ class App {
 
             // Advanced Real-time Subsystem
             if (FEATURE_FLAGS.USE_ADVANCED_REALTIME) {
+                // CRITICAL: AdvancedRealtimeSubsystem constructor expects (logger, eventBus, realtimeCommunication, sessionSubsystem, progressSubsystem)
+                // Previous initialization was passing parameters in wrong order causing "this.logger.info is not a function" error
+                // CRITICAL FIX: Use correct reference to realtimeCommunication subsystem (this.subsystems.realtimeManager)
+                // Last fixed: 2025-07-22 - Fixed parameter order and correct subsystem references
                 this.advancedRealtimeSubsystem = new AdvancedRealtimeSubsystem(
-                    this.eventBus,
-                    this.logger.child({ subsystem: 'advanced-realtime' })
+                    this.logger.child({ subsystem: 'advanced-realtime' }), // logger (first parameter)
+                    this.eventBus, // eventBus (second parameter)
+                    this.subsystems.realtimeManager, // realtimeCommunication (third parameter) - FIXED: was this.realtimeCommunication
+                    this.sessionSubsystem, // sessionSubsystem (fourth parameter)
+                    this.progressSubsystem // progressSubsystem (fifth parameter)
                 );
                 await this.advancedRealtimeSubsystem.init();
                 this.subsystems.advancedRealtime = this.advancedRealtimeSubsystem;
@@ -1398,7 +1405,7 @@ class App {
             };
             
             const title = titles[view] || 'PingOne Import Tool';
-            document.title = `${title} - PingOne Import Tool v6.5`;
+            document.title = `${title} - PingOne Import Tool v6.5.1.0`;
             
             this.logger.debug(`🔧 DIRECT NAV: Updated page title to: ${document.title}`);
             
@@ -1742,7 +1749,7 @@ window.testLoading = {
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await app.init();
-        console.log('🚀 PingOne Import Tool v6.5 initialized successfully');
+        console.log('🚀 PingOne Import Tool v6.5.1.0 initialized successfully');
         console.log('📊 Health Status:', app.getHealthStatus());
     } catch (error) {
         console.error('❌ Application initialization failed:', error);
