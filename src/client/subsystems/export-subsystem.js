@@ -252,39 +252,81 @@ export class ExportSubsystem {
     
     /**
      * Load populations for dropdown
+     * CRITICAL: This method loads populations for export functionality
+     * DO NOT modify API endpoint without verifying it matches server routes
+     * Last debugged: 2025-07-21 - Added debug logging for population loading issues
      */
     async loadPopulations() {
         try {
+            this.logger.info('🔄 EXPORT: Loading populations for export dropdown...');
+            
             const response = await this.localClient.get('/api/populations');
             
+            this.logger.debug('🔄 EXPORT: Populations API response:', {
+                success: response.success,
+                populationCount: response.populations?.length || 0,
+                hasPopulations: !!response.populations
+            });
+            
             if (response.success && response.populations) {
+                this.logger.info(`🔄 EXPORT: Successfully loaded ${response.populations.length} populations`);
                 this.populateDropdown(response.populations);
+            } else {
+                this.logger.warn('🔄 EXPORT: Invalid populations response structure', { response });
+                this.uiManager.showError('Population Loading Failed', 'Invalid response from populations API');
             }
             
         } catch (error) {
-            this.logger.error('Failed to load populations', error);
+            this.logger.error('🔄 EXPORT: Failed to load populations', { 
+                error: error.message,
+                stack: error.stack,
+                endpoint: '/api/populations'
+            });
             // TODO: Refactor: Use Notification or Modal from UI subsystem instead of alert.
-            this.uiManager.showError('Failed to Load Populations', error.message);
+            this.uiManager.showError('Failed to Load Populations', `Population loading failed: ${error.message}`);
         }
     }
     
     /**
      * Populate the population dropdown
+     * CRITICAL: This method populates the export population dropdown with loaded data
+     * DO NOT change the dropdown element ID without updating HTML templates
+     * Last debugged: 2025-07-21 - Added debug logging for dropdown population issues
      */
     populateDropdown(populations) {
+        this.logger.debug('🔄 EXPORT: Populating export population dropdown...', {
+            populationCount: populations?.length || 0,
+            populations: populations?.map(p => ({ id: p.id, name: p.name })) || []
+        });
+        
         const select = document.getElementById('export-population-select');
-        if (!select) return;
+        if (!select) {
+            this.logger.error('🔄 EXPORT: Export population dropdown element not found!', {
+                expectedId: 'export-population-select',
+                availableSelects: Array.from(document.querySelectorAll('select')).map(s => s.id || 'no-id')
+            });
+            return;
+        }
         
         // Clear existing options
         select.innerHTML = '<option value="">Select Population</option>';
+        this.logger.debug('🔄 EXPORT: Cleared existing dropdown options');
         
         // Add population options
+        let optionsAdded = 0;
         populations.forEach(pop => {
-            const option = document.createElement('option');
-            option.value = pop.id;
-            option.textContent = pop.name;
-            select.appendChild(option);
+            if (pop && pop.id && pop.name) {
+                const option = document.createElement('option');
+                option.value = pop.id;
+                option.textContent = pop.name;
+                select.appendChild(option);
+                optionsAdded++;
+            } else {
+                this.logger.warn('🔄 EXPORT: Skipping invalid population data', { population: pop });
+            }
         });
+        
+        this.logger.info(`🔄 EXPORT: Successfully populated dropdown with ${optionsAdded} population options`);
     }
     
     /**

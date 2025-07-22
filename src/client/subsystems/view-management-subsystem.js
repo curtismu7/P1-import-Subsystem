@@ -101,6 +101,11 @@ export class ViewManagementSubsystem {
         this.viewInitializers.set('history', async () => {
             await this.initializeHistoryView();
         });
+        
+        // Analytics view initializer
+        this.viewInitializers.set('analytics', async () => {
+            await this.initializeAnalyticsView();
+        });
     }
     
     /**
@@ -258,11 +263,28 @@ export class ViewManagementSubsystem {
     
     /**
      * Initialize export view
+     * CRITICAL: This method initializes the export view and loads populations
+     * DO NOT change the subsystem reference path without verifying App class structure
+     * Last fixed: 2025-07-21 - Fixed incorrect reference to export manager
      */
     async initializeExportView() {
-        // Load populations for export dropdown
-        if (window.exportManager && typeof window.exportManager.loadPopulations === 'function') {
-            await window.exportManager.loadPopulations();
+        this.logger.debug('🔄 VIEW: Initializing export view...');
+        
+        // Load populations for export dropdown using correct subsystem reference
+        if (window.app && window.app.subsystems && window.app.subsystems.exportManager) {
+            this.logger.debug('🔄 VIEW: Found export manager, loading populations...');
+            if (typeof window.app.subsystems.exportManager.loadPopulations === 'function') {
+                await window.app.subsystems.exportManager.loadPopulations();
+                this.logger.info('🔄 VIEW: Export populations loaded successfully');
+            } else {
+                this.logger.error('🔄 VIEW: Export manager loadPopulations method not found');
+            }
+        } else {
+            this.logger.error('🔄 VIEW: Export manager not found in app subsystems', {
+                hasApp: !!window.app,
+                hasSubsystems: !!(window.app && window.app.subsystems),
+                availableSubsystems: window.app && window.app.subsystems ? Object.keys(window.app.subsystems) : []
+            });
         }
     }
     
@@ -336,6 +358,33 @@ export class ViewManagementSubsystem {
     }
     
     /**
+     * Initialize analytics view
+     */
+    async initializeAnalyticsView() {
+        try {
+            this.logger.debug('Initializing analytics view');
+            
+            // Check if analytics dashboard is available
+            if (window.app && window.app.analyticsDashboardUI) {
+                this.logger.debug('Analytics dashboard UI available, ensuring visibility');
+                
+                // Make sure analytics dashboard is visible when analytics view is shown
+                const analyticsContainer = document.getElementById('analytics-dashboard');
+                if (analyticsContainer) {
+                    analyticsContainer.style.display = 'block';
+                    this.logger.debug('Analytics dashboard container made visible');
+                } else {
+                    this.logger.warn('Analytics dashboard container not found');
+                }
+            } else {
+                this.logger.warn('Analytics dashboard UI not available for analytics view initialization');
+            }
+        } catch (error) {
+            this.logger.error('Failed to initialize analytics view:', error);
+        }
+    }
+    
+    /**
      * Show initial view based on URL hash or default
      */
     async showInitialView() {
@@ -356,7 +405,7 @@ export class ViewManagementSubsystem {
     isValidView(view) {
         const validViews = [
             'home', 'import', 'export', 'modify', 'delete-csv', 
-            'settings', 'logs', 'history'
+            'settings', 'logs', 'history', 'analytics'
         ];
         return validViews.includes(view);
     }
@@ -372,7 +421,8 @@ export class ViewManagementSubsystem {
             'delete-csv': 'Delete Users',
             'settings': 'Settings',
             'logs': 'Logs',
-            'history': 'History'
+            'history': 'History',
+            'analytics': 'Analytics Dashboard'
         };
         
         return titles[view] || 'PingOne Import Tool';

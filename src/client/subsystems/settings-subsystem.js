@@ -114,68 +114,146 @@ export class SettingsSubsystem {
             this.isSaving = true;
             this.logger.info('Starting settings save process');
             
+            // Debug: Check all dependencies
+            this.logger.debug('Checking saveSettings dependencies:', {
+                hasUIManager: !!this.uiManager,
+                hasLocalClient: !!this.localClient,
+                hasSettingsManager: !!this.settingsManager,
+                hasCredentialsManager: !!this.credentialsManager,
+                hasEventBus: !!this.eventBus
+            });
+            
             // Show immediate feedback
-            this.uiManager.showSettingsActionStatus('Saving settings...', 'info');
+            if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                this.uiManager.showSettingsActionStatus('Saving settings...', 'info');
+                this.logger.debug('UI feedback shown successfully');
+            } else {
+                this.logger.warn('UIManager or showSettingsActionStatus method not available');
+            }
             
             // Get form data
-            const settings = this.getFormData();
-            this.logger.info('Form data extracted:', settings);
+            let settings;
+            try {
+                settings = this.getFormData();
+                this.logger.info('Form data extracted successfully:', settings);
+            } catch (formError) {
+                this.logger.error('Failed to get form data:', formError);
+                throw new Error(`Form data extraction failed: ${formError.message}`);
+            }
             
             // Validate settings
-            if (!this.validateSettings(settings)) {
-                return;
+            try {
+                if (!this.validateSettings(settings)) {
+                    this.logger.error('Settings validation failed');
+                    return;
+                }
+                this.logger.debug('Settings validation passed');
+            } catch (validationError) {
+                this.logger.error('Settings validation error:', validationError);
+                throw new Error(`Settings validation error: ${validationError.message}`);
             }
             
             // Save to credentials manager if available
             if (this.credentialsManager) {
-                const credentials = {
-                    environmentId: settings.environmentId || '',
-                    apiClientId: settings.apiClientId || '',
-                    apiSecret: settings.apiSecret || '',
-                    populationId: settings.populationId || '',
-                    region: settings.region || 'NorthAmerica'
-                };
-                
-                const validation = this.credentialsManager.validateCredentials(credentials);
-                if (!validation.isValid) {
-                    throw new Error(`Invalid credentials: ${validation.errors.join(', ')}`);
+                try {
+                    const credentials = {
+                        environmentId: settings.environmentId || '',
+                        apiClientId: settings.apiClientId || '',
+                        apiSecret: settings.apiSecret || '',
+                        populationId: settings.populationId || '',
+                        region: settings.region || 'NorthAmerica'
+                    };
+                    
+                    const validation = this.credentialsManager.validateCredentials(credentials);
+                    if (!validation.isValid) {
+                        throw new Error(`Invalid credentials: ${validation.errors.join(', ')}`);
+                    }
+                    
+                    this.credentialsManager.saveCredentials(credentials);
+                    this.logger.info('Credentials saved to localStorage successfully');
+                } catch (credentialsError) {
+                    this.logger.error('Credentials manager error:', credentialsError);
+                    throw new Error(`Credentials save failed: ${credentialsError.message}`);
                 }
-                
-                this.credentialsManager.saveCredentials(credentials);
-                this.logger.info('Credentials saved to localStorage');
+            } else {
+                this.logger.debug('No credentials manager available, skipping credentials save');
             }
             
             // Save to server
-            try {
-                await this.localClient.post('/api/settings', settings);
-            } catch (serverError) {
-                this.logger.error('Failed to save to server:', serverError);
-                this.uiManager.showSettingsActionStatus('Failed to save settings: ' + serverError.message, 'error', { autoHide: false });
-                return;
+            if (this.localClient && typeof this.localClient.post === 'function') {
+                try {
+                    this.logger.debug('Attempting server save with localClient.post');
+                    const response = await this.localClient.post('/api/settings', settings);
+                    this.logger.info('Server save successful:', response);
+                } catch (serverError) {
+                    this.logger.error('Failed to save to server:', serverError);
+                    const errorMessage = serverError.message || 'Unknown server error';
+                    if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                        this.uiManager.showSettingsActionStatus('Failed to save settings: ' + errorMessage, 'error', { autoHide: false });
+                    }
+                    throw new Error(`Server save failed: ${errorMessage}`);
+                }
+            } else {
+                this.logger.error('LocalClient not available or post method missing');
+                throw new Error('LocalClient not available for server communication');
             }
             
             // Update settings manager
-            this.settingsManager.updateSettings(settings);
-            this.currentSettings = settings;
+            if (this.settingsManager && typeof this.settingsManager.updateSettings === 'function') {
+                try {
+                    this.settingsManager.updateSettings(settings);
+                    this.currentSettings = settings;
+                    this.logger.debug('Settings manager updated successfully');
+                } catch (settingsManagerError) {
+                    this.logger.error('Settings manager update error:', settingsManagerError);
+                    throw new Error(`Settings manager update failed: ${settingsManagerError.message}`);
+                }
+            } else {
+                this.logger.warn('Settings manager not available or updateSettings method missing');
+            }
             
             // Show success feedback
-            this.uiManager.showSettingsActionStatus('Settings saved successfully', 'success', { autoHideDelay: 3000 });
+            if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                this.uiManager.showSettingsActionStatus('Settings saved successfully', 'success', { autoHideDelay: 3000 });
+            }
             
             // Update connection status
-            this.updateConnectionStatus('✅ Settings saved! Please - Get token', 'success');
+            try {
+                if (typeof this.updateConnectionStatus === 'function') {
+                    this.updateConnectionStatus('✅ Settings saved! Please - Get token', 'success');
+                }
+            } catch (connectionStatusError) {
+                this.logger.warn('Connection status update failed:', connectionStatusError);
+            }
             
             // Emit event for other subsystems
-            if (this.eventBus) {
-                this.eventBus.emit('settingsSaved', { settings });
+            if (this.eventBus && typeof this.eventBus.emit === 'function') {
+                try {
+                    this.eventBus.emit('settingsSaved', { settings });
+                    this.logger.debug('Settings saved event emitted successfully');
+                } catch (eventError) {
+                    this.logger.warn('Event emission failed:', eventError);
+                }
             }
             
             this.logger.info('Settings save process completed successfully');
             
         } catch (error) {
-            this.logger.error('Failed to save settings', error);
-            this.uiManager.showSettingsActionStatus('Failed to save settings: ' + error.message, 'error', { autoHide: false });
+            this.logger.error('Failed to save settings - detailed error:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            });
+            
+            if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                this.uiManager.showSettingsActionStatus('Failed to save settings: ' + error.message, 'error', { autoHide: false });
+            }
+            
+            // Re-throw the error so it can be caught by calling code
+            throw error;
         } finally {
             this.isSaving = false;
+            this.logger.debug('Settings save process finished, isSaving flag reset');
         }
     }
     
@@ -273,7 +351,10 @@ export class SettingsSubsystem {
             const settings = this.getFormData();
             
             // Test connection via API
-            const response = await this.localClient.post('/api/test-connection', settings);
+            // CRITICAL: Use GET request to match server-side endpoint
+            // Server endpoint: routes/pingone-proxy-fixed.js - router.get('/test-connection')
+            // Last fixed: 2025-07-21 - HTTP method mismatch caused 400 Bad Request errors
+            const response = await this.localClient.get('/api/pingone/test-connection');
             
             if (response.success) {
                 this.uiManager.showSettingsActionStatus('Connection test successful', 'success', { autoHideDelay: 3000 });
@@ -399,5 +480,22 @@ export class SettingsSubsystem {
         });
         
         this.logger.debug('Cross-subsystem event listeners set up for SettingsSubsystem');
+    }
+    
+    /**
+     * Get all settings (required by App initialization)
+     * @returns {Object} All current settings
+     */
+    getAllSettings() {
+        if (this.settingsManager && this.settingsManager.getAllSettings) {
+            return this.settingsManager.getAllSettings();
+        } else if (this.settingsManager && this.settingsManager.getSettings) {
+            return this.settingsManager.getSettings();
+        } else if (this.currentSettings) {
+            return this.currentSettings;
+        } else {
+            this.logger.warn('No settings available, returning empty object');
+            return {};
+        }
     }
 }

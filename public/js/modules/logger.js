@@ -25,7 +25,33 @@ const ui = window.app && window.app.uiManager;
  */
 class Logger {
     constructor(logElement = null) {
-        this.logElement = logElement;
+        // Handle different types of logElement parameters
+        if (typeof logElement === 'string') {
+            // If string provided, try to find DOM element or set to null for UI-less logging
+            try {
+                const element = document.getElementById(logElement) || document.querySelector(logElement);
+                this.logElement = element;
+                if (!element) {
+                    console.debug(`[LOGGER] DOM element not found for '${logElement}', using UI-less logging`);
+                }
+            } catch (error) {
+                console.debug(`[LOGGER] Error finding DOM element for '${logElement}':`, error.message);
+                this.logElement = null;
+            }
+        } else if (logElement && logElement.nodeType === Node.ELEMENT_NODE) {
+            // Valid DOM element
+            this.logElement = logElement;
+        } else if (logElement && typeof logElement === 'object' && logElement.length !== undefined) {
+            // Handle NodeList/HTMLCollection - take first element
+            this.logElement = logElement.length > 0 ? logElement[0] : null;
+            if (logElement.length > 1) {
+                console.debug(`[LOGGER] Multiple elements found, using first element`);
+            }
+        } else {
+            // Null, undefined, or invalid - use UI-less logging
+            this.logElement = null;
+        }
+        
         this.logs = [];
         this.validCount = 0;
         this.errorCount = 0;
@@ -434,6 +460,61 @@ class Logger {
         this.validCount = 0;
         this.errorCount = 0;
         this.winstonLogger.debug('Summary cleared');
+    }
+    
+    /**
+     * Start a performance timer
+     */
+    startTimer(label) {
+        if (!this.timers) {
+            this.timers = new Map();
+        }
+        this.timers.set(label, Date.now());
+        this.debug(`Timer started: ${label}`);
+    }
+    
+    /**
+     * End a performance timer and log the duration
+     */
+    endTimer(label) {
+        if (!this.timers || !this.timers.has(label)) {
+            this.warn(`Timer '${label}' not found`);
+            return 0;
+        }
+        
+        const startTime = this.timers.get(label);
+        const duration = Date.now() - startTime;
+        this.timers.delete(label);
+        
+        this.info(`Timer completed: ${label}`, { duration: `${duration}ms` });
+        return duration;
+    }
+    
+    /**
+     * Create a child logger with additional context
+     * This is required for hierarchical logging in subsystems
+     */
+    child(options = {}) {
+        console.log('🔥 [LOGGER DEBUG] Creating child logger with options:', options);
+        
+        // Create a new logger instance that inherits from this one
+        const childLogger = Object.create(this);
+        
+        // Add context from options
+        childLogger.context = { ...this.context, ...options };
+        
+        // Override logging methods to include context
+        const originalMethods = ['info', 'warn', 'error', 'debug'];
+        originalMethods.forEach(method => {
+            const originalMethod = this[method].bind(this);
+            childLogger[method] = (message, data = {}) => {
+                const contextualData = { ...childLogger.context, ...data };
+                return originalMethod(message, contextualData);
+            };
+        });
+        
+        console.log('🔥 [LOGGER DEBUG] Child logger created successfully');
+        return childLogger;
     }
 }
 

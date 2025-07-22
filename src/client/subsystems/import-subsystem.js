@@ -21,6 +21,7 @@ export class ImportSubsystem {
         this.selectedPopulationId = null;
         this.selectedPopulationName = null;
         this.fallbackPolling = null;
+        this.selectedFile = null; // Tracks the selected file for import
         
         this.logger.info('Import Subsystem initialized');
         
@@ -73,6 +74,7 @@ export class ImportSubsystem {
             csvFileInput.addEventListener('change', async (e) => {
                 const file = e.target.files[0];
                 if (file) {
+                    this.selectedFile = file; // Update the selected file
                     await this.handleFileSelect(file);
                     this.validateAndUpdateButtonState();
                 }
@@ -132,6 +134,7 @@ export class ImportSubsystem {
             
             if (files.length > 0) {
                 const file = files[0];
+                this.selectedFile = file; // Update the selected file
                 
                 // Update the file input to reflect the dropped file
                 if (fileInput) {
@@ -160,7 +163,10 @@ export class ImportSubsystem {
      * Start the import process
      */
     async startImport() {
+        this.logger.info('🚀 [DEBUG] ImportSubsystem: Start import button clicked');
+        
         if (this.isImporting) {
+            this.logger.warn('🚀 [DEBUG] ImportSubsystem: Import already in progress');
             this.uiManager.showNotification('An import is already in progress. Please wait for it to complete.', {
                 type: 'warning',
                 duration: 5000,
@@ -171,31 +177,39 @@ export class ImportSubsystem {
         
         try {
             this.isImporting = true;
-            this.logger.info('Starting import process');
+            this.logger.info('🚀 [DEBUG] ImportSubsystem: Starting import process');
             
             // Validate prerequisites
+            this.logger.debug('🚀 [DEBUG] ImportSubsystem: Validating prerequisites...');
             if (!await this.validateImportPrerequisites()) {
+                this.logger.warn('🚀 [DEBUG] ImportSubsystem: Prerequisites validation failed, aborting import');
                 return;
             }
+            
+            this.logger.info('🚀 [DEBUG] ImportSubsystem: Prerequisites validated, proceeding with import');
             
             // Get population selection
             this.getPopulationSelection();
             
             // Show progress UI
+            this.logger.debug('🚀 [DEBUG] ImportSubsystem: Showing progress UI');
             this.uiManager.showProgress();
             
             // Start real-time connection
             const sessionId = this.generateSessionId();
+            this.logger.debug('🚀 [DEBUG] ImportSubsystem: Establishing real-time connection with session:', sessionId);
             await this.establishRealTimeConnection(sessionId);
             
             // Begin import process
+            this.logger.debug('🚀 [DEBUG] ImportSubsystem: Executing import with session:', sessionId);
             await this.executeImport(sessionId);
             
         } catch (error) {
-            this.logger.error('Import process failed', error);
+            this.logger.error('🚀 [DEBUG] ImportSubsystem: Import process failed', error);
             this.uiManager.showError('Import Failed', error.message || 'An unexpected error occurred during the import process.');
         } finally {
             this.isImporting = false;
+            this.logger.debug('🚀 [DEBUG] ImportSubsystem: Import process completed, resetting isImporting flag');
         }
     }
     
@@ -203,20 +217,38 @@ export class ImportSubsystem {
      * Validate import prerequisites
      */
     async validateImportPrerequisites() {
+        this.logger.debug('🔍 [DEBUG] ImportSubsystem: Validating import prerequisites');
+        
         // Check for valid token
         const hasValidToken = await this.checkTokenStatus();
         if (!hasValidToken) {
+            this.logger.warn('🔍 [DEBUG] ImportSubsystem: Token validation failed');
             // Show user-friendly authentication modal with "Go to Settings" button
             this.showAuthenticationModal('Import');
             return false;
         }
         
-        // Check file selection
-        const fileInput = document.getElementById('csv-file');
-        if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+        // Check file selection using the internal selectedFile property
+        if (!this.selectedFile) {
+            this.logger.warn('🔍 [DEBUG] ImportSubsystem: No file selected (selectedFile is null)');
             this.uiManager.showError('No File Selected', 'Please select a CSV file to import.');
             return false;
         }
+        
+        // Check population selection
+        const populationSelect = document.getElementById('import-population-select');
+        if (!populationSelect || !populationSelect.value || populationSelect.value === '') {
+            this.logger.warn('🔍 [DEBUG] ImportSubsystem: No population selected');
+            this.uiManager.showError('No Population Selected', 'Please select a population for the import.');
+            return false;
+        }
+        
+        this.logger.info('✅ [DEBUG] ImportSubsystem: All prerequisites validated successfully', {
+            hasFile: !!this.selectedFile,
+            fileName: this.selectedFile?.name,
+            hasPopulation: !!populationSelect?.value,
+            populationId: populationSelect?.value
+        });
         
         return true;
     }
@@ -493,9 +525,8 @@ export class ImportSubsystem {
             return;
         }
         
-        // Check if file is selected
-        const fileInput = document.getElementById('csv-file');
-        const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+        // Check if file is selected (using internal state for reliability)
+        const hasFile = !!this.selectedFile;
         
         // Check if population is selected
         const populationSelect = document.getElementById('import-population-select');

@@ -181,14 +181,6 @@ export class EnhancedTokenStatusSubsystem {
         }, 1000);
         
         this.logger.debug('🔑 Token monitoring started with improved frequency');
-    }, this.CHECK_INTERVAL);
-        
-        // Update UI countdown every second
-        this.uiUpdateInterval = setInterval(() => {
-            this.updateCountdown();
-        }, this.UI_UPDATE_INTERVAL);
-        
-        this.logger.debug('🔑 Token monitoring started');
     }
     
     /**

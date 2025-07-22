@@ -20,6 +20,8 @@ export const FEATURE_FLAGS = {
     USE_IMPORT_SUBSYSTEM: true,
     USE_EXPORT_SUBSYSTEM: true,
     USE_REALTIME_SUBSYSTEM: true,
+    USE_ADVANCED_REALTIME: true,
+    USE_ANALYTICS_DASHBOARD: true, // CRITICAL: Enable analytics dashboard functionality
     
     // UI enhancements
     ENABLE_ADVANCED_PROGRESS_UI: true,

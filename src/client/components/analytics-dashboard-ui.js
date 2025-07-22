@@ -90,19 +90,208 @@ export class AnalyticsDashboardUI {
         }
 
         const dashboardHTML = `
-            <div id="analytics-dashboard-container" class="analytics-dashboard-container">
+            <div id="analytics-dashboard-container" class="analytics-dashboard-container hidden">
                 <div class="dashboard-content">
                     <!-- Header -->
                     <div class="dashboard-header">
                         <div class="dashboard-title">
                             <h2><i class="fas fa-chart-line"></i> Analytics Dashboard</h2>
-                            <div class="dashboard-subtitle">System metrics and performance overview</div>
+                            <div class="dashboard-subtitle">Comprehensive real-time system metrics and performance overview</div>
                         </div>
                         <div class="dashboard-controls">
                             <div class="refresh-controls">
-                                <button id="refresh-dashboard" class="btn btn-outline-primary btn-sm">
+                                <span class="last-updated" id="last-updated">Last updated: Loading...</span>
+                                <button id="refresh-dashboard" class="btn btn-outline-primary btn-sm ms-2">
                                     <i class="fas fa-sync-alt"></i> Refresh
                                 </button>
+                                <button id="close-analytics-dashboard" class="btn btn-outline-secondary btn-sm ms-2">
+                                    <i class="fas fa-times"></i> Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- System Overview Cards -->
+                    <div class="overview-section">
+                        <div class="overview-cards">
+                            <div class="overview-card">
+                                <div class="card-icon"><i class="fas fa-clock"></i></div>
+                                <div class="card-content">
+                                    <div class="card-title">Current Time</div>
+                                    <div class="card-value" id="current-time">Loading...</div>
+                                    <div class="card-subtitle" id="timezone">Loading...</div>
+                                </div>
+                            </div>
+                            <div class="overview-card">
+                                <div class="card-icon"><i class="fas fa-stopwatch"></i></div>
+                                <div class="card-content">
+                                    <div class="card-title">Session Duration</div>
+                                    <div class="card-value" id="session-duration">Loading...</div>
+                                    <div class="card-subtitle" id="session-start">Loading...</div>
+                                </div>
+                            </div>
+                            <div class="overview-card">
+                                <div class="card-icon"><i class="fas fa-memory"></i></div>
+                                <div class="card-content">
+                                    <div class="card-title">Memory Usage</div>
+                                    <div class="card-value" id="memory-usage">Loading...</div>
+                                    <div class="card-subtitle" id="memory-details">Loading...</div>
+                                </div>
+                            </div>
+                            <div class="overview-card">
+                                <div class="card-icon"><i class="fas fa-microchip"></i></div>
+                                <div class="card-content">
+                                    <div class="card-title">CPU Usage</div>
+                                    <div class="card-value" id="cpu-usage">Loading...</div>
+                                    <div class="card-subtitle" id="cpu-details">Loading...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Detailed Metrics Section -->
+                    <div class="metrics-section">
+                        <div class="metrics-grid">
+                            <!-- System Metrics -->
+                            <div class="metrics-card">
+                                <div class="metrics-header">
+                                    <h3><i class="fas fa-desktop"></i> System Metrics</h3>
+                                </div>
+                                <div class="metrics-content">
+                                    <div class="metric-row">
+                                        <span class="metric-label">Browser:</span>
+                                        <span class="metric-value" id="browser-info">Loading...</span>
+                                    </div>
+                                    <div class="metric-row">
+                                        <span class="metric-label">Platform:</span>
+                                        <span class="metric-value" id="platform-info">Loading...</span>
+                                    </div>
+                                    <div class="metric-row">
+                                        <span class="metric-label">Screen Resolution:</span>
+                                        <span class="metric-value" id="screen-resolution">Loading...</span>
+                                    </div>
+                                    <div class="metric-row">
+                                        <span class="metric-label">Viewport Size:</span>
+                                        <span class="metric-value" id="viewport-size">Loading...</span>
+                                    </div>
+                                    <div class="metric-row">
+                                        <span class="metric-label">Hardware Concurrency:</span>
+                                        <span class="metric-value" id="hardware-concurrency">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Performance Metrics -->
+                            <div class="metrics-card">
+                                <div class="metrics-header">
+                                    <h3><i class="fas fa-tachometer-alt"></i> Performance Metrics</h3>
+                                </div>
+                                <div class="metrics-content">
+                                    <div class="metric-row">
+                                        <span class="metric-label">Page Load Time:</span>
+                                        <span class="metric-value" id="page-load-time">Loading...</span>
+                                    </div>
+                                    <div class="metric-row">
+                                        <span class="metric-label">DOM Content Loaded:</span>
+                                        <span class="metric-value" id="dom-content-loaded">Loading...</span>
+                                    </div>
+                                    <div class="metric-row">
+                                        <span class="metric-label">First Paint:</span>
+                                        <span class="metric-value" id="first-paint">Loading...</span>
+                                    </div>
+                                    <div class="metric-row">
+                                        <span class="metric-label">Resources Loaded:</span>
+                                        <span class="metric-value" id="resources-loaded">Loading...</span>
+                                    </div>
+                                    <div class="metric-row">
+                                        <span class="metric-label">DOM Elements:</span>
+                                        <span class="metric-value" id="dom-elements">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Network & Connection -->
+                            <div class="metrics-card">
+                                <div class="metrics-header">
+                                    <h3><i class="fas fa-wifi"></i> Network & Connection</h3>
+                                </div>
+                                <div class="metrics-content">
+                                    <div class="metric-row">
+                                        <span class="metric-label">Connection Type:</span>
+                                        <span class="metric-value" id="connection-type">Loading...</span>
+                                    </div>
+                                    <div class="metric-row">
+                                        <span class="metric-label">Downlink Speed:</span>
+                                        <span class="metric-value" id="downlink-speed">Loading...</span>
+                                    </div>
+                                    <div class="metric-row">
+                                        <span class="metric-label">RTT:</span>
+                                        <span class="metric-value" id="rtt">Loading...</span>
+                                    </div>
+                                    <div class="metric-row">
+                                        <span class="metric-label">Online Status:</span>
+                                        <span class="metric-value" id="online-status">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Storage & Resources -->
+                            <div class="metrics-card">
+                                <div class="metrics-header">
+                                    <h3><i class="fas fa-database"></i> Storage & Resources</h3>
+                                </div>
+                                <div class="metrics-content">
+                                    <div class="metric-row">
+                                        <span class="metric-label">Local Storage:</span>
+                                        <span class="metric-value" id="local-storage">Loading...</span>
+                                    </div>
+                                    <div class="metric-row">
+                                        <span class="metric-label">Session Storage:</span>
+                                        <span class="metric-value" id="session-storage">Loading...</span>
+                                    </div>
+                                    <div class="metric-row">
+                                        <span class="metric-label">Color Depth:</span>
+                                        <span class="metric-value" id="color-depth">Loading...</span>
+                                    </div>
+                                    <div class="metric-row">
+                                        <span class="metric-label">Pixel Ratio:</span>
+                                        <span class="metric-value" id="pixel-ratio">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Activity and Alerts Section -->
+                    <div class="activity-section">
+                        <div class="activity-grid">
+                            <!-- Recent Activity -->
+                            <div class="activity-card">
+                                <div class="activity-header">
+                                    <h3><i class="fas fa-history"></i> Recent Activity</h3>
+                                    <button id="refresh-activity" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </div>
+                                <div class="activity-content" id="activity-list">
+                                    <div class="loading-placeholder">Loading recent activity...</div>
+                                </div>
+                            </div>
+                            
+                            <!-- System Alerts -->
+                            <div class="alerts-card">
+                                <div class="alerts-header">
+                                    <h3><i class="fas fa-exclamation-triangle"></i> System Alerts</h3>
+                                    <button id="clear-alerts" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-trash"></i> Clear
+                                    </button>
+                                </div>
+                                <div class="alerts-content" id="alerts-container">
+                                    <div class="no-alerts">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>No active alerts - All systems operational</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -220,7 +409,7 @@ export class AnalyticsDashboardUI {
      */
     setupUIEventListeners() {
         // Close dashboard
-        document.getElementById('close-dashboard')?.addEventListener('click', () => {
+        document.getElementById('close-analytics-dashboard')?.addEventListener('click', () => {
             this.hide();
         });
         
@@ -329,16 +518,225 @@ export class AnalyticsDashboardUI {
      * Update dashboard with new data
      */
     updateDashboard(data) {
-        this.updateSummaryCards(data.summary || {});
-        this.updateSystemMetrics(data.system || {});
-        this.updateOperationMetrics(data.operations || {});
-        this.updateAlerts(data.alerts || []);
-        this.updateActivity(data.activity || []);
+        if (!data) return;
+        
+        try {
+            // Update last updated timestamp
+            const lastUpdatedEl = document.getElementById('last-updated');
+            if (lastUpdatedEl) {
+                lastUpdatedEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+            }
+            
+            // Update overview cards with time and system data
+            this.updateOverviewCards(data);
+            
+            // Update detailed metrics sections
+            this.updateSystemMetricsDetailed(data.system);
+            this.updatePerformanceMetrics(data.performance);
+            this.updateNetworkMetrics(data.network);
+            this.updateStorageMetrics(data.browser);
+            
+            // Update activity and alerts
+            this.updateActivity(data.activity);
+            this.updateAlerts(data.alerts);
+            
+            // Update legacy summary cards if present
+            if (data.summary) {
+                this.updateSummaryCards(data.summary);
+            }
+            
+            this.logger.debug('Dashboard updated successfully with comprehensive data');
+        } catch (error) {
+            this.logger.error('Failed to update dashboard', error);
+        }
     }
     
     /**
-     * Update summary cards
+     * Update overview cards with time, session, memory, and CPU data
      */
+    updateOverviewCards(data) {
+        // Current time and timezone
+        const currentTimeEl = document.getElementById('current-time');
+        const timezoneEl = document.getElementById('timezone');
+        if (currentTimeEl && data.time) {
+            currentTimeEl.textContent = data.time.currentTime || 'Unknown';
+        }
+        if (timezoneEl && data.time) {
+            timezoneEl.textContent = data.time.timezone || 'Unknown timezone';
+        }
+        
+        // Session duration
+        const sessionDurationEl = document.getElementById('session-duration');
+        const sessionStartEl = document.getElementById('session-start');
+        if (sessionDurationEl && data.session) {
+            sessionDurationEl.textContent = data.session.duration || 'Unknown';
+        }
+        if (sessionStartEl && data.session) {
+            sessionStartEl.textContent = `Started: ${data.session.startTime || 'Unknown'}`;
+        }
+        
+        // Memory usage
+        const memoryUsageEl = document.getElementById('memory-usage');
+        const memoryDetailsEl = document.getElementById('memory-details');
+        if (memoryUsageEl && data.system && data.system.memory) {
+            const memory = data.system.memory;
+            memoryUsageEl.textContent = `${memory.usedPercent || 0}%`;
+        }
+        if (memoryDetailsEl && data.system && data.system.memory) {
+            const memory = data.system.memory;
+            memoryDetailsEl.textContent = `${memory.usedFormatted || '0 MB'} / ${memory.totalFormatted || '0 MB'}`;
+        }
+        
+        // CPU usage
+        const cpuUsageEl = document.getElementById('cpu-usage');
+        const cpuDetailsEl = document.getElementById('cpu-details');
+        if (cpuUsageEl && data.system && data.system.cpu) {
+            cpuUsageEl.textContent = `${data.system.cpu.usage || 0}%`;
+        }
+        if (cpuDetailsEl && data.system && data.system.cpu) {
+            cpuDetailsEl.textContent = data.system.cpu.details || 'Performance-based estimation';
+        }
+    }
+    
+    /**
+     * Update detailed system metrics
+     */
+    updateSystemMetricsDetailed(system) {
+        if (!system || !system.browser) return;
+        
+        const browser = system.browser;
+        
+        // Browser info
+        const browserInfoEl = document.getElementById('browser-info');
+        if (browserInfoEl) {
+            browserInfoEl.textContent = browser.name || 'Unknown';
+        }
+        
+        // Platform info
+        const platformInfoEl = document.getElementById('platform-info');
+        if (platformInfoEl) {
+            platformInfoEl.textContent = browser.platform || 'Unknown';
+        }
+        
+        // Screen resolution
+        const screenResolutionEl = document.getElementById('screen-resolution');
+        if (screenResolutionEl) {
+            screenResolutionEl.textContent = browser.screenResolution || 'Unknown';
+        }
+        
+        // Viewport size
+        const viewportSizeEl = document.getElementById('viewport-size');
+        if (viewportSizeEl) {
+            viewportSizeEl.textContent = browser.viewportSize || 'Unknown';
+        }
+        
+        // Hardware concurrency
+        const hardwareConcurrencyEl = document.getElementById('hardware-concurrency');
+        if (hardwareConcurrencyEl) {
+            hardwareConcurrencyEl.textContent = browser.hardwareConcurrency || 'Unknown';
+        }
+    }
+    
+    /**
+     * Update performance metrics
+     */
+    updatePerformanceMetrics(performance) {
+        if (!performance) return;
+        
+        // Page load time
+        const pageLoadTimeEl = document.getElementById('page-load-time');
+        if (pageLoadTimeEl) {
+            pageLoadTimeEl.textContent = performance.pageLoadTime || 'Unknown';
+        }
+        
+        // DOM content loaded
+        const domContentLoadedEl = document.getElementById('dom-content-loaded');
+        if (domContentLoadedEl) {
+            domContentLoadedEl.textContent = performance.domContentLoaded || 'Unknown';
+        }
+        
+        // First paint
+        const firstPaintEl = document.getElementById('first-paint');
+        if (firstPaintEl) {
+            firstPaintEl.textContent = performance.firstPaint || 'Unknown';
+        }
+        
+        // Resources loaded
+        const resourcesLoadedEl = document.getElementById('resources-loaded');
+        if (resourcesLoadedEl) {
+            resourcesLoadedEl.textContent = performance.resourceCount || 'Unknown';
+        }
+        
+        // DOM elements
+        const domElementsEl = document.getElementById('dom-elements');
+        if (domElementsEl) {
+            domElementsEl.textContent = performance.domElements || 'Unknown';
+        }
+    }
+    
+    /**
+     * Update network metrics
+     */
+    updateNetworkMetrics(network) {
+        if (!network) return;
+        
+        // Connection type
+        const connectionTypeEl = document.getElementById('connection-type');
+        if (connectionTypeEl) {
+            connectionTypeEl.textContent = network.effectiveType || 'Unknown';
+        }
+        
+        // Downlink speed
+        const downlinkSpeedEl = document.getElementById('downlink-speed');
+        if (downlinkSpeedEl) {
+            downlinkSpeedEl.textContent = network.downlink ? `${network.downlink} Mbps` : 'Unknown';
+        }
+        
+        // RTT
+        const rttEl = document.getElementById('rtt');
+        if (rttEl) {
+            rttEl.textContent = network.rtt ? `${network.rtt} ms` : 'Unknown';
+        }
+        
+        // Online status
+        const onlineStatusEl = document.getElementById('online-status');
+        if (onlineStatusEl) {
+            onlineStatusEl.textContent = network.online ? 'Online' : 'Offline';
+            onlineStatusEl.className = `metric-value ${network.online ? 'status-online' : 'status-offline'}`;
+        }
+    }
+    
+    /**
+     * Update storage and browser metrics
+     */
+    updateStorageMetrics(browser) {
+        if (!browser) return;
+        
+        // Local storage
+        const localStorageEl = document.getElementById('local-storage');
+        if (localStorageEl) {
+            localStorageEl.textContent = browser.localStorage || 'Unknown';
+        }
+        
+        // Session storage
+        const sessionStorageEl = document.getElementById('session-storage');
+        if (sessionStorageEl) {
+            sessionStorageEl.textContent = browser.sessionStorage || 'Unknown';
+        }
+        
+        // Color depth
+        const colorDepthEl = document.getElementById('color-depth');
+        if (colorDepthEl) {
+            colorDepthEl.textContent = browser.colorDepth || 'Unknown';
+        }
+        
+        // Pixel ratio
+        const pixelRatioEl = document.getElementById('pixel-ratio');
+        if (pixelRatioEl) {
+            pixelRatioEl.textContent = browser.pixelRatio || 'Unknown';
+        }
+    }
+    
     updateSummaryCards(summary) {
         const container = document.getElementById('summary-cards');
         if (!container) return;

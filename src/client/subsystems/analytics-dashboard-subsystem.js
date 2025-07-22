@@ -47,7 +47,8 @@ export class AnalyticsDashboardSubsystem {
         // Configuration
         this.config = {
             metricsRetention: 24 * 60 * 60 * 1000, // 24 hours
-            samplingInterval: 5000, // 5 seconds
+            samplingInterval: 5 * 60 * 1000, // 5 minutes for main updates
+            quickSamplingInterval: 30 * 1000, // 30 seconds for quick updates
             batchSize: 100,
             maxDataPoints: 1000,
             alertThresholds: {
@@ -57,6 +58,12 @@ export class AnalyticsDashboardSubsystem {
                 operationFailureRate: 0.1
             }
         };
+        
+        // Session tracking
+        this.sessionStart = Date.now();
+        this.lastActivity = Date.now();
+        this.activityHistory = [];
+        this.performanceBaseline = null;
         
         // State management
         this.isCollecting = false;
@@ -383,65 +390,332 @@ export class AnalyticsDashboardSubsystem {
     }
     
     /**
-     * Get system performance metrics
+     * Get comprehensive system performance metrics
      */
     async getSystemPerformanceMetrics() {
+        const now = Date.now();
         const metrics = {
             timestamp: new Date(),
-            memory: null,
-            timing: null,
-            connection: null
+            
+            // Memory metrics (if available)
+            memory: this.getMemoryMetrics(),
+            
+            // Performance timing metrics
+            timing: this.getPerformanceTimingMetrics(),
+            
+            // CPU usage estimation
+            cpu: this.getCPUUsageEstimate(),
+            
+            // Session and time metrics
+            session: {
+                uptime: now - this.sessionStart,
+                sessionDuration: this.formatDuration(now - this.sessionStart),
+                lastActivity: now - this.lastActivity,
+                currentTime: new Date().toLocaleString(),
+                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+            },
+            
+            // Browser and system info
+            browser: {
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                platform: navigator.platform,
+                cookieEnabled: navigator.cookieEnabled,
+                onLine: navigator.onLine,
+                hardwareConcurrency: navigator.hardwareConcurrency || 'Unknown'
+            },
+            
+            // Screen and viewport metrics
+            display: {
+                screenWidth: screen.width,
+                screenHeight: screen.height,
+                viewportWidth: window.innerWidth,
+                viewportHeight: window.innerHeight,
+                colorDepth: screen.colorDepth,
+                pixelRatio: window.devicePixelRatio || 1
+            },
+            
+            // Network connection info (if available)
+            connection: this.getConnectionInfo(),
+            
+            // Performance metrics
+            performance: {
+                loadTime: this.getPageLoadTime(),
+                domContentLoaded: this.getDOMContentLoadedTime(),
+                resourcesLoaded: performance.getEntriesByType('resource').length,
+                navigationTiming: this.getNavigationTiming()
+            }
         };
         
-        // Memory usage (if available)
+        return metrics;
+    }
+    
+    /**
+     * Get memory metrics (if available)
+     */
+    getMemoryMetrics() {
         if (performance.memory) {
-            metrics.memory = {
-                used: performance.memory.usedJSHeapSize,
-                total: performance.memory.totalJSHeapSize,
-                limit: performance.memory.jsHeapSizeLimit,
-                usage: performance.memory.usedJSHeapSize / performance.memory.totalJSHeapSize
+            const memory = performance.memory;
+            return {
+                used: memory.usedJSHeapSize,
+                total: memory.totalJSHeapSize,
+                limit: memory.jsHeapSizeLimit,
+                usagePercentage: Math.round((memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100),
+                formattedUsed: this.formatBytes(memory.usedJSHeapSize),
+                formattedTotal: this.formatBytes(memory.totalJSHeapSize),
+                formattedLimit: this.formatBytes(memory.jsHeapSizeLimit)
             };
         }
-        
-        // Performance timing
+        return null;
+    }
+    
+    /**
+     * Get performance timing metrics
+     */
+    getPerformanceTimingMetrics() {
         if (performance.timing) {
             const timing = performance.timing;
-            metrics.timing = {
-                loadTime: timing.loadEventEnd - timing.navigationStart,
-                domReady: timing.domContentLoadedEventEnd - timing.navigationStart,
-                firstPaint: timing.responseStart - timing.navigationStart
+            return {
+                navigationStart: timing.navigationStart,
+                domContentLoaded: timing.domContentLoadedEventEnd - timing.navigationStart,
+                loadComplete: timing.loadEventEnd - timing.navigationStart,
+                domInteractive: timing.domInteractive - timing.navigationStart,
+                firstPaint: this.getFirstPaintTime()
             };
         }
-        
-        // Connection latency (if real-time connection exists)
-        if (this.advancedRealtime) {
-            try {
-                metrics.connection = {
-                    latency: await this.measureConnectionLatency(),
-                    status: this.advancedRealtime.realtimeCommunication?.getConnectionStatus()
+        return null;
+    }
+    
+    /**
+     * Estimate CPU usage based on performance metrics
+     */
+    getCPUUsageEstimate() {
+        try {
+            const startTime = performance.now();
+            // Simple CPU-intensive operation for estimation
+            let iterations = 0;
+            const testDuration = 10; // 10ms test
+            const endTime = startTime + testDuration;
+            
+            while (performance.now() < endTime) {
+                iterations++;
+            }
+            
+            // Normalize based on expected performance
+            const expectedIterations = 100000; // Baseline for comparison
+            const cpuScore = Math.min(100, Math.round((iterations / expectedIterations) * 100));
+            
+            return {
+                estimatedUsage: Math.max(0, 100 - cpuScore),
+                performanceScore: cpuScore,
+                iterations: iterations,
+                testDuration: testDuration
+            };
+        } catch (error) {
+            return { estimatedUsage: 'Unknown', error: error.message };
+        }
+    }
+    
+    /**
+     * Get connection information
+     */
+    getConnectionInfo() {
+        if (navigator.connection || navigator.mozConnection || navigator.webkitConnection) {
+            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            return {
+                effectiveType: connection.effectiveType || 'Unknown',
+                downlink: connection.downlink || 'Unknown',
+                rtt: connection.rtt || 'Unknown',
+                saveData: connection.saveData || false
+            };
+        }
+        return { status: 'Connection API not available' };
+    }
+    
+    /**
+     * Get page load time
+     */
+    getPageLoadTime() {
+        if (performance.timing) {
+            return performance.timing.loadEventEnd - performance.timing.navigationStart;
+        }
+        return null;
+    }
+    
+    /**
+     * Get DOM content loaded time
+     */
+    getDOMContentLoadedTime() {
+        if (performance.timing) {
+            return performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart;
+        }
+        return null;
+    }
+    
+    /**
+     * Get first paint time
+     */
+    getFirstPaintTime() {
+        try {
+            const paintEntries = performance.getEntriesByType('paint');
+            const firstPaint = paintEntries.find(entry => entry.name === 'first-paint');
+            return firstPaint ? firstPaint.startTime : null;
+        } catch (error) {
+            return null;
+        }
+    }
+    
+    /**
+     * Get navigation timing
+     */
+    getNavigationTiming() {
+        if (performance.getEntriesByType) {
+            const navEntries = performance.getEntriesByType('navigation');
+            if (navEntries.length > 0) {
+                const nav = navEntries[0];
+                return {
+                    type: nav.type,
+                    redirectCount: nav.redirectCount,
+                    transferSize: nav.transferSize,
+                    encodedBodySize: nav.encodedBodySize,
+                    decodedBodySize: nav.decodedBodySize
                 };
-            } catch (error) {
-                this.logger.debug('Could not measure connection latency', error);
             }
         }
+        return null;
+    }
+    
+    /**
+     * Format bytes to human readable format
+     */
+    formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    /**
+     * Format duration to human readable format
+     */
+    formatDuration(milliseconds) {
+        const seconds = Math.floor(milliseconds / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
         
-        return metrics;
+        if (days > 0) return `${days}d ${hours % 24}h ${minutes % 60}m`;
+        if (hours > 0) return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+        if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+        return `${seconds}s`;
+    }
+    
+    /**
+     * Record user activity
+     */
+    recordActivity(type, data = {}) {
+        this.lastActivity = Date.now();
+        const activity = {
+            timestamp: new Date(),
+            type: type,
+            data: data
+        };
+        
+        this.activityHistory.push(activity);
+        
+        // Keep only recent activities (last 100)
+        if (this.activityHistory.length > 100) {
+            this.activityHistory = this.activityHistory.slice(-100);
+        }
+        
+        this.addMetric('users.activity', activity);
+    }
+    
+    /**
+     * Get recent activity for dashboard
+     */
+    getRecentActivity(limit = 10) {
+        return this.activityHistory.slice(-limit).reverse();
+    }
+    
+    /**
+     * Get comprehensive dashboard data
+     */
+    async getDashboardData() {
+        const systemMetrics = await this.getSystemPerformanceMetrics();
+        const recentActivity = this.getRecentActivity(15);
+        
+        return {
+            timestamp: new Date(),
+            system: systemMetrics,
+            activity: recentActivity,
+            summary: {
+                totalOperations: this.getTotalOperationsCount(),
+                successfulOperations: this.getSuccessfulOperationsCount(),
+                failedOperations: this.getFailedOperationsCount(),
+                averageResponseTime: this.getAverageResponseTime(),
+                errorRate: this.getErrorRate(),
+                activeSubsystems: this.getActiveSubsystemCount(),
+                uptime: this.formatDuration(Date.now() - this.sessionStart)
+            },
+            alerts: this.alerts || []
+        };
+    }
+    
+    /**
+     * Get total operations count
+     */
+    getTotalOperationsCount() {
+        let count = 0;
+        Object.keys(this.metrics.operations).forEach(type => {
+            count += this.metrics.operations[type].length;
+        });
+        return count;
     }
     
     /**
      * Get resource usage metrics
      */
     async getResourceUsageMetrics() {
-        return {
-            timestamp: new Date(),
-            activeSubsystems: this.getActiveSubsystemCount(),
-            eventListeners: this.getEventListenerCount(),
-            domElements: document.querySelectorAll('*').length,
-            localStorageUsage: this.getLocalStorageUsage(),
-            sessionStorageUsage: this.getSessionStorageUsage()
-        };
+        try {
+            return {
+                timestamp: new Date(),
+                
+                // DOM elements count
+                domElements: document.querySelectorAll('*').length,
+                
+                // Storage usage
+                localStorage: this.getLocalStorageUsage(),
+                sessionStorage: this.getSessionStorageUsage(),
+                
+                // Event listeners count (estimated)
+                eventListeners: this.getEventListenerCount(),
+                
+                // Active timers and intervals (estimated)
+                activeTimers: this.getActiveTimerCount(),
+                
+                // Resource entries from Performance API
+                resourceEntries: performance.getEntriesByType('resource').length,
+                
+                // Network resources
+                networkResources: this.getNetworkResourceCount(),
+                
+                // Memory metrics (if available)
+                memoryUsage: this.getMemoryMetrics(),
+                
+                // Total metrics stored
+                totalMetrics: this.getTotalMetricsCount()
+            };
+        } catch (error) {
+            this.logger.debug('Failed to collect resource usage metrics', error);
+            return {
+                timestamp: new Date(),
+                error: error.message
+            };
+        }
     }
-    
+
     /**
      * Get connection metrics
      */
@@ -848,6 +1122,59 @@ export class AnalyticsDashboardSubsystem {
             return total;
         } catch (error) {
             return 0;
+        }
+    }
+
+    /**
+     * Get local storage usage
+     */
+    getLocalStorageUsage() {
+        try {
+            let total = 0;
+            for (let key in localStorage) {
+                if (localStorage.hasOwnProperty(key)) {
+                    total += localStorage[key].length + key.length;
+                }
+            }
+            return total;
+        } catch (error) {
+            return 0;
+        }
+    }
+
+    /**
+     * Get active timer count (estimated)
+     */
+    getActiveTimerCount() {
+        // This is an estimation as there's no direct way to count active timers
+        // We can track our own timers and make educated guesses
+        let count = 0;
+        
+        // Count our own timers
+        if (this.collectionInterval) count++;
+        if (this.alertCheckInterval) count++;
+        
+        // Estimate based on common patterns
+        // Most web apps have 5-20 active timers
+        return count + 5; // Base estimate
+    }
+
+    /**
+     * Get network resource count
+     */
+    getNetworkResourceCount() {
+        try {
+            const resources = performance.getEntriesByType('resource');
+            return {
+                total: resources.length,
+                scripts: resources.filter(r => r.name.includes('.js')).length,
+                stylesheets: resources.filter(r => r.name.includes('.css')).length,
+                images: resources.filter(r => /\.(png|jpg|jpeg|gif|svg|webp)/.test(r.name)).length,
+                xhr: resources.filter(r => r.initiatorType === 'xmlhttprequest').length,
+                fetch: resources.filter(r => r.initiatorType === 'fetch').length
+            };
+        } catch (error) {
+            return { total: 0, error: error.message };
         }
     }
     

@@ -309,12 +309,17 @@ class App {
         // Initialize UIManager first as SettingsSubsystem depends on it.
         this.uiManager = new UIManager({ logger: this.logger });
 
+        // Initialize SettingsManager before SettingsSubsystem
+        this.settingsManager = new SettingsManager(this.logger.child({ component: 'settings-manager' }));
+        await this.settingsManager.init();
+        this.logger.debug('Settings manager initialized');
+
         // SettingsSubsystem is a core component and must be initialized before others that depend on it.
         this.settingsSubsystem = new SettingsSubsystem(
             this.logger.child({ subsystem: 'settings' }),
             this.uiManager,
             this.localClient,
-            null, // settingsManager - not available yet
+            this.settingsManager, // Now properly initialized
             this.eventBus,
             null // credentialsManager - not available yet
         );
@@ -435,6 +440,18 @@ class App {
             this.subsystems.population = this.populationSubsystem;
             this.logger.debug('Population subsystem initialized');
 
+            // History Subsystem (needed for operation tracking and history display)
+            // CRITICAL: This was missing, causing history page to show no data
+            // Last fixed: 2025-07-21 - Added HistorySubsystem initialization
+            this.historySubsystem = new HistorySubsystem(
+                this.eventBus,
+                this.subsystems.settings,
+                this.subsystems.logging
+            );
+            await this.historySubsystem.init();
+            this.subsystems.history = this.historySubsystem;
+            this.logger.debug('History subsystem initialized');
+
             // Import Subsystem
             if (FEATURE_FLAGS.USE_IMPORT_SUBSYSTEM) {
                 this.subsystems.importManager = new ImportSubsystem(
@@ -481,19 +498,27 @@ class App {
             }
 
             // Analytics Dashboard Subsystem
+            // CRITICAL: Analytics dashboard requires proper initialization with all dependencies
+            // Constructor expects: (logger, eventBus, advancedRealtimeSubsystem, progressSubsystem, sessionSubsystem)
+            // Last fixed: 2025-07-21 - Added missing feature flag and fixed constructor parameters
             if (FEATURE_FLAGS.USE_ANALYTICS_DASHBOARD) {
                 this.analyticsDashboardSubsystem = new AnalyticsDashboardSubsystem(
+                    this.logger.child({ subsystem: 'analytics-dashboard' }),
                     this.eventBus,
-                    this.logger.child({ subsystem: 'analytics-dashboard' })
+                    this.subsystems.realtimeManager, // advancedRealtimeSubsystem
+                    this.progressSubsystem, // progressSubsystem
+                    this.sessionSubsystem // sessionSubsystem (may be null)
                 );
                 await this.analyticsDashboardSubsystem.init();
                 this.subsystems.analyticsDashboard = this.analyticsDashboardSubsystem;
+                this.logger.debug('Analytics dashboard subsystem initialized');
 
                 this.analyticsDashboardUI = new AnalyticsDashboardUI(
                     this.eventBus,
                     this.logger.child({ component: 'AnalyticsDashboardUI' })
                 );
                 this.analyticsDashboardUI.init();
+                this.logger.debug('Analytics dashboard UI initialized');
             }
 
         } catch (error) {
@@ -1039,6 +1064,90 @@ class App {
     }
     
     /**
+     * Load settings and populate form fields
+     * Called by ViewManagementSubsystem when settings view is initialized
+     * 
+     * CRITICAL: This method is required by ViewManagementSubsystem.initializeSettingsView()
+     * DO NOT remove or rename this method without updating ViewManagementSubsystem
+     * Last fixed: 2025-07-21 - Missing method caused settings page to not load credentials
+     * 
+     * @returns {Promise<Object>} Loaded settings object
+     */
+    async loadSettings() {
+        this.logger.info('🔧 SETTINGS: Loading settings for form population...');
+        
+        try {
+            // Use SettingsSubsystem if available
+            if (this.settingsSubsystem && typeof this.settingsSubsystem.loadSettings === 'function') {
+                this.logger.debug('🔧 SETTINGS: Using SettingsSubsystem to load settings');
+                const settings = await this.settingsSubsystem.loadSettings();
+                this.populateSettingsForm(settings);
+                return settings;
+            }
+            
+            // Fallback to direct API call (same as credentials modal)
+            this.logger.debug('🔧 SETTINGS: Using direct API call to load settings');
+            const response = await fetch('/api/settings');
+            
+            if (response.ok) {
+                const data = await response.json();
+                // The API returns data in data.data structure (same as credentials modal)
+                const settings = data.data || data.settings || {};
+                
+                this.logger.info('🔧 SETTINGS: Settings loaded successfully', {
+                    hasEnvironmentId: !!settings.environmentId,
+                    hasApiClientId: !!settings.apiClientId,
+                    region: settings.region
+                });
+                
+                this.populateSettingsForm(settings);
+                return settings;
+            } else {
+                this.logger.warn('🔧 SETTINGS: Failed to load settings from API', { status: response.status });
+                return {};
+            }
+            
+        } catch (error) {
+            this.logger.error('🔧 SETTINGS: Failed to load settings', { error: error.message });
+            this.showSettingsStatus(`Failed to load settings: ${error.message}`, 'error');
+            return {};
+        }
+    }
+    
+    /**
+     * Populate settings form fields with loaded data
+     */
+    populateSettingsForm(settings) {
+        this.logger.debug('🔧 SETTINGS: Populating form fields with settings data');
+        
+        try {
+            // Map settings to form fields (handle both naming conventions)
+            const fieldMappings = {
+                'environment-id': settings.environmentId || settings['environment-id'] || '',
+                'api-client-id': settings.apiClientId || settings['api-client-id'] || '',
+                'api-secret': settings.apiSecret || settings['api-secret'] || '',
+                'region': settings.region || 'NorthAmerica',
+                'population-id': settings.populationId || settings['population-id'] || '',
+                'rate-limit': settings.rateLimit || settings['rate-limit'] || 90
+            };
+            
+            // Populate each form field
+            Object.entries(fieldMappings).forEach(([fieldId, value]) => {
+                const field = document.getElementById(fieldId);
+                if (field && value) {
+                    field.value = value;
+                    this.logger.debug(`🔧 SETTINGS: Populated field ${fieldId}`, { hasValue: !!value });
+                }
+            });
+            
+            this.logger.info('🔧 SETTINGS: Form fields populated successfully');
+            
+        } catch (error) {
+            this.logger.error('🔧 SETTINGS: Failed to populate form fields', { error: error.message });
+        }
+    }
+
+    /**
      * Handle Test Connection button click
      */
     async handleTestConnection() {
@@ -1062,8 +1171,12 @@ class App {
                 }
             } else {
                 // Fallback: test connection directly
+                // CRITICAL: This MUST be a GET request to match server-side endpoint
+                // Server endpoint: routes/pingone-proxy-fixed.js - router.get('/test-connection')
+                // DO NOT change to POST without updating server-side endpoint
+                // Last fixed: 2025-07-21 - HTTP method mismatch caused 400 Bad Request errors
                 const response = await fetch('/api/pingone/test-connection', {
-                    method: 'POST',
+                    method: 'GET', // MUST match server endpoint method
                     headers: { 'Content-Type': 'application/json' }
                 });
                 
@@ -1285,7 +1398,7 @@ class App {
             };
             
             const title = titles[view] || 'PingOne Import Tool';
-            document.title = `${title} - PingOne Import Tool v6.4`;
+            document.title = `${title} - PingOne Import Tool v6.5`;
             
             this.logger.debug(`🔧 DIRECT NAV: Updated page title to: ${document.title}`);
             
@@ -1629,7 +1742,7 @@ window.testLoading = {
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await app.init();
-        console.log('🚀 PingOne Import Tool v6.4 initialized successfully');
+        console.log('🚀 PingOne Import Tool v6.5 initialized successfully');
         console.log('📊 Health Status:', app.getHealthStatus());
     } catch (error) {
         console.error('❌ Application initialization failed:', error);

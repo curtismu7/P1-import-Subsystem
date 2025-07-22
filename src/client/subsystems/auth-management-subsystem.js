@@ -143,7 +143,10 @@ export class AuthManagementSubsystem {
             }
             
             // Test connection
-            const response = await this.localClient.post('/api/test-connection', settings);
+            // CRITICAL: Use GET request to match server-side endpoint
+            // Server endpoint: routes/pingone-proxy-fixed.js - router.get('/test-connection')
+            // Last fixed: 2025-07-21 - HTTP method mismatch caused 400 Bad Request errors
+            const response = await this.localClient.get('/api/pingone/test-connection');
             
             if (!response.success) {
                 throw new Error(response.error || 'Connection test failed');

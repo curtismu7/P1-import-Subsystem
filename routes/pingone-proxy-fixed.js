@@ -11,6 +11,33 @@ const __dirname = path.dirname(__filename);
 
 const router = Router();
 
+// HTTP Method Mismatch Debug Utility
+// Use this to add defensive programming to critical endpoints
+const validateHttpMethod = (req, res, expectedMethod, endpointName) => {
+    if (req.method !== expectedMethod) {
+        const requestId = req.headers['x-request-id'] || 'unknown';
+        console.error(`[${requestId}] HTTP METHOD MISMATCH at ${endpointName}:`);
+        console.error(`  Expected: ${expectedMethod}`);
+        console.error(`  Received: ${req.method}`);
+        console.error(`  URL: ${req.originalUrl}`);
+        console.error(`  User-Agent: ${req.headers['user-agent'] || 'unknown'}`);
+        console.error(`  This indicates a client-server HTTP method mismatch!`);
+        
+        res.status(405).json({
+            success: false,
+            error: `Method ${req.method} not allowed for ${endpointName}. Expected ${expectedMethod}.`,
+            debug: {
+                endpoint: endpointName,
+                expected: expectedMethod,
+                received: req.method,
+                message: 'HTTP method mismatch detected - check client-side calls'
+            }
+        });
+        return false;
+    }
+    return true;
+};
+
 // PingOne API base URLs by region
 const PINGONE_API_BASE_URLS = {
     'NorthAmerica': 'https://api.pingone.com',
@@ -487,12 +514,54 @@ const getPopulations = async (req, res) => {
             return res.status(400).json({ error: 'Environment ID is required' });
         }
         
+        // Use the correct region-specific base URL
         const baseUrl = PINGONE_API_BASE_URLS[region || 'NorthAmerica'];
         const { limit = 100, offset = 0 } = req.query;
         
+        // Log the request for debugging
+        console.log(`Getting populations for environment ${environmentId} in region ${region || 'NorthAmerica'}`);
+        
         const url = `${baseUrl}/v1/environments/${environmentId}/populations?limit=${limit}&offset=${offset}`;
         req.query.url = url;
-        return proxyRequest(req, res);
+        
+        // Add direct fetch with better error handling as a fallback
+        try {
+            // First try the proxy request
+            return proxyRequest(req, res);
+        } catch (proxyError) {
+            console.error('Proxy request for populations failed, trying direct fetch:', proxyError);
+            
+            // If proxy fails, try direct fetch
+            const token = req.headers.authorization?.split(' ')[1];
+            if (!token) {
+                return res.status(401).json({ error: 'No authorization token provided' });
+            }
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`Failed to fetch populations: ${response.status}`, errorText);
+                    return res.status(response.status).json({ 
+                        error: `Failed to fetch populations: ${response.status}`,
+                        details: errorText
+                    });
+                }
+                
+                const data = await response.json();
+                return res.json(data);
+            } catch (fetchError) {
+                console.error('Direct fetch for populations failed:', fetchError);
+                throw fetchError; // Let the outer catch handle it
+            }
+        }
     } catch (error) {
         console.error('Error in getPopulations:', error);
         res.status(500).json({ error: 'Failed to get populations', details: error.message });
@@ -518,23 +587,82 @@ router.get('/users', getUsers);
 router.get('/populations', getPopulations);
 
 // Test connection endpoint
-router.post('/test-connection', async (req, res) => {
+// CRITICAL: This MUST be a GET endpoint to match client-side expectations
+// Client-side files making GET requests: population-dropdown-fix.js, app.js, bundle files
+// DO NOT change to POST without updating ALL client-side calls
+// Last fixed: 2025-07-21 - HTTP method mismatch caused 400 Bad Request errors
+router.get('/test-connection', async (req, res) => {
     const requestId = uuidv4();
-    console.log(`[${requestId}] Testing PingOne connection...`);
+    
+    // DEBUG: Log HTTP method to catch future mismatches
+    console.log(`[${requestId}] Testing PingOne connection... (Method: ${req.method})`);
+    
+    // VALIDATION: Ensure this is a GET request (defensive programming)
+    if (!validateHttpMethod(req, res, 'GET', '/api/pingone/test-connection')) {
+        return; // validateHttpMethod already sent the error response
+    }
     
     try {
-        // Get settings from environment or request
-        const settings = req.settings || {
+        // Get settings from multiple sources with fallback priority:
+        // 1. Environment variables (for production/server deployment)
+        // 2. Request settings (injected by middleware from user settings)
+        // 3. Fallback to settings file/database
+        let settings = {
             environmentId: process.env.PINGONE_ENVIRONMENT_ID,
             apiClientId: process.env.PINGONE_CLIENT_ID,
             apiSecret: process.env.PINGONE_CLIENT_SECRET,
             region: process.env.PINGONE_REGION || 'NorthAmerica'
         };
         
+        // If environment variables are missing, try to get from request settings (user configuration)
         if (!settings.environmentId || !settings.apiClientId || !settings.apiSecret) {
+            console.log(`[${requestId}] Environment variables missing, checking user settings...`);
+            
+            if (req.settings && req.settings.environmentId && req.settings.apiClientId && req.settings.apiSecret) {
+                settings = {
+                    environmentId: req.settings.environmentId,
+                    apiClientId: req.settings.apiClientId,
+                    apiSecret: req.settings.apiSecret,
+                    region: req.settings.region || 'NorthAmerica'
+                };
+                console.log(`[${requestId}] Using user-configured settings`);
+            } else {
+                // Try to load from settings file as last resort
+                try {
+                    const fs = await import('fs/promises');
+                    const path = await import('path');
+                    const settingsPath = path.resolve(process.cwd(), 'data/settings.json');
+                    const settingsFile = await fs.readFile(settingsPath, 'utf8');
+                    const fileSettings = JSON.parse(settingsFile);
+                    
+                    if (fileSettings.environmentId && fileSettings.apiClientId && fileSettings.apiSecret) {
+                        settings = {
+                            environmentId: fileSettings.environmentId,
+                            apiClientId: fileSettings.apiClientId,
+                            apiSecret: fileSettings.apiSecret,
+                            region: fileSettings.region || 'NorthAmerica'
+                        };
+                        console.log(`[${requestId}] Using settings from file`);
+                    }
+                } catch (fileError) {
+                    console.log(`[${requestId}] Could not load settings from file:`, fileError.message);
+                }
+            }
+        } else {
+            console.log(`[${requestId}] Using environment variables`);
+        }
+        
+        // Final validation - if still no credentials, return helpful error
+        if (!settings.environmentId || !settings.apiClientId || !settings.apiSecret) {
+            console.log(`[${requestId}] No valid credentials found in any source`);
             return res.status(400).json({
                 success: false,
-                error: 'Missing required credentials. Please configure your PingOne settings.'
+                error: 'Missing required credentials. Please configure your PingOne settings in the Settings page.',
+                debug: {
+                    hasEnvVars: !!(process.env.PINGONE_ENVIRONMENT_ID && process.env.PINGONE_CLIENT_ID && process.env.PINGONE_CLIENT_SECRET),
+                    hasReqSettings: !!(req.settings && req.settings.environmentId && req.settings.apiClientId && req.settings.apiSecret),
+                    message: 'Configure credentials in Settings page or set environment variables'
+                }
             });
         }
         

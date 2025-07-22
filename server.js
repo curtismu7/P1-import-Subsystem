@@ -845,79 +845,9 @@ const startServer = async () => {
     // Initialize connection manager with Socket.IO only
     connectionManager.initialize(io);
 
-    // --- WebSocket server for fallback real-time updates ---
-    const wss = new WebSocketServer({ server });
-    global.wsClients = new Map();
-    
-    wss.on('connection', (ws, req) => {
-        logger.info('WebSocket connection established', {
-            remoteAddress: req.socket.remoteAddress,
-            url: req.url
-        });
-        
-        // Set up connection health monitoring
-        ws.isAlive = true;
-        ws.lastActivity = Date.now();
-        
-        ws.on('message', (message) => {
-            try {
-                const data = JSON.parse(message);
-                
-                if (data.type === 'join-session' && data.sessionId) {
-                    // Store WebSocket client reference
-                    global.wsClients.set(data.sessionId, ws);
-                    ws.sessionId = data.sessionId;
-                    
-                    logger.info('WebSocket session registered', {
-                        sessionId: data.sessionId,
-                        totalClients: global.wsClients.size
-                    });
-                    
-                    // Send confirmation
-                    ws.send(JSON.stringify({
-                        type: 'session-registered',
-                        sessionId: data.sessionId,
-                        timestamp: Date.now()
-                    }));
-                }
-            } catch (error) {
-                logger.warn('WebSocket message parsing error', {
-                    error: error.message,
-                    message: message.toString()
-                });
-            }
-        });
-        
-        ws.on('close', (code, reason) => {
-            logger.info('WebSocket connection closed', {
-                sessionId: ws.sessionId,
-                code,
-                reason: reason.toString()
-            });
-            
-            if (ws.sessionId) {
-                global.wsClients.delete(ws.sessionId);
-                logger.info('WebSocket session removed', {
-                    sessionId: ws.sessionId,
-                    remainingClients: global.wsClients.size
-                });
-            }
-        });
-        
-        ws.on('error', (error) => {
-            logger.error('WebSocket connection error', {
-                error: error.message,
-                sessionId: ws.sessionId
-            });
-        });
-        
-        // Handle ping/pong for connection health
-        ws.on('ping', () => {
-            ws.isAlive = true;
-            ws.lastActivity = Date.now();
-            ws.pong();
-        });
-    });
+    // Note: WebSocket server removed to prevent conflicts with Socket.IO
+    // Socket.IO already handles WebSocket connections via wsEngine: WebSocketServer
+    global.wsClients = new Map(); // Keep for compatibility
 
     // --- Socket Connection Test on Startup ---
     const testSocketConnections = async () => {
