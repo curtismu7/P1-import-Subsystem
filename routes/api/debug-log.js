@@ -80,6 +80,92 @@ router.get('/', (req, res) => {
     }
 });
 
+// GET endpoint for file access (what the client is actually requesting)
+router.get('/file', (req, res) => {
+    try {
+        const { lines = 100, filter } = req.query;
+        
+        if (!fs.existsSync(DEBUG_LOG_FILE)) {
+            return res.json({ entries: [], message: 'Debug log file not found' });
+        }
+        
+        // Read the log file
+        const logContent = fs.readFileSync(DEBUG_LOG_FILE, 'utf8');
+        const logLines = logContent.split('\n').filter(line => line.trim());
+        
+        // Apply filter if provided
+        let filteredLines = logLines;
+        if (filter) {
+            filteredLines = logLines.filter(line => 
+                line.toLowerCase().includes(filter.toLowerCase())
+            );
+        }
+        
+        // Get the last N lines
+        const recentLines = filteredLines.slice(-parseInt(lines));
+        
+        res.json({ 
+            entries: recentLines,
+            total: filteredLines.length,
+            showing: recentLines.length,
+            file: DEBUG_LOG_FILE
+        });
+        
+    } catch (error) {
+        console.error('Failed to read debug log file:', error);
+        res.status(500).json({ error: 'Failed to read debug log file' });
+    }
+});
+
+// POST endpoint for file access (what the client is actually requesting)
+router.post('/file', express.json(), (req, res) => {
+    try {
+        const { entry, content, filename, sessionId } = req.body;
+        
+        // Handle both old format (entry) and new format (content)
+        const logContent = content || entry;
+        
+        if (!logContent) {
+            return res.status(400).json({ error: 'Log content is required (entry or content field)' });
+        }
+        
+        // Ensure log directory exists
+        ensureLogDirectory();
+        
+        // Determine target file based on filename parameter or use default
+        let targetFile = DEBUG_LOG_FILE;
+        if (filename && filename !== 'debug.log') {
+            targetFile = path.join(process.cwd(), 'logs', filename);
+        }
+        
+        // Format log entry with timestamp and session info if provided
+        let formattedEntry = logContent;
+        if (sessionId) {
+            const timestamp = new Date().toISOString();
+            formattedEntry = `[${timestamp}] [${sessionId}] ${logContent}`;
+        }
+        
+        // Ensure newline at end if not present
+        if (!formattedEntry.endsWith('\n')) {
+            formattedEntry += '\n';
+        }
+        
+        // Write to debug log file
+        fs.appendFileSync(targetFile, formattedEntry);
+        
+        res.json({ 
+            success: true, 
+            message: 'Debug log entry written to file',
+            file: targetFile,
+            sessionId: sessionId
+        });
+        
+    } catch (error) {
+        console.error('Failed to write debug log entry to file:', error);
+        res.status(500).json({ error: 'Failed to write debug log entry to file' });
+    }
+});
+
 // DELETE endpoint to clear debug log
 router.delete('/', (req, res) => {
     try {

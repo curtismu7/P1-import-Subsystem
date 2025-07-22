@@ -183,9 +183,93 @@ const proxyRequest = async (req, res) => {
 // Apply middleware and routes
 router.use(express.json());
 
+// Worker token test endpoint - MUST be before the catch-all proxy handler
+router.get('/test-connection', async (req, res) => {
+    const requestId = uuidv4();
+    const startTime = Date.now();
+    
+    try {
+        console.log(`[${requestId}] Testing worker token connection...`);
+        
+        // Check if we have required environment variables
+        if (!process.env.PINGONE_CLIENT_ID || !process.env.PINGONE_CLIENT_SECRET || !process.env.PINGONE_ENVIRONMENT_ID) {
+            console.log(`[${requestId}] Missing required environment variables`);
+            return res.status(401).json({ 
+                error: 'Credentials not configured', 
+                message: 'PingOne credentials not available in environment variables',
+                available: false
+            });
+        }
+        
+        // Try to get a worker token
+        let token;
+        try {
+            token = await workerTokenManager.getAccessToken({
+                apiClientId: process.env.PINGONE_CLIENT_ID,
+                apiSecret: process.env.PINGONE_CLIENT_SECRET,
+                environmentId: process.env.PINGONE_ENVIRONMENT_ID,
+                region: process.env.PINGONE_REGION || 'NorthAmerica'
+            });
+        } catch (tokenError) {
+            console.log(`[${requestId}] Worker token acquisition failed:`, tokenError.message);
+            return res.status(401).json({ 
+                error: 'Token acquisition failed', 
+                message: tokenError.message,
+                available: false
+            });
+        }
+        
+        // Test the token by making a simple API call
+        const region = process.env.PINGONE_REGION || 'NorthAmerica';
+        const baseUrl = PINGONE_API_BASE_URLS[region] || PINGONE_API_BASE_URLS.default;
+        const testUrl = `${baseUrl}/v1/environments/${process.env.PINGONE_ENVIRONMENT_ID}`;
+        
+        const testResponse = await fetch(testUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'X-Request-Id': requestId
+            },
+            timeout: 10000
+        });
+        
+        const responseTime = Date.now() - startTime;
+        
+        if (testResponse.ok) {
+            console.log(`[${requestId}] Worker token test successful (${responseTime}ms)`);
+            res.status(200).json({ 
+                message: 'Worker token available and valid', 
+                available: true,
+                responseTime,
+                environmentId: process.env.PINGONE_ENVIRONMENT_ID,
+                region: process.env.PINGONE_REGION || 'NorthAmerica'
+            });
+        } else {
+            console.log(`[${requestId}] Worker token test failed: ${testResponse.status} ${testResponse.statusText}`);
+            res.status(testResponse.status).json({ 
+                error: 'Token validation failed', 
+                message: `API test returned ${testResponse.status} ${testResponse.statusText}`,
+                available: false,
+                responseTime
+            });
+        }
+        
+    } catch (error) {
+        const responseTime = Date.now() - startTime;
+        console.error(`[${requestId}] Worker token test error:`, error);
+        res.status(500).json({
+            error: 'Connection test failed',
+            message: error.message,
+            available: false,
+            responseTime
+        });
+    }
+});
+
 // Only apply settings validation to non-auth requests
 router.use((req, res, next) => {
-    if (req.path !== '/as/token' && !req.query.url?.includes('/as/token')) {
+    if (req.path !== '/as/token' && !req.query.url?.includes('/as/token') && req.path !== '/test-connection') {
         injectSettings(req, res, () => {
             validateSettings(req, res, next);
         });

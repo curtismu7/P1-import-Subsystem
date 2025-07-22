@@ -1,11 +1,12 @@
 /**
- * Population Dropdown Fix
+ * Population Dropdown Fix with Worker Token System
  * 
  * This script ensures that population dropdowns are properly populated across all views.
- * It runs after the page loads and checks all population dropdowns, loading data if needed.
+ * It includes fallback handling for when credentials are not available and implements
+ * a worker token system for graceful degradation.
  */
 (function() {
-  console.log('🔧 Population Dropdown Fix: Initializing...');
+  console.log('🔧 Population Dropdown Fix: Initializing with worker token system...');
   
   // Configuration
   const DROPDOWN_IDS = [
@@ -17,6 +18,15 @@
   
   // Debug mode - set to false to reduce console logs
   const DEBUG = false;
+  
+  // Worker token system state
+  let workerTokenStatus = {
+    available: false,
+    testing: false,
+    lastCheck: null,
+    retryCount: 0,
+    maxRetries: 3
+  };
   
   // Log function that only logs when debug is enabled
   function log(message, ...args) {
@@ -34,44 +44,117 @@
   }
   
   /**
-   * Initialize the dropdown fix
+   * Test worker token availability on startup
    */
-  function initializeDropdownFix() {
-    console.log('🔧 Population Dropdown Fix: Initialized');
+  async function testWorkerToken() {
+    if (workerTokenStatus.testing) return workerTokenStatus.available;
     
-    // Check dropdowns immediately
-    checkDropdowns();
+    workerTokenStatus.testing = true;
+    workerTokenStatus.lastCheck = Date.now();
+    
+    try {
+      log('🔧 Testing worker token availability...');
+      
+      // Test if we can get a token without user credentials
+      // CRITICAL: This MUST be a GET request to match server-side endpoint
+      // Server endpoint: routes/pingone-proxy-fixed.js - router.get('/test-connection')
+      // DO NOT change to POST without updating server-side endpoint
+      // Last fixed: 2025-07-21 - HTTP method mismatch caused 400 Bad Request errors
+      const response = await fetch('/api/pingone/test-connection', {
+        method: 'GET', // MUST match server endpoint method
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        workerTokenStatus.available = true;
+        log('🔧 Worker token available - API connection successful');
+      } else if (response.status === 401) {
+        workerTokenStatus.available = false;
+        log('🔧 Worker token not available - credentials required');
+      } else {
+        workerTokenStatus.available = false;
+        log(`🔧 Worker token test failed - ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      workerTokenStatus.available = false;
+      log('🔧 Worker token test error:', error.message);
+    } finally {
+      workerTokenStatus.testing = false;
+    }
+    
+    return workerTokenStatus.available;
+  }
+  
+  /**
+   * Initialize the dropdown fix with worker token system
+   */
+  async function initializeDropdownFix() {
+    console.log('🔧 Population Dropdown Fix: Initialized with worker token system');
+    
+    // Test worker token availability first
+    await testWorkerToken();
+    
+    // Check dropdowns with fallback handling
+    await checkDropdownsWithFallback();
     
     // Set up periodic checks - less frequent to reduce noise
-    setInterval(checkDropdowns, 30000);
+    setInterval(async () => {
+      await checkDropdownsWithFallback();
+    }, 30000);
     
     // Listen for view changes
-    document.addEventListener('view-changed', checkDropdowns);
+    document.addEventListener('view-changed', async () => {
+      await checkDropdownsWithFallback();
+    });
     
     // Listen for navigation events
     document.querySelectorAll('.nav-item, .feature-card').forEach(item => {
       item.addEventListener('click', () => {
-        setTimeout(checkDropdowns, 500);
+        setTimeout(async () => {
+          await checkDropdownsWithFallback();
+        }, 500);
       });
+    });
+    
+    // Listen for credential updates (when user saves settings)
+    document.addEventListener('credentials-updated', async () => {
+      console.log('🔧 Credentials updated - retesting worker token...');
+      workerTokenStatus.available = false;
+      workerTokenStatus.retryCount = 0;
+      await testWorkerToken();
+      await checkDropdownsWithFallback();
     });
   }
   
   /**
-   * Check all population dropdowns and load data if needed
+   * Check all population dropdowns with fallback handling
    */
-  function checkDropdowns() {
-    log('🔧 Population Dropdown Fix: Checking dropdowns...');
+  async function checkDropdownsWithFallback() {
+    log('🔧 Population Dropdown Fix: Checking dropdowns with fallback handling...');
     
-    DROPDOWN_IDS.forEach(id => {
+    // Re-test worker token if it's been a while
+    const timeSinceLastCheck = Date.now() - (workerTokenStatus.lastCheck || 0);
+    if (timeSinceLastCheck > 300000) { // 5 minutes
+      await testWorkerToken();
+    }
+    
+    DROPDOWN_IDS.forEach(async (id) => {
       const dropdown = document.getElementById(id);
       if (!dropdown) return;
       
       log(`🔧 Population Dropdown Fix: Checking ${id}...`);
       
       // Check if dropdown needs population data
-      if (dropdown.options.length <= 1 || dropdown.options[0].text.includes('Loading') || dropdown.options[0].text.includes('Error')) {
+      const needsData = dropdown.options.length <= 1 || 
+                       dropdown.options[0].text.includes('Loading') || 
+                       dropdown.options[0].text.includes('Error') ||
+                       dropdown.options[0].text.includes('Configure credentials');
+      
+      if (needsData) {
         log(`🔧 Population Dropdown Fix: ${id} needs population data`);
-        loadPopulationsForDropdown(id);
+        await loadPopulationsWithFallback(id);
       } else {
         log(`🔧 Population Dropdown Fix: ${id} already has ${dropdown.options.length} options`);
       }
@@ -79,14 +162,48 @@
   }
   
   /**
-   * Load populations for a specific dropdown
+   * Legacy function for backward compatibility
    */
-  async function loadPopulationsForDropdown(dropdownId) {
+  function checkDropdowns() {
+    checkDropdownsWithFallback();
+  }
+  
+  /**
+   * Load populations with fallback handling
+   */
+  async function loadPopulationsWithFallback(dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+    
     try {
-      log(`🔧 Population Dropdown Fix: Loading populations for ${dropdownId}...`);
+      log(`🔧 Population Dropdown Fix: Loading populations for ${dropdownId} with fallback...`);
+      
+      // Show loading state
+      dropdown.innerHTML = '<option value="">Loading populations...</option>';
+      
+      // Check if worker token is available
+      if (!workerTokenStatus.available && workerTokenStatus.retryCount < workerTokenStatus.maxRetries) {
+        // Try to get worker token again
+        await testWorkerToken();
+        workerTokenStatus.retryCount++;
+      }
+      
+      if (!workerTokenStatus.available) {
+        // No credentials available - show fallback message
+        showCredentialsFallback(dropdownId);
+        return;
+      }
       
       // Fetch populations from API
       const response = await fetch('/api/pingone/populations');
+      
+      if (response.status === 401) {
+        // Unauthorized - credentials invalid or expired
+        workerTokenStatus.available = false;
+        showCredentialsFallback(dropdownId);
+        return;
+      }
+      
       if (!response.ok) {
         throw new Error(`Failed to load populations: ${response.status} ${response.statusText}`);
       }
@@ -105,18 +222,73 @@
       
       log(`🔧 Population Dropdown Fix: Loaded ${populations.length} populations`);
       
+      // Reset retry count on success
+      workerTokenStatus.retryCount = 0;
+      
       // Populate the dropdown
       populateDropdown(dropdownId, populations);
       
     } catch (error) {
       console.error(`🔧 Population Dropdown Fix: Error loading populations for ${dropdownId}`, error);
       
-      // Show error in dropdown
-      const dropdown = document.getElementById(dropdownId);
-      if (dropdown) {
-        dropdown.innerHTML = `<option value="">Error loading populations: ${error.message}</option>`;
-      }
+      // Show error with retry option
+      showErrorWithRetry(dropdownId, error.message);
     }
+  }
+  
+  /**
+   * Show credentials fallback message
+   */
+  function showCredentialsFallback(dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+    
+    dropdown.innerHTML = `
+      <option value="">Configure credentials in Settings to load populations</option>
+      <option value="retry">🔄 Retry after configuring credentials</option>
+    `;
+    
+    // Add click handler for retry option
+    dropdown.addEventListener('change', async function(event) {
+      if (event.target.value === 'retry') {
+        event.target.value = ''; // Reset selection
+        workerTokenStatus.available = false;
+        workerTokenStatus.retryCount = 0;
+        await loadPopulationsWithFallback(dropdownId);
+      }
+    });
+    
+    log(`🔧 Population Dropdown Fix: Showing credentials fallback for ${dropdownId}`);
+  }
+  
+  /**
+   * Show error with retry option
+   */
+  function showErrorWithRetry(dropdownId, errorMessage) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+    
+    dropdown.innerHTML = `
+      <option value="">Error: ${errorMessage}</option>
+      <option value="retry">🔄 Retry loading populations</option>
+    `;
+    
+    // Add click handler for retry option
+    dropdown.addEventListener('change', async function(event) {
+      if (event.target.value === 'retry') {
+        event.target.value = ''; // Reset selection
+        await loadPopulationsWithFallback(dropdownId);
+      }
+    });
+    
+    log(`🔧 Population Dropdown Fix: Showing error with retry for ${dropdownId}`);
+  }
+  
+  /**
+   * Legacy function for backward compatibility
+   */
+  async function loadPopulationsForDropdown(dropdownId) {
+    await loadPopulationsWithFallback(dropdownId);
   }
   
   /**

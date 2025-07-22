@@ -698,7 +698,11 @@ export class LocalAPIClient {
      */
     async testConnection() {
         try {
-            const response = await this.post('/api/auth/test-connection', {}, {
+            // CRITICAL: This MUST be a GET request to /api/pingone/test-connection
+            // Server endpoint: routes/pingone-proxy-fixed.js - router.get('/test-connection')
+            // DO NOT change to POST without updating server-side endpoint
+            // Last fixed: 2025-07-21 - Fixed HTTP method mismatch causing 400 Bad Request errors
+            const response = await this.get('/api/pingone/test-connection', {
                 timeout: 10000, // 10 second timeout for connection test
                 retries: 1 // Single retry for connection test
             });

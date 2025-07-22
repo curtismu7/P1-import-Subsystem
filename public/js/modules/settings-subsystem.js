@@ -204,6 +204,13 @@ export class SettingsSubsystem {
                 this.eventBus.emit('settingsSaved', { settings });
             }
             
+            // Emit credentials-updated event for population dropdown fallback system
+            const credentialsUpdatedEvent = new CustomEvent('credentials-updated', {
+                detail: { settings, timestamp: Date.now() }
+            });
+            document.dispatchEvent(credentialsUpdatedEvent);
+            this.logger.info('Credentials-updated event dispatched for population dropdown system');
+            
             this.logger.info('Settings save process completed successfully');
             
         } catch (error) {
@@ -434,5 +441,22 @@ export class SettingsSubsystem {
         });
         
         this.logger.debug('Cross-subsystem event listeners set up for SettingsSubsystem');
+    }
+    
+    /**
+     * Get all settings (required by App initialization)
+     * @returns {Object} All current settings
+     */
+    getAllSettings() {
+        if (this.settingsManager && this.settingsManager.getAllSettings) {
+            return this.settingsManager.getAllSettings();
+        } else if (this.settingsManager && this.settingsManager.getSettings) {
+            return this.settingsManager.getSettings();
+        } else if (this.currentSettings) {
+            return this.currentSettings;
+        } else {
+            this.logger.warn('No settings available, returning empty object');
+            return {};
+        }
     }
 }

@@ -2619,6 +2619,87 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
 });
 
 // ============================================================================
+// POPULATIONS ENDPOINT
+// ============================================================================
+
+/**
+ * @swagger
+ * /api/populations:
+ *   get:
+ *     summary: Get all populations
+ *     description: Retrieves a list of all populations in the PingOne environment.
+ *     tags: [Populations]
+ *     responses:
+ *       200:
+ *         description: A list of populations.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 populations:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/populations', async (req, res) => {
+    debugLog("Populations", "Received request for populations");
+    try {
+        const tokenManager = req.app.get('tokenManager');
+        if (!tokenManager) {
+            debugLog("Populations", "❌ Token manager not available");
+            return res.status(500).json({ success: false, error: 'Token manager not available' });
+        }
+
+        const token = await tokenManager.getAccessToken();
+        if (!token) {
+            debugLog("Populations", "❌ Failed to get access token");
+            return res.status(401).json({ success: false, error: 'Failed to get access token' });
+        }
+
+        const environmentId = await tokenManager.getEnvironmentId();
+        if (!environmentId) {
+            debugLog("Populations", "❌ Environment ID not configured");
+            return res.status(400).json({ success: false, error: 'Environment ID not configured' });
+        }
+
+        const pingOneUrl = `${tokenManager.getApiBaseUrl()}/environments/${environmentId}/populations`;
+        
+        debugLog("Populations", "🌐 Fetching populations from PingOne API", { url: pingOneUrl });
+
+        const pingOneResponse = await fetch(pingOneUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!pingOneResponse.ok) {
+            const errorText = await pingOneResponse.text();
+            debugLog("Populations", "❌ PingOne API request failed", { status: pingOneResponse.status, error: errorText });
+            throw new Error(`Failed to fetch populations from PingOne API: ${pingOneResponse.status} ${pingOneResponse.statusText}`);
+        }
+
+        const data = await pingOneResponse.json();
+        const populations = data._embedded?.populations || [];
+        
+        debugLog("Populations", `✅ Successfully fetched ${populations.length} populations`);
+
+        res.json({ success: true, populations });
+
+    } catch (error) {
+        debugLog("Populations", "❌ Error fetching populations", { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to fetch populations', details: error.message });
+    }
+});
+
+// ============================================================================
 // SETTINGS ENDPOINTS
 // ============================================================================
 

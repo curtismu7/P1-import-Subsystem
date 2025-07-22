@@ -106,6 +106,9 @@ export class RealtimeCommunicationSubsystem {
                     this.isConnected = true;
                     this.reconnectAttempts = 0;
                     
+                    // Set up Socket.IO event handlers
+                    this.setupSocketIOHandlers();
+                    
                     // Register session
                     this.socket.emit('registerSession', sessionId);
                     

@@ -435,6 +435,34 @@ class Logger {
         this.errorCount = 0;
         this.winstonLogger.debug('Summary cleared');
     }
+    
+    /**
+     * Start a performance timer
+     */
+    startTimer(label) {
+        if (!this.timers) {
+            this.timers = new Map();
+        }
+        this.timers.set(label, Date.now());
+        this.debug(`Timer started: ${label}`);
+    }
+    
+    /**
+     * End a performance timer and log the duration
+     */
+    endTimer(label) {
+        if (!this.timers || !this.timers.has(label)) {
+            this.warn(`Timer '${label}' not found`);
+            return 0;
+        }
+        
+        const startTime = this.timers.get(label);
+        const duration = Date.now() - startTime;
+        this.timers.delete(label);
+        
+        this.info(`Timer completed: ${label}`, { duration: `${duration}ms` });
+        return duration;
+    }
 }
 
 // Export the Logger class

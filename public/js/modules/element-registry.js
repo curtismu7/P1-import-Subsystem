@@ -59,7 +59,15 @@ export const ElementRegistry = {
   
   // Notification and progress containers
   notificationContainer: () => getElement('#notification-area', 'Notification Container'),
-  progressContainer: () => getElement('#progress-container', 'Progress Container'),
+  progressContainer: () => {
+    // Try specific progress containers first, then fallback to generic
+    return getElement('#import-progress-container', 'Import Progress Container', false) ||
+           getElement('#delete-progress-container', 'Delete Progress Container', false) ||
+           getElement('#modify-progress-container', 'Modify Progress Container', false) ||
+           getElement('#export-progress-container', 'Export Progress Container', false) ||
+           getElement('#progress-container', 'Progress Container', false) ||
+           getElement('.progress-container', 'Progress Container (class)', false);
+  },
   
   // Token and connection status elements
   tokenStatus: () => getElement('#token-status-indicator', 'Token Status'),
@@ -101,4 +109,12 @@ export const ElementRegistry = {
   
   // Population ID form field
   populationIdField: () => getElement('#population-id', 'Population ID Field'),
-}; 
+};
+
+// Global exports for subsystem access
+if (typeof window !== 'undefined') {
+  window.getElement = getElement;
+  window.elementCache = elementCache;
+  window.ElementRegistry = ElementRegistry;
+  console.log('✅ Element registry global exports initialized');
+} 
