@@ -306,6 +306,9 @@ export class SettingsSubsystem {
     
     /**
      * Test connection
+     * CRITICAL: This method MUST use GET /api/pingone/test-connection endpoint
+     * DO NOT change to POST or different endpoint without updating server-side route
+     * Last fixed: 2025-07-22 - Fixed HTTP method mismatch causing 400 Bad Request errors
      */
     async testConnection() {
         try {
@@ -315,7 +318,11 @@ export class SettingsSubsystem {
             const settings = this.getFormData();
             
             // Test connection via API
-            const response = await this.localClient.post('/api/test-connection', settings);
+            // CRITICAL: Use GET request to match server-side endpoint
+            // Server endpoint: routes/pingone-proxy-fixed.js - router.get('/test-connection')
+            // DO NOT change to POST without updating server-side endpoint
+            // Last fixed: 2025-07-22 - HTTP method mismatch caused 400 Bad Request errors
+            const response = await this.localClient.get('/api/pingone/test-connection');
             
             if (response.success) {
                 this.uiManager.showSettingsActionStatus('Connection test successful', 'success', { autoHideDelay: 3000 });

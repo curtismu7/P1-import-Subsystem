@@ -572,18 +572,293 @@ export class ImportSubsystem {
     }
     
     /**
-     * Display file information
+     * Display comprehensive file information with record count and validation
+     * CRITICAL: This method provides detailed file information display for CSV import UI
+     * DO NOT simplify this method - users need comprehensive file details including record counts
+     * Last enhanced: 2025-07-22 - Restored missing file information section functionality
      */
-    displayFileInfo(file) {
+    async displayFileInfo(file) {
+        try {
+            this.logger.info('Displaying comprehensive file information', { fileName: file.name });
+            
+            // Parse CSV to get record count and validation information
+            let recordCount = null;
+            let csvData = null;
+            
+            try {
+                // Read and parse the CSV file to get accurate record count
+                const fileContent = await this.readFileAsText(file);
+                csvData = this.parseCSVContent(fileContent);
+                recordCount = csvData ? csvData.length : 0;
+                
+                this.logger.debug('CSV parsing completed', { recordCount, hasData: !!csvData });
+            } catch (parseError) {
+                this.logger.warn('Failed to parse CSV for record count', { error: parseError.message });
+                recordCount = 'Unable to determine';
+            }
+            
+            // Use comprehensive file info display with all details
+            this.updateFileInfoDisplay(file, recordCount, csvData);
+            
+        } catch (error) {
+            this.logger.error('Failed to display file information', { error: error.message });
+            
+            // Fallback to basic file info display
+            const fileInfoElement = document.getElementById('file-info');
+            if (fileInfoElement) {
+                fileInfoElement.innerHTML = `
+                    <div class="file-info-error" style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; padding: 12px; color: #721c24;">
+                        <strong>⚠️ File Information Error</strong><br>
+                        Selected: ${file.name}<br>
+                        Size: ${(file.size / 1024).toFixed(2)} KB<br>
+                        <em>Unable to display detailed information: ${error.message}</em>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    /**
+     * Read file as text for CSV parsing
+     * @param {File} file - The file to read
+     * @returns {Promise<string>} File content as text
+     */
+    readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => resolve(event.target.result);
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsText(file);
+        });
+    }
+
+    /**
+     * Parse CSV content to extract user records
+     * @param {string} content - CSV file content
+     * @returns {Array} Parsed CSV records
+     */
+    parseCSVContent(content) {
+        if (!content || typeof content !== 'string') {
+            return [];
+        }
+        
+        try {
+            // Simple CSV parsing - split by lines and handle basic CSV format
+            const lines = content.split('\n').filter(line => line.trim().length > 0);
+            if (lines.length <= 1) {
+                return []; // No data rows (only header or empty)
+            }
+            
+            // Return data rows (excluding header)
+            return lines.slice(1).map(line => {
+                // Basic CSV parsing - split by comma and handle quoted fields
+                const fields = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        fields.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                fields.push(current.trim()); // Add the last field
+                
+                return fields;
+            }).filter(row => row.some(field => field.length > 0)); // Filter out empty rows
+            
+        } catch (error) {
+            this.logger.error('CSV parsing error', { error: error.message });
+            return [];
+        }
+    }
+
+    /**
+     * Update file info display with comprehensive information
+     * @param {File} file - The selected file
+     * @param {number|string} recordCount - Number of records or error message
+     * @param {Array} csvData - Parsed CSV data for validation
+     */
+    updateFileInfoDisplay(file, recordCount, csvData) {
         const fileInfoElement = document.getElementById('file-info');
-        if (fileInfoElement) {
-            fileInfoElement.innerHTML = `
-                <div class="file-info">
-                    <strong>Selected File:</strong> ${file.name}<br>
-                    <strong>Size:</strong> ${(file.size / 1024).toFixed(2)} KB<br>
-                    <strong>Type:</strong> ${file.type || 'CSV'}
+        if (!fileInfoElement) {
+            this.logger.warn('File info element not found in DOM');
+            return;
+        }
+        
+        const fileSize = this.formatFileSize(file.size);
+        const lastModified = new Date(file.lastModified).toLocaleString();
+        const fileType = file.type || this.getFileExtension(file.name);
+        const fileExtension = this.getFileExtension(file.name);
+        
+        // Determine if file type is valid for CSV import
+        const isCSV = fileExtension === 'csv';
+        const isText = fileExtension === 'txt';
+        const isValidType = isCSV || isText || fileType === 'text/csv' || fileType === 'text/plain';
+        
+        // Create record count display
+        let recordCountHTML = '';
+        if (isValidType && recordCount !== null) {
+            if (typeof recordCount === 'number') {
+                if (recordCount > 0) {
+                    recordCountHTML = `
+                        <div class="file-info-item" style="background: white; padding: 8px; border-radius: 4px; border: 1px solid #e9ecef;">
+                            <strong style="color: #495057; display: block; margin-bottom: 3px; font-size: 0.85rem;">🧾 Records</strong>
+                            <span style="color: #0073C8; font-size: 0.8rem; font-weight: bold;">${recordCount}</span>
+                        </div>
+                    `;
+                } else {
+                    recordCountHTML = `
+                        <div class="file-info-item" style="background: white; padding: 8px; border-radius: 4px; border: 1px solid #e9ecef;">
+                            <strong style="color: #495057; display: block; margin-bottom: 3px; font-size: 0.85rem;">🧾 Records</strong>
+                            <span style="color: #dc3545; font-size: 0.8rem; font-weight: bold;">No user records found</span>
+                        </div>
+                    `;
+                }
+            } else {
+                recordCountHTML = `
+                    <div class="file-info-item" style="background: white; padding: 8px; border-radius: 4px; border: 1px solid #e9ecef;">
+                        <strong style="color: #495057; display: block; margin-bottom: 3px; font-size: 0.85rem;">🧾 Records</strong>
+                        <span style="color: #ffc107; font-size: 0.8rem; font-weight: bold;">${recordCount}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        // Create comprehensive file information display
+        const fileInfoHTML = `
+            <div class="file-info-details" style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 12px; margin: 8px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.08);">
+                
+                <!-- File Name Section -->
+                <div class="file-name-section" style="text-align: center; margin-bottom: 12px; padding: 8px; background: #e6f4ff; border-radius: 4px; color: #1a237e; font-weight: bold; font-size: 1.1rem;">
+                    <div style="font-size: 1.3rem; font-weight: 600; margin-bottom: 3px; color: #1a237e; word-break: break-word; overflow-wrap: break-word;">
+                        <i class="fas fa-file-csv" style="margin-right: 6px; font-size: 1.2rem; color: #1976d2;"></i>
+                        ${file.name}
+                    </div>
+                    <div style="font-size: 0.85rem; opacity: 0.9; font-weight: 500; color: #1976d2;">
+                        File Selected Successfully
+                    </div>
                 </div>
-            `;
+                
+                <!-- File Information Grid -->
+                <div class="file-info-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; font-size: 0.8em; margin-bottom: 10px;">
+                    <div class="file-info-item" style="background: white; padding: 8px; border-radius: 4px; border: 1px solid #e9ecef;">
+                        <strong style="color: #495057; display: block; margin-bottom: 3px; font-size: 0.85rem;">📊 File Size</strong>
+                        <span style="color: #6c757d; font-size: 0.8rem;">${fileSize}</span>
+                    </div>
+                    
+                    <div class="file-info-item" style="background: white; padding: 8px; border-radius: 4px; border: 1px solid #e9ecef;">
+                        <strong style="color: #495057; display: block; margin-bottom: 3px; font-size: 0.85rem;">📅 Modified</strong>
+                        <span style="color: #6c757d; font-size: 0.8rem;">${lastModified}</span>
+                    </div>
+                    
+                    <div class="file-info-item" style="background: white; padding: 8px; border-radius: 4px; border: 1px solid #e9ecef;">
+                        <strong style="color: #495057; display: block; margin-bottom: 3px; font-size: 0.85rem;">📄 Type</strong>
+                        <span style="color: #6c757d; font-size: 0.8rem;">${fileType || 'CSV'}</span>
+                    </div>
+                    
+                    ${recordCountHTML}
+                </div>
+                
+                <!-- File Status -->
+                <div class="file-info-status" style="margin-top: 8px; padding: 8px; border-radius: 4px; background: ${isValidType ? '#d4edda' : '#f8d7da'}; border: 1px solid ${isValidType ? '#c3e6cb' : '#f5c6cb'}; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas ${isValidType ? 'fa-check-circle' : 'fa-exclamation-triangle'}" style="color: ${isValidType ? '#155724' : '#721c24'};"></i>
+                    <span style="color: ${isValidType ? '#155724' : '#721c24'}; font-size: 0.85rem; font-weight: 500;">
+                        ${isValidType ? 'Valid CSV file format' : 'Warning: File type may not be compatible'}
+                    </span>
+                </div>
+                
+                ${csvData && csvData.length > 0 ? `
+                <div class="file-info-preview" style="margin-top: 8px; padding: 8px; border-radius: 4px; background: #fff3cd; border: 1px solid #ffeaa7;">
+                    <strong style="color: #856404; font-size: 0.85rem;">📋 Ready for Import</strong>
+                    <div style="color: #856404; font-size: 0.8rem; margin-top: 2px;">
+                        File contains ${recordCount} user record${recordCount === 1 ? '' : 's'} ready for processing
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+        
+        fileInfoElement.innerHTML = fileInfoHTML;
+        this.logger.info('File information display updated successfully', { recordCount, isValidType });
+    }
+
+    /**
+     * Format file size for display
+     * @param {number} bytes - File size in bytes
+     * @returns {string} Formatted file size
+     */
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    /**
+     * Get file extension from filename
+     * @param {string} filename - The filename
+     * @returns {string} File extension in lowercase
+     */
+    getFileExtension(filename) {
+        return filename.slice((filename.lastIndexOf('.') - 1 >>> 0) + 2).toLowerCase();
+    }
+    
+    /**
+     * Establish real-time connection for import progress tracking
+     * CRITICAL: This method was missing and causing UI freeze due to infinite await
+     * Last implemented: 2025-07-22 - Fixed UI freeze issue by implementing missing method
+     */
+    async establishRealTimeConnection(sessionId) {
+        try {
+            this.logger.debug('🔗 [DEBUG] ImportSubsystem: Establishing real-time connection for session:', sessionId);
+            
+            // Check if Socket.IO is available
+            if (typeof io !== 'undefined' && this.subsystems?.realtimeManager) {
+                this.logger.debug('🔗 [DEBUG] ImportSubsystem: Socket.IO available, setting up real-time connection');
+                
+                // Set up Socket.IO connection through realtime subsystem
+                this.socket = this.subsystems.realtimeManager.getConnection();
+                
+                if (this.socket) {
+                    // Set up progress event listeners
+                    this.socket.on(`import-progress-${sessionId}`, (data) => {
+                        this.handleProgressUpdate(data);
+                    });
+                    
+                    this.socket.on(`import-complete-${sessionId}`, (data) => {
+                        this.handleImportCompletion(data);
+                    });
+                    
+                    this.socket.on(`import-error-${sessionId}`, (data) => {
+                        this.handleImportError(data);
+                    });
+                    
+                    this.logger.info('✅ [DEBUG] ImportSubsystem: Real-time connection established successfully');
+                } else {
+                    this.logger.warn('⚠️ [DEBUG] ImportSubsystem: Socket.IO connection not available, using fallback polling');
+                    this.setupFallbackPolling(sessionId);
+                }
+            } else {
+                this.logger.warn('⚠️ [DEBUG] ImportSubsystem: Socket.IO not available, using fallback polling');
+                this.setupFallbackPolling(sessionId);
+            }
+            
+            // Always resolve immediately to prevent UI freeze
+            return Promise.resolve();
+            
+        } catch (error) {
+            this.logger.error('❌ [DEBUG] ImportSubsystem: Failed to establish real-time connection:', error);
+            // Set up fallback polling if real-time connection fails
+            this.setupFallbackPolling(sessionId);
+            // Always resolve to prevent UI freeze
+            return Promise.resolve();
         }
     }
     
