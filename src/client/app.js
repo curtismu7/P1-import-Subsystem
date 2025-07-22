@@ -1405,7 +1405,7 @@ class App {
             };
             
             const title = titles[view] || 'PingOne Import Tool';
-            document.title = `${title} - PingOne Import Tool v6.5.1.0`;
+            document.title = `${title} - PingOne Import Tool v6.5.1.1`;
             
             this.logger.debug(`🔧 DIRECT NAV: Updated page title to: ${document.title}`);
             
@@ -1749,7 +1749,7 @@ window.testLoading = {
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await app.init();
-        console.log('🚀 PingOne Import Tool v6.5.1.0 initialized successfully');
+        console.log('🚀 PingOne Import Tool v6.5.1.1 initialized successfully');
         console.log('📊 Health Status:', app.getHealthStatus());
     } catch (error) {
         console.error('❌ Application initialization failed:', error);
