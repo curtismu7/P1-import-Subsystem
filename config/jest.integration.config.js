@@ -1,48 +1,40 @@
 /**
- * @fileoverview Jest configuration for integration tests
- * 
- * This configuration is specifically designed for integration tests that make
- * actual API calls to external services like PingOne.
+ * Jest configuration for integration tests
  */
 
-module.exports = {
-  // Test environment
+export default {
+  displayName: 'Integration Tests',
   testEnvironment: 'node',
-  
-  // Test matching patterns for integration tests
   testMatch: [
-    '**/test/integration/**/*.test.js'
+    '**/test/integration/**/*.test.js',
+    '**/tests/integration/**/*.test.js'
   ],
-  
-  // Module file extensions
-  moduleFileExtensions: ['js', 'json'],
-  
-  // Test timeout for API calls (30 seconds)
-  testTimeout: 30000,
-  
-  // Verbose output
-  verbose: true,
-  
-  // Setup files
-  setupFilesAfterEnv: ['<rootDir>/test/setup-integration.js'],
-  
-  // Test path ignore patterns
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/dist/',
-    '/coverage/'
+  setupFilesAfterEnv: [
+    '<rootDir>/test/integration/test-env.config.js'
   ],
-  
-  // Detect open handles
-  detectOpenHandles: true,
-  
-  // Force exit after tests complete
-  forceExit: true,
-  
-  // Coverage settings (optional for integration tests)
-  collectCoverage: false,
-  
-  // Global setup and teardown
   globalSetup: '<rootDir>/test/global-setup-integration.js',
-  globalTeardown: '<rootDir>/test/global-teardown-integration.js'
+  globalTeardown: '<rootDir>/test/global-teardown-integration.js',
+  testTimeout: 60000,
+  verbose: true,
+  detectOpenHandles: true,
+  forceExit: true,
+  maxWorkers: 1,
+  transform: {
+    '^.+\\.m?js$': 'babel-jest'
+  },
+  transformIgnorePatterns: [
+    'node_modules/(?!(uuid|whatwg-url|socket\\.io)/)'
+  ],
+  moduleFileExtensions: ['js', 'mjs', 'json'],
+  collectCoverageFrom: [
+    'routes/**/*.js',
+    'server/**/*.js',
+    'auth-subsystem/**/*.js',
+    'public/js/modules/**/*.js',
+    '!**/node_modules/**',
+    '!**/test/**',
+    '!**/logs/**'
+  ],
+  coverageDirectory: 'test/reports/integration-coverage',
+  coverageReporters: ['text', 'lcov', 'html']
 };

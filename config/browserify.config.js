@@ -1,24 +1,21 @@
-module.exports = {
+export default {
+  entries: ['src/client/app.js'],
   transform: [
-    ["babelify", { 
-      presets: ["@babel/preset-env"],
-      global: true,
-      // Ignore all node_modules except @babel/runtime-corejs3
-      ignore: [
-        function (file) {
-          return (
-            /\/node_modules\//.test(file) &&
-            !/\/node_modules\/\@babel\/runtime-corejs3\//.test(file)
-          );
-        }
-      ],
-      extensions: ['.js', '.jsx', '.mjs'],
-      sourceType: "module"
-    }]
+    [
+      'babelify',
+      {
+        configFile: './config/babel.config.json',
+        presets: [
+          '@babel/preset-env'
+        ],
+        plugins: [
+          '@babel/plugin-transform-runtime'
+        ]
+      }
+    ]
   ],
-  plugin: [
-    ["browserify-derequire"]
-  ],
+  debug: process.env.NODE_ENV === 'development',
+  standalone: 'PingOneImportApp',
   browserField: false,
   builtins: false,
   commondir: false,
@@ -27,5 +24,6 @@ module.exports = {
     global: undefined,
     'Buffer.isBuffer': undefined,
     Buffer: undefined
-  }
+  },
+  detectGlobals: false
 };

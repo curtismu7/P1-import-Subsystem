@@ -1,24 +1,48 @@
-// Minimal test to verify Jest setup
-const { test, expect, jest: jestMock } = require('@jest/globals');
+import { test, expect, jest as jestMock } from '@jest/globals';
 
-// Simple test
-const sum = (a, b) => a + b;
+/**
+ * Minimal test to verify Jest setup and basic functionality
+ */
 
-test('adds 1 + 2 to equal 3', () => {
-  expect(sum(1, 2)).toBe(3);
+test('Basic Jest functionality', () => {
+  expect(true).toBe(true);
+  expect(1 + 1).toBe(2);
+  expect('hello').toBe('hello');
 });
 
-// Test with mock
-const mockFn = jestMock.fn(x => 42 + x);
-test('mock function test', () => {
-  mockFn(10);
-  expect(mockFn).toHaveBeenCalledWith(10);
-  expect(mockFn.mock.results[0].value).toBe(52);
+test('Array operations', () => {
+  const arr = [1, 2, 3];
+  expect(arr).toHaveLength(3);
+  expect(arr).toContain(2);
+  expect(arr[0]).toBe(1);
 });
 
-// Async test
-const fetchData = () => Promise.resolve('peanut butter');
-test('async test', async () => {
-  const data = await fetchData();
-  expect(data).toBe('peanut butter');
+test('Object operations', () => {
+  const obj = { name: 'test', value: 42 };
+  expect(obj).toHaveProperty('name');
+  expect(obj.name).toBe('test');
+  expect(obj.value).toBe(42);
+});
+
+test('Mock functionality', () => {
+  const mockFn = jestMock.fn();
+  mockFn('arg1', 'arg2');
+  
+  expect(mockFn).toHaveBeenCalled();
+  expect(mockFn).toHaveBeenCalledWith('arg1', 'arg2');
+  expect(mockFn).toHaveBeenCalledTimes(1);
+});
+
+test('Promise handling', async () => {
+  const promise = Promise.resolve('resolved');
+  await expect(promise).resolves.toBe('resolved');
+});
+
+test('Error handling', () => {
+  const throwError = () => {
+    throw new Error('Test error');
+  };
+  
+  expect(throwError).toThrow('Test error');
+  expect(throwError).toThrow(Error);
 });

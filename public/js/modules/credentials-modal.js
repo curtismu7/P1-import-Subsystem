@@ -1123,7 +1123,5 @@ setInterval(async () => {
     }
 }, 5 * 60 * 1000); // 5 minutes
 
-// Export for testing
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = CredentialsModal;
-} 
+// ES Module export
+export default CredentialsModal; 

@@ -1,6 +1,6 @@
 /**
  * Jest configuration for PingOne Import Tool
- * Supports both CommonJS and ES modules for comprehensive testing
+ * Supports ES modules for comprehensive testing
  */
 
 export default {
@@ -8,6 +8,7 @@ export default {
   testEnvironment: 'node',
   
   // Enable ES modules support (handled by package.json type: "module")
+  extensionsToTreatAsEsm: ['.js'],
   
   // Node options for ES modules
   testEnvironmentOptions: {
@@ -37,14 +38,12 @@ export default {
     '^@modules/(.*)$': '<rootDir>/public/js/modules/$1'
   },
   
-  // Transform configuration
-  transform: {
-    '^.+\\.m?js$': 'babel-jest'
-  },
+  // No transform - use native ES modules
+  transform: {},
   
-  // Transform ignore patterns
+  // Transform ignore patterns - let Node.js handle ES modules natively
   transformIgnorePatterns: [
-    'node_modules/(?!(uuid|whatwg-url|socket\\.io|socket\\.io-client)/)'
+    'node_modules/'
   ],
   
   // Module file extensions
