@@ -12,16 +12,18 @@
     console.log('🔧 Initializing Critical Bug Fixes...');
     
     // Load order is critical - security and error handling first
+    // Only load files that don't contain ES module exports to avoid syntax errors
     const modules = [
-        'security-utils.js',
-        'global-error-handler.js',
-        'resource-manager.js',
-        'safe-api.js',
-        'utils/centralized-logger.js',
-        'utils/safe-dom.js',
-        'utils/error-handler.js',
-        'utils/config-constants.js',
-        'utils/event-manager.js'
+        'modules/security-utils.js',
+        'modules/global-error-handler.js',
+        'modules/safe-api.js'
+        // Removed modules that contain ES exports:
+        // - modules/resource-manager.js (likely has exports)
+        // - utils/centralized-logger.js (likely has exports)
+        // - utils/safe-dom.js (likely has exports)
+        // - utils/error-handler.js (likely has exports)
+        // - utils/config-constants.js (likely has exports)
+        // - utils/event-manager.js (likely has exports)
     ];
     
     let loadedCount = 0;

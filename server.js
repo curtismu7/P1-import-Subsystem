@@ -45,7 +45,7 @@
  * 
  * @fileoverview Main server entry point for PingOne Import Tool
  * @author PingOne Import Tool Team
- * @version 6.3.0
+ * @version ${appVersion}
  * @since 1.0.0
  * 
  * @requires express Express.js web framework
@@ -100,7 +100,9 @@ import importRouter from './routes/api/import.js';
 import exportRouter from './routes/api/export.js';
 import { setupSwagger } from './swagger.js';
 import session from 'express-session';
-import fs from 'fs/promises';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { version: appVersion } = require('./package.json');
 import { WebSocketServer } from 'ws';
 import { Server as SocketIOServer } from 'socket.io';
 
@@ -426,6 +428,11 @@ console.log('📄 Swagger JSON available at http://localhost:4000/swagger.json')
  *               error: "Health check failed"
  *               timestamp: "2025-07-12T15:35:29.053Z"
  */
+// Endpoint to get the application version
+app.get('/api/version', (req, res) => {
+    res.json({ version: appVersion });
+});
+
 // Endpoint to get the latest bundle filename for cache-busting
 app.get('/api/bundle-info', async (req, res) => {
     try {
@@ -566,13 +573,11 @@ app.post('/api/cache/refresh', async (req, res) => {
 app.use('/api', apiRouter);
 app.use('/api/pingone', pingoneProxyRouter);
 app.use('/api/settings', settingsRouter);
-app.use('/api/logs', logsRouter);
-app.use('/api/debug-log', debugLogRouter);
+app.use('/api/v1/settings', settingsRouter); // Added to support /api/v1/settings
 app.use('/api/v1/auth', authSubsystemRouter);
 app.use('/api/auth', credentialManagementRouter);
 app.use('/api/test-runner', testRunnerRouter);
 app.use('/api/import', importRouter);
-app.use('/api/export', exportRouter);
 app.use('/', indexRouter);
 
 // Enhanced error handling middleware (structured, safe, Winston-logged)
@@ -878,7 +883,7 @@ const startServer = async () => {
                 node: process.version,
                 platform: process.platform,
                 env: process.env.NODE_ENV || 'development',
-                appVersion: '6.3.0',
+                appVersion: appVersion,
                 pingOneInitialized: serverState.pingOneInitialized,
                 duration: `${duration}ms`,
                 critical: true
@@ -1209,7 +1214,7 @@ process.on('uncaughtException', (error) => {
         error: error.message,
         stack: error.stack,
         code: error.code,
-        appVersion: '6.3.0',
+        appVersion: appVersion,
         critical: true
     });
     
@@ -1218,7 +1223,7 @@ process.on('uncaughtException', (error) => {
         logger.warn('Ignoring non-fatal error to prevent server crash', {
             error: error.message,
             code: error.code,
-            appVersion: '6.3.0'
+            appVersion: appVersion
         });
         return;
     }
@@ -1232,7 +1237,7 @@ process.on('unhandledRejection', (reason, promise) => {
         reason: reason?.message || reason,
         stack: reason?.stack,
         promise: promise,
-        appVersion: '6.3.0',
+        appVersion: appVersion,
         critical: true
     });
     

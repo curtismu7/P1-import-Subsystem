@@ -603,53 +603,22 @@ router.get('/test-connection', async (req, res) => {
     }
     
     try {
-        // Get settings from multiple sources with fallback priority:
-        // 1. Environment variables (for production/server deployment)
-        // 2. Request settings (injected by middleware from user settings)
-        // 3. Fallback to settings file/database
-        let settings = {
-            environmentId: process.env.PINGONE_ENVIRONMENT_ID,
-            apiClientId: process.env.PINGONE_CLIENT_ID,
-            apiSecret: process.env.PINGONE_CLIENT_SECRET,
-            region: process.env.PINGONE_REGION || 'NorthAmerica'
-        };
-        
-        // If environment variables are missing, try to get from request settings (user configuration)
-        if (!settings.environmentId || !settings.apiClientId || !settings.apiSecret) {
-            console.log(`[${requestId}] Environment variables missing, checking user settings...`);
-            
-            if (req.settings && req.settings.environmentId && req.settings.apiClientId && req.settings.apiSecret) {
-                settings = {
-                    environmentId: req.settings.environmentId,
-                    apiClientId: req.settings.apiClientId,
-                    apiSecret: req.settings.apiSecret,
-                    region: req.settings.region || 'NorthAmerica'
-                };
-                console.log(`[${requestId}] Using user-configured settings`);
-            } else {
-                // Try to load from settings file as last resort
-                try {
-                    const fs = await import('fs/promises');
-                    const path = await import('path');
-                    const settingsPath = path.resolve(process.cwd(), 'data/settings.json');
-                    const settingsFile = await fs.readFile(settingsPath, 'utf8');
-                    const fileSettings = JSON.parse(settingsFile);
-                    
-                    if (fileSettings.environmentId && fileSettings.apiClientId && fileSettings.apiSecret) {
-                        settings = {
-                            environmentId: fileSettings.environmentId,
-                            apiClientId: fileSettings.apiClientId,
-                            apiSecret: fileSettings.apiSecret,
-                            region: fileSettings.region || 'NorthAmerica'
-                        };
-                        console.log(`[${requestId}] Using settings from file`);
-                    }
-                } catch (fileError) {
-                    console.log(`[${requestId}] Could not load settings from file:`, fileError.message);
-                }
-            }
-        } else {
-            console.log(`[${requestId}] Using environment variables`);
+        // Always read the latest settings directly from the file
+        // to ensure the connection test uses the most up-to-date credentials.
+        let settings = {};
+        try {
+            const fs = await import('fs/promises');
+            const path = await import('path');
+            const settingsPath = path.resolve(process.cwd(), 'data/settings.json');
+            const settingsData = await fs.readFile(settingsPath, 'utf8');
+            settings = JSON.parse(settingsData);
+            console.log(`[${requestId}] Successfully loaded settings from data/settings.json for connection test.`);
+        } catch (fileError) {
+            console.error(`[${requestId}] CRITICAL: Could not load settings from file for connection test:`, fileError.message);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to load settings file. Cannot perform connection test.'
+            });
         }
         
         // Final validation - if still no credentials, return helpful error

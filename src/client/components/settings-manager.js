@@ -7,8 +7,8 @@
  * 
  * @param {Object} logger - Winston logger instance for debugging
  */
-import { createWinstonLogger } from './winston-logger.js';
-import { CryptoUtils } from './crypto-utils.js';
+import { createWinstonLogger } from '../utils/winston-logger.js';
+import { CryptoUtils } from '../utils/crypto-utils.js';
 
 class SettingsManager {
     /**
@@ -497,5 +497,5 @@ class SettingsManager {
     }
 }
 
-// Export the SettingsManager class
-export { SettingsManager };
+// Export the SettingsManager class as default
+export default SettingsManager;

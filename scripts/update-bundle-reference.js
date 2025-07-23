@@ -41,8 +41,8 @@ async function updateBundleReference() {
         
         // Find and replace the bundle reference with a more resilient regex
         // This will match any script tag that references a bundle file, regardless of attributes
-        const bundleRegex = /<script[^>]*src=["']js\/bundle[^"']*\.js["'][^>]*><\/script>/;
-        const newBundleTag = `<script src="js/${bundleFile}"></script>`;
+        const bundleRegex = /<script[^>]*src=["']\/?js\/bundle[^"]*\.js["'][^>]*><\/script>/;
+        const newBundleTag = `<script src="/js/${bundleFile}"></script>`;
         
         if (bundleRegex.test(indexContent)) {
             indexContent = indexContent.replace(bundleRegex, newBundleTag);

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Export Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, button { padding: 8px; margin: 5px 0; }
+        button { background-color: #007bff; color: white; cursor: pointer; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Simple Export Test</h1>
+    
+    <div class="form-group">
+        <label for="export-population-select">Population:</label>
+        <select id="export-population-select">
+            <option value="">Select a population</option>
+            <option value="test-pop-1">Test Population 1</option>
+            <option value="test-pop-2">Test Population 2</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="export-format">Format:</label>
+        <select id="export-format">
+            <option value="csv">CSV</option>
+            <option value="json">JSON</option>
+        </select>
+    </div>
+
+    <button id="export-btn">Start Export</button>
+    
+    <div id="result"></div>
+
+    <script>
+        // Simple export functionality test
+        document.getElementById('export-btn').addEventListener('click', async function() {
+            const resultDiv = document.getElementById('result');
+            const populationSelect = document.getElementById('export-population-select');
+            const formatSelect = document.getElementById('export-format');
+            
+            const populationId = populationSelect.value;
+            const format = formatSelect.value;
+            
+            if (!populationId) {
+                resultDiv.innerHTML = '<div class="error">Please select a population</div>';
+                return;
+            }
+            
+            try {
+                resultDiv.innerHTML = '<div>Exporting...</div>';
+                
+                const response = await fetch('/api/export', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        populationId: populationId,
+                        populationName: populationSelect.options[populationSelect.selectedIndex].text,
+                        format: format
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Create download
+                    const blob = new Blob([data.data], { 
+                        type: format === 'csv' ? 'text/csv' : 'application/json' 
+                    });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = data.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h3>Export Successful!</h3>
+                            <p>Downloaded: ${data.filename}</p>
+                            <p>Records: ${data.recordCount}</p>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.error || 'Export failed');
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        });
+        
+        // Test if elements exist
+        window.addEventListener('load', function() {
+            const elements = {
+                'export-btn': document.getElementById('export-btn'),
+                'export-population-select': document.getElementById('export-population-select'),
+                'export-format': document.getElementById('export-format')
+            };
+            
+            console.log('Export UI Elements Check:', elements);
+            
+            for (const [id, element] of Object.entries(elements)) {
+                if (!element) {
+                    console.error(`Missing element: ${id}`);
+                } else {
+                    console.log(`Found element: ${id}`);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
