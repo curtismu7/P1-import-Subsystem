@@ -229,77 +229,118 @@ class App {
      */
     async init() {
         try {
-            this.logger.info('Starting application initialization');
-            this.updateStartupMessage('Initializing core components...');
+            console.log('🔍 [DEBUG] App.init() - Starting initialization...');
+            this.logger.info('🚀 Starting application initialization');
             
-            // Initialize core components
-            await this.initializeCoreComponents();
-            this.updateStartupMessage('Setting up subsystems...');
+            console.log('🔍 [DEBUG] App.init() - Step 1: Show startup screen');
+            this.showStartupScreen();
             
-            // Initialize subsystems
+            console.log('🔍 [DEBUG] App.init() - Step 2: Initialize subsystems');
+            this.updateStartupMessage('Initializing subsystems...');
             await this.initializeSubsystems();
-            this.updateStartupMessage('Loading legacy components...');
+            console.log('🔍 [DEBUG] App.init() - Subsystems initialized successfully');
             
-            // Initialize legacy components (gradually being replaced)
-            await this.initializeLegacyComponents();
-            this.updateStartupMessage('Setting up event listeners...');
-            
-            // Set up event listeners
-            this.setupEventListeners();
-            
-            // Set up modal completion listeners
-            this.setupModalCompletionListeners();
-            this.updateStartupMessage('Finalizing user interface...');
-            
-            // Initialize UI
+            console.log('🔍 [DEBUG] App.init() - Step 3: Initialize UI');
+            this.updateStartupMessage('Setting up user interface...');
             await this.initializeUI();
+            console.log('🔍 [DEBUG] App.init() - UI initialized successfully');
             
-            // Mark as initialized
-            this.isInitialized = true;
+            console.log('🔍 [DEBUG] App.init() - Step 4: Setup event listeners');
+            this.updateStartupMessage('Setting up event handlers...');
+            await this.setupEventListeners();
+            console.log('🔍 [DEBUG] App.init() - Event listeners setup complete');
             
-            // Hide startup screen
+            console.log('🔍 [DEBUG] App.init() - Step 5: Check token status');
+            // Force update of token status widget in sidebar with actual status check
+            if (this.uiManager && typeof this.uiManager.updateHomeTokenStatus === 'function') {
+                console.log('🔍 [DEBUG] App.init() - Found UIManager, updating token status');
+                // First show loading state
+                this.uiManager.updateHomeTokenStatus(true, 'Checking token status...');
+                
+                // Then check actual token status
+                try {
+                    const authSubsystem = this.subsystems.authManagementSubsystem;
+                    if (authSubsystem && typeof authSubsystem.checkInitialTokenStatus === 'function') {
+                        console.log('🔍 [DEBUG] App.init() - Found AuthSubsystem, checking token status');
+                        await authSubsystem.checkInitialTokenStatus();
+                        console.log('🔍 [DEBUG] App.init() - Token status check completed');
+                        // The auth subsystem will update the UI with real status
+                    } else {
+                        console.warn('🔍 [DEBUG] App.init() - AuthSubsystem not available');
+                        // Fallback: show a default valid state
+                        this.uiManager.updateHomeTokenStatus(false, 'Token status unknown');
+                    }
+                } catch (error) {
+                    console.error('🔍 [DEBUG] App.init() - Token status check failed:', error);
+                    this.logger.error('Failed to check initial token status', error);
+                    this.uiManager.updateHomeTokenStatus(false, 'Token check failed');
+                }
+            } else {
+                console.warn('🔍 [DEBUG] App.init() - UIManager not available for token status update');
+            }
+            
+            console.log('🔍 [DEBUG] App.init() - Step 6: Hide startup screen');
+            this.updateStartupMessage('Finalizing...');
+            await new Promise(resolve => setTimeout(resolve, 500)); // Brief delay to show message
             this.hideStartupScreen();
+            console.log('🔍 [DEBUG] App.init() - Startup screen hidden');
             
-            const initTime = this.logger.endTimer('app-initialization');
-            this.logger.info('Application initialization completed', {
-                initializationTime: `${initTime}ms`,
-                subsystemsEnabled: Object.keys(this.subsystems).length
-            });
+            console.log('🔍 [DEBUG] App.init() - Step 7: Show default view');
+            // Show the default view
+            if (this.viewManager && typeof this.viewManager.showView === 'function') {
+                console.log('🔍 [DEBUG] App.init() - Found ViewManager, showing home view');
+                this.viewManager.showView('home');
+            } else {
+                console.warn('🔍 [DEBUG] App.init() - ViewManager not available, using fallback navigation');
+                this.directShowView('home');
+            }
+            
+            console.log('🔍 [DEBUG] App.init() - Step 8: Setup direct navigation fallback');
+            // Set up direct navigation as fallback
+            this.setupDirectNavigation();
+            
+            console.log('✅ [DEBUG] App.init() - Initialization completed successfully!');
+            this.logger.info('✅ Application initialization completed successfully');
+            
+            // Final debug check
+            this.performPostInitializationChecks();
             
         } catch (error) {
-            this.logger.error('Application initialization failed', {
-                error: error.message,
-                stack: error.stack
-            });
-            throw error;
+            console.error('❌ [DEBUG] App.init() - Initialization failed:', error);
+            this.logger.error('Application initialization failed', error);
+            this.hideStartupScreen();
+            this.showInitializationError(error);
         }
     }
     
     /**
-     * Hide the startup screen
+     * Show startup screen
      */
-    hideStartupScreen() {
-        try {
-            const startupScreen = document.getElementById('startup-wait-screen');
-            const appContainer = document.querySelector('.app-container');
-            
-            if (startupScreen) {
-                this.logger.debug('Hiding startup wait screen');
-                startupScreen.style.display = 'none';
-            } else {
-                this.logger.warn('Startup wait screen element not found');
-            }
-            
-            if (appContainer) {
-                appContainer.classList.remove('startup-loading');
-            }
-            
-            this.logger.debug('Startup screen hidden successfully');
-        } catch (error) {
-            this.logger.error('Failed to hide startup screen', { error: error.message });
+    showStartupScreen() {
+        console.log('🔍 [DEBUG] showStartupScreen() called');
+        const startupScreen = document.getElementById('startup-wait-screen');
+        if (startupScreen) {
+            startupScreen.style.display = 'flex';
+            console.log('🔍 [DEBUG] Startup screen shown');
+        } else {
+            console.warn('🔍 [DEBUG] Startup screen element not found');
         }
     }
-    
+
+    /**
+     * Hide startup screen
+     */
+    hideStartupScreen() {
+        console.log('🔍 [DEBUG] hideStartupScreen() called');
+        const startupScreen = document.getElementById('startup-wait-screen');
+        if (startupScreen) {
+            startupScreen.style.display = 'none';
+            console.log('🔍 [DEBUG] Startup screen hidden');
+        } else {
+            console.warn('🔍 [DEBUG] Startup screen element not found for hiding');
+        }
+    }
+
     /**
      * Initialize core components
      */
@@ -824,56 +865,83 @@ class App {
      * Set up settings page button event listeners
      */
     setupSettingsPageButtons() {
+        console.log('🔍 [DEBUG] setupSettingsPageButtons() - Starting settings button setup');
         this.logger.debug('🔧 SETTINGS: Setting up settings page button listeners');
         
         try {
             // Save Settings button
             const saveSettingsBtn = document.getElementById('save-settings');
+            console.log('🔍 [DEBUG] Save Settings button found:', !!saveSettingsBtn);
             if (saveSettingsBtn) {
+                console.log('🔍 [DEBUG] Adding click listener to Save Settings button');
                 saveSettingsBtn.addEventListener('click', (e) => {
                     e.preventDefault();
+                    console.log('🔍 [DEBUG] Save Settings button clicked!');
                     this.logger.info('🔧 SETTINGS: Save Settings clicked');
                     this.handleSaveSettings();
                 });
                 this.logger.debug('🔧 SETTINGS: Save Settings button listener added');
+                console.log('🔍 [DEBUG] Save Settings button listener attached successfully');
+            } else {
+                console.warn('🔍 [DEBUG] Save Settings button (save-settings) not found in DOM');
             }
             
             // Test Connection button
             const testConnectionBtn = document.getElementById('test-connection-btn');
+            console.log('🔍 [DEBUG] Test Connection button found:', !!testConnectionBtn);
             if (testConnectionBtn) {
+                console.log('🔍 [DEBUG] Adding click listener to Test Connection button');
                 testConnectionBtn.addEventListener('click', (e) => {
                     e.preventDefault();
+                    console.log('🔍 [DEBUG] Test Connection button clicked!');
                     this.logger.info('🔧 SETTINGS: Test Connection clicked');
                     this.handleTestConnection();
                 });
                 this.logger.debug('🔧 SETTINGS: Test Connection button listener added');
+                console.log('🔍 [DEBUG] Test Connection button listener attached successfully');
+            } else {
+                console.warn('🔍 [DEBUG] Test Connection button (test-connection-btn) not found in DOM');
             }
             
             // Get Token button
             const getTokenBtn = document.getElementById('get-token-btn');
+            console.log('🔍 [DEBUG] Get Token button found:', !!getTokenBtn);
             if (getTokenBtn) {
+                console.log('🔍 [DEBUG] Adding click listener to Get Token button');
                 getTokenBtn.addEventListener('click', (e) => {
                     e.preventDefault();
+                    console.log('🔍 [DEBUG] Get Token button clicked!');
                     this.logger.info('🔧 SETTINGS: Get Token clicked');
                     this.handleGetToken();
                 });
                 this.logger.debug('🔧 SETTINGS: Get Token button listener added');
+                console.log('🔍 [DEBUG] Get Token button listener attached successfully');
+            } else {
+                console.warn('🔍 [DEBUG] Get Token button (get-token-btn) not found in DOM');
             }
             
             // Toggle API Secret Visibility button
             const toggleSecretBtn = document.getElementById('toggle-api-secret-visibility');
+            console.log('🔍 [DEBUG] Toggle Secret button found:', !!toggleSecretBtn);
             if (toggleSecretBtn) {
+                console.log('🔍 [DEBUG] Adding click listener to Toggle Secret button');
                 toggleSecretBtn.addEventListener('click', (e) => {
                     e.preventDefault();
+                    console.log('🔍 [DEBUG] Toggle Secret Visibility button clicked!');
                     this.logger.info('🔧 SETTINGS: Toggle Secret Visibility clicked');
                     this.handleToggleSecretVisibility();
                 });
                 this.logger.debug('🔧 SETTINGS: Toggle Secret Visibility button listener added');
+                console.log('🔍 [DEBUG] Toggle Secret button listener attached successfully');
+            } else {
+                console.warn('🔍 [DEBUG] Toggle Secret button (toggle-api-secret-visibility) not found in DOM');
             }
             
+            console.log('🔍 [DEBUG] setupSettingsPageButtons() - Setup completed');
             this.logger.info('🔧 SETTINGS: Settings page buttons setup completed');
             
         } catch (error) {
+            console.error('🔍 [DEBUG] setupSettingsPageButtons() - Error during setup:', error);
             this.logger.error('🔧 SETTINGS: Failed to set up settings page buttons', { error: error.message });
         }
     }
@@ -1575,6 +1643,67 @@ class App {
         // This is a placeholder for a more robust notification system
         // For now, we can use the settings status display as a general message area
         this.showSettingsStatus(message, type);
+    }
+
+    /**
+     * Perform post-initialization checks
+     */
+    performPostInitializationChecks() {
+        console.log('🔍 [DEBUG] performPostInitializationChecks() called');
+        
+        // Check if startup screen is hidden
+        const startupScreen = document.getElementById('startup-wait-screen');
+        const isStartupHidden = !startupScreen || startupScreen.style.display === 'none';
+        console.log('🔍 [DEBUG] Startup screen hidden:', isStartupHidden);
+        
+        // Check if navigation buttons work
+        const navButtons = document.querySelectorAll('[data-view]');
+        console.log('🔍 [DEBUG] Navigation buttons found:', navButtons.length);
+        
+        // Check if settings buttons exist
+        const saveBtn = document.getElementById('save-settings');
+        const testBtn = document.getElementById('test-connection-btn');
+        const tokenBtn = document.getElementById('get-token-btn');
+        console.log('🔍 [DEBUG] Settings buttons found:', {
+            saveSettings: !!saveBtn,
+            testConnection: !!testBtn,
+            getToken: !!tokenBtn
+        });
+        
+        // Check if subsystems are initialized
+        console.log('🔍 [DEBUG] Subsystems initialized:', Object.keys(this.subsystems));
+        
+        // Check current view
+        const visibleViews = document.querySelectorAll('.view-container:not([style*="display: none"])');
+        console.log('🔍 [DEBUG] Visible views:', visibleViews.length);
+        
+        console.log('🔍 [DEBUG] Post-initialization checks completed');
+    }
+
+    /**
+     * Show initialization error
+     */
+    showInitializationError(error) {
+        console.error('🔍 [DEBUG] showInitializationError() called with:', error);
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.innerHTML = `
+            <div style="
+                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                background: white; border: 2px solid red; padding: 20px; border-radius: 8px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 10001; max-width: 500px;
+            ">
+                <h3 style="color: red; margin-top: 0;">Application Initialization Failed</h3>
+                <p><strong>Error:</strong> ${error.message}</p>
+                <p>Please check the console for more details and refresh the page to try again.</p>
+                <button onclick="location.reload()" style="
+                    background: #007bff; color: white; border: none; padding: 10px 20px;
+                    border-radius: 4px; cursor: pointer; margin-top: 10px;
+                ">Reload Page</button>
+            </div>
+        `;
+        document.body.appendChild(errorDiv);
+        console.log('🔍 [DEBUG] Error dialog shown');
     }
 }
 
