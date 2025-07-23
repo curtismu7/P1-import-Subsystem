@@ -223,7 +223,9 @@
     "testEnvironmentOptions": {
       "url": "http://localhost"
     },
-    "extensionsToTreatAsEsm": [".js"],
+    "extensionsToTreatAsEsm": [
+      ".js"
+    ],
     "globals": {
       "ts-jest": {
         "useESM": true
