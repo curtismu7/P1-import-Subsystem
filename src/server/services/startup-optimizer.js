@@ -337,7 +337,7 @@ class StartupOptimizer {
             return null;
         }
     }
-    
+
     /**
      * Acquire and cache worker token for immediate availability
      */
@@ -374,9 +374,10 @@ class StartupOptimizer {
             this.cache.workerToken = tokenResult.access_token;
             this.cache.tokenExpiry = Date.now() + (tokenResult.expires_in * 1000) - 60000; // 1 minute buffer
             
-            this.logger.info('✅ Worker token cached successfully', {
-                expiresIn: tokenResult.expires_in,
-                expiryTime: new Date(this.cache.tokenExpiry).toISOString()
+            this.logger.info('✅ Worker token cached successfully and stored in server-side memory.', {
+                expiresIn: `${tokenResult.expires_in} seconds`,
+                timeLeft: `${Math.round(tokenResult.expires_in / 60)} minutes`,
+                storageLocation: 'Server-side cache (in-memory)'
             });
             
         } catch (error) {
