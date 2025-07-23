@@ -229,8 +229,13 @@ class App {
      */
     async init() {
         try {
-            this.logger.info('Starting application initialization');
-            this.updateStartupMessage('Initializing core components...');
+            // Visual confirmation that latest fixes are active
+            console.log('🚀 [FIXES ACTIVE] PopulationSubsystem and Settings API fixes loaded - Build: bundle-1753304368');
+            
+            this.logger.info('🚀 Initializing PingOne Import Application...');
+            
+            // Show loading state
+            this.uiManager.showModalLoading('Starting Application', 'Initializing core systems...');
             
             // Initialize core components
             await this.initializeCoreComponents();

@@ -54,6 +54,17 @@
     <link rel="stylesheet" href="css/bug-fix-notifications.css">
 </head>
 <body class="ping-identity-theme">
+    <!-- VISIBLE CONFIRMATION: Latest fixes are active -->
+    <div id="fix-banner" style="background: #4CAF50; color: white; padding: 10px; text-align: center; font-weight: bold; position: fixed; top: 0; left: 0; right: 0; z-index: 10000;">
+        🚀 FIXES ACTIVE: PopulationSubsystem & Settings API fixes loaded (Build: 1753304368)
+        <button onclick="document.getElementById('fix-banner').style.display='none'" style="margin-left: 20px; background: white; color: green; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Hide</button>
+    </div>
+    
+    <!-- Add padding to body content to account for banner -->
+    <style>
+        body { padding-top: 60px !important; }
+    </style>
+    
     <!-- Startup Wait Screen -->
     <div id="startup-wait-screen" class="startup-wait-screen">
         <div class="startup-wait-content">
