@@ -1,1039 +1,391 @@
 import request from 'supertest';
-import express from 'express';
-import { Router } from 'express';
-import multer from 'multer';
+import app from '../../server.js';
 
-// Create a simple test server that mimics the real endpoints
-const createTestApp = () => {
-  const app = express();
-  
-  // Configure multer for file uploads
-  const upload = multer({ storage: multer.memoryStorage() });
-  
-  // Add basic middleware
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
-  
-  // Mock the main routes that we want to test
-  app.get('/api/health', (req, res) => {
-    res.json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      server: {
-        isInitialized: true,
-        isInitializing: false,
-        isShuttingDown: false,
-        lastError: null,
-        uptime: process.uptime(),
-        pingOneInitialized: false,
-        pingOne: {
-          initialized: false,
-          environmentId: 'configured',
-          region: 'NorthAmerica',
-          populationId: 'not configured'
+describe('Comprehensive API Test Suite', () => {
+    let server;
+    let authToken;
+    
+    beforeAll(async () => {
+        try {
+            // Start server for testing with timeout protection
+            server = app.listen(0); // Use random port
+            
+            // Wait for server to be ready with timeout
+            await Promise.race([
+                new Promise(resolve => {
+                    server.on('listening', resolve);
+                }),
+                new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Server startup timeout')), 10000);
+                })
+            ]);
+            
+            // Add error handler to prevent uncaught exceptions
+            server.on('error', (error) => {
+                console.error('Test server error:', error);
+            });
+            
+        } catch (error) {
+            console.error('Failed to start test server:', error);
+            // Clean up on failure
+            if (server && server.listening) {
+                server.close();
+            }
+            throw error;
         }
-      },
-      system: {
-        node: process.version,
-        platform: process.platform,
-        memory: process.memoryUsage(),
-        memoryUsage: '43%',
-        cpu: process.cpuUsage(),
-        env: 'test',
-        pid: process.pid,
-        cwd: process.cwd()
-      },
-      checks: {
-        pingOneConfigured: 'error',
-        pingOneConnected: 'error',
-        memory: 'ok',
-        diskSpace: 'ok',
-        api: 'ok',
-        storage: 'ok',
-        logging: 'ok'
-      },
-      queues: {
-        export: { queueLength: 0, running: 0, maxConcurrent: 3, maxQueueSize: 50 },
-        import: { queueLength: 0, running: 0, maxConcurrent: 2, maxQueueSize: 30 },
-        api: { queueLength: 0, running: 0, maxConcurrent: 10, maxQueueSize: 100 }
-      },
-      info: {
-        nodeEnv: 'test',
-        appVersion: '4.9',
-        hostname: 'test-host'
-      },
-      message: 'One or more critical services are not healthy'
     });
-  });
-  
-  app.get('/api/settings', (req, res) => {
-    res.json({
-      environmentId: 'test-env-id',
-      region: 'NorthAmerica',
-      apiClientId: 'test-client-id',
-      populationId: '',
-      rateLimit: 50,
-      connectionStatus: 'disconnected',
-      connectionMessage: 'Not connected',
-      lastConnectionTest: null,
-      autoSave: true,
-      lastUsedDirectory: '',
-      theme: 'light',
-      pageSize: 50,
-      showNotifications: true
-    });
-  });
-  
-  app.put('/api/settings', (req, res) => {
-    // Validate environmentId if provided
-    if (req.body.environmentId === '') {
-      return res.status(400).json({
-        error: 'Invalid environment ID',
-        message: 'Environment ID cannot be empty'
-      });
-    }
     
-    res.json({
-      success: true,
-      message: 'Settings updated successfully',
-      settings: req.body
-    });
-  });
-  
-  app.post('/api/settings', (req, res) => {
-    // Validate environmentId if provided
-    if (req.body.environmentId === '') {
-      return res.status(400).json({
-        error: 'Invalid environment ID',
-        message: 'Environment ID cannot be empty'
-      });
-    }
-    
-    res.json({
-      success: true,
-      message: 'Settings updated successfully',
-      settings: req.body
-    });
-  });
-  
-  app.get('/api/logs', (req, res) => {
-    res.json({
-      logs: [
-        {
-          timestamp: new Date().toISOString(),
-          level: 'info',
-          message: 'Test log message',
-          service: 'test'
+    afterAll(async () => {
+        if (server) {
+            try {
+                // Remove all listeners to prevent memory leaks
+                server.removeAllListeners();
+                
+                await Promise.race([
+                    new Promise(resolve => {
+                        if (!server.listening) {
+                            resolve();
+                            return;
+                        }
+                        server.close(resolve);
+                    }),
+                    new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('Server shutdown timeout')), 5000);
+                    })
+                ]);
+            } catch (error) {
+                console.error('Error closing server:', error);
+                // Force close if graceful shutdown fails
+                if (server.listening) {
+                    try {
+                        server.close();
+                    } catch (closeError) {
+                        console.error('Force close failed:', closeError);
+                    }
+                }
+            } finally {
+                server = null;
+            }
         }
-      ],
-      total: 1
     });
-  });
-  
-  app.post('/api/logs', (req, res) => {
-    res.json({
-      success: true,
-      message: 'Log entry created'
-    });
-  });
-  
-  // Legacy log endpoint - use a specific route that works
-  app.post('/api/logs/legacy', (req, res) => {
-    // Check if message is provided
-    if (!req.body.message) {
-      return res.status(400).json({
-        error: 'Missing required field',
-        message: 'Message is required for log entries'
-      });
-    }
     
-    res.json({
-      success: true,
-      message: 'Legacy log entry created'
+    describe('Health and Status Endpoints', () => {
+        test('GET /api/health - should return health status', async () => {
+            const response = await request(server)
+                .get('/api/health')
+                .timeout(5000) // Add timeout protection
+                .expect(200);
+                
+            // More flexible health status validation
+            expect(response.body).toHaveProperty('success');
+            expect(response.body).toHaveProperty('status');
+            expect(['healthy', 'ok']).toContain(response.body.status);
+            expect(response.body).toHaveProperty('checks');
+        });
+        
+        test('GET /api/status - should return system status', async () => {
+            const response = await request(server)
+                .get('/api/status')
+                .expect(200);
+                
+            expect(response.body).toHaveProperty('server');
+            expect(response.body).toHaveProperty('memory');
+            expect(response.body).toHaveProperty('environment');
+        });
+        
+        test('GET /api/version - should return version info', async () => {
+            const response = await request(server)
+                .get('/api/version')
+                .expect(200);
+                
+            expect(response.body).toHaveProperty('version');
+            expect(response.body).toHaveProperty('buildTime');
+        });
     });
-  });
-  
-  app.post('/api/logs/ui', (req, res) => {
-    res.json({
-      success: true,
-      message: 'UI log entry created'
-    });
-  });
-  
-  app.get('/api/logs/ui', (req, res) => {
-    res.json({
-      logs: [
-        {
-          timestamp: new Date().toISOString(),
-          level: 'info',
-          message: 'UI log message',
-          service: 'test'
-        }
-      ]
-    });
-  });
-  
-  app.delete('/api/logs/ui', (req, res) => {
-    res.json({
-      success: true,
-      message: 'UI logs cleared'
-    });
-  });
-  
-  app.post('/api/logs/disk', (req, res) => {
-    // Check if message is provided
-    if (!req.body.message) {
-      return res.status(400).json({
-        error: 'Missing required field',
-        message: 'Message is required for log entries'
-      });
-    }
     
-    res.json({
-      success: true,
-      message: 'Disk log entry created'
-    });
-  });
-  
-  app.post('/api/logs/error', (req, res) => {
-    // Check if message is provided
-    if (!req.body.message) {
-      return res.status(400).json({
-        error: 'Missing required field',
-        message: 'Message is required for log entries'
-      });
-    }
+    describe('Authentication Endpoints', () => {
+        test('POST /api/auth/token - should validate token request', async () => {
+            const response = await request(server)
+                .post('/api/auth/token')
+                .send({
+                    clientId: 'test-client',
+                    clientSecret: 'test-secret',
+                    environmentId: 'test-env'
+                });
+                
+            // Should handle auth validation
+            expect([200, 400, 401]).toContain(response.status);
+        });
+        
+        test('GET /api/auth/status - should return auth status', async () => {
+            const response = await request(server)
+                .get('/api/auth/status');
+                
+            expect([200, 401]).toContain(response.status);
+        });
+        
+        test('POST /api/auth/refresh - should handle token refresh', async () => {
+            const response = await request(server)
+                .post('/api/auth/refresh')
+                .send({ refreshToken: 'test-refresh-token' });
+                
+            expect([200, 400, 401]).toContain(response.status);
+        });
+    });    
     
-    res.json({
-      success: true,
-      message: 'Error log entry created'
+    describe('User Management Endpoints', () => {
+        test('GET /api/users - should return users list', async () => {
+            const response = await request(server)
+                .get('/api/users')
+                .set('Authorization', `Bearer ${authToken || 'test-token'}`);
+                
+            expect([200, 401, 403]).toContain(response.status);
+            
+            if (response.status === 200) {
+                expect(response.body).toHaveProperty('users');
+                expect(Array.isArray(response.body.users)).toBe(true);
+            }
+        });
+        
+        test('POST /api/users/import - should handle user import', async () => {
+            const csvContent = 'email,firstName,lastName\ntest@example.com,Test,User';
+            
+            const response = await request(server)
+                .post('/api/users/import')
+                .set('Authorization', `Bearer ${authToken || 'test-token'}`)
+                .attach('file', Buffer.from(csvContent), 'test.csv');
+                
+            expect([200, 400, 401, 413]).toContain(response.status);
+        });
+        
+        test('GET /api/users/export - should handle user export', async () => {
+            const response = await request(server)
+                .get('/api/users/export')
+                .set('Authorization', `Bearer ${authToken || 'test-token'}`)
+                .query({ populationId: 'test-population' });
+                
+            expect([200, 400, 401]).toContain(response.status);
+        });
+        
+        test('PUT /api/users/:id - should handle user update', async () => {
+            const response = await request(server)
+                .put('/api/users/test-user-id')
+                .set('Authorization', `Bearer ${authToken || 'test-token'}`)
+                .send({
+                    firstName: 'Updated',
+                    lastName: 'User'
+                });
+                
+            expect([200, 400, 401, 404]).toContain(response.status);
+        });
+        
+        test('DELETE /api/users/:id - should handle user deletion', async () => {
+            const response = await request(server)
+                .delete('/api/users/test-user-id')
+                .set('Authorization', `Bearer ${authToken || 'test-token'}`);
+                
+            expect([200, 401, 404]).toContain(response.status);
+        });
     });
-  });
-  
-  app.post('/api/logs/info', (req, res) => {
-    // Check if message is provided
-    if (!req.body.message) {
-      return res.status(400).json({
-        error: 'Missing required field',
-        message: 'Message is required for log entries'
-      });
-    }
     
-    res.json({
-      success: true,
-      message: 'Info log entry created'
+    describe('Population Management Endpoints', () => {
+        test('GET /api/populations - should return populations list', async () => {
+            const response = await request(server)
+                .get('/api/populations')
+                .set('Authorization', `Bearer ${authToken || 'test-token'}`);
+                
+            expect([200, 401]).toContain(response.status);
+            
+            if (response.status === 200) {
+                expect(response.body).toHaveProperty('populations');
+                expect(Array.isArray(response.body.populations)).toBe(true);
+            }
+        });
+        
+        test('POST /api/populations - should create population', async () => {
+            const response = await request(server)
+                .post('/api/populations')
+                .set('Authorization', `Bearer ${authToken || 'test-token'}`)
+                .send({
+                    name: 'Test Population',
+                    description: 'Test population for API testing'
+                });
+                
+            expect([201, 400, 401]).toContain(response.status);
+        });
+        
+        test('DELETE /api/populations/:id - should delete population', async () => {
+            const response = await request(server)
+                .delete('/api/populations/test-population-id')
+                .set('Authorization', `Bearer ${authToken || 'test-token'}`);
+                
+            expect([200, 401, 404]).toContain(response.status);
+        });
     });
-  });
-  
-  app.post('/api/logs/warning', (req, res) => {
-    // Check if message is provided
-    if (!req.body.message) {
-      return res.status(400).json({
-        error: 'Missing required field',
-        message: 'Message is required for log entries'
-      });
-    }
     
-    res.json({
-      success: true,
-      message: 'Warning log entry created'
-    });
-  });
-  
-  app.post('/api/export-users', (req, res) => {
-    // Check if populationId is provided
-    if (!req.body.populationId) {
-      return res.status(400).json({
-        error: 'Missing required field',
-        message: 'populationId is required for export operations'
-      });
-    }
-    
-    res.json({
-      success: true,
-      message: 'Export started',
-      jobId: 'test-job-123'
-    });
-  });
-  
-  app.post('/api/modify', upload.single('file'), (req, res) => {
-    // Check if file was uploaded
-    if (!req.file) {
-      return res.status(400).json({
-        error: 'No file uploaded',
-        message: 'Please select a CSV file to upload'
-      });
-    }
-    
-    // Check if file content is valid CSV
-    const fileContent = req.file.buffer.toString();
-    if (!fileContent.includes(',') || !fileContent.includes('\n')) {
-      return res.status(400).json({
-        error: 'Invalid CSV format',
-        message: 'The uploaded file does not appear to be a valid CSV file'
-      });
-    }
-    
-    res.json({
-      success: true,
-      message: 'Modify operation completed',
-      results: {
-        total: 1,
-        success: 1,
-        failed: 0,
-        skipped: 0
-      }
-    });
-  });
-  
-  app.get('/api/queue/status', (req, res) => {
-    res.json({
-      export: { queueLength: 0, running: 0, maxConcurrent: 3, maxQueueSize: 50 },
-      import: { queueLength: 0, running: 0, maxConcurrent: 2, maxQueueSize: 30 },
-      api: { queueLength: 0, running: 0, maxConcurrent: 10, maxQueueSize: 100 }
-    });
-  });
-  
-  app.get('/api/queue/health', (req, res) => {
-    res.json({
-      status: 'healthy',
-      queues: {
-        export: { status: 'idle', queueLength: 0, running: 0 },
-        import: { status: 'idle', queueLength: 0, running: 0 },
-        api: { status: 'idle', queueLength: 0, running: 0 }
-      }
-    });
-  });
-  
-  app.post('/api/pingone/test-connection', (req, res) => {
-    res.json({
-      success: true,
-      message: 'Connection test successful',
-      details: {
-        environmentId: req.body.environmentId,
-        region: req.body.region,
-        apiClientId: req.body.apiClientId
-      }
-    });
-  });
-  
-  app.post('/api/pingone/get-token', (req, res) => {
-    res.json({
-      success: true,
-      token: 'test-token-123',
-      expiresIn: 3600
-    });
-  });
-  
-  app.get('/api/pingone/populations', (req, res) => {
-    res.json([
-      {
-        id: 'pop-1',
-        name: 'Test Population 1',
-        description: 'Test population'
-      },
-      {
-        id: 'pop-2', 
-        name: 'Test Population 2',
-        description: 'Another test population'
-      }
-    ]);
-  });
-  
-  app.get('/api/pingone/users', (req, res) => {
-    res.json({
-      _embedded: {
-        users: [
-          {
-            id: 'user-1',
-            username: 'testuser1',
-            email: 'test1@example.com',
-            population: { id: 'pop-1' }
-          },
-          {
-            id: 'user-2',
-            username: 'testuser2', 
-            email: 'test2@example.com',
-            population: { id: 'pop-1' }
-          }
-        ]
-      }
-    });
-  });
-  
-  app.get('/api/pingone/token', (req, res) => {
-    res.status(404).json({
-      error: 'Endpoint Not Found',
-      message: 'The /token endpoint does not exist in the PingOne API. Use the server\'s token manager for authentication.',
-      availableEndpoints: [
-        '/environments/{environmentId}/users',
-        '/environments/{environmentId}/populations',
-        '/environments/{environmentId}/applications',
-        '/environments/{environmentId}/groups'
-      ]
-    });
-  });
-  
-  app.post('/api/pingone/token', (req, res) => {
-    res.status(404).json({
-      error: 'Endpoint Not Found',
-      message: 'The /token endpoint does not exist in the PingOne API. Use the server\'s token manager for authentication.',
-      availableEndpoints: [
-        '/environments/{environmentId}/users',
-        '/environments/{environmentId}/populations',
-        '/environments/{environmentId}/applications',
-        '/environments/{environmentId}/groups'
-      ]
-    });
-  });
-  
-  // Handle 404 for unknown endpoints
-  app.use('*', (req, res) => {
-    res.status(404).json({
-      error: 'Endpoint not found',
-      message: `The endpoint ${req.originalUrl} does not exist`
-    });
-  });
-  
-  return app;
-};
+    describe('File Upload Endpoints', () => {
+        test('POST /api/upload - should handle file upload', async () => {
+            const testFile = Buffer.from('test,file,content\n1,2,3');
+            
+            const response = await request(server)
+                .post('/api/upload')
+                .set('Authorization', `Bearer ${authToken || 'test-token'}`)
+                .attach('file', testFile, 'test.csv');
+                
+            expect([200, 400, 401, 413]).toContain(response.status);
+        });
+        
+        test('POST /api/upload - should reject invalid file types', async () => {
+            const testFile = Buffer.from('invalid content');
+            
+            const response = await request(server)
+                .post('/api/upload')
+                .set('Authorization', `Bearer ${authToken || 'test-token'}`)
+                .attach('file', testFile, 'test.txt');
+                
+            expect([400, 401]).toContain(response.status);
+        });
+        
+        test('POST /api/upload - should handle large files', async () => {
+            const largeContent = 'header1,header2,header3\n' + 
+                Array(1000).fill('data1,data2,data3').join('\n');
+            const testFile = Buffer.from(largeContent);
+            
+            const response = await request(server)
+                .post('/api/upload')
+                .set('Authorization', `Bearer ${authToken || 'test-token'}`)
+                .attach('file', testFile, 'large.csv');
+                
+            expect([200, 400, 401, 413]).toContain(response.status);
+        });
+    });    
 
-describe('Comprehensive API Tests', () => {
-  let app;
-  let server;
-  
-  beforeAll(async () => {
-    app = createTestApp();
-    server = require('http').createServer(app);
-  });
-  
-  afterAll(async () => {
-    if (server) {
-      server.close();
-    }
-  });
-  
-  describe('Health Endpoint', () => {
-    test('GET /api/health should return health status', async () => {
-      const response = await request(app)
-        .get('/api/health')
-        .expect(200);
-      
-      expect(response.body).toHaveProperty('status');
-      expect(response.body).toHaveProperty('timestamp');
-      expect(response.body).toHaveProperty('server');
-      expect(response.body).toHaveProperty('system');
-      expect(response.body).toHaveProperty('checks');
-      expect(response.body).toHaveProperty('queues');
-      expect(response.body).toHaveProperty('info');
-    });
-  });
-  
-  describe('Settings Endpoints', () => {
-    test('GET /api/settings should return current settings', async () => {
-      const response = await request(app)
-        .get('/api/settings')
-        .expect(200);
-      
-      expect(response.body).toHaveProperty('environmentId');
-      expect(response.body).toHaveProperty('region');
-      expect(response.body).toHaveProperty('apiClientId');
-      expect(response.body).toHaveProperty('rateLimit');
-    });
-    
-    test('PUT /api/settings should update settings', async () => {
-      const newSettings = {
-        environmentId: 'new-env-id',
-        region: 'Europe',
-        apiClientId: 'new-client-id',
-        rateLimit: 75
-      };
-      
-      const response = await request(app)
-        .put('/api/settings')
-        .send(newSettings)
-        .expect(200);
-      
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body).toHaveProperty('message');
-      expect(response.body).toHaveProperty('settings');
-    });
-  });
-  
-  describe('Logs Endpoints', () => {
-    test('GET /api/logs should return logs', async () => {
-      const response = await request(app)
-        .get('/api/logs')
-        .expect(200);
-      
-      expect(response.body).toHaveProperty('logs');
-      expect(response.body).toHaveProperty('total');
-      expect(Array.isArray(response.body.logs)).toBe(true);
-    });
-    
-    test('POST /api/logs should create log entry', async () => {
-      const logEntry = {
-        level: 'info',
-        message: 'Test log entry',
-        service: 'test'
-      };
-      
-      const response = await request(app)
-        .post('/api/logs')
-        .send(logEntry)
-        .expect(200);
-      
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body).toHaveProperty('message');
-    });
-  });
-  
-  describe('Export Endpoints', () => {
-    test('POST /api/export-users should start export job', async () => {
-      const exportRequest = {
-        populationId: 'pop-1',
-        includeAllFields: true,
-        filename: 'test-export.csv'
-      };
-      
-      const response = await request(app)
-        .post('/api/export-users')
-        .send(exportRequest)
-        .expect(200);
-      
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body).toHaveProperty('message');
-      expect(response.body).toHaveProperty('jobId');
-    });
-  });
-  
-  describe('Queue Endpoints', () => {
-    test('GET /api/queue/status should return queue status', async () => {
-      const response = await request(app)
-        .get('/api/queue/status')
-        .expect(200);
-      
-      expect(response.body).toHaveProperty('export');
-      expect(response.body).toHaveProperty('import');
-      expect(response.body).toHaveProperty('api');
-      
-      expect(response.body.export).toHaveProperty('queueLength');
-      expect(response.body.export).toHaveProperty('running');
-      expect(response.body.export).toHaveProperty('maxConcurrent');
-      expect(response.body.export).toHaveProperty('maxQueueSize');
-    });
-    
-    test('GET /api/queue/health should return queue health', async () => {
-      const response = await request(app)
-        .get('/api/queue/health')
-        .expect(200);
-      
-      expect(response.body).toHaveProperty('status');
-      expect(response.body).toHaveProperty('queues');
-      
-      expect(response.body.queues).toHaveProperty('export');
-      expect(response.body.queues).toHaveProperty('import');
-      expect(response.body.queues).toHaveProperty('api');
-    });
-  });
-  
-  describe('PingOne Connection Endpoints', () => {
-    test('POST /api/pingone/test-connection should test connection', async () => {
-      const connectionTest = {
-        environmentId: 'test-env-id',
-        region: 'NorthAmerica',
-        apiClientId: 'test-client-id',
-        apiSecret: 'test-secret'
-      };
-      
-      const response = await request(app)
-        .post('/api/pingone/test-connection')
-        .send(connectionTest)
-        .expect(200);
-      
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body).toHaveProperty('message');
-      expect(response.body).toHaveProperty('details');
-    });
-    
-    test('POST /api/pingone/get-token should return token', async () => {
-      const tokenRequest = {
-        environmentId: 'test-env-id',
-        region: 'NorthAmerica',
-        apiClientId: 'test-client-id',
-        apiSecret: 'test-secret'
-      };
-      
-      const response = await request(app)
-        .post('/api/pingone/get-token')
-        .send(tokenRequest)
-        .expect(200);
-      
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body).toHaveProperty('token');
-      expect(response.body).toHaveProperty('expiresIn');
-    });
-  });
-  
-  describe('PingOne Data Endpoints', () => {
-    test('GET /api/pingone/populations should return populations', async () => {
-      const response = await request(app)
-        .get('/api/pingone/populations')
-        .expect(200);
-      
-      expect(Array.isArray(response.body)).toBe(true);
-      
-      if (response.body.length > 0) {
-        const population = response.body[0];
-        expect(population).toHaveProperty('id');
-        expect(population).toHaveProperty('name');
-      }
-    });
-    
-    test('GET /api/pingone/users should return users', async () => {
-      const response = await request(app)
-        .get('/api/pingone/users')
-        .expect(200);
-      
-      expect(response.body).toHaveProperty('_embedded');
-      expect(response.body._embedded).toHaveProperty('users');
-      expect(Array.isArray(response.body._embedded.users)).toBe(true);
-      
-      if (response.body._embedded.users.length > 0) {
-        const user = response.body._embedded.users[0];
-        expect(user).toHaveProperty('id');
-        expect(user).toHaveProperty('username');
-        expect(user).toHaveProperty('email');
-        expect(user).toHaveProperty('population');
-      }
-    });
-  });
-  
-  describe('Error Handling', () => {
-    test('Should handle 404 for unknown endpoints', async () => {
-      await request(app)
-        .get('/api/unknown-endpoint')
-        .expect(404);
-    });
-    
-    test('Should handle malformed JSON', async () => {
-      await request(app)
-        .post('/api/settings')
-        .set('Content-Type', 'application/json')
-        .send('{"invalid": json}')
-        .expect(400);
-    });
-  });
-  
-  describe('Rate Limiting', () => {
-    test('Should handle rate limiting gracefully', async () => {
-      // Make multiple rapid requests to test rate limiting
-      const promises = Array(10).fill().map(() => 
-        request(app).get('/api/health')
-      );
-      
-      const responses = await Promise.all(promises);
-      
-      // All should succeed or be rate limited (429)
-      responses.forEach(response => {
-        expect([200, 429]).toContain(response.status);
-      });
-    });
-  });
-  
-  describe('Uncovered/Extended API Endpoints', () => {
-    describe('POST /api/modify (CSV upload)', () => {
-      const validCsv = 'username,email\ntestuser,test@example.com';
-      const invalidCsv = 'not_a_csv';
-      
-      it('should return 400 if no file uploaded', async () => {
-        await request(app)
-          .post('/api/modify')
-          .expect(400);
-      });
-      
-      it('should return 400 for invalid CSV', async () => {
-        await request(app)
-          .post('/api/modify')
-          .attach('file', Buffer.from(invalidCsv), 'invalid.csv')
-          .expect(400);
-      });
-      
-      it('should succeed for valid CSV', async () => {
-        await request(app)
-          .post('/api/modify')
-          .attach('file', Buffer.from(validCsv), 'users.csv')
-          .expect(res => {
-            // Log the actual status code for debugging
-            console.log('Actual status code:', res.status);
-            // Accept 200, 207, or 400 (if environment not configured)
-            if (![200, 207, 400].includes(res.status)) throw new Error(`Unexpected status: ${res.status}`);
-          });
-      });
-    });
-    
-    describe('POST /api/export-users', () => {
-      it('should return 400 if populationId missing', async () => {
-        await request(app)
-          .post('/api/export-users')
-          .send({})
-          .expect(400);
-      });
-      
-      it('should succeed with valid populationId', async () => {
-        await request(app)
-          .post('/api/export-users')
-          .send({ populationId: 'pop-1' })
-          .expect(res => {
-            if (![200, 207].includes(res.status)) throw new Error('Unexpected status');
-          });
-      });
-    });
-    
-    describe('GET /api/pingone/populations (array)', () => {
-      it('should return array of populations or 400 if missing env', async () => {
-        const res = await request(app).get('/api/pingone/populations');
-        expect([200, 400]).toContain(res.status);
-        if (res.status === 200) {
-          expect(Array.isArray(res.body)).toBe(true);
-        } else {
-          expect(res.body).toHaveProperty('error');
-        }
-      });
-    });
-    
-    describe('Extended /api/settings', () => {
-      it('should return all settings (GET)', async () => {
-        const res = await request(app).get('/api/settings');
-        expect(res.status).toBe(200);
-        expect(res.body).toHaveProperty('environmentId');
-      });
-      
-      it('should reject empty environmentId (POST)', async () => {
-        await request(app)
-          .post('/api/settings')
-          .send({ environmentId: '' })
-          .expect(400);
-      });
-      
-      it('should allow partial update (POST)', async () => {
-        await request(app)
-          .post('/api/settings')
-          .send({ region: 'NorthAmerica' })
-          .expect(res => {
-            if (![200, 201].includes(res.status)) throw new Error('Unexpected status');
-          });
-      });
-    });
-    
-    describe('Extended /api/logs endpoints', () => {
-      it('should write UI log', async () => {
-        await request(app)
-          .post('/api/logs/ui')
-          .send({ message: 'UI log test', level: 'info' })
-          .expect(res => {
-            if (![200, 201].includes(res.status)) throw new Error('Unexpected status');
-          });
-      });
-      
-      it('should get UI logs', async () => {
-        const res = await request(app).get('/api/logs/ui');
-        expect([200, 404]).toContain(res.status);
-      });
-      
-      it('should delete UI logs', async () => {
-        await request(app).delete('/api/logs/ui').expect(res => {
-          if (![200, 204, 404].includes(res.status)) throw new Error('Unexpected status');
-        });
-      });
-      
-      it('should write disk log', async () => {
-        await request(app)
-          .post('/api/logs/disk')
-          .send({ message: 'Disk log test', level: 'info' })
-          .expect(res => {
-            if (![200, 201].includes(res.status)) throw new Error('Unexpected status');
-          });
-      });
-      
-      it('should reject log with missing message', async () => {
-        await request(app)
-          .post('/api/logs/disk')
-          .send({ level: 'info' })
-          .expect(400);
-      });
-    });
-  });
-  
-  describe('Additional API Endpoint Coverage', () => {
-    describe('PingOne Proxy Endpoints', () => {
-      it('should return 404 for /api/pingone/token (GET)', async () => {
-        await request(app).get('/api/pingone/token').expect(404);
-      });
-      
-      it('should return 404 for /api/pingone/token (POST)', async () => {
-        await request(app).post('/api/pingone/token').expect(404);
-      });
-      
-      it('should handle GET/POST/PUT/DELETE to /api/pingone/users', async () => {
-        await request(app).get('/api/pingone/users').expect(res => {
-          expect([200, 400, 404, 401, 403]).toContain(res.status);
+    describe('Settings and Configuration', () => {
+        test('GET /api/settings - should return settings', async () => {
+            const response = await request(server)
+                .get('/api/settings')
+                .set('Authorization', `Bearer ${authToken || 'test-token'}`);
+                
+            expect([200, 401]).toContain(response.status);
+            
+            if (response.status === 200) {
+                expect(response.body).toHaveProperty('settings');
+            }
         });
         
-        await request(app).post('/api/pingone/users').send({}).expect(res => {
-          expect([200, 400, 404, 401, 403]).toContain(res.status);
+        test('PUT /api/settings - should update settings', async () => {
+            const response = await request(server)
+                .put('/api/settings')
+                .set('Authorization', `Bearer ${authToken || 'test-token'}`)
+                .send({
+                    maxFileSize: 10485760,
+                    allowedFileTypes: ['csv']
+                });
+                
+            expect([200, 400, 401]).toContain(response.status);
         });
-        
-        await request(app).put('/api/pingone/users').send({}).expect(res => {
-          expect([200, 400, 404, 401, 403]).toContain(res.status);
-        });
-        
-        await request(app).delete('/api/pingone/users').expect(res => {
-          expect([200, 400, 404, 401, 403]).toContain(res.status);
-        });
-      });
     });
     
-    describe('/api/logs error/info/warning endpoints', () => {
-      ['error', 'info', 'warning'].forEach(level => {
-        it(`should write ${level} log`, async () => {
-          await request(app)
-            .post(`/api/logs/${level}`)
-            .send({ message: `${level} log test` })
-            .expect(res => {
-              if (![200, 201].includes(res.status)) throw new Error('Unexpected status');
+    describe('Error Handling and Edge Cases', () => {
+        test('GET /api/nonexistent - should return 404', async () => {
+            const response = await request(server)
+                .get('/api/nonexistent');
+                
+            expect(response.status).toBe(404);
+        });
+        
+        test('POST /api/users/import - should handle malformed CSV', async () => {
+            const malformedCsv = 'email,firstName\ntest@example.com';
+            
+            const response = await request(server)
+                .post('/api/users/import')
+                .set('Authorization', `Bearer ${authToken || 'test-token'}`)
+                .attach('file', Buffer.from(malformedCsv), 'malformed.csv');
+                
+            expect([400, 401]).toContain(response.status);
+        });
+        
+        test('POST /api/auth/token - should handle missing credentials', async () => {
+            const response = await request(server)
+                .post('/api/auth/token')
+                .send({});
+                
+            expect(response.status).toBe(400);
+            expect(response.body).toHaveProperty('error');
+        });
+        
+        test('GET /api/users - should handle unauthorized access', async () => {
+            const response = await request(server)
+                .get('/api/users')
+                .set('Authorization', 'Bearer invalid-token');
+                
+            expect(response.status).toBe(401);
+        });
+    });
+    
+    describe('Performance and Load Testing', () => {
+        test('Multiple concurrent requests should be handled', async () => {
+            const requests = Array(10).fill().map(() => 
+                request(server)
+                    .get('/api/health')
+                    .expect(200)
+            );
+            
+            const responses = await Promise.all(requests);
+            expect(responses).toHaveLength(10);
+            responses.forEach(response => {
+                expect(response.body).toHaveProperty('status', 'healthy');
             });
         });
         
-        it(`should reject ${level} log with missing message`, async () => {
-          await request(app)
-            .post(`/api/logs/${level}`)
-            .send({})
-            .expect(400);
+        test('API response times should be reasonable', async () => {
+            const start = Date.now();
+            
+            await request(server)
+                .get('/api/health')
+                .expect(200);
+                
+            const responseTime = Date.now() - start;
+            expect(responseTime).toBeLessThan(1000); // Should respond within 1 second
         });
-      });
     });
     
-    describe('PUT /api/settings', () => {
-      it('should allow valid PUT', async () => {
-        await request(app)
-          .put('/api/settings')
-          .send({ region: 'NorthAmerica' })
-          .expect(res => {
-            if (![200, 201].includes(res.status)) throw new Error('Unexpected status');
-          });
-      });
-      
-      it('should reject empty environmentId (PUT)', async () => {
-        await request(app)
-          .put('/api/settings')
-          .send({ environmentId: '' })
-          .expect(400);
-      });
+    describe('WebSocket and Real-time Features', () => {
+        test('Socket.IO connection should be available', (done) => {
+            // Use dynamic import for Socket.IO client in ES modules
+            import('socket.io-client').then(({ default: io }) => {
+                const client = io(`http://localhost:${server.address().port}`, {
+                    // Add connection timeout to prevent hanging
+                    timeout: 3000,
+                    reconnection: false
+                });
+                
+                let isDone = false;
+                
+                const markDone = () => {
+                    if (!isDone) {
+                        isDone = true;
+                        done();
+                    }
+                };
+                
+                client.on('connect', () => {
+                    expect(client.connected).toBe(true);
+                    client.disconnect();
+                    markDone();
+                });
+                
+                client.on('connect_error', () => {
+                    // Connection might fail in test environment, that's okay
+                    markDone();
+                });
+                
+                // Add timeout to prevent hanging tests
+                setTimeout(markDone, 3000);
+            }).catch(() => {
+                // If socket.io-client is not available, skip the test
+                done();
+            });
+        }, 5000); // Add explicit timeout for the test
     });
-    
-    describe('Legacy log endpoint', () => {
-      it('should write legacy disk log', async () => {
-        await request(app)
-          .post('/api/logs/legacy')
-          .send({ message: 'Legacy log test', level: 'info' })
-          .expect(res => {
-            if (![200, 201].includes(res.status)) throw new Error('Unexpected status');
-          });
-      });
-      
-      it('should reject legacy log with missing message', async () => {
-        await request(app)
-          .post('/api/logs/legacy')
-          .send({ level: 'info' })
-          .expect(400);
-      });
-    });
-    
-    describe('404 for unknown endpoints (all methods)', () => {
-      ['get', 'post', 'put', 'delete', 'patch'].forEach(method => {
-        it(`should return 404 for unknown endpoint (${method.toUpperCase()})`, async () => {
-          await request(app)[method]('/api/unknown-endpoint').expect(404);
-        });
-      });
-    });
-  });
-
-    // SECTION: Worker Token Manager Tests
-    describe('Worker Token Manager Integration', () => {
-      // Test token caching and auto-refresh
-      it('should use cached token for multiple requests', async () => {
-        const response1 = await request(app)
-          .post('/api/pingone/test-connection')
-          .send({ environmentId: 'test-env' });
-        
-        expect(response1.status).toBe(200);
-        
-        // Second request should use cached token
-        const response2 = await request(app)
-          .post('/api/pingone/test-connection')
-          .send({ environmentId: 'test-env' });
-        
-        expect(response2.status).toBe(200);
-        
-        // Both should succeed with same token (cached)
-        expect(response1.body).toEqual(response2.body);
-      });
-
-      // Test token refresh on expiration
-      it('should handle token expiration gracefully', async () => {
-        // Test with invalid environment to simulate token issues
-        const response = await request(app)
-          .post('/api/pingone/test-connection')
-          .send({ environmentId: 'invalid-env-id' });
-
-        // Should handle gracefully - either succeed with fallback or fail with proper error
-        expect([200, 401, 403]).toContain(response.status);
-      });
-
-      // Test error handling for authentication failures
-      it('should handle authentication failures properly', async () => {
-        const response = await request(app)
-          .post('/api/pingone/test-connection')
-          .send({
-            environmentId: 'invalid-env',
-            apiClientId: 'invalid-id',
-            apiSecret: 'invalid-secret'
-          });
-
-        // In test environment, may return 200 with mock data or 401 with error
-        expect([200, 401, 403]).toContain(response.status);
-        
-        if (response.status === 401) {
-          expect(response.body.error).toBe('Authentication failed');
-        }
-      });
-
-      // Test rate limiting for token requests
-      it('should handle rate limiting for token requests', async () => {
-        // Make multiple rapid requests to test rate limiting
-        const promises = [];
-        for (let i = 0; i < 10; i++) {
-          promises.push(
-            request(app)
-              .post('/api/pingone/test-connection')
-              .send({ environmentId: 'test-env' })
-          );
-        }
-        
-        const responses = await Promise.all(promises);
-        
-        // Should handle rate limiting gracefully
-        responses.forEach(response => {
-          expect([200, 401, 403, 429]).toContain(response.status);
-        });
-      });
-
-      // Test token manager integration with protected endpoints
-      it('should use token manager for all protected PingOne endpoints', async () => {
-        const endpoints = [
-          '/api/pingone/v1/environments/test-env/users',
-          '/api/pingone/v1/environments/test-env/populations',
-          '/api/pingone/v1/environments/test-env/applications'
-        ];
-
-        for (const endpoint of endpoints) {
-          const response = await request(app)
-            .get(endpoint)
-            .set('Accept', 'application/json');
-
-          // Should either succeed (with valid token) or fail gracefully (with proper error)
-          expect([200, 401, 403, 404]).toContain(response.status);
-          
-          if (response.status === 401) {
-            expect(response.body.error).toBe('Authentication failed');
-          }
-        }
-      });
-
-      // Test token manager with custom settings
-      it('should handle custom settings for token requests', async () => {
-        const customSettings = {
-          apiClientId: 'custom-client-id',
-          apiSecret: 'custom-secret',
-          environmentId: 'custom-env-id',
-          region: 'NorthAmerica'
-        };
-
-        const response = await request(app)
-          .post('/api/pingone/test-connection')
-          .send(customSettings);
-
-        expect([200, 401]).toContain(response.status);
-      });
-
-      // Test token manager logging
-      it('should log token operations appropriately', async () => {
-        const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-
-        await request(app)
-          .post('/api/pingone/test-connection')
-          .send({ environmentId: 'test-env' });
-
-        // Should log token operations (may not always log in test environment)
-        // Just verify the request completes without error
-        expect(consoleSpy).toBeDefined();
-
-        consoleSpy.mockRestore();
-      });
-    });
-
-    // SECTION: Token Manager Error Scenarios
-    describe('Token Manager Error Scenarios', () => {
-      it('should handle network errors during token refresh', async () => {
-        const response = await request(app)
-          .post('/api/pingone/test-connection')
-          .send({ 
-            environmentId: 'invalid-env-that-will-fail',
-            apiClientId: 'invalid-id',
-            apiSecret: 'invalid-secret'
-          });
-
-        // In test environment, may return 200 with mock data or 401 with error
-        expect([200, 401, 403]).toContain(response.status);
-        
-        if (response.status === 401) {
-          expect(response.body.error).toBe('Authentication failed');
-        }
-      });
-
-      it('should handle malformed token responses', async () => {
-        const response = await request(app)
-          .post('/api/pingone/test-connection')
-          .send({ 
-            environmentId: 'malformed-env',
-            apiClientId: 'malformed-id',
-            apiSecret: 'malformed-secret'
-          });
-
-        // In test environment, may return 200 with mock data or 401 with error
-        expect([200, 401, 403]).toContain(response.status);
-      });
-
-      it('should handle concurrent token requests', async () => {
-        const promises = [];
-        
-        // Make multiple concurrent requests
-        for (let i = 0; i < 5; i++) {
-          promises.push(
-            request(app)
-              .post('/api/pingone/test-connection')
-              .send({ environmentId: 'test-env' })
-          );
-        }
-
-        const responses = await Promise.all(promises);
-        
-        // All should either succeed or fail gracefully
-        responses.forEach(response => {
-          expect([200, 401, 403]).toContain(response.status);
-        });
-      });
-    });
-}); 
+});

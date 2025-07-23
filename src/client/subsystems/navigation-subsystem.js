@@ -261,7 +261,7 @@ export class NavigationSubsystem {
         const viewTitle = titles[view];
         
         if (viewTitle) {
-            document.title = `${viewTitle} - ${baseTitle}`;
+            document.title = `${viewTitle} - ${baseTitle} v6.5.1.2`;
         } else {
             document.title = baseTitle;
         }

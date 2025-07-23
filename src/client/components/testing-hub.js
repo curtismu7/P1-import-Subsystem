@@ -28,7 +28,7 @@ class TestingHub {
     initialize() {
         this.setupEventListeners();
         this.updateTestStats();
-        console.log('🧪 Testing Hub initialized');
+        (window.logger?.info || console.log)('🧪 Testing Hub initialized');
     }
 
     /**
@@ -194,7 +194,7 @@ class TestingHub {
                 throw new Error(`Failed to fetch spec: ${response.status}`);
             }
         } catch (error) {
-            console.error('Failed to download API spec:', error);
+            (window.logger?.error || console.error)('Failed to download API spec:', error);
             this.logTest('Download API Spec', 'failed', false, error.message);
         }
     }
@@ -614,8 +614,8 @@ class TestingHub {
         container.innerHTML = `<h4>✅ Configuration Valid</h4>`;
     }
 
-    handleTestCompletion(data) { console.log('Test completed:', data); }
-    handleTestFailure(data) { console.error('Test failed:', data); }
+    handleTestCompletion(data) { (window.logger?.info || console.log)('Test completed:', data); }
+    handleTestFailure(data) { (window.logger?.error || console.error)('Test failed:', data); }
 }
 
 // Make testing functions globally available

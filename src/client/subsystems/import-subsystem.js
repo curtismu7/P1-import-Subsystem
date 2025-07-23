@@ -22,6 +22,11 @@ export class ImportSubsystem {
         this.selectedPopulationName = null;
         this.fallbackPolling = null;
         this.selectedFile = null; // Tracks the selected file for import
+
+        // Initialize message formatter with a fallback
+        this.messageFormatter = window.messageFormatter || {
+            formatMessage: (type, message) => `[${type.toUpperCase()}] ${message}`
+        };
         
         this.logger.info('Import Subsystem initialized');
         
@@ -33,24 +38,24 @@ export class ImportSubsystem {
      * Initialize the import subsystem
      */
     async init() {
-        console.log('🚀 [DEBUG] ImportSubsystem: init() method called');
+        (this.logger?.debug || window.logger?.debug || console.log)('🚀 [DEBUG] ImportSubsystem: init() method called');
         try {
-            console.log('🔧 [DEBUG] ImportSubsystem: Setting up event listeners');
+            (this.logger?.debug || window.logger?.debug || console.log)('🔧 [DEBUG] ImportSubsystem: Setting up event listeners');
             this.setupEventListeners();
             
-            console.log('📋 [DEBUG] ImportSubsystem: About to refresh population dropdown');
+            (this.logger?.debug || window.logger?.debug || console.log)('📋 [DEBUG] ImportSubsystem: About to refresh population dropdown');
             // Initialize population dropdown
             this.refreshPopulationDropdown();
             
-            console.log('🔘 [DEBUG] ImportSubsystem: Setting initial button state');
+            (this.logger?.debug || window.logger?.debug || console.log)('🔘 [DEBUG] ImportSubsystem: Setting initial button state');
             // Set initial button state (should be disabled until form is complete)
             this.validateAndUpdateButtonState();
             
-            console.log('✅ [DEBUG] ImportSubsystem: Init completed successfully');
-            this.logger.info('Import Subsystem initialized successfully');
+            (this.logger?.debug || window.logger?.debug || console.log)('✅ [DEBUG] ImportSubsystem: Init completed successfully');
+            (this.logger?.info || window.logger?.info || console.log)('Import Subsystem initialized successfully');
         } catch (error) {
-            console.error('❌ [DEBUG] ImportSubsystem: Init failed with error:', error);
-            this.logger.error('Failed to initialize Import Subsystem', error);
+            (this.logger?.error || window.logger?.error || console.error)('❌ [DEBUG] ImportSubsystem: Init failed with error:', error);
+            (this.logger?.error || window.logger?.error || console.error)('Failed to initialize Import Subsystem', error);
             throw error;
         }
     }
@@ -59,35 +64,46 @@ export class ImportSubsystem {
      * Set up event listeners for import-related elements
      */
     setupEventListeners() {
-        // Import button (correct ID is 'start-import')
-        const importBtn = document.getElementById('start-import');
+        // Initialize utilities for safe DOM operations
+        const safeDOM = window.safeDOM || new SafeDOM(this.logger);
+        const errorHandler = window.errorHandler || new ErrorHandler(this.logger);
+        const UI_CONFIG = window.UI_CONFIG || {
+            SELECTORS: {
+                START_IMPORT_BTN: 'start-import',
+                CSV_FILE_INPUT: 'csv-file',
+                IMPORT_POPULATION_SELECT: 'import-population-select'
+            }
+        };
+        
+        // Import button (correct ID is 'start-import') with Safe DOM
+        const importBtn = safeDOM.selectById(UI_CONFIG.SELECTORS.START_IMPORT_BTN);
         if (importBtn) {
-            importBtn.addEventListener('click', async (e) => {
+            safeDOM.addEventListener(importBtn, 'click', errorHandler.wrapAsyncEventHandler(async (e) => {
                 e.preventDefault();
                 await this.startImport();
-            });
+            }, 'Import button click handler'));
         }
         
-        // CSV file input
-        const csvFileInput = document.getElementById('csv-file');
+        // CSV file input with Safe DOM
+        const csvFileInput = safeDOM.selectById(UI_CONFIG.SELECTORS.CSV_FILE_INPUT);
         if (csvFileInput) {
-            csvFileInput.addEventListener('change', async (e) => {
+            safeDOM.addEventListener(csvFileInput, 'change', errorHandler.wrapAsyncEventHandler(async (e) => {
                 const file = e.target.files[0];
                 if (file) {
                     this.selectedFile = file; // Update the selected file
                     await this.handleFileSelect(file);
                     this.validateAndUpdateButtonState();
                 }
-            });
+            }, 'CSV file input change handler'));
         }
         
-        // Population dropdown change
-        const populationSelect = document.getElementById('import-population-select');
+        // Population dropdown change with Safe DOM
+        const populationSelect = safeDOM.selectById(UI_CONFIG.SELECTORS.IMPORT_POPULATION_SELECT);
         if (populationSelect) {
-            populationSelect.addEventListener('change', (e) => {
+            safeDOM.addEventListener(populationSelect, 'change', errorHandler.wrapEventHandler((e) => {
                 this.handlePopulationChange(e.target.value, e.target.selectedOptions[0]?.text);
                 this.validateAndUpdateButtonState();
-            });
+            }, 'Population dropdown change handler'));
         }
         
         // Drag & Drop functionality
@@ -349,28 +365,28 @@ export class ImportSubsystem {
      */
     async checkTokenStatus() {
         try {
-            console.log('🔍 [DEBUG] ImportSubsystem: checkTokenStatus called');
-            console.log('🔍 [DEBUG] ImportSubsystem: this.authManagementSubsystem =', this.authManagementSubsystem);
-            console.log('🔍 [DEBUG] ImportSubsystem: typeof this.authManagementSubsystem =', typeof this.authManagementSubsystem);
+            (this.logger?.debug || window.logger?.debug || console.log)('🔍 [DEBUG] ImportSubsystem: checkTokenStatus called');
+            (this.logger?.debug || window.logger?.debug || console.log)('🔍 [DEBUG] ImportSubsystem: this.authManagementSubsystem =', this.authManagementSubsystem);
+            (this.logger?.debug || window.logger?.debug || console.log)('🔍 [DEBUG] ImportSubsystem: typeof this.authManagementSubsystem =', typeof this.authManagementSubsystem);
             
             if (!this.authManagementSubsystem) {
                 this.logger.warn('AuthManagementSubsystem not available for token check');
-                console.log('❌ [DEBUG] ImportSubsystem: AuthManagementSubsystem is null/undefined');
+                (this.logger?.debug || window.logger?.debug || console.log)('❌ [DEBUG] ImportSubsystem: AuthManagementSubsystem is null/undefined');
                 return false;
             }
             
-            console.log('✅ [DEBUG] ImportSubsystem: AuthManagementSubsystem is available, calling isTokenValid()');
+            (this.logger?.debug || window.logger?.debug || console.log)('✅ [DEBUG] ImportSubsystem: AuthManagementSubsystem is available, calling isTokenValid()');
             const isValid = this.authManagementSubsystem.isTokenValid();
-            console.log('🔍 [DEBUG] ImportSubsystem: isValid =', isValid);
+            (this.logger?.debug || window.logger?.debug || console.log)('🔍 [DEBUG] ImportSubsystem: isValid =', isValid);
             
             // Also get authentication status for additional info
             const authStatus = this.authManagementSubsystem.getAuthenticationStatus();
-            console.log('🔍 [DEBUG] ImportSubsystem: authStatus =', authStatus);
+            (this.logger?.debug || window.logger?.debug || console.log)('🔍 [DEBUG] ImportSubsystem: authStatus =', authStatus);
             
             return isValid;
         } catch (error) {
             this.logger.error('Error checking token status:', error);
-            console.log('❌ [DEBUG] ImportSubsystem: Error in checkTokenStatus:', error);
+            (this.logger?.debug || window.logger?.debug || console.log)('❌ [DEBUG] ImportSubsystem: Error in checkTokenStatus:', error);
             return false;
         }
     }
@@ -394,15 +410,28 @@ export class ImportSubsystem {
      * Create authentication modal with "Go to Settings" button
      */
     createAuthenticationModal(operation) {
-        // Check if modal already exists
-        const existingModal = document.querySelector('.token-alert-overlay');
+        // Initialize utilities for safe DOM operations
+        const safeDOM = window.safeDOM || new SafeDOM(this.logger);
+        const errorHandler = window.errorHandler || new ErrorHandler(this.logger);
+        const UI_CONFIG = window.UI_CONFIG || {
+            SELECTORS: {
+                TOKEN_ALERT_OVERLAY: '.token-alert-overlay',
+                SETTINGS_NAV_ITEM: '[data-view="settings"]'
+            },
+            CLASSES: {
+                TOKEN_ALERT_OVERLAY: 'token-alert-overlay'
+            }
+        };
+        
+        // Check if modal already exists using Safe DOM
+        const existingModal = safeDOM.select(UI_CONFIG.SELECTORS.TOKEN_ALERT_OVERLAY);
         if (existingModal) {
             existingModal.remove();
         }
 
-        // Create modal overlay
+        // Create modal overlay using Safe DOM
         const overlay = document.createElement('div');
-        overlay.className = 'token-alert-overlay';
+        safeDOM.addClass(overlay, UI_CONFIG.CLASSES.TOKEN_ALERT_OVERLAY);
         overlay.setAttribute('role', 'dialog');
         overlay.setAttribute('aria-modal', 'true');
         overlay.setAttribute('aria-labelledby', 'token-alert-title');
@@ -449,27 +478,29 @@ export class ImportSubsystem {
 
         document.body.appendChild(overlay);
         
-        // Bind events
-        const settingsBtn = overlay.querySelector('#token-alert-settings-btn');
-        const closeBtn = overlay.querySelector('#token-alert-close');
+        // Bind events using Safe DOM
+        const settingsBtn = safeDOM.select('#token-alert-settings-btn', overlay);
+        const closeBtn = safeDOM.select('#token-alert-close', overlay);
         
-        // Settings button - navigate to settings
-        settingsBtn.addEventListener('click', () => {
-            overlay.remove();
-            // Navigate to settings view
-            if (window.app && window.app.showView) {
-                window.app.showView('settings');
-            } else {
-                // Fallback: trigger the settings nav item
-                const settingsNavItem = document.querySelector('[data-view="settings"]');
-                if (settingsNavItem) {
-                    settingsNavItem.click();
+        // Settings button - navigate to settings with error handling
+        if (settingsBtn) {
+            safeDOM.addEventListener(settingsBtn, 'click', errorHandler.wrapEventHandler(() => {
+                overlay.remove();
+                // Navigate to settings view
+                if (window.app && window.app.showView) {
+                    window.app.showView('settings');
                 } else {
-                    // Final fallback: redirect to home page
-                    window.location.href = '/';
+                    // Fallback: trigger the settings nav item using Safe DOM
+                    const settingsNavItem = safeDOM.select(UI_CONFIG.SELECTORS.SETTINGS_NAV_ITEM);
+                    if (settingsNavItem) {
+                        settingsNavItem.click();
+                    } else {
+                        // Final fallback: redirect to home page
+                        window.location.href = '/';
+                    }
                 }
-            }
-        });
+            }, 'Authentication modal settings button click'));
+        }
 
         // Close button - allow manual dismissal
         closeBtn.addEventListener('click', () => {
@@ -519,39 +550,56 @@ export class ImportSubsystem {
      * Validate form state and update Import button enabled/disabled state
      */
     validateAndUpdateButtonState() {
-        const importBtn = document.getElementById('start-import');
-        if (!importBtn) {
-            this.logger.warn('Import button not found for state validation');
-            return;
-        }
+        // Initialize utilities for safe DOM operations
+        const safeDOM = window.safeDOM || new SafeDOM(this.logger);
+        const errorHandler = window.errorHandler || new ErrorHandler(this.logger);
+        const UI_CONFIG = window.UI_CONFIG || {
+            SELECTORS: {
+                START_IMPORT_BTN: 'start-import',
+                IMPORT_POPULATION_SELECT: 'import-population-select'
+            },
+            CLASSES: {
+                BTN_DISABLED: 'btn-disabled',
+                BTN_PRIMARY: 'btn-primary'
+            }
+        };
         
-        // Check if file is selected (using internal state for reliability)
-        const hasFile = !!this.selectedFile;
-        
-        // Check if population is selected
-        const populationSelect = document.getElementById('import-population-select');
-        const hasPopulation = populationSelect && populationSelect.value && populationSelect.value !== '';
-        
-        // Enable button only if both file and population are selected
-        const shouldEnable = hasFile && hasPopulation;
-        
-        importBtn.disabled = !shouldEnable;
-        
-        this.logger.debug('Import button state updated', {
-            hasFile,
-            hasPopulation,
-            shouldEnable,
-            buttonDisabled: importBtn.disabled
-        });
-        
-        // Update button appearance
-        if (shouldEnable) {
-            importBtn.classList.remove('btn-disabled');
-            importBtn.classList.add('btn-primary');
-        } else {
-            importBtn.classList.add('btn-disabled');
-            importBtn.classList.remove('btn-primary');
-        }
+        // Wrap the entire validation in error handler
+        errorHandler.wrapSync(() => {
+            const importBtn = safeDOM.selectById(UI_CONFIG.SELECTORS.START_IMPORT_BTN);
+            if (!importBtn) {
+                this.logger.warn('Import button not found for state validation');
+                return;
+            }
+            
+            // Check if file is selected (using internal state for reliability)
+            const hasFile = !!this.selectedFile;
+            
+            // Check if population is selected using Safe DOM
+            const populationSelect = safeDOM.selectById(UI_CONFIG.SELECTORS.IMPORT_POPULATION_SELECT);
+            const hasPopulation = populationSelect && populationSelect.value && populationSelect.value !== '';
+            
+            // Enable button only if both file and population are selected
+            const shouldEnable = hasFile && hasPopulation;
+            
+            importBtn.disabled = !shouldEnable;
+            
+            this.logger.debug('Import button state updated', {
+                hasFile,
+                hasPopulation,
+                shouldEnable,
+                buttonDisabled: importBtn.disabled
+            });
+            
+            // Update button appearance using Safe DOM
+            if (shouldEnable) {
+                safeDOM.removeClass(importBtn, UI_CONFIG.CLASSES.BTN_DISABLED);
+                safeDOM.addClass(importBtn, UI_CONFIG.CLASSES.BTN_PRIMARY);
+            } else {
+                safeDOM.addClass(importBtn, UI_CONFIG.CLASSES.BTN_DISABLED);
+                safeDOM.removeClass(importBtn, UI_CONFIG.CLASSES.BTN_PRIMARY);
+            }
+        }, 'Import button state validation')();
     }
     
     /**
@@ -603,17 +651,34 @@ export class ImportSubsystem {
         } catch (error) {
             this.logger.error('Failed to display file information', { error: error.message });
             
-            // Fallback to basic file info display
-            const fileInfoElement = document.getElementById('file-info');
+            // Initialize utilities for safe DOM operations
+            const safeDOM = window.safeDOM || new SafeDOM(this.logger);
+            const UI_CONFIG = window.UI_CONFIG || {
+                SELECTORS: {
+                    FILE_INFO: 'file-info'
+                },
+                CLASSES: {
+                    FILE_INFO_ERROR: 'file-info-error'
+                },
+                STYLES: {
+                    ERROR_BACKGROUND: '#f8d7da',
+                    ERROR_BORDER: '1px solid #f5c6cb',
+                    ERROR_COLOR: '#721c24'
+                }
+            };
+            
+            // Fallback to basic file info display using Safe DOM
+            const fileInfoElement = safeDOM.selectById(UI_CONFIG.SELECTORS.FILE_INFO);
             if (fileInfoElement) {
-                fileInfoElement.innerHTML = `
-                    <div class="file-info-error" style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; padding: 12px; color: #721c24;">
+                const errorHTML = `
+                    <div class="${UI_CONFIG.CLASSES.FILE_INFO_ERROR}" style="background: ${UI_CONFIG.STYLES.ERROR_BACKGROUND}; border: ${UI_CONFIG.STYLES.ERROR_BORDER}; border-radius: 4px; padding: 12px; color: ${UI_CONFIG.STYLES.ERROR_COLOR};">
                         <strong>⚠️ File Information Error</strong><br>
                         Selected: ${file.name}<br>
                         Size: ${(file.size / 1024).toFixed(2)} KB<br>
                         <em>Unable to display detailed information: ${error.message}</em>
                     </div>
                 `;
+                safeDOM.setHTML(fileInfoElement, errorHTML);
             }
         }
     }

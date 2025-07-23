@@ -389,19 +389,19 @@ export class SettingsSubsystem {
                 this.updateConnectionStatus('✅ Token obtained', 'success');
                 
                 // NEW: Direct global token status updater for sidebar
-                console.log('🚀 [DEBUG] SettingsSubsystem: About to call updateGlobalTokenStatusDirect');
+                (this.logger?.debug || window.logger?.debug || console.log)('🚀 [DEBUG] SettingsSubsystem: About to call updateGlobalTokenStatusDirect');
                 try {
                     // Get the main app instance to call the direct updater
                     if (window.app && typeof window.app.updateGlobalTokenStatusDirect === 'function') {
                         // Calculate time left from token response
                         const timeLeft = response.timeLeft || response.timeRemaining || '';
                         window.app.updateGlobalTokenStatusDirect(timeLeft);
-                        console.log('✅ [DEBUG] SettingsSubsystem: updateGlobalTokenStatusDirect called successfully with timeLeft:', timeLeft);
+                        (this.logger?.debug || window.logger?.debug || console.log)('✅ [DEBUG] SettingsSubsystem: updateGlobalTokenStatusDirect called successfully with timeLeft:', timeLeft);
                     } else {
-                        console.warn('⚠️ [DEBUG] SettingsSubsystem: window.app.updateGlobalTokenStatusDirect not available');
+                        (this.logger?.warn || window.logger?.warn || console.warn)('⚠️ [DEBUG] SettingsSubsystem: window.app.updateGlobalTokenStatusDirect not available');
                     }
                 } catch (error) {
-                    console.error('❌ [DEBUG] SettingsSubsystem: Error calling updateGlobalTokenStatusDirect:', error);
+                    (this.logger?.error || window.logger?.error || console.error)('❌ [DEBUG] SettingsSubsystem: Error calling updateGlobalTokenStatusDirect:', error);
                 }
                 
                 // Emit event for other subsystems

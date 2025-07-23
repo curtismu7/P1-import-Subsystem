@@ -22,7 +22,7 @@ class GlobalTokenManager {
      * Initialize the global token manager
      */
     init() {
-        console.log('Initializing Global Token Manager...');
+        (window.logger?.info || console.log)('Initializing Global Token Manager...');
         this.initGlobalTokenStatus();
     }
 
@@ -30,10 +30,10 @@ class GlobalTokenManager {
      * Update the global token status display
      */
     updateGlobalTokenStatus() {
-        console.log('🔄 Updating global token status in sidebar...');
+        (window.logger?.debug || console.log)('🔄 Updating global token status in sidebar...');
         const statusBox = document.getElementById('global-token-status');
         if (!statusBox) {
-            console.warn('❌ Global token status box not found');
+            (window.logger?.warn || console.warn)('❌ Global token status box not found');
             return;
         }
 
@@ -43,7 +43,7 @@ class GlobalTokenManager {
         const getTokenBtn = document.getElementById('global-get-token');
 
         if (!countdown || !icon || !text) {
-            console.warn('❌ Global token status elements not found');
+            (window.logger?.warn || console.warn)('❌ Global token status elements not found');
             return;
         }
 
@@ -127,7 +127,7 @@ class GlobalTokenManager {
                 timeLeft: Math.max(0, timeLeft)
             };
         } catch (error) {
-            console.error('Error getting token info:', error);
+            (window.logger?.error || console.error)('Error getting token info:', error);
             return { hasToken: false, timeLeft: 0 };
         }
     }
@@ -149,21 +149,21 @@ class GlobalTokenManager {
         
         while (attempts < maxAttempts) {
             if (document.getElementById('global-token-status')) {
-                console.log('✅ Global token status element found, initializing...');
+                (window.logger?.info || console.log)('✅ Global token status element found, initializing...');
                 this.setupGlobalTokenEventListeners();
                 this.startGlobalTokenTimer();
                 this.updateGlobalTokenStatus();
                 return;
             } else {
                 attempts++;
-                console.log(`⏳ Waiting for global token status element... (attempt ${attempts}/${maxAttempts})`);
+                (window.logger?.debug || console.log)(`⏳ Waiting for global token status element... (attempt ${attempts}/${maxAttempts})`);
                 if (attempts < maxAttempts) {
                     await new Promise(resolve => setTimeout(resolve, retryDelay));
                 }
             }
         }
         
-        console.warn('⚠️ Global token status element not found after waiting');
+        (window.logger?.warn || console.warn)('⚠️ Global token status element not found after waiting');
     }
 
     /**
@@ -205,13 +205,13 @@ class GlobalTokenManager {
      */
     async getNewToken() {
         try {
-            console.log('Getting new token via global token manager...');
+            (window.logger?.info || console.log)('Getting new token via global token manager...');
             
             // Try to use the app's token refresh functionality
             if (window.app && typeof window.app.getToken === 'function') {
                 await window.app.getToken();
                 this.updateGlobalTokenStatus();
-                console.log('Token refreshed successfully');
+                (window.logger?.info || console.log)('Token refreshed successfully');
                 return;
             }
             
@@ -225,14 +225,14 @@ class GlobalTokenManager {
             
             if (response.ok) {
                 const result = await response.json();
-                console.log('Token refreshed via API:', result);
+                (window.logger?.info || console.log)('Token refreshed via API:', result);
                 this.updateGlobalTokenStatus();
             } else {
-                console.error('Failed to refresh token via API:', response.statusText);
+                (window.logger?.error || console.error)('Failed to refresh token via API:', response.statusText);
             }
             
         } catch (error) {
-            console.error('Error getting new token:', error);
+            (window.logger?.error || console.error)('Error getting new token:', error);
         }
     }
 

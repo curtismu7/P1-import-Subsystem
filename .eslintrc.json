@@ -1,0 +1,80 @@
+{
+  "env": {
+    "browser": true,
+    "es2022": true,
+    "node": true,
+    "jest": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "airbnb-base",
+    "prettier"
+  ],
+  "plugins": [
+    "jest",
+    "prettier"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "rules": {
+    "prettier/prettier": "error",
+    "no-console": "warn",
+    "no-debugger": "warn",
+    "no-unused-vars": ["error", { 
+      "argsIgnorePattern": "^_",
+      "varsIgnorePattern": "^_"
+    }],
+    "prefer-const": "error",
+    "no-var": "error",
+    "consistent-return": "error",
+    "no-param-reassign": ["error", { "props": false }],
+    "import/extensions": ["error", "ignorePackages", {
+      "js": "always"
+    }],
+    "import/no-unresolved": ["error", { "ignore": ["^socket\\.io"] }],
+    "class-methods-use-this": "off",
+    "no-underscore-dangle": ["error", { 
+      "allow": ["__filename", "__dirname", "_id", "_embedded"] 
+    }],
+    "max-len": ["error", { 
+      "code": 120, 
+      "ignoreUrls": true,
+      "ignoreStrings": true,
+      "ignoreTemplateLiterals": true
+    }],
+    "complexity": ["warn", 10],
+    "max-depth": ["warn", 4],
+    "max-params": ["warn", 5],
+    "no-magic-numbers": ["warn", { 
+      "ignore": [-1, 0, 1, 2, 100, 1000, 3600],
+      "ignoreArrayIndexes": true
+    }]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.js", "**/*.spec.js"],
+      "env": {
+        "jest": true
+      },
+      "rules": {
+        "no-magic-numbers": "off",
+        "max-len": "off"
+      }
+    },
+    {
+      "files": ["scripts/**/*.js"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "node_modules/",
+    "public/js/bundle*.js",
+    "public/vendor/",
+    "logs/",
+    "coverage/"
+  ]
+}

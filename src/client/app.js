@@ -14,6 +14,9 @@
 import { createLogger } from './utils/browser-logging-service.js';
 import { debugLog } from './utils/debug-logger.js';
 
+// Debug-friendly utilities
+import '../../public/js/utils/utility-loader.js';
+
 // Core utilities
 import { Logger } from '../../public/js/modules/logger.js';
 import { FileLogger } from '../../public/js/modules/file-logger.js';
@@ -348,185 +351,59 @@ class App {
     isPingOneClientAvailable() {
         return this.pingOneClient !== null && typeof this.pingOneClient === 'object';
     }
-    
+
     /**
      * Initialize subsystems with feature flags
      */
     async initializeSubsystems() {
-        this.logger.debug('Initializing subsystems', { featureFlags: FEATURE_FLAGS });
+        this.logger.info('Initializing subsystems...');
+
+        // Defensive check for logger before proceeding
+        if (!this.logger) {
+            console.error('CRITICAL: Logger not initialized before subsystem setup. Aborting.');
+            this.uiManager.showGlobalError('A critical error occurred during startup. Please refresh the page.');
+            return;
+        }
 
         try {
-            // LoggingSubsystem must be initialized before other subsystems that depend on it (e.g., PopulationSubsystem).
-            this.loggingSubsystem = new LoggingSubsystem(this.eventBus, this.logger.child({ subsystem: 'logging' }));
-            await this.loggingSubsystem.init();
-            this.subsystems.logging = this.loggingSubsystem;
-            this.logger.debug('Logging subsystem initialized');
+            // Subsystem Initialization with Feature Flags
+            // Each subsystem is initialized only if its feature flag is enabled.
+            // The main logger instance is passed directly to ensure stability.
 
-            // Navigation Subsystem
-            if (FEATURE_FLAGS.USE_NAVIGATION_SUBSYSTEM) {
-                this.subsystems.navigation = new NavigationSubsystem(
-                    this.logger.child({ subsystem: 'navigation' }),
-                    this.uiManager,
-                    this.subsystems.settings
-                );
-                await this.subsystems.navigation.init();
-                this.logger.debug('Navigation subsystem initialized');
+            const subsystemsToInit = [
+                { name: 'logging', flag: true, constructor: LoggingSubsystem, deps: [this.eventBus, this.logger] },
+                { name: 'navigation', flag: FEATURE_FLAGS.USE_NAVIGATION_SUBSYSTEM, constructor: NavigationSubsystem, deps: [this.logger, this.uiManager, this.subsystems.settings] },
+                { name: 'connectionManager', flag: FEATURE_FLAGS.USE_CONNECTION_MANAGER, constructor: ConnectionManagerSubsystem, deps: [this.logger, this.uiManager, this.subsystems.settings, this.localClient] },
+                { name: 'realtimeManager', flag: FEATURE_FLAGS.USE_REALTIME_SUBSYSTEM, constructor: RealtimeCommunicationSubsystem, deps: [this.logger, this.uiManager] },
+                { name: 'authManager', flag: FEATURE_FLAGS.USE_AUTH_MANAGEMENT, constructor: AuthManagementSubsystem, deps: [this.logger, this.uiManager, this.localClient, this.subsystems.settings] },
+                { name: 'viewManager', flag: FEATURE_FLAGS.USE_VIEW_MANAGEMENT, constructor: ViewManagementSubsystem, deps: [this.logger, this.uiManager] },
+                { name: 'operationManager', flag: FEATURE_FLAGS.USE_OPERATION_MANAGER, constructor: OperationManagerSubsystem, deps: [this.logger, this.uiManager, this.subsystems.settings, this.localClient] },
+                { name: 'population', flag: true, constructor: PopulationSubsystem, deps: [this.eventBus, this.subsystems.settings, () => this.subsystems.logging, this.localClient] },
+                { name: 'history', flag: true, constructor: HistorySubsystem, deps: [this.eventBus, this.subsystems.settings, () => this.subsystems.logging] },
+                { name: 'import', flag: FEATURE_FLAGS.USE_IMPORT_SUBSYSTEM, constructor: ImportSubsystem, deps: [this.logger, this.uiManager, this.localClient, this.subsystems.settings, this.eventBus, () => this.subsystems.population, () => this.subsystems.authManager] },
+                { name: 'export', flag: FEATURE_FLAGS.USE_EXPORT_SUBSYSTEM, constructor: ExportSubsystem, deps: [this.logger, this.uiManager, this.localClient, this.subsystems.settings, this.eventBus, () => this.subsystems.population] },
+                { name: 'analyticsDashboard', flag: FEATURE_FLAGS.USE_ANALYTICS_DASHBOARD, constructor: AnalyticsDashboardSubsystem, deps: [this.logger, this.eventBus, () => this.subsystems.advancedRealtime, this.progressSubsystem, this.sessionSubsystem] },
+                { name: 'advancedRealtime', flag: FEATURE_FLAGS.USE_ADVANCED_REALTIME, constructor: AdvancedRealtimeSubsystem, deps: [this.logger, this.eventBus, () => this.subsystems.realtimeManager, this.sessionSubsystem, this.progressSubsystem] },
+            ];
+
+            for (const sub of subsystemsToInit) {
+                if (sub.flag) {
+                    this.logger.debug(`Initializing ${sub.name} subsystem...`);
+                    // Resolve dependencies that are functions (lazy loading)
+                    const resolvedDeps = sub.deps.map(dep => (typeof dep === 'function' ? dep() : dep));
+                    this.subsystems[sub.name] = new sub.constructor(...resolvedDeps);
+                    await this.subsystems[sub.name].init();
+                    this.logger.info(`${sub.name} subsystem initialized.`);
+                }
             }
 
-            // Connection Manager Subsystem
-            if (FEATURE_FLAGS.USE_CONNECTION_MANAGER) {
-                this.subsystems.connectionManager = new ConnectionManagerSubsystem(
-                    this.logger.child({ subsystem: 'connection' }),
-                    this.uiManager,
-                    this.subsystems.settings,
-                    this.localClient
-                );
-                await this.subsystems.connectionManager.init();
-                this.logger.debug('Connection manager subsystem initialized');
-            }
-
-            // Realtime Communication Subsystem
-            if (FEATURE_FLAGS.USE_REALTIME_SUBSYSTEM) {
-                this.subsystems.realtimeManager = new RealtimeCommunicationSubsystem(
-                    this.logger.child({ subsystem: 'realtime' }),
-                    this.uiManager
-                );
-                await this.subsystems.realtimeManager.init();
-                this.logger.debug('Realtime communication subsystem initialized');
-            }
-
-            // Auth Management Subsystem
-            if (FEATURE_FLAGS.USE_AUTH_MANAGEMENT) {
-                this.subsystems.authManager = new AuthManagementSubsystem(
-                    this.logger.child({ subsystem: 'AuthManagementSubsystem' }),
-                    this.uiManager,
-                    this.localClient,
-                    this.subsystems.settings
-                );
-                await this.subsystems.authManager.init();
-                this.logger.debug('Auth management subsystem initialized');
-            }
-
-            // View Management Subsystem
-            if (FEATURE_FLAGS.USE_VIEW_MANAGEMENT) {
-                this.subsystems.viewManager = new ViewManagementSubsystem(
-                    this.logger.child({ subsystem: 'view' }),
-                    this.uiManager
-                );
-                await this.subsystems.viewManager.init();
-                this.logger.debug('View management subsystem initialized');
-            }
-
-            // Operation Manager Subsystem
-            if (FEATURE_FLAGS.USE_OPERATION_MANAGER) {
-                this.subsystems.operationManager = new OperationManagerSubsystem(
-                    this.logger.child({ subsystem: 'operation' }),
-                    this.uiManager,
-                    this.subsystems.settings,
-                    this.localClient
-                );
-                await this.subsystems.operationManager.init();
-                this.logger.debug('Operation manager subsystem initialized');
-            }
-
-            // Population Subsystem (needed by Import/Export subsystems)
-            this.populationSubsystem = new PopulationSubsystem(
-                this.eventBus,
-                this.subsystems.settings,
-                this.subsystems.logging, // Correctly passing the initialized logging subsystem
-                this.localClient
-            );
-            await this.populationSubsystem.init();
-            this.subsystems.population = this.populationSubsystem;
-            this.logger.debug('Population subsystem initialized');
-
-            // History Subsystem (needed for operation tracking and history display)
-            // CRITICAL: This was missing, causing history page to show no data
-            // Last fixed: 2025-07-21 - Added HistorySubsystem initialization
-            this.historySubsystem = new HistorySubsystem(
-                this.eventBus,
-                this.subsystems.settings,
-                this.subsystems.logging
-            );
-            await this.historySubsystem.init();
-            this.subsystems.history = this.historySubsystem;
-            this.logger.debug('History subsystem initialized');
-
-            // Import Subsystem
-            if (FEATURE_FLAGS.USE_IMPORT_SUBSYSTEM) {
-                this.subsystems.importManager = new ImportSubsystem(
-                    this.logger.child({ subsystem: 'import' }),
-                    this.uiManager,
-                    this.localClient,
-                    this.subsystems.settings,
-                    this.eventBus,
-                    this.subsystems.population,
-                    this.subsystems.authManager
-                );
-                await this.subsystems.importManager.init();
-                this.logger.debug('Import subsystem initialized');
-            }
-
-            // Export Subsystem
-            if (FEATURE_FLAGS.USE_EXPORT_SUBSYSTEM) {
-                this.subsystems.exportManager = new ExportSubsystem(
-                    this.logger.child({ subsystem: 'export' }),
-                    this.uiManager,
-                    this.localClient,
-                    this.subsystems.settings,
-                    this.eventBus,
-                    this.subsystems.population
-                );
-                await this.subsystems.exportManager.init();
-                this.logger.debug('Export subsystem initialized');
-            }
-
-            // Advanced Real-time Subsystem
-            if (FEATURE_FLAGS.USE_ADVANCED_REALTIME) {
-                // CRITICAL: AdvancedRealtimeSubsystem constructor expects (logger, eventBus, realtimeCommunication, sessionSubsystem, progressSubsystem)
-                // Previous initialization was passing parameters in wrong order causing "this.logger.info is not a function" error
-                // CRITICAL FIX: Use correct reference to realtimeCommunication subsystem (this.subsystems.realtimeManager)
-                // Last fixed: 2025-07-22 - Fixed parameter order and correct subsystem references
-                this.advancedRealtimeSubsystem = new AdvancedRealtimeSubsystem(
-                    this.logger.child({ subsystem: 'advanced-realtime' }), // logger (first parameter)
-                    this.eventBus, // eventBus (second parameter)
-                    this.subsystems.realtimeManager, // realtimeCommunication (third parameter) - FIXED: was this.realtimeCommunication
-                    this.sessionSubsystem, // sessionSubsystem (fourth parameter)
-                    this.progressSubsystem // progressSubsystem (fifth parameter)
-                );
-                await this.advancedRealtimeSubsystem.init();
-                this.subsystems.advancedRealtime = this.advancedRealtimeSubsystem;
-
-                this.realtimeCollaborationUI = new RealtimeCollaborationUI(
-                    this.eventBus,
-                    this.logger.child({ component: 'RealtimeCollaborationUI' })
-                );
+            // Initialize UI components that depend on subsystems
+            if (this.subsystems.advancedRealtime) {
+                this.realtimeCollaborationUI = new RealtimeCollaborationUI(this.eventBus, this.logger);
                 this.realtimeCollaborationUI.init();
             }
 
-            // Analytics Dashboard Subsystem
-            // CRITICAL: Analytics dashboard requires proper initialization with all dependencies
-            // Constructor expects: (logger, eventBus, advancedRealtimeSubsystem, progressSubsystem, sessionSubsystem)
-            // Last fixed: 2025-07-21 - Added missing feature flag and fixed constructor parameters
-            if (FEATURE_FLAGS.USE_ANALYTICS_DASHBOARD) {
-                this.analyticsDashboardSubsystem = new AnalyticsDashboardSubsystem(
-                    this.logger.child({ subsystem: 'analytics-dashboard' }),
-                    this.eventBus,
-                    this.subsystems.realtimeManager, // advancedRealtimeSubsystem
-                    this.progressSubsystem, // progressSubsystem
-                    this.sessionSubsystem // sessionSubsystem (may be null)
-                );
-                await this.analyticsDashboardSubsystem.init();
-                this.subsystems.analyticsDashboard = this.analyticsDashboardSubsystem;
-                this.logger.debug('Analytics dashboard subsystem initialized');
-
-                this.analyticsDashboardUI = new AnalyticsDashboardUI(
-                    this.eventBus,
-                    this.logger.child({ component: 'AnalyticsDashboardUI' })
-                );
-                this.analyticsDashboardUI.init();
-                this.logger.debug('Analytics dashboard UI initialized');
-            }
+            this.logger.info('All subsystems initialized successfully.');
 
         } catch (error) {
             this.logger.error('Subsystem initialization failed', {
@@ -1094,33 +971,26 @@ class App {
             
             // Fallback to direct API call (same as credentials modal)
             this.logger.debug('🔧 SETTINGS: Using direct API call to load settings');
-            const response = await fetch('/api/settings');
+            try {
+                const response = await fetch('/api/settings');
             
-            if (response.ok) {
-                const data = await response.json();
-                // The API returns data in data.data structure (same as credentials modal)
-                const settings = data.data || data.settings || {};
-                
-                this.logger.info('🔧 SETTINGS: Settings loaded successfully', {
-                    hasEnvironmentId: !!settings.environmentId,
-                    hasApiClientId: !!settings.apiClientId,
-                    region: settings.region
-                });
-                
-                this.populateSettingsForm(settings);
-                return settings;
-            } else {
-                this.logger.warn('🔧 SETTINGS: Failed to load settings from API', { status: response.status });
-                return {};
-            }
-            
-        } catch (error) {
-            this.logger.error('🔧 SETTINGS: Failed to load settings', { error: error.message });
+                if (response.ok) {
+                    const settings = await response.json();
+                    this.populateSettingsForm(settings);
+                    return settings;
+                }
+            } catch (error) {
+            this.logger.error('🔧 SETTINGS: Failed to load settings from API', { error: error.message });
             this.showSettingsStatus(`Failed to load settings: ${error.message}`, 'error');
             return {};
         }
+    } catch (error) {
+        this.logger.error('🔧 SETTINGS: Failed to load settings', { error: error.message });
+        this.showSettingsStatus(`Failed to load settings: ${error.message}`, 'error');
+        return {};
     }
-    
+}
+
     /**
      * Populate settings form fields with loaded data
      */
@@ -1539,17 +1409,16 @@ class App {
      */
     handleFileSelection(event) {
         this.logger.debug('Handling file selection');
-        
         try {
             const files = event.target.files;
             if (files && files.length > 0) {
                 const file = files[0];
-                this.logger.info('File selected', { 
-                    fileName: file.name, 
-                    fileSize: file.size, 
-                    fileType: file.type 
+                this.logger.info('File selected', {
+                    fileName: file.name,
+                    fileSize: file.size,
+                    fileType: file.type
                 });
-                
+
                 // Use import subsystem if available
                 if (this.subsystems.importManager) {
                     this.subsystems.importManager.handleFileSelection(file);
@@ -1567,23 +1436,22 @@ class App {
             this.logger.error('File selection handling failed', { error: error.message });
         }
     }
-    
+
     /**
      * Handle file drop from drag and drop
      */
     handleFileDrop(event) {
         this.logger.debug('Handling file drop');
-        
         try {
             const files = event.dataTransfer.files;
             if (files && files.length > 0) {
                 const file = files[0];
-                this.logger.info('File dropped', { 
-                    fileName: file.name, 
-                    fileSize: file.size, 
-                    fileType: file.type 
+                this.logger.info('File dropped', {
+                    fileName: file.name,
+                    fileSize: file.size,
+                    fileType: file.type
                 });
-                
+
                 // Use import subsystem if available
                 if (this.subsystems.importManager) {
                     this.subsystems.importManager.handleFileSelection(file);
@@ -1698,6 +1566,16 @@ class App {
             timestamp: new Date().toISOString()
         };
     }
+
+    /**
+     * Show a message to the user
+     */
+    showMessage(message, type = 'info') {
+        this.logger.debug(`Showing message: ${message}`, { type });
+        // This is a placeholder for a more robust notification system
+        // For now, we can use the settings status display as a general message area
+        this.showSettingsStatus(message, type);
+    }
 }
 
 // Initialize and start the application
@@ -1711,7 +1589,7 @@ window.enableToolAfterDisclaimer = () => {
     if (window.app && typeof window.app.enableToolAfterDisclaimer === 'function') {
         window.app.enableToolAfterDisclaimer();
     } else {
-        console.warn('App not available or enableToolAfterDisclaimer method not found');
+        window.logger?.warn('App not available or enableToolAfterDisclaimer method not found') || console.warn('App not available or enableToolAfterDisclaimer method not found');
     }
 };
 
@@ -1729,7 +1607,7 @@ window.testLoading = {
     },
     testSequence: () => {
         if (window.app) {
-            console.log('🔄 Testing loading sequence...');
+            window.logger?.info('🔄 Testing loading sequence...') || console.log('🔄 Testing loading sequence...');
             window.app.showModalLoading('Step 1', 'Testing loading overlay...');
             setTimeout(() => {
                 window.app.showModalLoading('Step 2', 'Updating message...');
@@ -1737,7 +1615,7 @@ window.testLoading = {
                     window.app.showModalLoading('Step 3', 'Almost done...');
                     setTimeout(() => {
                         window.app.hideModalLoading();
-                        console.log('🔄 Loading test completed');
+                        window.logger?.info('🔄 Loading test completed') || console.log('🔄 Loading test completed');
                     }, 1500);
                 }, 1500);
             }, 1500);
@@ -1749,10 +1627,10 @@ window.testLoading = {
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await app.init();
-        console.log('🚀 PingOne Import Tool v6.5.1.1 initialized successfully');
-        console.log('📊 Health Status:', app.getHealthStatus());
+        window.logger?.info('🚀 PingOne Import Tool v6.5.1.2 initialized successfully') || console.log('🚀 PingOne Import Tool v6.5.1.2 initialized successfully');
+        window.logger?.info('📊 Health Status:', app.getHealthStatus()) || console.log('📊 Health Status:', app.getHealthStatus());
     } catch (error) {
-        console.error('❌ Application initialization failed:', error);
+        window.logger?.error('❌ Application initialization failed:', error) || console.error('❌ Application initialization failed:', error);
     }
 });
 

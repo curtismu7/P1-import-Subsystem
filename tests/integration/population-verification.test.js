@@ -255,4 +255,95 @@ describe('Population Functionality Verification', () => {
                     populations: [
                         { id: 'pop3', name: 'Zebra Population', userCount: 10 },
                         { id: 'pop1', name: 'Alpha Population', userCount: 20 },
-                        { id: 'pop2', name: 'Beta Population', userCount: 30 }\n                    ]\n                }\n            };\n            \n            const mockResponse = {\n                ok: true,\n                json: sandbox.stub().resolves(unsortedPopulations)\n            };\n            mockApiClient.getPopulations.resolves(mockResponse);\n            \n            const populations = await populationService.getPopulations();\n            \n            expect(populations[0].name).to.equal('Alpha Population');\n            expect(populations[1].name).to.equal('Beta Population');\n            expect(populations[2].name).to.equal('Zebra Population');\n        });\n        \n        it('should format populations for display correctly', () => {\n            const populationWithCount = { name: 'Test Pop', userCount: 100 };\n            const populationWithoutCount = { name: 'Test Pop' };\n            \n            expect(populationService._formatPopulationForDisplay(populationWithCount))\n                .to.equal('Test Pop (100 users)');\n            expect(populationService._formatPopulationForDisplay(populationWithoutCount))\n                .to.equal('Test Pop');\n            expect(populationService._formatPopulationForDisplay(null))\n                .to.equal('');\n        });\n    });\n    \n    describe('Cache Management', () => {\n        it('should respect cache expiration time', async () => {\n            // Set up initial API response\n            const mockResponse = {\n                ok: true,\n                json: sandbox.stub().resolves(samplePopulations)\n            };\n            mockApiClient.getPopulations.resolves(mockResponse);\n            \n            // First call\n            await populationService.getPopulations();\n            expect(mockApiClient.getPopulations.calledOnce).to.be.true;\n            \n            // Simulate cache expiration by setting lastFetched to past\n            populationService.cache.lastFetched = Date.now() - (populationService.cacheExpirationTime + 1000);\n            \n            // Second call should fetch from API again\n            await populationService.getPopulations();\n            expect(mockApiClient.getPopulations.calledTwice).to.be.true;\n        });\n        \n        it('should force refresh when requested', async () => {\n            // Set up API response\n            const mockResponse = {\n                ok: true,\n                json: sandbox.stub().resolves(samplePopulations)\n            };\n            mockApiClient.getPopulations.resolves(mockResponse);\n            \n            // First call\n            await populationService.getPopulations();\n            expect(mockApiClient.getPopulations.calledOnce).to.be.true;\n            \n            // Force refresh should bypass cache\n            await populationService.getPopulations({}, true);\n            expect(mockApiClient.getPopulations.calledTwice).to.be.true;\n        });\n        \n        it('should clear specific population from cache', async () => {\n            // Set up cache\n            const mockResponse = {\n                ok: true,\n                json: sandbox.stub().resolves(samplePopulations)\n            };\n            mockApiClient.getPopulations.resolves(mockResponse);\n            await populationService.getPopulations();\n            \n            // Verify cache is populated\n            expect(populationService.cache.populations.all).to.have.lengthOf(2);\n            expect(populationService.cache.populations.byId).to.have.property('pop1');\n            \n            // Clear specific population\n            populationService.clearCache('pop1');\n            \n            // Verify specific population is removed\n            expect(populationService.cache.populations.all).to.have.lengthOf(1);\n            expect(populationService.cache.populations.byId).to.not.have.property('pop1');\n            expect(populationService.cache.populations.byId).to.have.property('pop2');\n        });\n    });\n});\n
+                        { id: 'pop2', name: 'Beta Population', userCount: 30 }
+                    ]
+                }
+            };
+
+            const mockResponse = {
+                ok: true,
+                json: sandbox.stub().resolves(unsortedPopulations)
+            };
+            mockApiClient.getPopulations.resolves(mockResponse);
+
+            const populations = await populationService.getPopulations();
+
+            expect(populations[0].name).to.equal('Alpha Population');
+            expect(populations[1].name).to.equal('Beta Population');
+            expect(populations[2].name).to.equal('Zebra Population');
+        });
+
+            it('should format populations for display correctly', () => {
+                const populationWithCount = { name: 'Test Pop', userCount: 100 };
+                const populationWithoutCount = { name: 'Test Pop' };
+
+                expect(populationService._formatPopulationForDisplay(populationWithCount))
+                    .to.equal('Test Pop (100 users)');
+                expect(populationService._formatPopulationForDisplay(populationWithoutCount))
+                    .to.equal('Test Pop');
+                expect(populationService._formatPopulationForDisplay(null))
+                    .to.equal('');
+            });
+        });
+
+        describe('Cache Management', () => {
+            it('should respect cache expiration time', async () => {
+                // Set up initial API response
+                const mockResponse = {
+                    ok: true,
+                    json: sandbox.stub().resolves(samplePopulations)
+                };
+                mockApiClient.getPopulations.resolves(mockResponse);
+
+                // First call
+                await populationService.getPopulations();
+                expect(mockApiClient.getPopulations.calledOnce).to.be.true;
+
+                // Simulate cache expiration by setting lastFetched to past
+                populationService.cache.lastFetched = Date.now() - (populationService.cacheExpirationTime + 1000);
+
+                // Second call should fetch from API again
+                await populationService.getPopulations();
+                expect(mockApiClient.getPopulations.calledTwice).to.be.true;
+            });
+
+            it('should force refresh when requested', async () => {
+                // Set up API response
+                const mockResponse = {
+                    ok: true,
+                    json: sandbox.stub().resolves(samplePopulations)
+                };
+                mockApiClient.getPopulations.resolves(mockResponse);
+
+                // First call
+                await populationService.getPopulations();
+                expect(mockApiClient.getPopulations.calledOnce).to.be.true;
+
+                // Force refresh should bypass cache
+                await populationService.getPopulations({}, true);
+                expect(mockApiClient.getPopulations.calledTwice).to.be.true;
+            });
+
+            it('should clear specific population from cache', async () => {
+                // Set up cache
+                const mockResponse = {
+                    ok: true,
+                    json: sandbox.stub().resolves(samplePopulations)
+                };
+                mockApiClient.getPopulations.resolves(mockResponse);
+                await populationService.getPopulations();
+
+                // Verify cache is populated
+                expect(populationService.cache.populations.all).to.have.lengthOf(2);
+                expect(populationService.cache.populations.byId).to.have.property('pop1');
+
+                // Clear specific population
+                populationService.clearCache('pop1');
+
+                // Verify specific population is removed
+                expect(populationService.cache.populations.all).to.have.lengthOf(1);
+                expect(populationService.cache.populations.byId).to.not.have.property('pop1');
+                expect(populationService.cache.populations.byId).to.have.property('pop2');
+            });
+        });
+    });
