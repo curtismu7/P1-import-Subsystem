@@ -1,27 +1,167 @@
 /**
- * @fileoverview Express API routes for PingOne user import tool
+ * PingOne Import Tool - Main API Routes
  * 
- * This module handles all backend API endpoints for the PingOne user import tool,
- * including user import/export/modify operations, real-time progress tracking via SSE,
- * population validation, and token management.
+ * This module serves as the central API router for the PingOne User Import Tool,
+ * providing comprehensive REST endpoints for user management operations. It handles
+ * the complete lifecycle of user data operations including import, export, modification,
+ * and real-time progress tracking.
  * 
- * Key Features:
- * - CSV file upload and parsing
- * - User import with conflict resolution
- * - Real-time progress streaming via Server-Sent Events (SSE)
- * - Population validation and conflict handling
- * - User export in JSON/CSV formats
- * - User modification with batch processing
- * - Token management and authentication
- * - Feature flag management
+ * ## Architecture Overview
  * 
- * @author PingOne Import Tool
- * @version 6.1
+ * ### Core Components
+ * - **File Processing**: Secure CSV upload and parsing with validation
+ * - **User Operations**: Import, export, modify operations with PingOne API
+ * - **Real-time Communication**: WebSocket/Socket.IO for progress updates
+ * - **Population Management**: Validation and conflict resolution
+ * - **Authentication**: Token management and credential validation
+ * - **Feature Flags**: Dynamic feature toggling for A/B testing
+ * 
+ * ### Request Flow
+ * 1. **Authentication**: Validate API credentials and obtain access tokens
+ * 2. **File Upload**: Process CSV files with security validation
+ * 3. **Data Validation**: Validate user data and population assignments
+ * 4. **API Operations**: Execute PingOne API calls with retry logic
+ * 5. **Progress Tracking**: Send real-time updates to connected clients
+ * 6. **Error Handling**: Comprehensive error logging and user feedback
+ * 
+ * ## API Endpoints
+ * 
+ * ### Health & Status
+ * - `GET /api/health` - Server health check with detailed metrics
+ * - `GET /api/status` - Application status and configuration
+ * 
+ * ### User Operations
+ * - `POST /api/import` - Import users from CSV file
+ * - `GET /api/export` - Export users to CSV/JSON format
+ * - `POST /api/modify` - Modify existing user data
+ * - `DELETE /api/users/:id` - Delete individual users
+ * 
+ * ### Population Management
+ * - `GET /api/populations` - List available populations
+ * - `POST /api/populations/validate` - Validate population assignments
+ * - `POST /api/populations/create` - Create new populations
+ * 
+ * ### File Management
+ * - `POST /api/upload` - Upload and validate CSV files
+ * - `GET /api/download/:id` - Download processed files
+ * - `DELETE /api/files/:id` - Clean up temporary files
+ * 
+ * ### Feature Management
+ * - `GET /api/features` - Get all feature flags
+ * - `POST /api/features/:name` - Toggle feature flags
+ * - `DELETE /api/features/reset` - Reset all feature flags
+ * 
+ * ## Security Features
+ * 
+ * ### Input Validation
+ * - **File Type Validation**: Only CSV files accepted
+ * - **File Size Limits**: 10MB maximum file size
+ * - **Content Sanitization**: Remove malicious content from uploads
+ * - **Schema Validation**: Validate request parameters and data types
+ * 
+ * ### Authentication & Authorization
+ * - **Token Validation**: Verify PingOne API tokens
+ * - **Credential Encryption**: Secure storage of API credentials
+ * - **Session Management**: Track user sessions and operations
+ * - **Rate Limiting**: Prevent API abuse and DoS attacks
+ * 
+ * ### Error Handling
+ * - **Structured Errors**: Consistent error response format
+ * - **Safe Error Messages**: No sensitive data in error responses
+ * - **Correlation IDs**: Track errors across system components
+ * - **Audit Logging**: Security events and access attempts
+ * 
+ * ## Performance Optimizations
+ * 
+ * ### Batch Processing
+ * - **Chunked Operations**: Process large datasets in batches
+ * - **Rate Limiting**: Respect PingOne API rate limits
+ * - **Connection Pooling**: Efficient HTTP connection management
+ * - **Memory Management**: Stream processing for large files
+ * 
+ * ### Caching Strategy
+ * - **Token Caching**: Cache valid tokens until expiration
+ * - **Population Caching**: Cache population data for validation
+ * - **Configuration Caching**: Cache settings to reduce I/O
+ * - **Response Caching**: Cache frequently requested data
+ * 
+ * ### Real-time Updates
+ * - **WebSocket Communication**: Bi-directional real-time updates
+ * - **Progress Streaming**: Live progress updates during operations
+ * - **Event Broadcasting**: Notify multiple clients of changes
+ * - **Connection Management**: Handle client disconnections gracefully
+ * 
+ * ## Error Recovery
+ * 
+ * ### Retry Logic
+ * - **Exponential Backoff**: Intelligent retry timing
+ * - **Circuit Breaker**: Prevent cascading failures
+ * - **Partial Success**: Handle partial operation success
+ * - **Rollback Capability**: Undo operations when possible
+ * 
+ * ### Monitoring & Observability
+ * - **Structured Logging**: JSON-formatted logs with metadata
+ * - **Performance Metrics**: Track operation timing and success rates
+ * - **Health Checks**: Monitor system and dependency health
+ * - **Error Tracking**: Comprehensive error logging and alerting
+ * 
+ * ## Usage Examples
+ * 
+ * ### Import Users
+ * ```javascript
+ * const formData = new FormData();
+ * formData.append('file', csvFile);
+ * formData.append('populationId', 'population-uuid');
+ * 
+ * const response = await fetch('/api/import', {
+ *   method: 'POST',
+ *   body: formData
+ * });
+ * ```
+ * 
+ * ### Real-time Progress
+ * ```javascript
+ * const socket = io();
+ * socket.on('progress', (data) => {
+ *   updateProgressBar(data.processed, data.total);
+ * });
+ * ```
+ * 
+ * ### Export Users
+ * ```javascript
+ * const response = await fetch('/api/export?format=csv&population=uuid');
+ * const csvData = await response.text();
+ * ```
+ * 
+ * @fileoverview Main API routes for PingOne user import tool
+ * @author PingOne Import Tool Team
+ * @version 6.1.0
+ * @since 1.0.0
+ * 
+ * @requires express Express.js web framework
+ * @requires multer File upload middleware
+ * @requires socket.io Real-time communication
+ * @requires winston Structured logging
+ * @requires uuid Unique identifier generation
+ * 
+ * @example
+ * // Mount API routes in Express app
+ * import apiRouter from './routes/api/index.js';
+ * app.use('/api', apiRouter);
+ * 
+ * @example
+ * // Use with authentication middleware
+ * app.use('/api', authMiddleware, apiRouter);
+ * 
+ * TODO: Implement request caching for frequently accessed endpoints
+ * TODO: Add API versioning support (v1, v2, etc.)
+ * TODO: Implement GraphQL endpoint for complex queries
+ * VERIFY: All endpoints handle edge cases correctly
+ * DEBUG: Monitor API performance and error rates in production
  */
 
 import { Router } from 'express';
 import multer from 'multer';
-import { isFeatureEnabled, setFeatureFlag, getAllFeatureFlags, resetFeatureFlags } from '../../server/feature-flags.js';
 import { v4 as uuidv4 } from 'uuid';
 // SSE imports removed - using Socket.IO instead
 import fetch from 'node-fetch'; // Add this if not already present
@@ -34,14 +174,6 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Feature flags configuration object for easy access
-const featureFlags = {
-  isFeatureEnabled,
-  setFeatureFlag,
-  getAllFeatureFlags,
-  resetFeatureFlags,
-};
 
 const router = Router();
 
@@ -79,47 +211,133 @@ router.use((req, res, next) => {
 /**
  * Health check endpoint for server monitoring
  * Returns server status and basic health information
+ * 
+ * @route GET /api/health
+ * @returns {Object} Health status object with server metrics
+ * @throws {500} Internal server error if health check fails
+ * 
+ * DEBUG: Enhanced with detailed logging for testing
+ * TODO: Add more comprehensive health checks for external dependencies
  */
 router.get('/health', async (req, res) => {
+    const functionName = 'GET /api/health';
+    const startTime = Date.now();
+    
+    // DEBUG: Log function entry
+    apiLogger.debug(`${functionName} - Entry`, {
+        requestId: req.requestId,
+        ip: req.ip,
+        userAgent: req.get('user-agent')
+    });
+    
     try {
-        const startTime = Date.now();
-        
-        // Basic health checks
+        // Basic health checks with enhanced logging
         const healthChecks = {
             server: true,
             timestamp: new Date().toISOString(),
             uptime: process.uptime(),
             memory: process.memoryUsage(),
-            environment: process.env.NODE_ENV || 'development'
+            environment: process.env.NODE_ENV || 'development',
+            requestId: req.requestId
         };
         
-        // Check if token manager is available
+        // DEBUG: Log memory usage for monitoring
+        apiLogger.debug(`${functionName} - Memory usage`, {
+            requestId: req.requestId,
+            memory: healthChecks.memory,
+            memoryUsagePercent: Math.round((healthChecks.memory.heapUsed / healthChecks.memory.heapTotal) * 100)
+        });
+        
+        // Check if token manager is available with error handling
         try {
             const tokenManager = req.app.get('tokenManager');
             if (tokenManager) {
                 healthChecks.tokenManager = true;
+                
+                // DEBUG: Log token manager status
+                apiLogger.debug(`${functionName} - Token manager available`, {
+                    requestId: req.requestId
+                });
                 healthChecks.tokenStatus = 'available';
             } else {
                 healthChecks.tokenManager = false;
                 healthChecks.tokenStatus = 'unavailable';
+                
+                // DEBUG: Log missing token manager
+                apiLogger.warn(`${functionName} - Token manager not available`, {
+                    requestId: req.requestId
+                });
             }
         } catch (error) {
             healthChecks.tokenManager = false;
             healthChecks.tokenStatus = 'error';
             healthChecks.tokenError = error.message;
+            
+            // DEBUG: Log token manager error
+            apiLogger.error(`${functionName} - Token manager error`, {
+                requestId: req.requestId,
+                error: error.message,
+                stack: error.stack
+            });
         }
         
-        // Check if settings are accessible
+        // Check if settings are accessible with enhanced error handling
         try {
             const settingsPath = path.join(__dirname, '../../data/settings.json');
             await fs.access(settingsPath);
             healthChecks.settings = true;
+            
+            // DEBUG: Log settings accessibility
+            apiLogger.debug(`${functionName} - Settings file accessible`, {
+                requestId: req.requestId,
+                settingsPath
+            });
         } catch (error) {
             healthChecks.settings = false;
             healthChecks.settingsError = error.message;
+            
+            // DEBUG: Log settings error
+            apiLogger.warn(`${functionName} - Settings file not accessible`, {
+                requestId: req.requestId,
+                error: error.message,
+                settingsPath: path.join(__dirname, '../../data/settings.json')
+            });
+        }
+        
+        // Check startup optimizer status if available
+        try {
+            const startupOptimizer = req.app.get('startupOptimizer');
+            if (startupOptimizer) {
+                const optimizerHealth = startupOptimizer.getHealthStatus();
+                healthChecks.startupOptimizer = optimizerHealth;
+                
+                // DEBUG: Log startup optimizer status
+                apiLogger.debug(`${functionName} - Startup optimizer status`, {
+                    requestId: req.requestId,
+                    optimizerHealth
+                });
+            }
+        } catch (error) {
+            healthChecks.startupOptimizerError = error.message;
+            
+            // DEBUG: Log startup optimizer error
+            apiLogger.warn(`${functionName} - Startup optimizer error`, {
+                requestId: req.requestId,
+                error: error.message
+            });
         }
         
         const responseTime = Date.now() - startTime;
+        
+        // DEBUG: Log successful health check completion
+        apiLogger.info(`${functionName} - Health check completed successfully`, {
+            requestId: req.requestId,
+            responseTime: `${responseTime}ms`,
+            checks: Object.keys(healthChecks).reduce((acc, key) => {
+                acc[key] = typeof healthChecks[key] === 'boolean' ? healthChecks[key] : 'complex_object';
+                return acc;
+            }, {})
+        });
         
         res.status(200).json({
             success: true,
@@ -130,34 +348,316 @@ router.get('/health', async (req, res) => {
         
         debugLog("Health", "✅ Health check completed", { responseTime });
     } catch (error) {
+        const responseTime = Date.now() - startTime;
+        
+        // DEBUG: Log health check failure with full context
+        apiLogger.error(`${functionName} - Health check failed`, {
+            requestId: req.requestId,
+            error: error.message,
+            stack: error.stack,
+            responseTime: `${responseTime}ms`
+        });
+        
         debugLog("Health", "❌ Health check failed", { error: error.message });
+        
         res.status(500).json({
             success: false,
             status: 'unhealthy',
             error: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            requestId: req.requestId
         });
     }
 });
 
 /**
- * Debug logging utility for server-side diagnostics
- * Provides structured logging with timestamps and area categorization
- * Only active in development mode to avoid production noise
+ * Enhanced Debug Logging Utility
  * 
- * @param {string} area - Log area/tag for categorization (e.g., 'Import', 'SSE', 'User')
- * @param {string} message - Human-readable log message
- * @param {any} data - Optional data object for detailed debugging
+ * Provides comprehensive, structured logging for server-side diagnostics and monitoring.
+ * This utility function creates consistent, searchable log entries with proper categorization,
+ * correlation tracking, and environment-aware verbosity control.
+ * 
+ * ## Features
+ * - **Area-based Categorization**: Organize logs by functional area (Import, Export, Auth, etc.)
+ * - **Multi-level Logging**: Support for error, warn, info, debug, and trace levels
+ * - **Request Correlation**: Link log entries to specific requests using correlation IDs
+ * - **Environment Awareness**: Automatic verbosity adjustment based on NODE_ENV
+ * - **Structured Data**: JSON-formatted metadata for log aggregation and analysis
+ * - **Console Integration**: Development-friendly console output with proper formatting
+ * 
+ * ## Log Levels
+ * - **error**: Critical errors requiring immediate attention (always logged)
+ * - **warn**: Warning conditions that may indicate problems (always logged)
+ * - **info**: General informational messages (logged in development)
+ * - **debug**: Detailed debugging information (development only)
+ * - **trace**: Very detailed execution tracing (development only)
+ * 
+ * ## Usage Patterns
+ * 
+ * ### Basic Logging
+ * ```javascript
+ * debugLog('Import', 'Starting user import process');
+ * debugLog('Auth', 'Token validation successful', { userId: '123' });
+ * ```
+ * 
+ * ### Error Logging
+ * ```javascript
+ * debugLog('API', 'PingOne API call failed', { 
+ *   error: error.message, 
+ *   statusCode: 401 
+ * }, 'error', requestId);
+ * ```
+ * 
+ * ### Performance Tracking
+ * ```javascript
+ * const startTime = Date.now();
+ * // ... operation ...
+ * debugLog('Performance', 'Operation completed', {
+ *   duration: Date.now() - startTime,
+ *   operation: 'userImport'
+ * }, 'debug', requestId);
+ * ```
+ * 
+ * ### Request Correlation
+ * ```javascript
+ * // In middleware or route handler
+ * const requestId = req.requestId;
+ * debugLog('Request', 'Processing user request', {
+ *   method: req.method,
+ *   url: req.url,
+ *   userAgent: req.get('user-agent')
+ * }, 'info', requestId);
+ * ```
+ * 
+ * ## Log Output Format
+ * 
+ * ### Console Output (Development)
+ * ```
+ * 2025-07-22T15:30:45.123Z [DEBUG - Import] Starting user import process { sessionId: 'abc123' }
+ * ```
+ * 
+ * ### Structured Log (Production)
+ * ```json
+ * {
+ *   "timestamp": "2025-07-22T15:30:45.123Z",
+ *   "level": "info",
+ *   "message": "[DEBUG - Import] Starting user import process",
+ *   "area": "Import",
+ *   "requestId": "req-456",
+ *   "data": { "sessionId": "abc123" }
+ * }
+ * ```
+ * 
+ * ## Performance Considerations
+ * - **Conditional Logging**: Only processes logs that will be output
+ * - **Lazy Evaluation**: Data objects only serialized when needed
+ * - **Memory Efficient**: No log retention in memory (delegated to Winston)
+ * - **Non-blocking**: Asynchronous logging doesn't block request processing
+ * 
+ * ## Security Features
+ * - **Data Sanitization**: Sensitive data should be filtered before logging
+ * - **PII Protection**: Personal information should not be logged directly
+ * - **Error Safety**: Logging failures don't crash the application
+ * - **Access Control**: Log files protected by appropriate file permissions
+ * 
+ * @function debugLog
+ * @param {string} area - Functional area for log categorization (e.g., 'Import', 'Auth', 'API')
+ * @param {string} message - Human-readable log message describing the event
+ * @param {Object|null} [data=null] - Additional structured data for context and debugging
+ * @param {string} [level='info'] - Log level: 'error', 'warn', 'info', 'debug', 'trace'
+ * @param {string|null} [requestId=null] - Request correlation ID for tracing
+ * 
+ * @throws {Error} Does not throw - all errors are handled internally
+ * 
+ * @example
+ * // Basic informational logging
+ * debugLog('Import', 'CSV file uploaded successfully', {
+ *   fileName: 'users.csv',
+ *   fileSize: 1024,
+ *   rowCount: 100
+ * });
+ * 
+ * @example
+ * // Error logging with correlation
+ * debugLog('API', 'Failed to create user in PingOne', {
+ *   username: 'john.doe',
+ *   error: error.message,
+ *   statusCode: 400
+ * }, 'error', req.requestId);
+ * 
+ * @example
+ * // Performance monitoring
+ * debugLog('Performance', 'Database query completed', {
+ *   query: 'SELECT * FROM users',
+ *   duration: 150,
+ *   rowsReturned: 25
+ * }, 'debug');
+ * 
+ * TODO: Add log sampling for high-frequency operations
+ * TODO: Implement log aggregation for distributed deployments
+ * TODO: Add automatic PII detection and redaction
+ * VERIFY: Log rotation and retention policies are properly configured
+ * DEBUG: Monitor log volume and performance impact in production
  */
-function debugLog(area, message, data = null) {
-    if (!DEBUG_MODE) return;
-    const timestamp = new Date().toISOString();
-    const formatted = `[DEBUG - ${area}] ${message}`;
-    if (data !== null) {
-        apiLogger.info(`${timestamp} ${formatted}`, data);
-    } else {
-        apiLogger.info(`${timestamp} ${formatted}`);
+function debugLog(area, message, data = null, level = 'info', requestId = null) {
+    try {
+        // Determine if we should log based on environment and level
+        const shouldLog = DEBUG_MODE || level === 'error' || level === 'warn';
+        if (!shouldLog) return;
+        
+        const timestamp = new Date().toISOString();
+        const formatted = `[DEBUG - ${area}] ${message}`;
+        
+        // Prepare structured log context
+        const logContext = {
+            timestamp,
+            area,
+            level,
+            ...(requestId && { requestId }),
+            ...(data && { data })
+        };
+        
+        // Log with appropriate Winston level
+        switch (level) {
+            case 'error':
+                apiLogger.error(formatted, logContext);
+                break;
+            case 'warn':
+                apiLogger.warn(formatted, logContext);
+                break;
+            case 'debug':
+                apiLogger.debug(formatted, logContext);
+                break;
+            case 'trace':
+                // Map trace to debug level in Winston
+                apiLogger.debug(formatted, { ...logContext, traceLevel: true });
+                break;
+            default:
+                apiLogger.info(formatted, logContext);
+        }
+        
+        // Additional console output in development for immediate visibility
+        if (DEBUG_MODE) {
+            const consoleMethod = level === 'error' ? console.error : 
+                                level === 'warn' ? console.warn : 
+                                level === 'debug' ? console.debug : console.log;
+            
+            // Format console output for readability
+            const consoleData = data ? ` ${JSON.stringify(data, null, 2)}` : '';
+            consoleMethod(`${timestamp} ${formatted}${consoleData}`);
+        }
+    } catch (loggingError) {
+        // Fail silently to prevent logging errors from crashing the application
+        // Only output to console in development to avoid infinite loops
+        if (DEBUG_MODE) {
+            console.error('Logging error:', loggingError.message);
+        }
     }
+}
+
+/**
+ * Enhanced async error handler wrapper
+ * Wraps async route handlers to catch unhandled promise rejections
+ * Provides structured error logging and consistent error responses
+ * 
+ * @param {Function} fn - Async function to wrap
+ * @returns {Function} Wrapped function with error handling
+ * 
+ * DEBUG: Added for comprehensive error tracking
+ * VERIFY: Ensure all async routes use this wrapper
+ */
+function asyncHandler(fn) {
+    return (req, res, next) => {
+        const requestId = req.requestId || 'unknown';
+        
+        Promise.resolve(fn(req, res, next)).catch(error => {
+            // DEBUG: Log unhandled async error
+            debugLog('AsyncHandler', `Unhandled async error in ${req.method} ${req.path}`, {
+                error: error.message,
+                stack: error.stack,
+                requestId,
+                method: req.method,
+                path: req.path,
+                body: req.body,
+                query: req.query
+            }, 'error', requestId);
+            
+            // Pass error to Express error handler
+            next(error);
+        });
+    };
+}
+
+/**
+ * Validation helper for request parameters
+ * Validates required fields and data types with detailed error messages
+ * 
+ * @param {Object} data - Data object to validate
+ * @param {Object} schema - Validation schema
+ * @param {string} requestId - Request ID for logging
+ * @returns {Object} Validation result with success flag and errors
+ * 
+ * DEBUG: Added for input validation tracking
+ * TODO: Consider using Joi or similar validation library for complex schemas
+ */
+function validateRequest(data, schema, requestId = null) {
+    const errors = [];
+    const validated = {};
+    
+    for (const [field, rules] of Object.entries(schema)) {
+        const value = data[field];
+        
+        // Check required fields
+        if (rules.required && (value === undefined || value === null || value === '')) {
+            errors.push(`Field '${field}' is required`);
+            continue;
+        }
+        
+        // Skip validation for optional empty fields
+        if (!rules.required && (value === undefined || value === null || value === '')) {
+            continue;
+        }
+        
+        // Type validation
+        if (rules.type && typeof value !== rules.type) {
+            errors.push(`Field '${field}' must be of type ${rules.type}, got ${typeof value}`);
+            continue;
+        }
+        
+        // String length validation
+        if (rules.minLength && typeof value === 'string' && value.length < rules.minLength) {
+            errors.push(`Field '${field}' must be at least ${rules.minLength} characters long`);
+            continue;
+        }
+        
+        if (rules.maxLength && typeof value === 'string' && value.length > rules.maxLength) {
+            errors.push(`Field '${field}' must be no more than ${rules.maxLength} characters long`);
+            continue;
+        }
+        
+        // Enum validation
+        if (rules.enum && !rules.enum.includes(value)) {
+            errors.push(`Field '${field}' must be one of: ${rules.enum.join(', ')}`);
+            continue;
+        }
+        
+        validated[field] = value;
+    }
+    
+    const isValid = errors.length === 0;
+    
+    // DEBUG: Log validation results
+    debugLog('Validation', `Request validation ${isValid ? 'passed' : 'failed'}`, {
+        isValid,
+        errors,
+        validatedFields: Object.keys(validated)
+    }, isValid ? 'debug' : 'warn', requestId);
+    
+    return {
+        isValid,
+        errors,
+        data: validated
+    };
 }
 
 // ============================================================================
@@ -1448,37 +1948,42 @@ router.get('/history', async (req, res) => {
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/populations', async (req, res) => {
+    const functionName = 'GET /api/populations';
+    apiLogger.debug(`${functionName} - Entry`, { requestId: req.requestId });
+
     try {
         // Get token manager from Express app context
         const tokenManager = req.app.get('tokenManager');
         if (!tokenManager) {
-            console.error('[Populations] Token manager not available');
+            apiLogger.error(`${functionName} - Token manager not available`, { requestId: req.requestId });
             return res.status(500).json({ success: false, error: 'Token manager not available' });
         }
-        
+
         // Get environment ID and API base URL from token manager
         const environmentId = await tokenManager.getEnvironmentId();
         if (!environmentId) {
-            console.error('[Populations] Environment ID not configured');
-            return res.status(500).json({ 
-                success: false, 
+            apiLogger.error(`${functionName} - Environment ID not configured`, { requestId: req.requestId });
+            return res.status(500).json({
+                success: false,
                 error: 'Environment ID not configured',
                 details: 'Please configure your Environment ID in the Settings page'
             });
         }
-        
+
         // Get API base URL from token manager
         const apiBaseUrl = tokenManager.getApiBaseUrl();
-        
+
         // Get access token
         const token = await tokenManager.getAccessToken();
         if (!token) {
-            console.error('[Populations] Failed to get access token');
+            apiLogger.error(`${functionName} - Failed to get access token`, { requestId: req.requestId });
             return res.status(401).json({ success: false, error: 'Failed to get access token' });
         }
-        
+
         // Fetch populations from PingOne API
         const populationsUrl = `${apiBaseUrl}/environments/${environmentId}/populations`;
+        apiLogger.debug(`${functionName} - Fetching populations from PingOne API`, { requestId: req.requestId, url: populationsUrl });
+
         const response = await fetch(populationsUrl, {
             method: 'GET',
             headers: {
@@ -1486,10 +1991,15 @@ router.get('/populations', async (req, res) => {
                 'Content-Type': 'application/json'
             }
         });
-        
+
         if (!response.ok) {
             const errorText = await response.text();
-            console.error(`[Populations] ❌ Failed to fetch populations: ${response.status} ${errorText}`);
+            apiLogger.error(`${functionName} - Failed to fetch populations`, {
+                requestId: req.requestId,
+                status: response.status,
+                statusText: response.statusText,
+                details: errorText
+            });
             return res.status(response.status).json({
                 success: false,
                 error: `Failed to fetch populations: ${response.statusText}`,
@@ -2615,87 +3125,6 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
             success: false,
             error: error.message || 'Internal server error'
         });
-    }
-});
-
-// ============================================================================
-// POPULATIONS ENDPOINT
-// ============================================================================
-
-/**
- * @swagger
- * /api/populations:
- *   get:
- *     summary: Get all populations
- *     description: Retrieves a list of all populations in the PingOne environment.
- *     tags: [Populations]
- *     responses:
- *       200:
- *         description: A list of populations.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 populations:
- *                   type: array
- *                   items:
- *                     type: object
- *       500:
- *         description: Internal server error
- */
-router.get('/populations', async (req, res) => {
-    debugLog("Populations", "Received request for populations");
-    try {
-        const tokenManager = req.app.get('tokenManager');
-        if (!tokenManager) {
-            debugLog("Populations", "❌ Token manager not available");
-            return res.status(500).json({ success: false, error: 'Token manager not available' });
-        }
-
-        const token = await tokenManager.getAccessToken();
-        if (!token) {
-            debugLog("Populations", "❌ Failed to get access token");
-            return res.status(401).json({ success: false, error: 'Failed to get access token' });
-        }
-
-        const environmentId = await tokenManager.getEnvironmentId();
-        if (!environmentId) {
-            debugLog("Populations", "❌ Environment ID not configured");
-            return res.status(400).json({ success: false, error: 'Environment ID not configured' });
-        }
-
-        const pingOneUrl = `${tokenManager.getApiBaseUrl()}/environments/${environmentId}/populations`;
-        
-        debugLog("Populations", "🌐 Fetching populations from PingOne API", { url: pingOneUrl });
-
-        const pingOneResponse = await fetch(pingOneUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (!pingOneResponse.ok) {
-            const errorText = await pingOneResponse.text();
-            debugLog("Populations", "❌ PingOne API request failed", { status: pingOneResponse.status, error: errorText });
-            throw new Error(`Failed to fetch populations from PingOne API: ${pingOneResponse.status} ${pingOneResponse.statusText}`);
-        }
-
-        const data = await pingOneResponse.json();
-        const populations = data._embedded?.populations || [];
-        
-        debugLog("Populations", `✅ Successfully fetched ${populations.length} populations`);
-
-        res.json({ success: true, populations });
-
-    } catch (error) {
-        debugLog("Populations", "❌ Error fetching populations", { error: error.message });
-        res.status(500).json({ success: false, error: 'Failed to fetch populations', details: error.message });
     }
 });
 

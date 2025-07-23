@@ -39,8 +39,9 @@ async function updateBundleReference() {
         const indexPath = path.join(__dirname, '..', 'public', 'index.html');
         let indexContent = await fs.promises.readFile(indexPath, 'utf8');
         
-        // Find and replace the bundle reference
-        const bundleRegex = /<script src="js\/bundle-\d+\.js"><\/script>/;
+        // Find and replace the bundle reference with a more resilient regex
+        // This will match any script tag that references a bundle file, regardless of attributes
+        const bundleRegex = /<script[^>]*src=["']js\/bundle[^"']*\.js["'][^>]*><\/script>/;
         const newBundleTag = `<script src="js/${bundleFile}"></script>`;
         
         if (bundleRegex.test(indexContent)) {

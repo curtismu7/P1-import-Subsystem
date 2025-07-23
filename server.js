@@ -1,16 +1,75 @@
-// File: server.js
-// Description: Main server entry point for PingOne user import tool
-// 
-// This file sets up the Express server with all necessary middleware,
-// route handlers, and server management functionality. It handles:
-// - Express app configuration and middleware setup
-// - Rate limiting and security measures
-// - API routing and request handling
-// - Logging and monitoring
-// - Graceful shutdown and error handling
-// - Token management and authentication
-// 
-// The server provides both REST API endpoints and serves the frontend application.
+/**
+ * Main Server Entry Point - PingOne User Import Tool
+ * 
+ * This is the primary server file that initializes and configures the Express.js application
+ * for the PingOne User Import Tool. It provides a comprehensive web-based interface for
+ * managing PingOne user data operations including import, export, and modification.
+ * 
+ * ## Core Functionality
+ * - Express.js server setup with production-ready middleware
+ * - PingOne API integration and authentication management
+ * - Real-time progress tracking via WebSocket/Socket.IO
+ * - Comprehensive logging and error handling
+ * - API endpoint routing and request processing
+ * - Static file serving for frontend application
+ * - Health monitoring and system diagnostics
+ * 
+ * ## Architecture Components
+ * - **Authentication**: Enhanced server authentication with token management
+ * - **Middleware**: CORS, body parsing, request logging, error handling
+ * - **Routing**: Modular API routes for different operations
+ * - **Logging**: Winston-based structured logging with multiple transports
+ * - **Error Handling**: Centralized error processing with user-friendly messages
+ * - **Health Checks**: Comprehensive system health monitoring
+ * - **Port Management**: Automatic port conflict resolution
+ * 
+ * ## Environment Configuration
+ * The server loads configuration from multiple sources:
+ * - Environment variables (.env file)
+ * - Settings file (data/settings.json)
+ * - Command line arguments
+ * - Default fallback values
+ * 
+ * ## Production Features
+ * - Startup optimization with caching
+ * - Performance monitoring and metrics
+ * - Graceful shutdown handling
+ * - Process management and monitoring
+ * - Security headers and CORS configuration
+ * 
+ * ## Development Features
+ * - Hot reloading support
+ * - Detailed debug logging
+ * - Swagger API documentation
+ * - Development-specific error messages
+ * 
+ * @fileoverview Main server entry point for PingOne Import Tool
+ * @author PingOne Import Tool Team
+ * @version 6.3.0
+ * @since 1.0.0
+ * 
+ * @requires express Express.js web framework
+ * @requires cors Cross-Origin Resource Sharing middleware
+ * @requires winston Logging library
+ * @requires socket.io Real-time communication
+ * 
+ * @example
+ * // Start server in development mode
+ * npm run dev
+ * 
+ * @example
+ * // Start server in production mode
+ * npm start
+ * 
+ * @example
+ * // Start server with custom port
+ * PORT=3000 npm start
+ * 
+ * TODO: Add rate limiting middleware for production
+ * TODO: Implement request caching for frequently accessed endpoints
+ * VERIFY: Port conflict resolution works correctly in all environments
+ * DEBUG: Monitor memory usage during large file operations
+ */
 
 import express from 'express';
 import cors from 'cors';
@@ -49,7 +108,61 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Load settings from settings.json file and set environment variables
+ * Load Application Settings from Configuration File
+ * 
+ * Loads PingOne API configuration from the settings.json file and sets corresponding
+ * environment variables. This function provides a centralized way to manage configuration
+ * that persists across server restarts and can be modified through the web interface.
+ * 
+ * ## Configuration Sources Priority
+ * 1. Environment variables (highest priority)
+ * 2. Settings file (data/settings.json)
+ * 3. Default values (lowest priority)
+ * 
+ * ## Settings File Format
+ * The settings.json file should contain:
+ * - `environmentId`: PingOne environment identifier
+ * - `apiClientId`: PingOne API client ID
+ * - `apiSecret`: PingOne API client secret
+ * - `region`: PingOne region (NorthAmerica, Europe, AsiaPacific, Canada)
+ * 
+ * ## Security Considerations
+ * - API secrets are logged as [HIDDEN] for security
+ * - Only partial client IDs and environment IDs are logged
+ * - File permissions should restrict access to sensitive data
+ * 
+ * ## Error Handling
+ * - Missing file: Returns false, server continues with env vars only
+ * - Invalid JSON: Logs warning, returns false
+ * - Partial settings: Loads available settings, continues operation
+ * 
+ * @async
+ * @function loadSettingsFromFile
+ * @returns {Promise<boolean>} True if settings loaded successfully, false otherwise
+ * 
+ * @throws {Error} File system errors (handled internally)
+ * @throws {SyntaxError} JSON parsing errors (handled internally)
+ * 
+ * @example
+ * // Settings file structure
+ * {
+ *   "environmentId": "12345678-1234-1234-1234-123456789012",
+ *   "apiClientId": "abcd1234-5678-90ef-ghij-klmnopqrstuv",
+ *   "apiSecret": "your-secret-key-here",
+ *   "region": "NorthAmerica"
+ * }
+ * 
+ * @example
+ * // Usage in server startup
+ * const settingsLoaded = await loadSettingsFromFile();
+ * if (!settingsLoaded) {
+ *   logger.warn('Using environment variables only');
+ * }
+ * 
+ * TODO: Add settings validation schema
+ * TODO: Implement settings encryption for sensitive data
+ * VERIFY: File permissions are correctly set in production
+ * DEBUG: Monitor settings loading performance
  */
 async function loadSettingsFromFile() {
     try {
@@ -62,19 +175,20 @@ async function loadSettingsFromFile() {
         logger.info('Settings loaded:', Object.keys(settings));
         
         // Set environment variables from settings file
-        if (settings.environmentId) {
+        // Only set if not already defined in environment (env vars take precedence)
+        if (settings.environmentId && !process.env.PINGONE_ENVIRONMENT_ID) {
             process.env.PINGONE_ENVIRONMENT_ID = settings.environmentId;
             logger.info('Set PINGONE_ENVIRONMENT_ID:', settings.environmentId.substring(0, 8) + '...');
         }
-        if (settings.apiClientId) {
+        if (settings.apiClientId && !process.env.PINGONE_CLIENT_ID) {
             process.env.PINGONE_CLIENT_ID = settings.apiClientId;
             logger.info('Set PINGONE_CLIENT_ID:', settings.apiClientId.substring(0, 8) + '...');
         }
-        if (settings.apiSecret) {
+        if (settings.apiSecret && !process.env.PINGONE_CLIENT_SECRET) {
             process.env.PINGONE_CLIENT_SECRET = settings.apiSecret;
             logger.info('Set PINGONE_CLIENT_SECRET: [HIDDEN]');
         }
-        if (settings.region) {
+        if (settings.region && !process.env.PINGONE_REGION) {
             process.env.PINGONE_REGION = settings.region;
             logger.info('Set PINGONE_REGION:', settings.region);
         }
@@ -82,7 +196,14 @@ async function loadSettingsFromFile() {
         logger.info('Settings loaded from file and environment variables set');
         return true;
     } catch (error) {
-        logger.warn('Failed to load settings from file:', error.message);
+        // Handle specific error types for better debugging
+        if (error.code === 'ENOENT') {
+            logger.info('Settings file not found, using environment variables only');
+        } else if (error instanceof SyntaxError) {
+            logger.error('Invalid JSON in settings file:', error.message);
+        } else {
+            logger.warn('Failed to load settings from file:', error.message);
+        }
         return false;
     }
 }
@@ -98,6 +219,16 @@ const logger = createWinstonLogger({
 const requestLogger = createRequestLogger(logger);
 const errorLogger = createErrorLogger(logger);
 const performanceLogger = createPerformanceLogger(logger);
+
+// Import startup optimizer for production-ready initialization
+import startupOptimizer from './src/server/services/startup-optimizer.js';
+import { getErrorHandler } from './src/shared/error-handler.js';
+
+// Initialize centralized error handling
+const errorHandler = getErrorHandler({
+    enableAnalytics: true,
+    enableUserNotification: false // Server-side, no user notifications
+});
 
 // Use pingOneAuth from auth subsystem for token management
 // This replaces the legacy TokenManager with the new auth subsystem
@@ -299,7 +430,7 @@ app.get('/api/bundle-info', async (req, res) => {
     }
 });
 
-// Health check endpoint with enhanced logging
+// PRODUCTION HEALTH CHECK: Enhanced health endpoint with startup optimizer status
 app.get('/api/health', async (req, res) => {
     const startTime = Date.now();
     
@@ -321,8 +452,11 @@ app.get('/api/health', async (req, res) => {
         const memoryUsage = process.memoryUsage();
         const memoryUsagePercent = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
         
+        // PRODUCTION ENHANCEMENT: Include startup optimizer status
+        const optimizerHealth = startupOptimizer.getHealthStatus();
+        
         const status = {
-            status: 'ok',
+            status: optimizerHealth.status === 'healthy' ? 'ok' : 'degraded',
             timestamp: new Date().toISOString(),
             uptime: process.uptime(),
             server: {
@@ -342,10 +476,17 @@ app.get('/api/health', async (req, res) => {
                 env: process.env.NODE_ENV || 'development',
                 pid: process.pid
             },
+            optimization: {
+                status: optimizerHealth.status,
+                isInitialized: optimizerHealth.isInitialized,
+                tokenCached: optimizerHealth.tokenValid,
+                populationsCached: optimizerHealth.populationsCached
+            },
             checks: {
                 pingOneConfigured: hasRequiredPingOneVars ? 'ok' : 'error',
                 pingOneConnected: serverStatus.pingOneInitialized ? 'ok' : 'error',
-                memory: memoryUsagePercent < 90 ? 'ok' : 'warn'
+                memory: memoryUsagePercent < 90 ? 'ok' : 'warn',
+                startupOptimization: optimizerHealth.status === 'healthy' ? 'ok' : 'warn'
             }
         };
         
@@ -372,6 +513,41 @@ app.get('/api/health', async (req, res) => {
         res.status(500).json({
             status: 'error',
             error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// PRODUCTION ENDPOINT: Cache refresh endpoint for manual cache management
+app.post('/api/cache/refresh', async (req, res) => {
+    try {
+        logger.info('🔄 Manual cache refresh requested', {
+            ip: req.ip,
+            userAgent: req.get('user-agent')
+        });
+        
+        const result = await startupOptimizer.refreshCache();
+        
+        if (result.success) {
+            logger.info('✅ Cache refresh completed successfully');
+            res.json({
+                success: true,
+                message: 'Cache refreshed successfully',
+                timestamp: new Date().toISOString()
+            });
+        } else {
+            logger.error('❌ Cache refresh failed', { error: result.error });
+            res.status(500).json({
+                success: false,
+                error: result.error,
+                timestamp: new Date().toISOString()
+            });
+        }
+    } catch (error) {
+        logger.error('❌ Cache refresh endpoint error', { error: error.message });
+        res.status(500).json({
+            success: false,
+            error: 'Cache refresh failed',
             timestamp: new Date().toISOString()
         });
     }
@@ -566,6 +742,23 @@ const startServer = async () => {
         
         // Load settings from file at startup
         await loadSettingsFromFile();
+        
+        // PRODUCTION OPTIMIZATION: Initialize startup optimizer
+        logger.info('🚀 Initializing startup optimizations...');
+        const optimizationResult = await startupOptimizer.initialize();
+        
+        if (optimizationResult.success) {
+            logger.info('✅ Startup optimization completed', {
+                duration: optimizationResult.duration,
+                tokenCached: optimizationResult.tokenCached,
+                populationsCached: optimizationResult.populationsCached
+            });
+        } else {
+            logger.warn('⚠️ Startup optimization failed', {
+                reason: optimizationResult.reason || optimizationResult.error,
+                duration: optimizationResult.duration
+            });
+        }
         
         // Initialize Enhanced Server Authentication System
         logger.info('🚀 Initializing Enhanced Server Authentication System...');

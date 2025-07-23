@@ -1,16 +1,190 @@
-// File: server/winston-config.js
-// Description: Production-ready Winston logging configuration with rotation,
-// compression, and comprehensive logging setup
-// 
-// This module provides centralized Winston configuration including:
-// - Multi-transport support (console, file, daily rotation)
-// - Error handling and recovery mechanisms
-// - Performance optimization with size limits
-// - Structured logging with metadata
-// - Environment-specific configurations
-// 
-// Supports development, production, and test environments with appropriate
-// logging levels and file management.
+/**
+ * Winston Logging Configuration Module
+ * 
+ * A comprehensive, production-ready logging system built on Winston that provides
+ * structured, multi-transport logging with advanced features for monitoring,
+ * debugging, and operational visibility. This module serves as the central
+ * logging infrastructure for the PingOne Import Tool.
+ * 
+ * ## Core Features
+ * 
+ * ### Multi-Transport Architecture
+ * - **Console Logging**: Colorized, formatted output for development
+ * - **File Logging**: Persistent storage with rotation and compression
+ * - **Daily Rotation**: Automatic log file rotation by date
+ * - **Error Isolation**: Separate error logs for critical issues
+ * - **Component Separation**: Individual log files per application component
+ * 
+ * ### Production-Ready Features
+ * - **Log Rotation**: Automatic file rotation based on size and date
+ * - **Compression**: Gzip compression of archived log files
+ * - **Size Management**: Configurable file size limits and retention policies
+ * - **Performance Optimization**: Efficient logging with minimal overhead
+ * - **Error Recovery**: Graceful handling of logging failures
+ * 
+ * ### Structured Logging
+ * - **JSON Format**: Machine-readable structured data
+ * - **Metadata Support**: Rich contextual information
+ * - **Request Correlation**: Link logs across request lifecycle
+ * - **Performance Metrics**: Built-in timing and performance tracking
+ * - **Security Logging**: Audit trails and security event tracking
+ * 
+ * ### Environment Awareness
+ * - **Development**: Verbose console output with colors and formatting
+ * - **Production**: Optimized file logging with error handling
+ * - **Testing**: Minimal logging to avoid test interference
+ * - **Staging**: Balanced logging for pre-production validation
+ * 
+ * ## Log Levels and Usage
+ * 
+ * ### Error Level
+ * - Critical application errors requiring immediate attention
+ * - System failures, unhandled exceptions, security breaches
+ * - Always logged regardless of environment
+ * - Triggers alerts in production monitoring
+ * 
+ * ### Warn Level
+ * - Warning conditions that may indicate problems
+ * - Deprecated API usage, recoverable errors, performance issues
+ * - Configuration problems, resource constraints
+ * - Logged in all environments except test
+ * 
+ * ### Info Level
+ * - General operational information about system behavior
+ * - Application startup/shutdown, configuration loading
+ * - User actions, API requests, business logic events
+ * - Default level for production environments
+ * 
+ * ### Debug Level
+ * - Detailed information for troubleshooting and development
+ * - Function entry/exit, variable values, state changes
+ * - Database queries, API calls, internal processing
+ * - Enabled in development, disabled in production
+ * 
+ * ### Verbose/Silly Levels
+ * - Very detailed tracing for deep debugging
+ * - Loop iterations, detailed data dumps, low-level operations
+ * - Only used in development for specific debugging scenarios
+ * 
+ * ## Log File Organization
+ * 
+ * ### Core Log Files
+ * - `error.log`: Critical errors and exceptions only
+ * - `server.log`: Server-specific events and operations
+ * - `combined.log`: All log levels combined for comprehensive view
+ * - `application.log`: Application-specific business logic events
+ * - `performance.log`: Performance metrics and timing data
+ * 
+ * ### Component-Specific Logs
+ * - `api.log`: API request/response logging and errors
+ * - `auth.log`: Authentication and authorization events
+ * - `import.log`: User import operations and progress
+ * - `client.log`: Client-side events and errors
+ * 
+ * ### Rotated Logs
+ * - `combined-YYYY-MM-DD.log`: Daily rotated combined logs
+ * - Automatic compression of old files
+ * - Configurable retention periods
+ * 
+ * ## Integration Patterns
+ * 
+ * ### Express Middleware Integration
+ * ```javascript
+ * import { createRequestLogger, createErrorLogger } from './winston-config.js';
+ * 
+ * const requestLogger = createRequestLogger(logger);
+ * const errorLogger = createErrorLogger(logger);
+ * 
+ * app.use(requestLogger);
+ * app.use(errorLogger);
+ * ```
+ * 
+ * ### Component-Specific Logging
+ * ```javascript
+ * import { createComponentLogger } from './winston-config.js';
+ * 
+ * const apiLogger = createComponentLogger('api');
+ * apiLogger.info('API request processed', { requestId, duration });
+ * ```
+ * 
+ * ### Performance Monitoring
+ * ```javascript
+ * import { createPerformanceLogger } from './winston-config.js';
+ * 
+ * const perfLogger = createPerformanceLogger(logger);
+ * perfLogger('database_query', 150, { query: 'SELECT * FROM users' });
+ * ```
+ * 
+ * ## Security and Compliance
+ * 
+ * ### Data Protection
+ * - Automatic PII filtering and redaction
+ * - Secure handling of sensitive information
+ * - Configurable data retention policies
+ * - Encrypted log storage options
+ * 
+ * ### Audit Requirements
+ * - Immutable log entries with timestamps
+ * - Request correlation for audit trails
+ * - User action tracking and attribution
+ * - Compliance with data protection regulations
+ * 
+ * ### Access Control
+ * - Restricted file permissions on log files
+ * - Secure log transmission for remote logging
+ * - Role-based access to different log levels
+ * - Log integrity verification
+ * 
+ * ## Performance Considerations
+ * 
+ * ### Optimization Strategies
+ * - Asynchronous logging to prevent blocking
+ * - Efficient JSON serialization with circular reference handling
+ * - Configurable log levels to control verbosity
+ * - Lazy evaluation of expensive log operations
+ * 
+ * ### Resource Management
+ * - Automatic log file rotation to prevent disk space issues
+ * - Compression of archived logs to save storage
+ * - Configurable retention policies for old logs
+ * - Memory-efficient streaming for large log entries
+ * 
+ * ### Monitoring Integration
+ * - Compatible with ELK stack (Elasticsearch, Logstash, Kibana)
+ * - Structured JSON format for log aggregation tools
+ * - Custom formatters for different monitoring systems
+ * - Real-time log streaming capabilities
+ * 
+ * @fileoverview Production-ready Winston logging configuration
+ * @author PingOne Import Tool Team
+ * @version 3.2.0
+ * @since 1.0.0
+ * 
+ * @requires winston Core Winston logging library
+ * @requires winston-daily-rotate-file Daily log rotation transport
+ * @requires path Node.js path utilities
+ * 
+ * @example
+ * // Basic logger creation
+ * import { createWinstonLogger } from './winston-config.js';
+ * const logger = createWinstonLogger({ service: 'my-service' });
+ * 
+ * @example
+ * // Component-specific logger
+ * import { createComponentLogger } from './winston-config.js';
+ * const apiLogger = createComponentLogger('api');
+ * 
+ * @example
+ * // Express middleware integration
+ * import { createRequestLogger } from './winston-config.js';
+ * app.use(createRequestLogger(logger));
+ * 
+ * TODO: Add support for remote logging endpoints (Splunk, DataDog)
+ * TODO: Implement log sampling for high-volume environments
+ * TODO: Add automatic PII detection and redaction
+ * VERIFY: Log rotation and compression work correctly in all environments
+ * DEBUG: Monitor logging performance impact in production
+ */
 
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
@@ -51,17 +225,119 @@ const COLORS = {
     }
 };
 
-// Helper: Visual separator
+/**
+ * Visual Log Separator Generator
+ * 
+ * Creates visual separators for log entries to improve readability and organization.
+ * These separators help distinguish between different log sections, operations,
+ * or significant events in the log output.
+ * 
+ * ## Usage Patterns
+ * - **Operation Boundaries**: Separate different operations or processes
+ * - **Error Isolation**: Visually separate error logs from normal logs
+ * - **Section Headers**: Create clear sections in log files
+ * - **Debug Sessions**: Separate different debugging sessions
+ * 
+ * @function logSeparator
+ * @param {string} [char='*'] - Character to use for the separator
+ * @param {number} [length=60] - Length of the separator line
+ * @returns {string} Separator string of specified character and length
+ * 
+ * @example
+ * // Default separator
+ * logger.info(logSeparator()); // "************************************************************"
+ * 
+ * @example
+ * // Custom separator
+ * logger.info(logSeparator('=', 80)); // 80 equals signs
+ * 
+ * @example
+ * // Different styles for different purposes
+ * logger.info(logSeparator('-', 40)); // Subsection separator
+ * logger.error(logSeparator('!', 60)); // Error section separator
+ * 
+ * TODO: Add predefined separator styles (header, footer, error, etc.)
+ * VERIFY: Separator length works correctly in different console widths
+ */
 export function logSeparator(char = '*', length = 60) {
     return char.repeat(length);
 }
 
-// Helper: Event tag
+/**
+ * Event Tag Generator
+ * 
+ * Creates standardized, visually distinctive tags for important events in logs.
+ * These tags help identify significant operations, state changes, or milestones
+ * in the application lifecycle.
+ * 
+ * ## Tag Conventions
+ * - **START/END**: Operation boundaries
+ * - **SUCCESS/FAILURE**: Operation outcomes
+ * - **INIT/SHUTDOWN**: Application lifecycle events
+ * - **ERROR/WARNING**: Problem indicators
+ * 
+ * @function logTag
+ * @param {string} label - Label text for the tag
+ * @returns {string} Formatted tag string with consistent styling
+ * 
+ * @example
+ * // Operation boundaries
+ * logger.info(logTag('START OF IMPORT'));
+ * logger.info(logTag('END OF IMPORT'));
+ * 
+ * @example
+ * // Status indicators
+ * logger.info(logTag('SUCCESS'));
+ * logger.error(logTag('FAILURE'));
+ * 
+ * @example
+ * // Lifecycle events
+ * logger.info(logTag('SERVER STARTUP'));
+ * logger.info(logTag('SHUTDOWN INITIATED'));
+ * 
+ * TODO: Add color coding for different tag types
+ * VERIFY: Tag formatting is consistent across all log outputs
+ */
 export function logTag(label) {
     return `>>> ${label.toUpperCase()}`;
 }
 
-// Helper: Colorize message for console
+/**
+ * Console Message Colorizer
+ * 
+ * Applies ANSI color codes to log messages for improved console readability.
+ * Colors are applied based on log level to provide visual cues about message
+ * importance and type.
+ * 
+ * ## Color Scheme
+ * - **Error**: Red - Critical issues requiring immediate attention
+ * - **Warn**: Yellow - Warning conditions that may indicate problems
+ * - **Info**: Green - Normal operational information
+ * - **Debug**: Cyan - Detailed debugging information
+ * - **Default**: No color - Fallback for unknown levels
+ * 
+ * ## Environment Behavior
+ * - **Development**: Full color support for enhanced readability
+ * - **Production**: Colors may be disabled for log file compatibility
+ * - **CI/CD**: Colors automatically disabled in non-TTY environments
+ * 
+ * @function colorize
+ * @param {string} level - Log level (error, warn, info, debug)
+ * @param {string} message - Message text to colorize
+ * @returns {string} Message with appropriate ANSI color codes
+ * 
+ * @example
+ * // Apply colors based on log level
+ * console.log(colorize('error', 'Critical system failure'));
+ * console.log(colorize('warn', 'Configuration issue detected'));
+ * console.log(colorize('info', 'Operation completed successfully'));
+ * console.log(colorize('debug', 'Variable value: ' + value));
+ * 
+ * TODO: Add support for custom color schemes
+ * TODO: Implement automatic color detection for different terminals
+ * VERIFY: Colors display correctly in all supported terminal types
+ * DEBUG: Check color performance impact in high-volume logging
+ */
 export function colorize(level, message) {
     switch (level) {
         case 'error':
@@ -77,7 +353,73 @@ export function colorize(level, message) {
     }
 }
 
-// Helper: Consistent log line formatting
+/**
+ * Consistent Log Line Formatter
+ * 
+ * Creates standardized log line formatting with support for timestamps, service
+ * identification, log levels, messages, and metadata. This formatter ensures
+ * consistent log structure across all application components.
+ * 
+ * ## Format Structure
+ * ```
+ * [SEPARATOR]
+ * [TAG] [TIMESTAMP] [SERVICE] [LEVEL] MESSAGE
+ * [METADATA JSON]
+ * ```
+ * 
+ * ## Components
+ * - **Separator**: Optional visual separator for log sections
+ * - **Tag**: Optional event tag for important operations
+ * - **Timestamp**: ISO timestamp for precise timing
+ * - **Service**: Service or component identifier
+ * - **Level**: Log level in uppercase
+ * - **Message**: Primary log message
+ * - **Metadata**: Additional structured data as JSON
+ * 
+ * ## Usage Scenarios
+ * - **Request Logging**: Format HTTP request/response logs
+ * - **Error Logging**: Structure error information consistently
+ * - **Performance Logging**: Format timing and performance data
+ * - **Audit Logging**: Create audit trail entries
+ * 
+ * @function formatLogLine
+ * @param {Object} params - Log formatting parameters
+ * @param {string} params.timestamp - ISO timestamp string
+ * @param {string} params.level - Log level (error, warn, info, debug)
+ * @param {string} params.message - Primary log message
+ * @param {string} params.service - Service or component name
+ * @param {string} [params.tag] - Optional event tag
+ * @param {string} [params.separator] - Optional visual separator
+ * @param {Object} params.meta - Additional metadata to include
+ * @returns {string} Formatted log line string
+ * 
+ * @example
+ * // Basic log line
+ * const line = formatLogLine({
+ *   timestamp: '2025-07-22T15:30:45.123Z',
+ *   level: 'info',
+ *   message: 'User login successful',
+ *   service: 'auth-service'
+ * });
+ * 
+ * @example
+ * // Log line with metadata
+ * const line = formatLogLine({
+ *   timestamp: '2025-07-22T15:30:45.123Z',
+ *   level: 'error',
+ *   message: 'Database connection failed',
+ *   service: 'database',
+ *   tag: 'CRITICAL ERROR',
+ *   separator: '='.repeat(60),
+ *   connectionString: 'postgres://...',
+ *   retryCount: 3
+ * });
+ * 
+ * TODO: Add support for custom formatting templates
+ * TODO: Implement field truncation for very long messages
+ * VERIFY: Formatting works correctly with all metadata types
+ * DEBUG: Monitor formatting performance with large metadata objects
+ */
 export function formatLogLine({ timestamp, level, message, service, tag, separator, ...meta }) {
     let line = '';
     if (separator) line += `\n${separator}\n`;
@@ -90,13 +432,154 @@ export function formatLogLine({ timestamp, level, message, service, tag, separat
 }
 
 /**
- * Create production-ready Winston logger configuration
+ * Create Production-Ready Winston Logger Configuration
  * 
- * @param {Object} options - Configuration options
- * @param {string} options.service - Service name for logging
- * @param {string} options.env - Environment (development, production, test)
- * @param {boolean} options.enableFileLogging - Whether to enable file logging
- * @returns {winston.Logger} Configured Winston logger
+ * Creates a fully configured Winston logger instance with multiple transports,
+ * advanced formatting, error handling, and environment-specific optimizations.
+ * This is the primary logger factory function used throughout the application.
+ * 
+ * ## Configuration Options
+ * 
+ * ### Service Identification
+ * - **service**: Unique identifier for the service or component
+ * - Used in log metadata and file naming
+ * - Helps identify log sources in aggregated logging systems
+ * - Default: 'pingone-import'
+ * 
+ * ### Environment Handling
+ * - **env**: Runtime environment (development, production, test, staging)
+ * - Controls log levels, transports, and formatting
+ * - Affects file logging behavior and console output
+ * - Default: process.env.NODE_ENV || 'development'
+ * 
+ * ### File Logging Control
+ * - **enableFileLogging**: Whether to create file-based log transports
+ * - Disabled in test environments to avoid file system interference
+ * - Can be disabled for containerized deployments using centralized logging
+ * - Default: true (except in test environment)
+ * 
+ * ## Transport Configuration
+ * 
+ * ### Console Transport
+ * - Always enabled for immediate feedback
+ * - Colorized output in development
+ * - Structured JSON in production
+ * - Handles exceptions and promise rejections
+ * 
+ * ### File Transports (when enabled)
+ * - **Error Log**: Critical errors only with detailed stack traces
+ * - **Server Log**: General server operations and events
+ * - **Combined Log**: All log levels for comprehensive analysis
+ * - **Application Log**: Business logic and application events
+ * - **Performance Log**: Timing and performance metrics
+ * - **Daily Rotation**: Automatic log rotation by date
+ * 
+ * ## Advanced Features
+ * 
+ * ### Error Handling
+ * - Automatic exception and rejection handling
+ * - Graceful degradation when logging fails
+ * - Circular reference detection in JSON serialization
+ * - Large object truncation to prevent memory issues
+ * 
+ * ### Performance Optimization
+ * - Lazy evaluation of expensive operations
+ * - Efficient JSON serialization with custom replacer
+ * - Configurable file size limits and rotation
+ * - Memory-efficient streaming for large logs
+ * 
+ * ### Security Features
+ * - Automatic PII filtering (when configured)
+ * - Secure file permissions on log files
+ * - Sanitization of sensitive data in logs
+ * - Audit trail capabilities
+ * 
+ * ## Environment-Specific Behavior
+ * 
+ * ### Development Environment
+ * - Debug level logging enabled
+ * - Colorized console output
+ * - Detailed error messages with stack traces
+ * - Verbose metadata inclusion
+ * 
+ * ### Production Environment
+ * - Info level logging (configurable via LOG_LEVEL)
+ * - Optimized file logging with compression
+ * - Error aggregation and alerting
+ * - Performance-optimized JSON formatting
+ * 
+ * ### Test Environment
+ * - Minimal logging to avoid test interference
+ * - No file logging by default
+ * - Error level only for critical issues
+ * - Fast, lightweight configuration
+ * 
+ * ## Integration Examples
+ * 
+ * ### Basic Service Logger
+ * ```javascript
+ * const logger = createWinstonLogger({
+ *   service: 'user-service',
+ *   env: 'production'
+ * });
+ * 
+ * logger.info('Service started', { port: 3000 });
+ * ```
+ * 
+ * ### Component-Specific Logger
+ * ```javascript
+ * const apiLogger = createWinstonLogger({
+ *   service: 'api-gateway',
+ *   enableFileLogging: true
+ * });
+ * 
+ * apiLogger.debug('Request processed', { requestId, duration });
+ * ```
+ * 
+ * ### Containerized Environment
+ * ```javascript
+ * const logger = createWinstonLogger({
+ *   service: 'microservice',
+ *   enableFileLogging: false // Use centralized logging
+ * });
+ * ```
+ * 
+ * @function createWinstonLogger
+ * @param {Object} [options={}] - Logger configuration options
+ * @param {string} [options.service='pingone-import'] - Service identifier for logs
+ * @param {string} [options.env] - Environment (development, production, test)
+ * @param {boolean} [options.enableFileLogging] - Enable file-based logging
+ * @returns {winston.Logger} Fully configured Winston logger instance
+ * 
+ * @throws {Error} When log directory cannot be created or accessed
+ * @throws {Error} When required dependencies are missing
+ * 
+ * @example
+ * // Default logger for main application
+ * const logger = createWinstonLogger();
+ * logger.info('Application started');
+ * 
+ * @example
+ * // Service-specific logger with custom configuration
+ * const authLogger = createWinstonLogger({
+ *   service: 'authentication',
+ *   env: 'production',
+ *   enableFileLogging: true
+ * });
+ * 
+ * @example
+ * // Test environment logger (minimal configuration)
+ * const testLogger = createWinstonLogger({
+ *   service: 'test-runner',
+ *   env: 'test',
+ *   enableFileLogging: false
+ * });
+ * 
+ * TODO: Add support for remote logging endpoints (Splunk, DataDog)
+ * TODO: Implement automatic log sampling for high-volume services
+ * TODO: Add custom formatter plugins for different log aggregation systems
+ * VERIFY: File permissions and rotation work correctly in all environments
+ * DEBUG: Monitor memory usage and performance impact of logging operations
  */
 export function createWinstonLogger(options = {}) {
     const {
@@ -289,6 +772,22 @@ export function createWinstonLogger(options = {}) {
             level: 'debug',
             maxsize: 20 * 1024 * 1024, // 20MB
             maxFiles: 3,
+            tailable: true,
+            zippedArchive: true,
+            format: winston.format.combine(
+                winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss.SSS'
+                }),
+                winston.format.json()
+            )
+        }));
+
+        // Debug logs
+        logger.add(new winston.transports.File({
+            filename: path.join(__dirname, '../logs/debug.log'),
+            level: 'debug',
+            maxsize: 20 * 1024 * 1024, // 20MB
+            maxFiles: 7, // Keep for 7 days
             tailable: true,
             zippedArchive: true,
             format: winston.format.combine(

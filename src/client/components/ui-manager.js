@@ -38,7 +38,7 @@ class UIManager {
         // Initialize error manager
         this.errorManager = errorManager || {
             handleError: (error, context) => {
-                console.error('Unhandled error (no error manager):', error, context);
+                (window.logger?.error || console.error)('Unhandled error (no error manager):', error, context);
             }
         };
         
@@ -178,16 +178,20 @@ class UIManager {
                 this.statusBarTimer = null;
             }
             
-            // Clear existing content
-            this.statusBarElement.innerHTML = '';
+            // Clear existing content using Safe DOM
+            const safeDOM = window.safeDOM || new SafeDOM(this.logger);
+            const errorHandler = window.errorHandler || new ErrorHandler(this.logger);
+            const UI_CONFIG = window.UI_CONFIG || { CLASSES: { ERROR: 'error', SUCCESS: 'success' } };
             
-            // Create message element
+            safeDOM.setHTML(this.statusBarElement, '');
+            
+            // Create message element using Safe DOM
             const msg = document.createElement('span');
-            msg.className = 'status-message';
+            safeDOM.addClass(msg, 'status-message');
             
             // Add error ID to the message if available
             let displayMessage = message;
-            if (type === 'error' && errorId) {
+            if (type === UI_CONFIG.CLASSES.ERROR && errorId) {
                 displayMessage += ` (Error ID: ${errorId})`;
                 
                 // In development, show more context for errors
@@ -196,16 +200,22 @@ class UIManager {
                 }
             }
             
-            msg.textContent = displayMessage;
+            safeDOM.setText(msg, displayMessage);
             this.statusBarElement.appendChild(msg);
             
             // Add dismiss button for error/warning (persistent messages)
-            if (type === 'error' || type === 'warning') {
+            if (type === UI_CONFIG.CLASSES.ERROR || type === 'warning') {
                 const dismiss = document.createElement('button');
-                dismiss.className = 'status-dismiss';
-                dismiss.innerHTML = '&times;';
+                safeDOM.addClass(dismiss, 'status-dismiss');
+                safeDOM.setHTML(dismiss, '&times;');
                 dismiss.setAttribute('aria-label', 'Dismiss message');
-                dismiss.onclick = () => this.clearStatusBar();
+                
+                // Use error handler to wrap the event handler
+                dismiss.onclick = errorHandler.wrapEventHandler(
+                    () => this.clearStatusBar(),
+                    'Status bar dismiss button click'
+                );
+                
                 this.statusBarElement.appendChild(dismiss);
             }
             
@@ -235,8 +245,8 @@ class UIManager {
             });
             
             // Fallback to console if the error manager fails
-            console.error('Failed to show status bar:', error);
-            console.log('Original message:', message);
+            (window.logger?.error || console.error)('Failed to show status bar:', error);
+            (window.logger?.debug || console.log)('Original message:', message);
             
             // Try to show a simplified error message
             try {
@@ -246,7 +256,7 @@ class UIManager {
                 }
             } catch (e) {
                 // If we can't even show the error message, just give up
-                console.error('Completely failed to show status bar:', e);
+                (window.logger?.error || console.error)('Completely failed to show status bar:', e);
             }
         }
     }
@@ -272,22 +282,25 @@ class UIManager {
             
             const { force = false } = options;
             
+            const safeDOM = window.safeDOM || new SafeDOM(this.logger);
+            const UI_CONFIG = window.UI_CONFIG || { TIMEOUTS: { ANIMATION: 300 } };
+            
             if (force) {
-                // Immediate removal
-                this.statusBarElement.innerHTML = '';
+                // Immediate removal using Safe DOM
+                safeDOM.setHTML(this.statusBarElement, '');
                 this.statusBarElement.className = 'status-bar';
                 this.logger.debug('Status bar cleared immediately');
             } else {
-                // Animate out
-                this.statusBarElement.classList.remove('visible');
+                // Animate out using Safe DOM
+                safeDOM.removeClass(this.statusBarElement, 'visible');
                 
                 // Remove the element after animation completes
                 setTimeout(() => {
                     if (this.statusBarElement) {
-                        this.statusBarElement.innerHTML = '';
+                        safeDOM.setHTML(this.statusBarElement, '');
                         this.statusBarElement.className = 'status-bar';
                     }
-                }, 300); // Should match CSS transition duration
+                }, UI_CONFIG.TIMEOUTS?.ANIMATION || 300); // Use config constant for timeout
                 
                 this.logger.debug('Status bar cleared with animation');
             }
@@ -309,7 +322,7 @@ class UIManager {
                     this.statusBarElement.className = 'status-bar';
                 }
             } catch (e) {
-                console.error('Failed to clear status bar:', e);
+                (window.logger?.error || console.error)('Failed to clear status bar:', e);
             }
         }
     }
@@ -428,7 +441,7 @@ class UIManager {
             
         } catch (error) {
             // If there's an error in the error handler, log to console
-            console.error('Error in showError:', error);
+            (window.logger?.error || console.error)('Error in showError:', error);
             
             // Try to show a basic error message
             try {
@@ -442,7 +455,7 @@ class UIManager {
                 });
             } catch (e) {
                 // If we can't even show the error message, just give up
-                console.error('Completely failed to show error:', e);
+                (window.logger?.error || console.error)('Completely failed to show error:', e);
             }
         }
 
@@ -467,50 +480,60 @@ class UIManager {
      * @param {string} message - Progress message
      */
     updateProgress(current, total, message = '') {
-        console.log('🔍 [UI MANAGER DEBUG] updateProgress() called with:', { current, total, message });
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] updateProgress() called with:', { current, total, message });
         
         if (!this.progressContainer) {
-            console.error('🔍 [UI MANAGER DEBUG] Progress container not found in updateProgress');
+            (window.logger?.error || console.error)('🔍 [UI MANAGER DEBUG] Progress container not found in updateProgress');
             this.logger.warn('Progress container not found');
             return;
         }
         
-        console.log('🔍 [UI MANAGER DEBUG] Progress container found, calculating percentage...');
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress container found, calculating percentage...');
         const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
-        console.log('🔍 [UI MANAGER DEBUG] Calculated percentage:', percentage);
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Calculated percentage:', percentage);
         
-        // Update progress bar
-        const progressBar = this.progressContainer.querySelector('.progress-bar-fill');
-        console.log('🔍 [UI MANAGER DEBUG] Progress bar element:', progressBar);
+        // Initialize utilities for safe DOM operations
+        const safeDOM = window.safeDOM || new SafeDOM(this.logger);
+        const UI_CONFIG = window.UI_CONFIG || {
+            SELECTORS: {
+                PROGRESS_BAR_FILL: '.progress-bar-fill',
+                PROGRESS_PERCENTAGE: '.progress-percentage',
+                PROGRESS_TEXT: '.progress-text'
+            }
+        };
+        
+        // Update progress bar using Safe DOM
+        const progressBar = safeDOM.select(UI_CONFIG.SELECTORS.PROGRESS_BAR_FILL, this.progressContainer);
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress bar element:', progressBar);
         if (progressBar) {
             progressBar.style.width = `${percentage}%`;
-            console.log('🔍 [UI MANAGER DEBUG] Progress bar updated to:', `${percentage}%`);
+            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress bar updated to:', `${percentage}%`);
         } else {
-            console.error('🔍 [UI MANAGER DEBUG] Progress bar element not found');
+            (window.logger?.error || console.error)('🔍 [UI MANAGER DEBUG] Progress bar element not found');
         }
         
-        // Update percentage text
-        const percentageElement = this.progressContainer.querySelector('.progress-percentage');
-        console.log('🔍 [UI MANAGER DEBUG] Percentage element:', percentageElement);
+        // Update percentage text using Safe DOM
+        const percentageElement = safeDOM.select(UI_CONFIG.SELECTORS.PROGRESS_PERCENTAGE, this.progressContainer);
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Percentage element:', percentageElement);
         if (percentageElement) {
-            percentageElement.textContent = `${percentage}%`;
-            console.log('🔍 [UI MANAGER DEBUG] Percentage text updated to:', `${percentage}%`);
+            safeDOM.setText(percentageElement, `${percentage}%`);
+            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Percentage text updated to:', `${percentage}%`);
         } else {
-            console.error('🔍 [UI MANAGER DEBUG] Percentage element not found');
+            (window.logger?.error || console.error)('🔍 [UI MANAGER DEBUG] Percentage element not found');
         }
         
-        // Update progress text
-        const progressText = this.progressContainer.querySelector('.progress-text');
-        console.log('🔍 [UI MANAGER DEBUG] Progress text element:', progressText);
+        // Update progress text using Safe DOM
+        const progressText = safeDOM.select(UI_CONFIG.SELECTORS.PROGRESS_TEXT, this.progressContainer);
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress text element:', progressText);
         if (progressText && message) {
-            progressText.textContent = message;
-            console.log('🔍 [UI MANAGER DEBUG] Progress text updated to:', message);
+            safeDOM.setText(progressText, message);
+            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress text updated to:', message);
         } else {
-            console.error('🔍 [UI MANAGER DEBUG] Progress text element not found or no message');
+            (window.logger?.error || console.error)('🔍 [UI MANAGER DEBUG] Progress text element not found or no message');
         }
         
         this.logger.debug('Progress updated', { current, total, percentage, message });
-        console.log('🔍 [UI MANAGER DEBUG] updateProgress() completed');
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] updateProgress() completed');
     }
     
     /**
@@ -623,10 +646,10 @@ class UIManager {
     updateHomeTokenStatus(isLoading = false, message = '') {
         const homeTokenStatus = document.getElementById('home-token-status');
         if (!homeTokenStatus) {
-            console.log('❌ home-token-status element not found!');
+            (window.logger?.error || console.log)('❌ home-token-status element not found!');
             return;
         }
-        console.log('✅ Found home-token-status element:', homeTokenStatus);
+        (window.logger?.debug || console.log)('✅ Found home-token-status element:', homeTokenStatus);
 
         // Check current token status to determine button color
         let hasValidToken = false;
@@ -651,14 +674,14 @@ class UIManager {
                 buttonText = 'Token Valid';
             }
         } catch (error) {
-            console.log('Error checking token status:', error);
+            (window.logger?.error || console.log)('Error checking token status:', error);
         }
 
         // Move to bottom of sidebar
         const sidebar = document.querySelector('.sidebar');
         if (sidebar && homeTokenStatus.parentNode !== sidebar) {
             sidebar.appendChild(homeTokenStatus);
-            console.log('✅ Moved home-token-status to bottom of sidebar');
+            (window.logger?.debug || console.log)('✅ Moved home-token-status to bottom of sidebar');
         }
 
         // Add debug label to home-token-status container (red, above box)
@@ -696,7 +719,7 @@ class UIManager {
             `;
             
             homeTokenStatus.appendChild(debugLabel);
-            console.log('✅ Added debug label to home-token-status container');
+            (window.logger?.debug || console.log)('✅ Added debug label to home-token-status container');
         }
 
         if (isLoading) {
@@ -757,7 +780,7 @@ class UIManager {
             
             return true;
         } catch (error) {
-            console.error('Error checking for stashed token:', error);
+            (window.logger?.error || console.error)('Error checking for stashed token:', error);
             return false;
         }
     }
@@ -899,7 +922,8 @@ class UIManager {
      */
     hideProgress() {
         if (this.progressContainer) {
-            this.progressContainer.style.display = 'none';
+            const safeDOM = window.safeDOM || new SafeDOM(this.logger);
+            safeDOM.hide(this.progressContainer);
             this.logger.debug('Progress display hidden');
         }
     }
@@ -908,41 +932,41 @@ class UIManager {
      * Show progress section with enhanced debugging and fallback mechanisms
      */
     showProgress() {
-        console.log('🔍 [UI MANAGER DEBUG] showProgress() called');
-        console.log('🔍 [UI MANAGER DEBUG] this.progressContainer:', this.progressContainer);
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] showProgress() called');
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] this.progressContainer:', this.progressContainer);
         
         // Try multiple ways to get the progress container
         let progressContainer = this.progressContainer;
         
         if (!progressContainer) {
-            console.log('🔍 [UI MANAGER DEBUG] Progress container not found in UI manager, trying direct access...');
+            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress container not found in UI manager, trying direct access...');
             progressContainer = document.getElementById('progress-container');
         }
         
         if (!progressContainer) {
-            console.log('🔍 [UI MANAGER DEBUG] Progress container not found by ID, trying ElementRegistry...');
+            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress container not found by ID, trying ElementRegistry...');
             if (typeof ElementRegistry !== 'undefined' && ElementRegistry.progressContainer) {
                 progressContainer = ElementRegistry.progressContainer();
             }
         }
         
         if (!progressContainer) {
-            console.log('🔍 [UI MANAGER DEBUG] Progress container not found by ElementRegistry, trying class selector...');
+            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress container not found by ElementRegistry, trying class selector...');
             progressContainer = document.querySelector('.progress-container');
         }
         
         if (!progressContainer) {
-            console.error('🔍 [UI MANAGER DEBUG] Progress container not found by any method');
-            console.error('🔍 [UI MANAGER DEBUG] Available containers with "progress" in ID:', 
+            (window.logger?.error || console.error)('🔍 [UI MANAGER DEBUG] Progress container not found by any method');
+            (window.logger?.error || console.error)('🔍 [UI MANAGER DEBUG] Available containers with "progress" in ID:', 
                 Array.from(document.querySelectorAll('[id*="progress"]')).map(el => el.id));
-            console.error('🔍 [UI MANAGER DEBUG] Available containers with "progress" in class:', 
+            (window.logger?.error || console.error)('🔍 [UI MANAGER DEBUG] Available containers with "progress" in class:', 
                 Array.from(document.querySelectorAll('[class*="progress"]')).map(el => ({ id: el.id, className: el.className })));
             return;
         }
         
-        console.log('🔍 [UI MANAGER DEBUG] Progress container found, showing...');
-        console.log('🔍 [UI MANAGER DEBUG] Current display style:', progressContainer.style.display);
-        console.log('🔍 [UI MANAGER DEBUG] Current visibility:', progressContainer.offsetParent !== null ? 'visible' : 'hidden');
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress container found, showing...');
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Current display style:', progressContainer.style.display);
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Current visibility:', progressContainer.offsetParent !== null ? 'visible' : 'hidden');
         
         // Force show the progress container
         progressContainer.style.display = 'block';
@@ -956,9 +980,9 @@ class UIManager {
         // Force layout recalculation
         progressContainer.offsetHeight;
         
-        console.log('🔍 [UI MANAGER DEBUG] Display style after setting to block:', progressContainer.style.display);
-        console.log('🔍 [UI MANAGER DEBUG] Container visibility:', progressContainer.offsetParent !== null ? 'visible' : 'hidden');
-        console.log('🔍 [UI MANAGER DEBUG] Container dimensions:', {
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Display style after setting to block:', progressContainer.style.display);
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Container visibility:', progressContainer.offsetParent !== null ? 'visible' : 'hidden');
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Container dimensions:', {
             offsetWidth: progressContainer.offsetWidth,
             offsetHeight: progressContainer.offsetHeight,
             clientWidth: progressContainer.clientWidth,
@@ -979,7 +1003,7 @@ class UIManager {
         setTimeout(() => {
             const isVisible = progressContainer.offsetParent !== null;
             const rect = progressContainer.getBoundingClientRect();
-            console.log('🔍 [UI MANAGER DEBUG] Final verification:', {
+            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Final verification:', {
                 isVisible,
                 dimensions: { width: rect.width, height: rect.height },
                 display: progressContainer.style.display,
@@ -1170,30 +1194,30 @@ class UIManager {
      * @param {string} options.populationId - Population ID
      */
     startImportOperation(options = {}) {
-        console.log('🔍 [UI MANAGER DEBUG] startImportOperation() called with options:', options);
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] startImportOperation() called with options:', options);
         
         const { operationType, totalUsers, populationName, populationId } = options;
         
-        console.log('🔍 [UI MANAGER DEBUG] About to call showProgress()...');
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] About to call showProgress()...');
         this.showProgress();
-        console.log('🔍 [UI MANAGER DEBUG] showProgress() completed');
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] showProgress() completed');
         
-        console.log('🔍 [UI MANAGER DEBUG] About to call updateProgress()...');
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] About to call updateProgress()...');
         this.updateProgress(0, totalUsers || 0, 'Starting import operation...');
-        console.log('🔍 [UI MANAGER DEBUG] updateProgress() completed');
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] updateProgress() completed');
         
         // Update operation details
         const operationTypeElement = document.querySelector('.detail-value.operation-type');
-        console.log('🔍 [UI MANAGER DEBUG] Operation type element:', operationTypeElement);
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Operation type element:', operationTypeElement);
         if (operationTypeElement) {
             operationTypeElement.textContent = operationType || 'Import';
-            console.log('🔍 [UI MANAGER DEBUG] Operation type updated to:', operationType || 'Import');
+            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Operation type updated to:', operationType || 'Import');
         } else {
-            console.error('🔍 [UI MANAGER DEBUG] Operation type element not found');
+            (window.logger?.error || console.error)('🔍 [UI MANAGER DEBUG] Operation type element not found');
         }
         
         this.logger.info('Import operation started', { operationType, totalUsers, populationName, populationId });
-        console.log('🔍 [UI MANAGER DEBUG] startImportOperation() completed');
+        (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] startImportOperation() completed');
     }
     
     /**

@@ -1,0 +1,614 @@
+/**
+ * Navigation Subsystem
+ * 
+ * Manages all navigation, routing, and view switching functionality.
+ * Extracted from app.js to provide centralized navigation control.
+ * 
+ * Features:
+ * - View switching and routing
+ * - Navigation state management
+ * - URL handling and deep linking
+ * - View-specific initialization
+ * - Navigation history tracking
+ */
+
+import { createLogger } from '../utils/browser-logging-service.js';
+
+export class NavigationSubsystem {
+    constructor(logger, uiManager, settingsManager) {
+        this.logger = logger || createLogger({
+            serviceName: 'navigation-subsystem',
+            environment: 'development'
+        });
+        
+        this.uiManager = uiManager;
+        this.settingsManager = settingsManager;
+        
+        // Navigation state
+        this.currentView = 'home'; // Default view
+        this.previousView = null;
+        this.navigationHistory = [];
+        this.viewInitializers = new Map();
+        this.viewCleanupHandlers = new Map();
+        
+        // Navigation elements
+        this.navItems = null;
+        this.viewContainers = null;
+        
+        this.logger.info('Navigation subsystem initialized');
+    }
+    
+    /**
+     * Initialize the navigation subsystem
+     */
+    async init() {
+        try {
+            this.logger.info('Initializing navigation subsystem...');
+            
+            // Find navigation elements
+            this.navItems = document.querySelectorAll('[data-view]');
+            this.viewContainers = document.querySelectorAll('.view-container, [id$="-view"]');
+            
+            this.logger.info('Navigation elements found', {
+                navItems: this.navItems.length,
+                viewContainers: this.viewContainers.length
+            });
+            
+            // Set up navigation event listeners
+            this.setupNavigationListeners();
+            
+            // Register default view initializers
+            this.registerDefaultViewInitializers();
+            
+            // Initialize current view
+            await this.showView(this.currentView);
+            
+            this.logger.info('Navigation subsystem initialized successfully');
+        } catch (error) {
+            this.logger.error('Failed to initialize navigation subsystem', { error: error.message });
+            throw error;
+        }
+    }
+    
+    /**
+     * Set up navigation event listeners
+     */
+    setupNavigationListeners() {
+        this.navItems.forEach(item => {
+            item.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const view = item.getAttribute('data-view');
+                
+                this.logger.debug('Navigation item clicked', { view });
+                
+                if (view && view !== this.currentView) {
+                    await this.navigateToView(view);
+                }
+            });
+        });
+        
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', (e) => {
+            if (e.state && e.state.view) {
+                this.showView(e.state.view, false); // Don't push to history
+            }
+        });
+        
+        this.logger.debug('Navigation listeners set up');
+    }
+    
+    /**
+     * Navigate to a specific view
+     * @param {string} view - The view to navigate to
+     * @param {Object} options - Navigation options
+     */
+    async navigateToView(view, options = {}) {
+        try {
+            this.logger.info('Navigating to view', { from: this.currentView, to: view });
+            
+            // Validate view exists
+            if (!this.isValidView(view)) {
+                this.logger.warn('Invalid view requested', { view });
+                return false;
+            }
+            
+            // Check if navigation is allowed
+            if (options.force !== true && !await this.canNavigateFrom(this.currentView)) {
+                this.logger.info('Navigation blocked by current view', { currentView: this.currentView });
+                return false;
+            }
+            
+            // Show the view
+            const success = await this.showView(view, options.pushToHistory !== false);
+            
+            if (success) {
+                this.logger.info('Navigation completed successfully', { view });
+            }
+            
+            return success;
+        } catch (error) {
+            this.logger.error('Navigation failed', { view, error: error.message });
+            return false;
+        }
+    }
+    
+    /**
+     * Show a specific view
+     * @param {string} view - The view to show
+     * @param {boolean} pushToHistory - Whether to push to browser history
+     */
+    async showView(view, pushToHistory = true) {
+        try {
+            this.logger.debug('Showing view', { view, pushToHistory });
+            
+            // =================================================================
+            // VIEW VALIDATION AND SECURITY CHECKS
+            // =================================================================
+            
+            /**
+             * Validate target view exists and is accessible
+             * 
+             * Prevents navigation to non-existent or restricted views.
+             * Returns early with false status for invalid requests.
+             */
+            if (!this.isValidView(view)) {
+                this.logger.warn('Invalid view requested - navigation blocked', { 
+                    view, 
+                    validViews: ['home', 'import', 'export', 'modify', 'delete-csv', 'settings', 'logs', 'history', 'analytics']
+                });
+                return false;
+            }
+            
+            // =================================================================
+            // STATE MANAGEMENT AND HISTORY TRACKING
+            // =================================================================
+            
+            /**
+             * Store current view as previous for back navigation support
+             * 
+             * Enables proper back button functionality and navigation breadcrumbs.
+             * Critical for user experience and navigation consistency.
+             */
+            this.previousView = this.currentView;
+            
+            // =================================================================
+            // VIEW TRANSITION EXECUTION
+            // =================================================================
+            
+            /**
+             * Hide all currently visible views to prevent display conflicts
+             * 
+             * Ensures clean slate for new view display and prevents
+             * CSS conflicts or overlapping content issues.
+             */
+            this.hideAllViews();
+            
+            /**
+             * Show the target view with proper activation styling
+             * 
+             * Handles DOM element visibility and applies active state classes
+             * for consistent styling and accessibility support.
+             */
+            const viewElement = document.getElementById(`${view}-view`);
+            if (viewElement) {
+                viewElement.style.display = 'block';
+                viewElement.classList.add('active');
+                
+                // VERIFY: Ensure view is properly visible and accessible
+                this.logger.debug('View element activated', { 
+                    view, 
+                    elementId: `${view}-view`,
+                    isVisible: viewElement.offsetHeight > 0
+                });
+            } else {
+                // DEBUG: Log missing view elements for troubleshooting
+                this.logger.warn('View element not found in DOM', { 
+                    view, 
+                    elementId: `${view}-view`,
+                    availableViews: Array.from(document.querySelectorAll('[id$="-view"]')).map(el => el.id)
+                });
+                
+                // Continue execution - some views may be dynamically created
+            }
+            
+            // =================================================================
+            // UI STATE UPDATES
+            // =================================================================
+            
+            /**
+             * Update navigation state including active nav items and breadcrumbs
+             * 
+             * Ensures visual consistency in navigation elements and provides
+             * clear indication of current location to users.
+             */
+            this.updateNavigationState(view);
+            
+            /**
+             * Update page title and meta information for SEO and bookmarking
+             * 
+             * Provides meaningful page titles for browser tabs and bookmarks.
+             * Critical for user experience and accessibility.
+             */
+            this.updatePageTitle(view);
+            
+            // =================================================================
+            // NAVIGATION HISTORY MANAGEMENT
+            // =================================================================
+            
+            /**
+             * Update internal navigation state tracking
+             * 
+             * Maintains current view state for other subsystems and components
+             * that need to react to navigation changes.
+             */
+            this.currentView = view;
+            
+            /**
+             * Add navigation event to history for analytics and back navigation
+             * 
+             * Tracks user navigation patterns and enables proper back button support.
+             * Only added when pushToHistory is true to avoid duplicate entries.
+             */
+            if (pushToHistory) {
+                this.navigationHistory.push({
+                    view,
+                    timestamp: new Date().toISOString(),
+                    fromView: this.previousView,
+                    transitionTime: Date.now() - transitionStartTime
+                });
+                
+                /**
+                 * Update browser history for deep linking and bookmarking support
+                 * 
+                 * Enables users to bookmark specific views and use browser
+                 * back/forward buttons naturally.
+                 */
+                try {
+                    window.history.pushState({ view }, '', `#${view}`);
+                } catch (historyError) {
+                    // DEBUG: Log browser history API failures
+                    this.logger.warn('Failed to update browser history', {
+                        view,
+                        error: historyError.message
+                    });
+                }
+            }
+            
+            // =================================================================
+            // VIEW-SPECIFIC INITIALIZATION
+            // =================================================================
+            
+            /**
+             * Execute view-specific initialization logic
+             * 
+             * Runs registered initializers for the target view to set up
+             * view-specific functionality, data loading, and event listeners.
+             */
+            if (this.viewInitializers.has(view)) {
+                const initializer = this.viewInitializers.get(view);
+                if (typeof initializer === 'function') {
+                    try {
+                        await initializer();
+                        this.logger.debug('View initializer completed', { view });
+                    } catch (initError) {
+                        // DEBUG: Log initializer failures but continue navigation
+                        this.logger.error('View initializer failed', {
+                            view,
+                            error: initError.message,
+                            stack: initError.stack
+                        });
+                    }
+                }
+            }
+            
+            // =================================================================
+            // PREVIOUS VIEW CLEANUP
+            // =================================================================
+            
+            /**
+             * Clean up previous view resources and event listeners
+             * 
+             * Prevents memory leaks and ensures proper resource management
+             * by cleaning up view-specific resources when leaving a view.
+             */
+            if (this.previousView && this.viewCleanupHandlers.has(this.previousView)) {
+                const cleanup = this.viewCleanupHandlers.get(this.previousView);
+                if (typeof cleanup === 'function') {
+                    try {
+                        cleanup();
+                        this.logger.debug('Previous view cleanup completed', { previousView: this.previousView });
+                    } catch (cleanupError) {
+                        // DEBUG: Log cleanup failures for memory leak investigation
+                        this.logger.warn('Previous view cleanup failed', {
+                            previousView: this.previousView,
+                            error: cleanupError.message
+                        });
+                    }
+                }
+            }
+            
+            // =================================================================
+            // SUCCESS LOGGING AND METRICS
+            // =================================================================
+            
+            const transitionTime = Date.now() - transitionStartTime;
+            this.logger.info('View shown successfully', { 
+                view, 
+                previousView: this.previousView,
+                transitionTime,
+                historyLength: this.navigationHistory.length
+            });
+            
+            return true;
+            
+        } catch (error) {
+            // =================================================================
+            // ERROR HANDLING AND RECOVERY
+            // =================================================================
+            
+            const transitionTime = Date.now() - transitionStartTime;
+            this.logger.error('Failed to show view - attempting recovery', { 
+                view, 
+                error: error.message,
+                stack: error.stack,
+                transitionTime,
+                currentView: this.currentView
+            });
+            
+            // TODO: Implement view transition recovery mechanisms
+            return false;
+        }
+    }
+    
+    /**
+     * Hide all views
+     */
+    hideAllViews() {
+        this.viewContainers.forEach(container => {
+            container.style.display = 'none';
+            container.classList.remove('active');
+        });
+        
+        this.logger.debug('All views hidden');
+    }
+    
+    /**
+     * Update navigation state (active nav items, etc.)
+     * @param {string} view - The active view
+     */
+    updateNavigationState(view) {
+        // Update navigation items
+        this.navItems.forEach(item => {
+            item.classList.remove('active');
+            if (item.getAttribute('data-view') === view) {
+                item.classList.add('active');
+            }
+        });
+        
+        // Update page title if needed
+        this.updatePageTitle(view);
+        
+        this.logger.debug('Navigation state updated', { view });
+    }
+    
+    /**
+     * Update page title based on current view
+     * @param {string} view - The current view
+     */
+    updatePageTitle(view) {
+        const titles = {
+            'import': 'Import Users',
+            'export': 'Export Users', 
+            'modify': 'Modify Users',
+            'delete-csv': 'Delete Users',
+            'settings': 'Settings',
+            'logs': 'Logs',
+            'history': 'History'
+        };
+        
+        const baseTitle = 'PingOne User Import v6.5.1.1';
+        const viewTitle = titles[view];
+        
+        if (viewTitle) {
+            document.title = `${viewTitle} - ${baseTitle}`;
+        } else {
+            document.title = baseTitle;
+        }
+    }
+    
+    /**
+     * Register a view initializer
+     * @param {string} view - The view name
+     * @param {Function} initializer - The initializer function
+     */
+    registerViewInitializer(view, initializer) {
+        this.viewInitializers.set(view, initializer);
+        this.logger.debug('View initializer registered', { view });
+    }
+    
+    /**
+     * Register a view cleanup handler
+     * @param {string} view - The view name
+     * @param {Function} cleanup - The cleanup function
+     */
+    registerViewCleanup(view, cleanup) {
+        this.viewCleanupHandlers.set(view, cleanup);
+        this.logger.debug('View cleanup handler registered', { view });
+    }
+    
+    /**
+     * Register default view initializers
+     */
+    registerDefaultViewInitializers() {
+        // Import view initializer
+        this.registerViewInitializer('import', async () => {
+            if (typeof window.app?.loadPopulations === 'function') {
+                await window.app.loadPopulations('import-population-select');
+            }
+        });
+        
+        // Export view initializer
+        this.registerViewInitializer('export', async () => {
+            if (window.exportManager && typeof window.exportManager.loadPopulations === 'function') {
+                await window.exportManager.loadPopulations();
+            }
+        });
+        
+        // Delete view initializer
+        this.registerViewInitializer('delete-csv', async () => {
+            if (window.deleteManager && typeof window.deleteManager.loadPopulations === 'function') {
+                await window.deleteManager.loadPopulations();
+            }
+        });
+        
+        // Modify view initializer
+        this.registerViewInitializer('modify', async () => {
+            if (typeof window.app?.loadPopulations === 'function') {
+                await window.app.loadPopulations('modify-population-select');
+            }
+        });
+        
+        // Logs/History view initializer
+        this.registerViewInitializer('logs', async () => {
+            if (window.logManager && typeof window.logManager.loadLogs === 'function') {
+                window.logManager.loadLogs();
+            }
+        });
+        
+        this.registerViewInitializer('history', async () => {
+            if (window.logManager && typeof window.logManager.loadLogs === 'function') {
+                window.logManager.loadLogs();
+            }
+        });
+        
+        this.logger.debug('Default view initializers registered');
+    }
+    
+    /**
+     * Check if a view is valid
+     * @param {string} view - The view to validate
+     * @returns {boolean} - Whether the view is valid
+     */
+    isValidView(view) {
+        const validViews = ['home', 'import', 'export', 'modify', 'delete-csv', 'settings', 'logs', 'history', 'analytics'];
+        return validViews.includes(view);
+    }
+    
+    /**
+     * Check if navigation is allowed from current view
+     * @param {string} fromView - The view to navigate from
+     * @returns {Promise<boolean>} - Whether navigation is allowed
+     */
+    async canNavigateFrom(fromView) {
+        // Check for unsaved changes, running operations, etc.
+        
+        // Check if import is running
+        if (fromView === 'import' && window.app?.isImportRunning) {
+            const confirmed = confirm('Import is currently running. Are you sure you want to leave this page?');
+            return confirmed;
+        }
+        
+        // Check if export is running
+        if (fromView === 'export' && window.exportManager?.isExportRunning) {
+            const confirmed = confirm('Export is currently running. Are you sure you want to leave this page?');
+            return confirmed;
+        }
+        
+        // Check if delete is running
+        if (fromView === 'delete-csv' && window.deleteManager?.isDeleteRunning) {
+            const confirmed = confirm('Delete operation is currently running. Are you sure you want to leave this page?');
+            return confirmed;
+        }
+        
+        // Check for unsaved settings
+        if (fromView === 'settings' && this.settingsManager?.hasUnsavedChanges?.()) {
+            const confirmed = confirm('You have unsaved settings. Are you sure you want to leave without saving?');
+            return confirmed;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Get current view
+     * @returns {string} - The current view
+     */
+    getCurrentView() {
+        return this.currentView;
+    }
+    
+    /**
+     * Get previous view
+     * @returns {string|null} - The previous view
+     */
+    getPreviousView() {
+        return this.previousView;
+    }
+    
+    /**
+     * Get navigation history
+     * @returns {Array} - The navigation history
+     */
+    getNavigationHistory() {
+        return [...this.navigationHistory];
+    }
+    
+    /**
+     * Go back to previous view
+     */
+    async goBack() {
+        if (this.previousView) {
+            await this.navigateToView(this.previousView);
+        } else if (this.navigationHistory.length > 1) {
+            const previousEntry = this.navigationHistory[this.navigationHistory.length - 2];
+            await this.navigateToView(previousEntry.view);
+        }
+    }
+    
+    /**
+     * Refresh current view
+     */
+    async refreshCurrentView() {
+        await this.showView(this.currentView, false);
+    }
+    
+    /**
+     * Get view statistics
+     * @returns {Object} - View usage statistics
+     */
+    getViewStats() {
+        const stats = {};
+        
+        this.navigationHistory.forEach(entry => {
+            if (!stats[entry.view]) {
+                stats[entry.view] = {
+                    count: 0,
+                    lastVisited: null
+                };
+            }
+            stats[entry.view].count++;
+            stats[entry.view].lastVisited = entry.timestamp;
+        });
+        
+        return stats;
+    }
+    
+    /**
+     * Clean up the navigation subsystem
+     */
+    cleanup() {
+        // Remove event listeners
+        this.navItems.forEach(item => {
+            item.removeEventListener('click', this.handleNavClick);
+        });
+        
+        window.removeEventListener('popstate', this.handlePopState);
+        
+        // Clear state
+        this.viewInitializers.clear();
+        this.viewCleanupHandlers.clear();
+        this.navigationHistory = [];
+        
+        this.logger.info('Navigation subsystem cleaned up');
+    }
+}

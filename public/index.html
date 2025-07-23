@@ -48,6 +48,10 @@
     <link rel="stylesheet" href="/css/version-widget.css">
     <!-- Note: Individual ES module scripts removed - all functionality now bundled in bundle.js -->
     <!-- ES modules are properly bundled and transpiled via Browserify + Babel -->
+    <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="expires" content="0">
+    <link rel="stylesheet" href="css/bug-fix-notifications.css">
 </head>
 <body class="ping-identity-theme">
     <!-- Startup Wait Screen -->
@@ -1201,7 +1205,8 @@
     <!-- CRITICAL: Direct bundle loading - no more dynamic manifest system -->
     <!-- This loads the latest bundle directly without complex API calls -->
     <!-- Last fixed: 2025-07-22 - Replaced broken dynamic loading system -->
-    <script src="js/bundle-1753181399.js"></script>
+        <script src="js/bug-fix-loader.js"></script>
+    <script src="js/bundle-1753229075.js"></script>
     
     <!-- Fallback error handling for bundle loading -->
     <script>
@@ -1233,6 +1238,7 @@
     <script src="/js/import-api-fix.js"></script>
 
     
-    <div class="version-widget">v6.5.1.1</div>
+    <!-- Version Display Component -->
+    <div id="version-display" class="version-widget">v6.5.1.1</div>
 </body>
 </html>

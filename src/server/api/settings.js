@@ -3,6 +3,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { promises as fs } from 'fs';
 import winston from 'winston';
+import configManager from '../../shared/config-manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -474,49 +475,28 @@ async function fetchDefaultPopulation(environmentId, clientId, clientSecret) {
  */
 router.get("/", async (req, res) => {
     try {
-        const settings = await readSettings();
-        
-        // Get the encrypted secret
-        const encryptedSecret = settings['api-secret'] || settings.apiSecret || '';
-        let plainSecret = '';
-        
-        // If the secret is encrypted (starts with 'enc:'), decrypt it
-        if (encryptedSecret.startsWith('enc:')) {
-            try {
-                // Use the encryption key from environment variables or a default one
-                const encryptionKey = process.env.ENCRYPTION_KEY || 'default-encryption-key';
-                // Simple decryption (replace with your actual decryption logic)
-                plainSecret = encryptedSecret.substring(4); // Remove 'enc:' prefix
-                // In a real implementation, you would decrypt the secret here
-                // plainSecret = await decrypt(encryptedSecret.substring(4), encryptionKey);
-            } catch (error) {
-                console.error('Error decrypting API secret:', error);
-                // If decryption fails, return empty string
-                plainSecret = '';
-            }
-        } else {
-            // If not encrypted, use as is
-            plainSecret = encryptedSecret;
+        if (!configManager.isInitialized) {
+            await configManager.init();
         }
         
-        // Convert kebab-case to camelCase for frontend compatibility
-        const frontendSettings = {
-            environmentId: settings['environment-id'] || settings.environmentId || '',
-            apiClientId: settings['api-client-id'] || settings.apiClientId || '',
-            apiSecret: plainSecret, // Return the decrypted secret
-            populationId: settings['population-id'] || settings.populationId || '',
-            region: settings.region || 'NorthAmerica',
-            rateLimit: parseInt(settings['rate-limit'] || settings.rateLimit || '100')
+        const settings = configManager.getAll();
+        
+        // Get the plain text secret from the config manager, which handles decryption
+        const plainSecret = configManager.get('pingone.clientSecret');
+
+        // The configManager already provides settings in a clean, camelCased format.
+        // We just need to structure the response correctly.
+        const responseData = {
+            ...settings,
+            apiSecret: plainSecret, // Ensure apiSecret is included for client-side compatibility
+            debugMode: settings.debug?.enableDebugMode || false // Expose debugMode
         };
         
-        res.json({ success: true, data: frontendSettings });
+        res.json({ success: true, data: responseData });
+        
     } catch (error) {
-        logger.error('Error getting settings', { error: error.message });
-        res.status(500).json({ 
-            success: false, 
-            error: 'Failed to get settings',
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
+        logger.error("Error reading settings via ConfigManager", { error: error.message });
+        res.status(500).json({ success: false, error: "Failed to retrieve settings" });
     }
 });
 

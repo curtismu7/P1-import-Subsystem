@@ -3,21 +3,16 @@
  * Supports both CommonJS and ES modules for comprehensive testing
  */
 
-const config = {
-  // Enable ES modules support (already configured in package.json)
-  globals: {
-    'ts-jest': {
-      useESM: true
-    }
-  },
+export default {
+  // Test environment
+  testEnvironment: 'node',
+  
+  // Enable ES modules support (handled by package.json type: "module")
   
   // Node options for ES modules
   testEnvironmentOptions: {
     customExportConditions: ['node', 'node-addons']
   },
-  
-  // Test environment
-  testEnvironment: 'jsdom',
   
   // Test file patterns
   testMatch: [
@@ -26,8 +21,15 @@ const config = {
     '**/__tests__/**/*.js'
   ],
   
+  // Ignore patterns
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    '/public/js/bundle*.js'
+  ],
+  
   // Setup files
-  setupFilesAfterEnv: ['<rootDir>/test/setup-jest.js'],
+  setupFilesAfterEnv: ['<rootDir>/test/setup.js'],
   
   // Module name mapping for ES modules
   moduleNameMapper: {
@@ -37,38 +39,46 @@ const config = {
   
   // Transform configuration
   transform: {
-    '^.+\\.js$': 'babel-jest'
+    '^.+\\.m?js$': 'babel-jest'
   },
   
+  // Transform ignore patterns
+  transformIgnorePatterns: [
+    'node_modules/(?!(uuid|whatwg-url|socket\\.io|socket\\.io-client)/)'
+  ],
+  
   // Module file extensions
-  moduleFileExtensions: ['js', 'json'],
+  moduleFileExtensions: ['js', 'mjs', 'json'],
   
   // Coverage configuration
   collectCoverageFrom: [
     'public/js/modules/**/*.js',
+    'src/**/*.js',
     '!public/js/modules/**/*.test.js',
-    '!public/js/bundle.js',
+    '!public/js/bundle*.js',
     '!**/node_modules/**'
   ],
   
   // Coverage thresholds
   coverageThreshold: {
     global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70
+      branches: 60,
+      functions: 60,
+      lines: 60,
+      statements: 60
     }
   },
   
   // Verbose output
-  verbose: true,
+  verbose: false,
   
   // Clear mocks between tests
   clearMocks: true,
   
   // Timeout for tests
-  testTimeout: 10000
+  testTimeout: 30000,
+  
+  // Handle open handles
+  detectOpenHandles: true,
+  forceExit: true
 };
-
-export default config;

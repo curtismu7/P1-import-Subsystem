@@ -15,7 +15,7 @@ class CredentialsManager {
      */
     init() {
         this.loadCredentials();
-        console.log('Credentials Manager initialized');
+        (window.logger?.info || console.log)('Credentials Manager initialized');
     }
 
     /**
@@ -40,13 +40,13 @@ class CredentialsManager {
             const stored = localStorage.getItem(this.storageKey);
             if (stored) {
                 this.credentials = JSON.parse(stored);
-                console.log('Credentials loaded from localStorage');
+                (window.logger?.debug || console.log)('Credentials loaded from localStorage');
             } else {
                 this.credentials = this.getDefaultCredentials();
-                console.log('No stored credentials found, using defaults');
+                (window.logger?.debug || console.log)('No stored credentials found, using defaults');
             }
         } catch (error) {
-            console.warn('Failed to load credentials from localStorage:', error);
+            (window.logger?.warn || console.warn)('Failed to load credentials from localStorage:', error);
             this.credentials = this.getDefaultCredentials();
         }
     }
@@ -59,9 +59,9 @@ class CredentialsManager {
         try {
             this.credentials = { ...this.credentials, ...credentials };
             localStorage.setItem(this.storageKey, JSON.stringify(this.credentials));
-            console.log('Credentials saved to localStorage');
+            (window.logger?.debug || console.log)('Credentials saved to localStorage');
         } catch (error) {
-            console.error('Failed to save credentials to localStorage:', error);
+            (window.logger?.error || console.error)('Failed to save credentials to localStorage:', error);
         }
     }
 
@@ -89,9 +89,9 @@ class CredentialsManager {
         try {
             localStorage.removeItem(this.storageKey);
             this.credentials = this.getDefaultCredentials();
-            console.log('Credentials cleared');
+            (window.logger?.debug || console.log)('Credentials cleared');
         } catch (error) {
-            console.error('Failed to clear credentials:', error);
+            (window.logger?.error || console.error)('Failed to clear credentials:', error);
         }
     }
 
