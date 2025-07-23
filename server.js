@@ -337,9 +337,18 @@ setupSwagger(app);
 
 // Static file serving with caching headers
 app.use(express.static(path.join(__dirname, 'public'), {
-    maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0,
     etag: true,
-    lastModified: true
+    lastModified: true,
+    setHeaders: (res, filePath) => {
+        const fileExt = path.extname(filePath);
+        if (fileExt === '.html' || filePath.includes('bundle-')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+        } else {
+            res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache other assets for 1 day
+        }
+    }
 }));
 
 console.log('📚 Swagger UI available at http://localhost:4000/swagger.html');
