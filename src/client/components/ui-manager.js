@@ -15,6 +15,7 @@ import { createCircularProgress } from '../../../public/js/modules/circular-prog
 import { ElementRegistry } from '../../../public/js/modules/element-registry.js';
 import progressManager from '../../../public/js/modules/progress-manager.js';
 import { ErrorTypes } from '../../../public/js/modules/error/error-types.js';
+import { SafeDOM } from '../../../public/js/modules/utils/safe-dom.js';
 
 // Enable debug mode for development (set to false in production)
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
@@ -73,6 +74,130 @@ class UIManager {
                     error: error.message 
                 }
             });
+        }
+    }
+
+    /**
+     * Setup UI components and initialize interface elements
+     * This method is called during application initialization
+     */
+    setupUI() {
+        try {
+            this.logger.debug('Setting up UI components...');
+            
+            // Initialize core UI elements
+            this.setupElements();
+            
+            // Setup event listeners for UI interactions
+            this.setupEventListeners();
+            
+            // Initialize status indicators
+            this.initializeStatusIndicators();
+            
+            // Setup progress tracking
+            this.initializeProgressTracking();
+            
+            this.logger.info('UI setup completed successfully');
+        } catch (error) {
+            this.logger.error('Error during UI setup:', error);
+            this.errorManager.handleError(error, {
+                component: 'UIManager',
+                operation: 'setupUI',
+                severity: 'error',
+                context: { 
+                    message: 'Failed to setup UI components',
+                    error: error.message 
+                }
+            });
+        }
+    }
+
+    /**
+     * Setup event listeners for UI interactions
+     * @private
+     */
+    setupEventListeners() {
+        try {
+            // Setup global error handling
+            window.addEventListener('error', (event) => {
+                this.handleGlobalError(event.error, {
+                    type: 'global_error',
+                    filename: event.filename,
+                    lineno: event.lineno,
+                    colno: event.colno
+                });
+            });
+
+            // Setup unhandled promise rejection handling
+            window.addEventListener('unhandledrejection', (event) => {
+                this.handleGlobalError(event.reason, {
+                    type: 'unhandled_promise_rejection'
+                });
+            });
+
+            this.logger.debug('Event listeners setup completed');
+        } catch (error) {
+            this.logger.error('Error setting up event listeners:', error);
+        }
+    }
+
+    /**
+     * Initialize status indicators
+     * @private
+     */
+    initializeStatusIndicators() {
+        try {
+            // Initialize token status
+            if (this.tokenStatusElement) {
+                this.updateTokenStatus('checking', 'Checking token status...');
+            }
+
+            // Initialize connection status
+            if (this.connectionStatusElement) {
+                this.updateConnectionStatus('connecting', 'Connecting...');
+            }
+
+            this.logger.debug('Status indicators initialized');
+        } catch (error) {
+            this.logger.error('Error initializing status indicators:', error);
+        }
+    }
+
+    /**
+     * Initialize progress tracking components
+     * @private
+     */
+    initializeProgressTracking() {
+        try {
+            // Hide progress initially
+            if (this.progressContainer) {
+                this.hideProgress();
+            }
+
+            this.logger.debug('Progress tracking initialized');
+        } catch (error) {
+            this.logger.error('Error initializing progress tracking:', error);
+        }
+    }
+
+    /**
+     * Handle global errors
+     * @private
+     */
+    handleGlobalError(error, context = {}) {
+        try {
+            this.logger.error('Global error caught:', { error: error.message, context });
+            
+            if (this.errorManager && typeof this.errorManager.handleError === 'function') {
+                this.errorManager.handleError(error, {
+                    component: 'UIManager',
+                    operation: 'global_error_handler',
+                    severity: 'error',
+                    context
+                });
+            }
+        } catch (handlerError) {
+            console.error('Error in global error handler:', handlerError);
         }
     }
     
@@ -1375,6 +1500,83 @@ class UIManager {
         this.showProgress();
         this.updateProgress(0, 100, 'Preparing export...');
         this.logger.info('Export status shown');
+    }
+
+    /**
+     * Show startup wait screen
+     * @param {string} message - Optional startup message
+     */
+    showStartupWaitScreen(message = 'Initializing application...') {
+        try {
+            // Find or create startup wait screen
+            let startupScreen = document.getElementById('startup-wait-screen');
+            
+            if (!startupScreen) {
+                // Create startup screen if it doesn't exist
+                startupScreen = document.createElement('div');
+                startupScreen.id = 'startup-wait-screen';
+                startupScreen.className = 'startup-wait-screen';
+                startupScreen.innerHTML = `
+                    <div class="startup-content">
+                        <div class="startup-spinner"></div>
+                        <div class="startup-message">${message}</div>
+                    </div>
+                `;
+                document.body.appendChild(startupScreen);
+            } else {
+                // Update existing message
+                const messageElement = startupScreen.querySelector('.startup-message');
+                if (messageElement) {
+                    messageElement.textContent = message;
+                }
+            }
+            
+            // Show the startup screen
+            startupScreen.style.display = 'flex';
+            
+            this.logger.debug('Startup wait screen shown', { message });
+        } catch (error) {
+            this.logger.error('Error showing startup wait screen:', error);
+        }
+    }
+
+    /**
+     * Hide startup wait screen
+     */
+    hideStartupWaitScreen() {
+        try {
+            const startupScreen = document.getElementById('startup-wait-screen');
+            if (startupScreen) {
+                startupScreen.style.display = 'none';
+                this.logger.debug('Startup wait screen hidden');
+            }
+        } catch (error) {
+            this.logger.error('Error hiding startup wait screen:', error);
+        }
+    }
+
+    /**
+     * Update startup message on existing startup screen
+     * @param {string} message - New startup message
+     */
+    updateStartupMessage(message) {
+        try {
+            const startupScreen = document.getElementById('startup-wait-screen');
+            if (startupScreen) {
+                const messageElement = startupScreen.querySelector('.startup-message');
+                if (messageElement) {
+                    messageElement.textContent = message;
+                    this.logger.debug('Startup message updated', { message });
+                } else {
+                    this.logger.warn('Startup message element not found');
+                }
+            } else {
+                // If no startup screen exists, show it with the message
+                this.showStartupWaitScreen(message);
+            }
+        } catch (error) {
+            this.logger.error('Error updating startup message:', error);
+        }
     }
     
     /**

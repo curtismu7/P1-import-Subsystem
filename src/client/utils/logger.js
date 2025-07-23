@@ -17,7 +17,7 @@
 
 import { createWinstonLogger } from './winston-logger.js';
 import messageFormatter from './message-formatter.js';
-import { UIManager } from './ui-manager.js';
+// import { UIManager } from './ui-manager.js'; // Removed to break circular dependency
 const ui = window.app && window.app.uiManager;
 
 /**
@@ -33,6 +33,7 @@ class Logger {
         this.serverLoggingEnabled = true;
         this.isLoadingLogs = false;
         this.offlineLogs = [];
+        this.childMetadata = {};
         
         // Initialize Winston-compatible logger
         this.winstonLogger = createWinstonLogger({
@@ -264,7 +265,10 @@ class Logger {
      * @private
      */
     _updateLogUI(logEntry) {
-        if (!this.logElement) return;
+        // Validate logElement exists and is a DOM element
+        if (!this.logElement || !this.logElement.appendChild || typeof this.logElement.appendChild !== 'function') {
+            return;
+        }
         
         try {
             const logElement = document.createElement('div');
@@ -462,6 +466,31 @@ class Logger {
         
         this.info(`Timer completed: ${label}`, { duration: `${duration}ms` });
         return duration;
+    }
+    
+    /**
+     * Create a child logger with additional context
+     * This mimics Winston's child logger functionality
+     */
+    child(metadata = {}) {
+        const childLogger = new Logger(this.logElement);
+        
+        // Copy parent configuration
+        childLogger.serverLoggingEnabled = this.serverLoggingEnabled;
+        childLogger.isLoadingLogs = this.isLoadingLogs;
+        childLogger.winstonLogger = this.winstonLogger;
+        
+        // Store child metadata for all log calls
+        childLogger.childMetadata = { ...this.childMetadata, ...metadata };
+        
+        // Override log method to include child metadata
+        const originalLog = childLogger.log.bind(childLogger);
+        childLogger.log = function(level, message, data = {}) {
+            const mergedData = { ...this.childMetadata, ...data };
+            return originalLog(level, message, mergedData);
+        };
+        
+        return childLogger;
     }
 }
 

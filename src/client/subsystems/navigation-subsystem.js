@@ -15,7 +15,7 @@
 import { createLogger } from '../utils/browser-logging-service.js';
 
 export class NavigationSubsystem {
-    constructor(logger, uiManager, settingsManager) {
+    constructor(logger, uiManager, settingsManager, app) {
         this.logger = logger || createLogger({
             serviceName: 'navigation-subsystem',
             environment: 'development'
@@ -23,6 +23,7 @@ export class NavigationSubsystem {
         
         this.uiManager = uiManager;
         this.settingsManager = settingsManager;
+        this.app = app; // Reference to main app for version access
         
         // Navigation state
         this.currentView = 'home'; // Default view
@@ -257,11 +258,11 @@ export class NavigationSubsystem {
             'history': 'History'
         };
         
-        const baseTitle = 'PingOne User Import v6.5.1.1';
+        const baseTitle = `PingOne User Import v${this.app.version}`;
         const viewTitle = titles[view];
         
         if (viewTitle) {
-            document.title = `${viewTitle} - ${baseTitle} v6.5.1.2`;
+            document.title = `${viewTitle} - ${baseTitle}`;
         } else {
             document.title = baseTitle;
         }

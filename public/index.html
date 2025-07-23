@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PingOne User Import v6.5.1.1</title>
+    <title>PingOne User Import - Loading...</title>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
@@ -885,7 +885,7 @@
                     </div>
                     
                     <div class="form-actions">
-                        <button id="start-export" class="btn btn-success" disabled>
+                        <button id="export-btn" class="btn btn-success" disabled>
                             <i class="fas fa-download"></i> Start Export
                         </button>
                     </div>
@@ -1205,8 +1205,11 @@
     <!-- CRITICAL: Direct bundle loading - no more dynamic manifest system -->
     <!-- This loads the latest bundle directly without complex API calls -->
     <!-- Last fixed: 2025-07-22 - Replaced broken dynamic loading system -->
-        <script src="/js/bug-fix-loader.js"></script>
-    <script src="/js/bundle-1753229288.js"></script>
+        <!-- <script src="/js/bug-fix-loader.js"></script> -->
+    <!-- Emergency startup screen fix -->
+    <script src="/js/startup-screen-fix.js"></script>
+    <!-- Main application bundle -->
+    <script src="js/bundle-1753304368.min.js"></script>
     
     <!-- Fallback error handling for bundle loading -->
     <script>
@@ -1239,6 +1242,6 @@
 
     
     <!-- Version Display Component -->
-    <div id="version-display" class="version-widget">v6.5.1.1</div>
+    <div id="version-display" class="version-widget">loading...</div>
 </body>
 </html>

@@ -5,7 +5,7 @@
  * Manages settings form validation, saving, and UI feedback.
  */
 
-export class SettingsSubsystem {
+class SettingsSubsystem {
     constructor(logger, uiManager, localClient, settingsManager, eventBus, credentialsManager) {
         this.logger = logger;
         this.uiManager = uiManager;
@@ -183,7 +183,7 @@ export class SettingsSubsystem {
             if (this.localClient && typeof this.localClient.post === 'function') {
                 try {
                     this.logger.debug('Attempting server save with localClient.post');
-                    const response = await this.localClient.post('/api/settings', settings);
+                    const response = await this.localClient.post('/settings', settings);
                     this.logger.info('Server save successful:', response);
                 } catch (serverError) {
                     this.logger.error('Failed to save to server:', serverError);
@@ -347,23 +347,27 @@ export class SettingsSubsystem {
         try {
             this.logger.info('Testing connection...');
             this.uiManager.showSettingsActionStatus('Testing connection...', 'info');
-            
             const settings = this.getFormData();
-            
-            // Test connection via API
-            // CRITICAL: Use GET request to match server-side endpoint
-            // Server endpoint: routes/pingone-proxy-fixed.js - router.get('/test-connection')
-            // Last fixed: 2025-07-21 - HTTP method mismatch caused 400 Bad Request errors
-            const response = await this.localClient.get('/api/pingone/test-connection');
-            
+            // Validate required fields
+            if (!settings.environmentId || !settings.apiClientId || !settings.apiSecret || !settings.region) {
+                this.uiManager.showSettingsActionStatus('Please fill in all required fields', 'error');
+                this.updateConnectionStatus('❌ Missing credentials', 'error');
+                return;
+            }
+            // Use POST request to match server-side endpoint
+            const response = await this.localClient.post('/api/pingone/test-connection', {
+                environmentId: settings.environmentId,
+                clientId: settings.apiClientId,
+                clientSecret: settings.apiSecret,
+                region: settings.region
+            });
             if (response.success) {
                 this.uiManager.showSettingsActionStatus('Connection test successful', 'success', { autoHideDelay: 3000 });
                 this.updateConnectionStatus('✅ Connection successful', 'success');
             } else {
-                this.uiManager.showSettingsActionStatus('Connection test failed: ' + response.message, 'error');
+                this.uiManager.showSettingsActionStatus('Connection test failed: ' + (response.error || response.message), 'error');
                 this.updateConnectionStatus('❌ Connection failed', 'error');
             }
-            
         } catch (error) {
             this.logger.error('Connection test failed', error);
             this.uiManager.showSettingsActionStatus('Connection test failed: ' + error.message, 'error');
@@ -499,3 +503,5 @@ export class SettingsSubsystem {
         }
     }
 }
+
+export default SettingsSubsystem;

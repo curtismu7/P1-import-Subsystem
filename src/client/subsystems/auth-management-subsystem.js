@@ -141,23 +141,20 @@ export class AuthManagementSubsystem {
             if (!this.validateSettings(settings)) {
                 throw new Error('Invalid settings - please check your configuration');
             }
-            
-            // Test connection
-            // CRITICAL: Use GET request to match server-side endpoint
-            // Server endpoint: routes/pingone-proxy-fixed.js - router.get('/test-connection')
-            // Last fixed: 2025-07-21 - HTTP method mismatch caused 400 Bad Request errors
-            const response = await this.localClient.get('/api/pingone/test-connection');
-            
+            // Use POST request to match server-side endpoint
+            const response = await this.localClient.post('/api/pingone/test-connection', {
+                environmentId: settings.environmentId,
+                clientId: settings.clientId,
+                clientSecret: settings.clientSecret,
+                region: settings.region
+            });
             if (!response.success) {
                 throw new Error(response.error || 'Connection test failed');
             }
-            
             // Update UI
             this.updateConnectionStatusUI(true, 'Connection successful');
             this.uiManager.showSuccess('Connection test successful');
-            
             this.logger.info('Connection test successful');
-            
         } catch (error) {
             this.logger.error('Connection test failed', error);
             this.updateConnectionStatusUI(false, error.message);
