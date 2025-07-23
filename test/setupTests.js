@@ -1,26 +1,20 @@
-// Set up TextEncoder and TextDecoder as globals before anything else
-const { TextEncoder, TextDecoder } = require('util');
+import { TextEncoder, TextDecoder } from 'util';
+import { JSDOM } from 'jsdom';
+
+// Polyfills for test environment
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder;
 
-// Now import JSDOM after setting up TextEncoder/TextDecoder
-const { JSDOM } = require('jsdom');
-
-// Set up JSDOM
-const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+// Set up DOM environment for tests that need it
+const { window } = new JSDOM('<!doctype html><html><body></body></html>', {
   url: 'http://localhost',
   pretendToBeVisual: true,
+  resources: 'usable'
 });
 
-global.window = dom.window;
-global.document = dom.window.document;
-global.navigator = {
-  userAgent: 'node.js',
-};
-
-// Add TextEncoder and TextDecoder for JSDOM
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder;
+global.window = window;
+global.document = window.document;
+global.navigator = window.navigator;
 
 // Mock localStorage
 const localStorageMock = (() => {

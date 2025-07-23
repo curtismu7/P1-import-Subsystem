@@ -1,6 +1,6 @@
-module.exports = {
+export default {
   testEnvironment: 'node',
-  transform: {
-    '^.+\\.[t|j]sx?$': 'babel-jest'
-  }
+  testMatch: ['**/test/minimal.test.js'],
+  verbose: true,
+  testTimeout: 10000
 };

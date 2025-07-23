@@ -170,11 +170,5 @@ class CentralizedLogger {
     }
 }
 
-// Export for both ES modules and CommonJS
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { CentralizedLogger };
-} else if (typeof window !== 'undefined') {
-    window.CentralizedLogger = CentralizedLogger;
-}
-
+// ES Module export
 export { CentralizedLogger };

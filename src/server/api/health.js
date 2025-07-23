@@ -7,6 +7,7 @@
 import express from 'express';
 import { createLogger } from '../../shared/logging-service.js';
 import { getFeatureFlagStatus } from '../../shared/feature-flags.js';
+import os from 'os';
 
 const router = express.Router();
 const logger = createLogger({ serviceName: 'health-check' });
@@ -356,7 +357,7 @@ async function getPerformanceMetrics() {
         },
         cpu: process.cpuUsage(),
         uptime: process.uptime(),
-        loadAverage: process.platform !== 'win32' ? require('os').loadavg() : 'N/A (Windows)'
+        loadAverage: process.platform !== 'win32' ? os.loadavg() : 'N/A (Windows)'
     };
 }
 

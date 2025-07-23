@@ -255,18 +255,5 @@ if (typeof window !== 'undefined') {
     });
 }
 
-// Export for modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { EventManager, eventManager };
-}
-
-// Make available globally
-if (typeof window !== 'undefined') {
-    window.EventManager = EventManager;
-    window.eventManager = eventManager;
-    
-    // Create convenient global functions
-    window.addListener = (el, event, handler, options) => eventManager.addEventListener(el, event, handler, options);
-    window.removeListener = (id) => eventManager.removeEventListener(id);
-    window.delegateEvent = (container, selector, event, handler) => eventManager.delegate(container, selector, event, handler);
-}
+// ES Module exports
+export { EventManager, eventManager };

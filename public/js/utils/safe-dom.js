@@ -264,11 +264,5 @@ class SafeDOM {
     }
 }
 
-// Export for both ES modules and CommonJS
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { SafeDOM };
-} else if (typeof window !== 'undefined') {
-    window.SafeDOM = SafeDOM;
-}
-
+// ES Module export
 export { SafeDOM };

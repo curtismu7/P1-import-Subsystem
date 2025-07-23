@@ -1,4 +1,4 @@
-const TokenManager = require('./token-manager.js');
+import TokenManager from './token-manager.js';
 
 class PingOneAPI {
     constructor(logger, settingsManager) {

@@ -1,5 +1,6 @@
-// Polyfill for TextEncoder/TextDecoder
-const { TextEncoder, TextDecoder } = require('util');
+import { TextEncoder, TextDecoder } from 'util';
+
+// Polyfills for JSDOM environment
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder;
 

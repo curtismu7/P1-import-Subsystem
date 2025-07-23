@@ -279,11 +279,5 @@ class ErrorHandler {
     }
 }
 
-// Export for both ES modules and CommonJS
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { ErrorHandler };
-} else if (typeof window !== 'undefined') {
-    window.ErrorHandler = ErrorHandler;
-}
-
+// ES Module export
 export { ErrorHandler };

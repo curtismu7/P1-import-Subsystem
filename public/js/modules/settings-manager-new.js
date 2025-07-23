@@ -1,4 +1,4 @@
-const { CryptoUtils } = require('./crypto-utils');
+import { CryptoUtils } from './crypto-utils.js';
 
 class SettingsManager {
     constructor(logger) {
@@ -367,10 +367,9 @@ class SettingsManager {
     }
 }
 
-// Export a singleton instance
-const settingsManager = new SettingsManager();
-
-module.exports = {
+// ES Module export
+export {
     SettingsManager,
-    settingsManager
+    SETTING_KEYS,
+    DEFAULTS
 };
