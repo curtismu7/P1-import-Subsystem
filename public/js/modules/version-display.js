@@ -85,12 +85,12 @@ class VersionDisplay {
             
             // Fallback version if all else fails
             if (!this.version) {
-                this.version = '6.5.1.1'; // Current version as fallback
+                this.version = '6.5.1.4'; // Current version as fallback
             }
             
         } catch (error) {
             console.warn('⚠️ Could not load version info:', error.message);
-            this.version = '6.5.1.1'; // Fallback version
+            this.version = '6.5.1.4'; // Fallback version
         }
     }
     
@@ -100,4 +100,384 @@ class VersionDisplay {
     async loadHealthStatus() {
         try {
             const response = await fetch('/api/health');
-            if (response.ok) {\n                const health = await response.json();\n                this.healthStatus = {\n                    status: health.status,\n                    optimization: health.optimization,\n                    checks: health.checks\n                };\n            }\n        } catch (error) {\n            console.warn('⚠️ Could not load health status:', error.message);\n        }\n    }\n    \n    /**\n     * Create version display element\n     */\n    createElement() {\n        // Remove existing element if present\n        const existing = document.getElementById(this.options.containerId);\n        if (existing) {\n            existing.remove();\n        }\n        \n        // Create container element\n        const container = document.createElement('div');\n        container.id = this.options.containerId;\n        container.className = `version-display ${this.options.position}`;\n        \n        // Create version text\n        const versionText = document.createElement('span');\n        versionText.className = 'version-text';\n        versionText.textContent = `v${this.version}`;\n        \n        // Add health status indicator if enabled\n        if (this.options.showHealthStatus && this.healthStatus) {\n            const statusIndicator = this.createStatusIndicator();\n            container.appendChild(statusIndicator);\n        }\n        \n        container.appendChild(versionText);\n        \n        // Add click handler for detailed info\n        if (this.options.showBuildInfo) {\n            container.style.cursor = 'pointer';\n            container.addEventListener('click', () => this.showDetailedInfo());\n            container.title = 'Click for build information';\n        }\n        \n        // Add to page\n        this.appendToPage(container);\n        \n        // Apply styles\n        this.applyStyles();\n    }\n    \n    /**\n     * Create health status indicator\n     */\n    createStatusIndicator() {\n        const indicator = document.createElement('span');\n        indicator.className = 'health-indicator';\n        \n        const status = this.healthStatus.status;\n        let color = '#28a745'; // green\n        let title = 'System healthy';\n        \n        if (status === 'degraded') {\n            color = '#ffc107'; // yellow\n            title = 'System degraded';\n        } else if (status === 'error') {\n            color = '#dc3545'; // red\n            title = 'System error';\n        }\n        \n        indicator.style.cssText = `\n            display: inline-block;\n            width: 8px;\n            height: 8px;\n            border-radius: 50%;\n            background-color: ${color};\n            margin-right: 6px;\n            animation: pulse 2s infinite;\n        `;\n        \n        indicator.title = title;\n        \n        return indicator;\n    }\n    \n    /**\n     * Append version display to appropriate location on page\n     */\n    appendToPage(element) {\n        let targetContainer;\n        \n        // Try to find appropriate container based on position\n        if (this.options.position.includes('footer')) {\n            targetContainer = document.querySelector('footer') || \n                            document.querySelector('.footer') ||\n                            document.querySelector('#footer');\n        }\n        \n        // Fallback to body if no specific container found\n        if (!targetContainer) {\n            targetContainer = document.body;\n        }\n        \n        targetContainer.appendChild(element);\n    }\n    \n    /**\n     * Apply CSS styles to version display\n     */\n    applyStyles() {\n        // Check if styles already exist\n        if (document.getElementById('version-display-styles')) {\n            return;\n        }\n        \n        const styles = document.createElement('style');\n        styles.id = 'version-display-styles';\n        styles.textContent = `\n            .version-display {\n                position: fixed;\n                z-index: 1000;\n                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n                font-size: 11px;\n                color: #6c757d;\n                background: rgba(255, 255, 255, 0.9);\n                padding: 4px 8px;\n                border-radius: 4px;\n                border: 1px solid #e9ecef;\n                backdrop-filter: blur(4px);\n                transition: all 0.2s ease;\n            }\n            \n            .version-display:hover {\n                background: rgba(255, 255, 255, 0.95);\n                color: #495057;\n                transform: translateY(-1px);\n                box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n            }\n            \n            .version-display.footer-right {\n                bottom: 10px;\n                right: 10px;\n            }\n            \n            .version-display.footer-left {\n                bottom: 10px;\n                left: 10px;\n            }\n            \n            .version-display.header-right {\n                top: 10px;\n                right: 10px;\n            }\n            \n            .version-display.header-left {\n                top: 10px;\n                left: 10px;\n            }\n            \n            .version-text {\n                font-weight: 500;\n            }\n            \n            .health-indicator {\n                display: inline-block;\n            }\n            \n            @keyframes pulse {\n                0% { opacity: 1; }\n                50% { opacity: 0.5; }\n                100% { opacity: 1; }\n            }\n            \n            .version-modal {\n                position: fixed;\n                top: 0;\n                left: 0;\n                width: 100%;\n                height: 100%;\n                background: rgba(0, 0, 0, 0.5);\n                display: flex;\n                align-items: center;\n                justify-content: center;\n                z-index: 10000;\n            }\n            \n            .version-modal-content {\n                background: white;\n                padding: 20px;\n                border-radius: 8px;\n                max-width: 500px;\n                width: 90%;\n                max-height: 80vh;\n                overflow-y: auto;\n            }\n            \n            .version-modal h3 {\n                margin-top: 0;\n                color: #333;\n            }\n            \n            .version-info-grid {\n                display: grid;\n                grid-template-columns: 1fr 2fr;\n                gap: 8px;\n                margin: 15px 0;\n            }\n            \n            .version-info-label {\n                font-weight: 600;\n                color: #666;\n            }\n            \n            .version-info-value {\n                font-family: monospace;\n                color: #333;\n                word-break: break-all;\n            }\n            \n            .close-button {\n                background: #007bff;\n                color: white;\n                border: none;\n                padding: 8px 16px;\n                border-radius: 4px;\n                cursor: pointer;\n                float: right;\n                margin-top: 15px;\n            }\n            \n            .close-button:hover {\n                background: #0056b3;\n            }\n        `;\n        \n        document.head.appendChild(styles);\n    }\n    \n    /**\n     * Show detailed build information modal\n     */\n    showDetailedInfo() {\n        const modal = document.createElement('div');\n        modal.className = 'version-modal';\n        \n        const content = document.createElement('div');\n        content.className = 'version-modal-content';\n        \n        let infoHTML = `\n            <h3>🚀 PingOne Import Tool - Build Information</h3>\n            <div class=\"version-info-grid\">\n                <div class=\"version-info-label\">Version:</div>\n                <div class=\"version-info-value\">v${this.version}</div>\n        `;\n        \n        if (this.buildInfo) {\n            infoHTML += `\n                <div class=\"version-info-label\">Bundle:</div>\n                <div class=\"version-info-value\">${this.buildInfo.bundleFile}</div>\n                \n                <div class=\"version-info-label\">Build Time:</div>\n                <div class=\"version-info-value\">${new Date(this.buildInfo.timestamp).toLocaleString()}</div>\n                \n                <div class=\"version-info-label\">Bundle Size:</div>\n                <div class=\"version-info-value\">${this.formatBytes(this.buildInfo.size)}</div>\n                \n                <div class=\"version-info-label\">Hash:</div>\n                <div class=\"version-info-value\">${this.buildInfo.hash?.substring(0, 16)}...</div>\n            `;\n        }\n        \n        if (this.healthStatus) {\n            infoHTML += `\n                <div class=\"version-info-label\">System Status:</div>\n                <div class=\"version-info-value\">${this.healthStatus.status}</div>\n                \n                <div class=\"version-info-label\">Token Cached:</div>\n                <div class=\"version-info-value\">${this.healthStatus.optimization?.tokenCached ? '✅ Yes' : '❌ No'}</div>\n                \n                <div class=\"version-info-label\">Populations Cached:</div>\n                <div class=\"version-info-value\">${this.healthStatus.optimization?.populationsCached ? '✅ Yes' : '❌ No'}</div>\n            `;\n        }\n        \n        infoHTML += `\n            </div>\n            <button class=\"close-button\" onclick=\"this.closest('.version-modal').remove()\">Close</button>\n        `;\n        \n        content.innerHTML = infoHTML;\n        modal.appendChild(content);\n        \n        // Close on background click\n        modal.addEventListener('click', (e) => {\n            if (e.target === modal) {\n                modal.remove();\n            }\n        });\n        \n        document.body.appendChild(modal);\n    }\n    \n    /**\n     * Start auto-update interval\n     */\n    startAutoUpdate() {\n        this.updateInterval = setInterval(async () => {\n            try {\n                await this.loadVersionInfo();\n                this.createElement(); // Recreate element with updated info\n            } catch (error) {\n                console.warn('⚠️ Version auto-update failed:', error.message);\n            }\n        }, 60000); // Update every minute\n    }\n    \n    /**\n     * Stop auto-update interval\n     */\n    stopAutoUpdate() {\n        if (this.updateInterval) {\n            clearInterval(this.updateInterval);\n            this.updateInterval = null;\n        }\n    }\n    \n    /**\n     * Format bytes to human readable format\n     */\n    formatBytes(bytes) {\n        if (!bytes || bytes === 0) return '0 Bytes';\n        \n        const k = 1024;\n        const sizes = ['Bytes', 'KB', 'MB', 'GB'];\n        const i = Math.floor(Math.log(bytes) / Math.log(k));\n        \n        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];\n    }\n    \n    /**\n     * Update version manually\n     */\n    async updateVersion() {\n        await this.loadVersionInfo();\n        this.createElement();\n    }\n    \n    /**\n     * Destroy version display\n     */\n    destroy() {\n        this.stopAutoUpdate();\n        \n        const element = document.getElementById(this.options.containerId);\n        if (element) {\n            element.remove();\n        }\n        \n        const styles = document.getElementById('version-display-styles');\n        if (styles) {\n            styles.remove();\n        }\n    }\n}\n\n// Auto-initialize when DOM is ready\nif (typeof document !== 'undefined') {\n    if (document.readyState === 'loading') {\n        document.addEventListener('DOMContentLoaded', () => {\n            window.versionDisplay = new VersionDisplay();\n        });\n    } else {\n        window.versionDisplay = new VersionDisplay();\n    }\n}\n\nexport default VersionDisplay;
+            if (response.ok) {
+                const health = await response.json();
+                this.healthStatus = {
+                    status: health.status,
+                    optimization: health.optimization,
+                    checks: health.checks
+                };
+            }
+        } catch (error) {
+            console.warn('⚠️ Could not load health status:', error.message);
+        }
+    }
+    
+    /**
+     * Create version display element
+     */
+    createElement() {
+        // Remove existing element if present
+        const existing = document.getElementById(this.options.containerId);
+        if (existing) {
+            existing.remove();
+        }
+        
+        // Create container element
+        const container = document.createElement('div');
+        container.id = this.options.containerId;
+        container.className = `version-display ${this.options.position}`;
+        
+        // Create version text
+        const versionText = document.createElement('span');
+        versionText.className = 'version-text';
+        versionText.textContent = `v${this.version}`;
+        
+        // Add health status indicator if enabled
+        if (this.options.showHealthStatus && this.healthStatus) {
+            const statusIndicator = this.createStatusIndicator();
+            container.appendChild(statusIndicator);
+        }
+        
+        container.appendChild(versionText);
+        
+        // Add click handler for detailed info
+        if (this.options.showBuildInfo) {
+            container.style.cursor = 'pointer';
+            container.addEventListener('click', () => this.showDetailedInfo());
+            container.title = 'Click for build information';
+        }
+        
+        // Add to page
+        this.appendToPage(container);
+        
+        // Apply styles
+        this.applyStyles();
+    }
+    
+    /**
+     * Create health status indicator
+     */
+    createStatusIndicator() {
+        const indicator = document.createElement('span');
+        indicator.className = 'health-indicator';
+        
+        const status = this.healthStatus.status;
+        let color = '#28a745'; // green
+        let title = 'System healthy';
+        
+        if (status === 'degraded') {
+            color = '#ffc107'; // yellow
+            title = 'System degraded';
+        } else if (status === 'error') {
+            color = '#dc3545'; // red
+            title = 'System error';
+        }
+        
+        indicator.style.cssText = `
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: ${color};
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        `;
+        
+        indicator.title = title;
+        
+        return indicator;
+    }
+    
+    /**
+     * Append version display to appropriate location on page
+     */
+    appendToPage(element) {
+        let targetContainer;
+        
+        // Try to find appropriate container based on position
+        if (this.options.position.includes('footer')) {
+            targetContainer = document.querySelector('footer') || 
+                            document.querySelector('.footer') ||
+                            document.querySelector('#footer');
+        }
+        
+        // Fallback to body if no specific container found
+        if (!targetContainer) {
+            targetContainer = document.body;
+        }
+        
+        targetContainer.appendChild(element);
+    }
+    
+    /**
+     * Apply CSS styles to version display
+     */
+    applyStyles() {
+        // Check if styles already exist
+        if (document.getElementById('version-display-styles')) {
+            return;
+        }
+        
+        const styles = document.createElement('style');
+        styles.id = 'version-display-styles';
+        styles.textContent = `
+            .version-display {
+                position: fixed;
+                z-index: 1000;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                font-size: 11px;
+                color: #6c757d;
+                background: rgba(255, 255, 255, 0.9);
+                padding: 4px 8px;
+                border-radius: 4px;
+                border: 1px solid #e9ecef;
+                backdrop-filter: blur(4px);
+                transition: all 0.2s ease;
+            }
+            
+            .version-display:hover {
+                background: rgba(255, 255, 255, 0.95);
+                color: #495057;
+                transform: translateY(-1px);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            
+            .version-display.footer-right {
+                bottom: 10px;
+                right: 10px;
+            }
+            
+            .version-display.footer-left {
+                bottom: 10px;
+                left: 10px;
+            }
+            
+            .version-display.header-right {
+                top: 10px;
+                right: 10px;
+            }
+            
+            .version-display.header-left {
+                top: 10px;
+                left: 10px;
+            }
+            
+            .version-text {
+                font-weight: 500;
+            }
+            
+            .health-indicator {
+                display: inline-block;
+            }
+            
+            @keyframes pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.5; }
+                100% { opacity: 1; }
+            }
+            
+            .version-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            }
+            
+            .version-modal-content {
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                max-width: 500px;
+                width: 90%;
+                max-height: 80vh;
+                overflow-y: auto;
+            }
+            
+            .version-modal h3 {
+                margin-top: 0;
+                color: #333;
+            }
+            
+            .version-info-grid {
+                display: grid;
+                grid-template-columns: 1fr 2fr;
+                gap: 8px;
+                margin: 15px 0;
+            }
+            
+            .version-info-label {
+                font-weight: 600;
+                color: #666;
+            }
+            
+            .version-info-value {
+                font-family: monospace;
+                color: #333;
+                word-break: break-all;
+            }
+            
+            .close-button {
+                background: #007bff;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                cursor: pointer;
+                float: right;
+                margin-top: 15px;
+            }
+            
+            .close-button:hover {
+                background: #0056b3;
+            }
+        `;
+        
+        document.head.appendChild(styles);
+    }
+    
+    /**
+     * Show detailed build information modal
+     */
+    showDetailedInfo() {
+        const modal = document.createElement('div');
+        modal.className = 'version-modal';
+        
+        const content = document.createElement('div');
+        content.className = 'version-modal-content';
+        
+        let infoHTML = `
+            <h3>🚀 PingOne Import Tool - Build Information</h3>
+            <div class="version-info-grid">
+                <div class="version-info-label">Version:</div>
+                <div class="version-info-value">v${this.version}</div>
+        `;
+        
+        if (this.buildInfo) {
+            infoHTML += `
+                <div class="version-info-label">Bundle:</div>
+                <div class="version-info-value">${this.buildInfo.bundleFile}</div>
+                
+                <div class="version-info-label">Build Time:</div>
+                <div class="version-info-value">${new Date(this.buildInfo.timestamp).toLocaleString()}</div>
+                
+                <div class="version-info-label">Bundle Size:</div>
+                <div class="version-info-value">${this.formatBytes(this.buildInfo.size)}</div>
+                
+                <div class="version-info-label">Hash:</div>
+                <div class="version-info-value">${this.buildInfo.hash?.substring(0, 16)}...</div>
+            `;
+        }
+        
+        if (this.healthStatus) {
+            infoHTML += `
+                <div class="version-info-label">System Status:</div>
+                <div class="version-info-value">${this.healthStatus.status}</div>
+                
+                <div class="version-info-label">Token Cached:</div>
+                <div class="version-info-value">${this.healthStatus.optimization?.tokenCached ? '✅ Yes' : '❌ No'}</div>
+                
+                <div class="version-info-label">Populations Cached:</div>
+                <div class="version-info-value">${this.healthStatus.optimization?.populationsCached ? '✅ Yes' : '❌ No'}</div>
+            `;
+        }
+        
+        infoHTML += `
+            </div>
+            <button class="close-button" onclick="this.closest('.version-modal').remove()">Close</button>
+        `;
+        
+        content.innerHTML = infoHTML;
+        modal.appendChild(content);
+        
+        // Close on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+        
+        document.body.appendChild(modal);
+    }
+    
+    /**
+     * Start auto-update interval
+     */
+    startAutoUpdate() {
+        this.updateInterval = setInterval(async () => {
+            try {
+                await this.loadVersionInfo();
+                this.createElement(); // Recreate element with updated info
+            } catch (error) {
+                console.warn('⚠️ Version auto-update failed:', error.message);
+            }
+        }, 60000); // Update every minute
+    }
+    
+    /**
+     * Stop auto-update interval
+     */
+    stopAutoUpdate() {
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+            this.updateInterval = null;
+        }
+    }
+    
+    /**
+     * Format bytes to human readable format
+     */
+    formatBytes(bytes) {
+        if (!bytes || bytes === 0) return '0 Bytes';
+        
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    /**
+     * Update version manually
+     */
+    async updateVersion() {
+        await this.loadVersionInfo();
+        this.createElement();
+    }
+    
+    /**
+     * Destroy version display
+     */
+    destroy() {
+        this.stopAutoUpdate();
+        
+        const element = document.getElementById(this.options.containerId);
+        if (element) {
+            element.remove();
+        }
+        
+        const styles = document.getElementById('version-display-styles');
+        if (styles) {
+            styles.remove();
+        }
+    }
+}
+
+// Auto-initialize when DOM is ready
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            window.versionDisplay = new VersionDisplay();
+        });
+    } else {
+        window.versionDisplay = new VersionDisplay();
+    }
+}
+
+export default VersionDisplay;
