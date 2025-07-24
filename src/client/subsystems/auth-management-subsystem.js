@@ -85,11 +85,19 @@ export class AuthManagementSubsystem {
             this.logger.info('Getting new authentication token');
             this.showTokenProgress('Getting token...');
             
-            // Validate settings first
             await this.settingsSubsystem.loadCurrentSettings();
             const settings = this.settingsSubsystem.currentSettings;
-            if (!this.validateSettings(settings)) {
-                throw new Error('Invalid settings - please check your configuration');
+            if (!settings.clientId || !settings.clientSecret || !settings.environmentId || !settings.region) {
+                const missing = [];
+                if (!settings.clientId) missing.push('clientId');
+                if (!settings.clientSecret) missing.push('clientSecret');
+                if (!settings.environmentId) missing.push('environmentId');
+                if (!settings.region) missing.push('region');
+                const msg = `Missing required settings: ${missing.join(', ')}`;
+                this.logger.error(msg);
+                this.uiManager.showError('Authentication Failed', msg);
+                this.hideTokenProgress();
+                return;
             }
             
             // Request token from server
@@ -257,7 +265,12 @@ export class AuthManagementSubsystem {
                 this.updateTokenStatusUI(true, `Token is ${response.status}`);
                 this.logger.info('✅ [STARTUP] Valid token found, authentication ready');
                 
-            } else if (response.success && response.hasToken) {
+                // Update home token status widget
+                if (this.uiManager && typeof this.uiManager.updateHomeTokenStatus === 'function') {
+                    this.uiManager.updateHomeTokenStatus(false, 'Token is Valid');
+                }
+                
+            } else {
                 // Token exists but is expired - attempt automatic refresh
                 this.logger.warn('⚠️ [STARTUP] Token expired, attempting automatic refresh...');
                 this.tokenStatus = response.status;
@@ -268,24 +281,18 @@ export class AuthManagementSubsystem {
                 
                 if (refreshSuccess) {
                     this.logger.info('✅ [STARTUP] Token automatically refreshed, authentication ready');
+                    // Update home token status widget
+                    if (this.uiManager && typeof this.uiManager.updateHomeTokenStatus === 'function') {
+                        this.uiManager.updateHomeTokenStatus(false, 'Token Refreshed');
+                    }
                 } else {
                     this.logger.warn('❌ [STARTUP] Automatic token refresh failed, user intervention required');
                     this.isAuthenticated = false;
                     this.updateTokenStatusUI(false, 'Token expired - refresh required');
-                }
-                
-            } else {
-                // No token available - attempt automatic acquisition if credentials exist
-                this.logger.warn('⚠️ [STARTUP] No token found, attempting automatic acquisition...');
-                
-                const acquisitionSuccess = await this.attemptAutomaticTokenRefresh();
-                
-                if (acquisitionSuccess) {
-                    this.logger.info('✅ [STARTUP] Token automatically acquired, authentication ready');
-                } else {
-                    this.logger.warn('❌ [STARTUP] No token available and automatic acquisition failed');
-                    this.isAuthenticated = false;
-                    this.updateTokenStatusUI(false, response.status || 'No valid token');
+                    // Update home token status widget
+                    if (this.uiManager && typeof this.uiManager.updateHomeTokenStatus === 'function') {
+                        this.uiManager.updateHomeTokenStatus(false, 'Token Expired');
+                    }
                 }
             }
             
@@ -293,6 +300,10 @@ export class AuthManagementSubsystem {
             this.logger.error('❌ [STARTUP] Failed to check token status', error);
             this.isAuthenticated = false;
             this.updateTokenStatusUI(false, 'Token status unknown');
+            // Update home token status widget
+            if (this.uiManager && typeof this.uiManager.updateHomeTokenStatus === 'function') {
+                this.uiManager.updateHomeTokenStatus(false, 'Token Check Failed');
+            }
         }
     }
     

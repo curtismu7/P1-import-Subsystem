@@ -1,3 +1,4 @@
+console.log('[BUNDLE] Main bundle loaded and executing!');
 // File: app.js
 // Description: Main application entry point for PingOne user import tool
 // 
@@ -229,13 +230,16 @@ class App {
      */
     async init() {
         try {
+            console.debug('[APP INIT] Starting app initialization...');
             // Visual confirmation that latest fixes are active
             console.log('🚀 [FIXES ACTIVE] PopulationSubsystem and Settings API fixes loaded - Build: bundle-1753304368');
             
             this.logger.info('🚀 Initializing PingOne Import Application...');
             
             // Show loading state
-            this.uiManager.showModalLoading('Starting Application', 'Initializing core systems...');
+            if (this.uiManager && typeof this.uiManager.showModalLoading === 'function') {
+                this.uiManager.showModalLoading('Starting Application', 'Initializing core systems...');
+            }
             
             // Initialize core components
             await this.initializeCoreComponents();
@@ -259,6 +263,33 @@ class App {
             // Initialize UI
             await this.initializeUI();
             
+            // Force credentials modal for testing
+            if (this.credentialsManager && typeof this.credentialsManager.showCredentialsModal === 'function') {
+                console.debug('[APP INIT] Forcing credentials modal to show at startup (test mode)');
+                this.credentialsManager.showCredentialsModal();
+            }
+            
+            // Force update of token status widget in sidebar with actual status check
+            if (this.uiManager && typeof this.uiManager.updateHomeTokenStatus === 'function') {
+                // First show loading state
+                this.uiManager.updateHomeTokenStatus(true, 'Checking token status...');
+                
+                // Then check actual token status
+                try {
+                    const authSubsystem = this.subsystems.authManagementSubsystem;
+                    if (authSubsystem && typeof authSubsystem.checkInitialTokenStatus === 'function') {
+                        await authSubsystem.checkInitialTokenStatus();
+                        // The auth subsystem will update the UI with real status
+                    } else {
+                        // Fallback: show a default valid state
+                        this.uiManager.updateHomeTokenStatus(false, 'Token status unknown');
+                    }
+                } catch (error) {
+                    this.logger.error('Failed to check initial token status', error);
+                    this.uiManager.updateHomeTokenStatus(false, 'Token check failed');
+                }
+            }
+            
             // Mark as initialized
             this.isInitialized = true;
             
@@ -271,12 +302,19 @@ class App {
                 subsystemsEnabled: Object.keys(this.subsystems).length
             });
             
+            // Add spinner fallback
+            setTimeout(() => {
+                const spinner = document.getElementById('startup-wait-screen');
+                if (spinner && spinner.style.display !== 'none') {
+                    spinner.style.display = 'none';
+                    const errorDiv = document.createElement('div');
+                    errorDiv.innerHTML = `<div style="color: red; text-align: center; padding: 20px; background: #ffe6e6; border: 1px solid #ff0000; margin: 10px;">[DEBUG] App failed to initialize in time. Please check the console for errors or reload the page.</div>`;
+                    document.body.insertBefore(errorDiv, document.body.firstChild);
+                    console.error('[APP INIT] Spinner fallback triggered: App failed to initialize in time.');
+                }
+            }, 7000);
         } catch (error) {
-            this.logger.error('Application initialization failed', {
-                error: error.message,
-                stack: error.stack
-            });
-            throw error;
+            console.error('[APP INIT] Error during initialization:', error);
         }
     }
     
@@ -1057,9 +1095,16 @@ class App {
                 // Server endpoint: routes/pingone-proxy-fixed.js - router.get('/test-connection')
                 // DO NOT change to POST without updating server-side endpoint
                 // Last fixed: 2025-07-21 - HTTP method mismatch caused 400 Bad Request errors
+                const settings = await this.settingsSubsystem.loadSettings();
                 const response = await fetch('/api/pingone/test-connection', {
-                    method: 'GET', // MUST match server endpoint method
-                    headers: { 'Content-Type': 'application/json' }
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        environmentId: settings.environmentId,
+                        apiClientId: settings.apiClientId,
+                        apiSecret: settings.apiSecret,
+                        region: settings.region
+                    })
                 });
                 
                 const result = await response.json();
@@ -1101,9 +1146,16 @@ class App {
                 }
             } else {
                 // Fallback: get token directly
-                const response = await fetch('/api/pingone/token', {
+                const settings = await this.settingsSubsystem.loadSettings(); // Assuming settings are loaded here
+                const response = await fetch('/api/v1/auth/token', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        environmentId: settings.environmentId,
+                        clientId: settings.apiClientId,
+                        clientSecret: settings.apiSecret,
+                        region: settings.region
+                    })
                 });
                 
                 const result = await response.json();

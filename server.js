@@ -103,6 +103,7 @@ import session from 'express-session';
 import fs from 'fs/promises';
 import { WebSocketServer } from 'ws';
 import { Server as SocketIOServer } from 'socket.io';
+import apiLogsRouter from './routes/api/logs.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -334,6 +335,9 @@ app.use(['/swagger.html', '/swagger', '/swagger.json'], ensureAuthenticated);
 
 // Setup Swagger documentation
 setupSwagger(app);
+
+// Index router must come BEFORE static file handler to process bundle injection
+app.use('/', indexRouter);
 
 // Static file serving with caching headers
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -573,7 +577,7 @@ app.use('/api/auth', credentialManagementRouter);
 app.use('/api/test-runner', testRunnerRouter);
 app.use('/api/import', importRouter);
 app.use('/api/export', exportRouter);
-app.use('/', indexRouter);
+app.use('/api/logs', apiLogsRouter);
 
 // Enhanced error handling middleware (structured, safe, Winston-logged)
 app.use((err, req, res, next) => {

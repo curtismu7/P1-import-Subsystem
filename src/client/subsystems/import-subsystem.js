@@ -7,13 +7,20 @@
 
 export class ImportSubsystem {
     constructor(logger, uiManager, localClient, settingsManager, eventBus, populationService, authManagementSubsystem = null) {
-        this.logger = logger;
+        this.logger = logger || console;
         this.uiManager = uiManager;
         this.localClient = localClient;
         this.settingsManager = settingsManager;
         this.eventBus = eventBus;
         this.populationService = populationService;
         this.authManagementSubsystem = authManagementSubsystem;
+        // Defensive checks
+        if (!this.logger) console.warn('[ImportSubsystem] Logger is undefined');
+        if (!this.uiManager) this.logger.warn('[ImportSubsystem] UIManager is undefined');
+        if (!this.localClient) this.logger.warn('[ImportSubsystem] LocalClient is undefined');
+        if (!this.settingsManager) this.logger.warn('[ImportSubsystem] SettingsManager is undefined');
+        if (!this.eventBus) this.logger.warn('[ImportSubsystem] EventBus is undefined');
+        if (!this.populationService) this.logger.warn('[ImportSubsystem] PopulationService is undefined');
         
         // Import state management
         this.isImporting = false;

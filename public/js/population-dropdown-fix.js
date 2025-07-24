@@ -61,10 +61,14 @@
       // DO NOT change to POST without updating server-side endpoint
       // Last fixed: 2025-07-21 - HTTP method mismatch caused 400 Bad Request errors
       const response = await fetch('/api/pingone/test-connection', {
-        method: 'GET', // MUST match server endpoint method
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            environmentId: settings.environmentId,
+            apiClientId: settings.apiClientId,
+            apiSecret: settings.apiSecret,
+            region: settings.region
+        })
       });
       
       if (response.ok) {

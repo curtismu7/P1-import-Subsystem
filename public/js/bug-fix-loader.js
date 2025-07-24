@@ -17,11 +17,11 @@
         'global-error-handler.js',
         'resource-manager.js',
         'safe-api.js',
-        'utils/centralized-logger.js',
-        'utils/safe-dom.js',
-        'utils/error-handler.js',
-        'utils/config-constants.js',
-        'utils/event-manager.js'
+        // 'utils/centralized-logger.js',
+        // 'utils/safe-dom.js',
+        // 'utils/error-handler.js',
+        // 'utils/config-constants.js',
+        // 'utils/event-manager.js'
     ];
     
     let loadedCount = 0;
