@@ -106,7 +106,7 @@ class TestingHub {
                 { name: 'Import Subsystem', endpoint: '/api/import/status' },
                 { name: 'Export Subsystem', endpoint: '/api/export/status' },
                 { name: 'History Subsystem', endpoint: '/api/history' },
-                { name: 'Logging Subsystem', endpoint: '/api/logs' },
+                { name: 'Logging Subsystem', endpoint: '/api/logs/ui' },
                 { name: 'Population Manager', endpoint: '/api/populations' }
             ];
 

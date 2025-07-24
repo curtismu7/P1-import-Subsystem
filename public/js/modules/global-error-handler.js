@@ -58,7 +58,7 @@ class GlobalErrorHandler {
 
     async logToServer(errorInfo) {
         try {
-            await fetch('/api/errors', {
+            await fetch('/api/logs/error', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(errorInfo)
