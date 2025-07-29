@@ -5,6 +5,13 @@ All notable changes to the PingOne Import Tool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.5.1.4] - 2024-07-14
+
+### Changed
+- Synchronized all version references to 6.5.1.4 across server startup messages, logs, and package.json.
+- Updated server.js to use a single APP_VERSION constant for maintainability.
+- Ensured startup messages and logs always reflect the main app version.
+
 ## [5.3] - 2025-07-14
 
 ### Added
