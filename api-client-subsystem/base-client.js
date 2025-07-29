@@ -15,7 +15,7 @@
  * - Response caching
  */
 
-import TokenManager from '../server/token-manager.js';
+import TokenService from '../src/server/services/token-service.js';
 
 /**
  * Base API Client
@@ -27,7 +27,7 @@ class BaseApiClient {
      * Create a new BaseApiClient
      * @param {Object} options - Configuration options
      * @param {Object} options.logger - Logger instance
-     * @param {TokenManager} options.tokenManager - Token manager instance
+     * @param {TokenService} options.tokenManager - Token service instance
      * @param {Object} options.config - Client configuration
      */
     constructor(options = {}) {
@@ -35,7 +35,7 @@ class BaseApiClient {
         
         // Initialize dependencies
         this.logger = logger || console;
-        this.tokenManager = tokenManager || new TokenManager(logger);
+        this.tokenManager = tokenManager || new TokenService(logger);
         
         // Configuration with defaults
         this.config = {

@@ -78,7 +78,7 @@ class CentralizedLogger {
                 url: window.location.href
             };
 
-            await fetch('/api/logs', {
+            await fetch('/api/logs/ui', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

@@ -157,8 +157,8 @@
  * 
  * @fileoverview Production-ready Winston logging configuration
  * @author PingOne Import Tool Team
- * @version 3.2.0
- * @since 1.0.0
+ * @version 6.5.1.4
+ * @since 6.5.1.4
  * 
  * @requires winston Core Winston logging library
  * @requires winston-daily-rotate-file Daily log rotation transport
@@ -662,7 +662,7 @@ export function createWinstonLogger(options = {}) {
             service,
             env,
             pid: process.pid,
-            version: process.env.APP_VERSION || '1.0.0'
+            version: process.env.APP_VERSION || '6.5.1.4'
         },
         transports: [
             // Console transport for all environments

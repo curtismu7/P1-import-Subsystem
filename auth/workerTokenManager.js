@@ -5,7 +5,7 @@
 // ===============================
 
 // SECTION: Imports
-import TokenManager from '../server/token-manager.js';
+import TokenService from '../src/server/services/token-service.js';
 import winston from 'winston';
 
 // SECTION: Logger Setup
@@ -32,9 +32,9 @@ const logger = winston.createLogger({
     ]
 });
 
-// SECTION: Singleton TokenManager
+// SECTION: Singleton TokenService
 // This instance is shared across all routes and API calls
-const workerTokenManager = new TokenManager(logger);
+const workerTokenManager = new TokenService(logger);
 
 // SECTION: Export
 export default workerTokenManager; 

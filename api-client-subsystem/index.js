@@ -37,7 +37,7 @@
 
 import BaseApiClient from './base-client.js';
 import PingOneClient from './endpoints/pingone-client.js';
-import TokenManager from '../server/token-manager.js';
+import TokenService from '../src/server/services/token-service.js';
 
 /**
  * Create an API client with the provided configuration
@@ -47,8 +47,8 @@ import TokenManager from '../server/token-manager.js';
 function createApiClient(options = {}) {
     const { logger, tokenManager, config } = options;
     
-    // Create token manager if not provided
-    const tokenManagerInstance = tokenManager || new TokenManager(logger);
+    // Create token service if not provided
+    const tokenManagerInstance = tokenManager || new TokenService(logger);
     
     return new BaseApiClient({
         logger,
@@ -65,8 +65,8 @@ function createApiClient(options = {}) {
 function createPingOneClient(options = {}) {
     const { logger, tokenManager, config } = options;
     
-    // Create token manager if not provided
-    const tokenManagerInstance = tokenManager || new TokenManager(logger);
+    // Create token service if not provided
+    const tokenManagerInstance = tokenManager || new TokenService(logger);
     
     return new PingOneClient({
         logger,

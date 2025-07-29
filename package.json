@@ -5,7 +5,7 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node --experimental-modules --experimental-json-modules scripts/always-background.js",
+    "start": "node --experimental-modules --experimental-json-modules scripts/start-background.js start",
     "start:foreground": "node --experimental-modules --experimental-json-modules server.js",
     "start:background": "node --experimental-modules --experimental-json-modules scripts/start-background.js start",
     "start:daemon": "node --experimental-modules --experimental-json-modules scripts/daemon.js start",
@@ -15,6 +15,7 @@
     "restart:daemon": "node --experimental-modules --experimental-json-modules scripts/daemon.js restart",
     "status:background": "node --experimental-modules --experimental-json-modules scripts/start-background.js status",
     "status:daemon": "node --experimental-modules --experimental-json-modules scripts/daemon.js status",
+    "status": "node --experimental-modules --experimental-json-modules scripts/start-background.js status",
     "dev": "nodemon --experimental-modules --experimental-json-modules server.js",
     "ensure-logs": "node --experimental-modules --experimental-json-modules scripts/ensure-logs-directory.js",
     "test:readable-log": "node --experimental-modules --experimental-json-modules scripts/test-readable-log.js",
@@ -37,6 +38,12 @@
     "verify:build": "node --experimental-modules --experimental-json-modules scripts/verify-build.js",
     "build": "node --experimental-modules --experimental-json-modules scripts/unified-build.js",
     "build:prod": "node --experimental-modules --experimental-json-modules scripts/unified-build.js --production",
+    "build:simple": "node scripts/simple-build.js",
+    "build:enhanced": "node scripts/enhanced-bundle-manager.js",
+    "bundle:health": "node scripts/bundle-health-checker.js",
+    "bundle:cleanup": "node scripts/bundle-health-checker.js cleanup",
+    "bundle:info": "node scripts/enhanced-bundle-manager.js info",
+    "bundle:emergency-cleanup": "node scripts/enhanced-bundle-manager.js cleanup",
     "lint": "eslint . --fix",
     "lint:check": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -78,6 +85,8 @@
     "update:auto": "node scripts/auto-update.cjs",
     "update:conflicts": "node scripts/conflict-checker.cjs",
     "update:safe": "npm run update:conflicts && npm run update:auto",
+    "update:version": "node scripts/update-version.js",
+    "version:workflow": "node scripts/version-workflow.js",
     "stop": "pkill -f 'node.*server.js' || true",
     "restart": "npm run stop && sleep 2 && npm start",
     "restart:safe": "node scripts/restart-server.js",
@@ -223,7 +232,9 @@
     "testEnvironmentOptions": {
       "url": "http://localhost"
     },
-    "extensionsToTreatAsEsm": [".js"],
+    "extensionsToTreatAsEsm": [
+      ".js"
+    ],
     "globals": {
       "ts-jest": {
         "useESM": true
@@ -250,6 +261,16 @@
     ],
     "moduleNameMapping": {
       "^(\\.{1,2}/.*)\\.js$": "$1"
+    }
+  },
+  "buildInfo": {
+    "buildTime": "2025-07-24T12:13:28.278Z",
+    "buildId": 1753359208290,
+    "lastBuild": "2025-07-24T12:13:31.322Z",
+    "bundleInfo": {
+      "name": "bundle-v6.5.1.4-1753359208290.js",
+      "hash": "7615ce8c1dcfdd4c",
+      "size": 4146
     }
   }
 }

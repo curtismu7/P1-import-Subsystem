@@ -5,7 +5,7 @@
  * build information and health status indicators.
  * 
  * Features:
- * - Semantic version display (e.g., v6.5.1.1)
+ * - Semantic version display (e.g., v6.5.1.4)
  * - Build timestamp and hash information
  * - Health status indicator
  * - Click to show detailed build info
