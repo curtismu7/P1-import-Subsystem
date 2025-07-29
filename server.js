@@ -45,7 +45,7 @@
  * 
  * @fileoverview Main server entry point for PingOne Import Tool
  * @author PingOne Import Tool Team
- * @version 6.3.0
+ * @version 6.5.1.4
  * @since 1.0.0
  * 
  * @requires express Express.js web framework
@@ -714,6 +714,9 @@ app.use(async (err, req, res, next) => {
 // Import the logs directory check
 import { ensureLogsDirectory } from './scripts/ensure-logs-directory.js';
 
+// Version constant for DRYness
+const APP_VERSION = '6.5.1.4';
+
 // Server startup with enhanced logging
 const startServer = async () => {
     const startTime = Date.now();
@@ -878,7 +881,7 @@ const startServer = async () => {
                 node: process.version,
                 platform: process.platform,
                 env: process.env.NODE_ENV || 'development',
-                appVersion: '6.3.0',
+                appVersion: APP_VERSION,
                 pingOneInitialized: serverState.pingOneInitialized,
                 duration: `${duration}ms`,
                 critical: true
@@ -893,7 +896,7 @@ const startServer = async () => {
                 console.log(`   Node: ${process.version}`);
                 console.log(`   Platform: ${process.platform}`);
                 console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-                console.log(`   Version: 6.3.0`);
+                console.log(`   Version: ${APP_VERSION}`);
                 console.log(`   PingOne: ${serverState.pingOneInitialized ? '✅ Connected' : '⚠️  Not connected'}`);
                 console.log(`   📚 Swagger UI: ${url}/swagger.html`);
                 console.log(`   📄 Swagger JSON: ${url}/swagger.json`);
@@ -1209,7 +1212,7 @@ process.on('uncaughtException', (error) => {
         error: error.message,
         stack: error.stack,
         code: error.code,
-        appVersion: '6.3.0',
+        appVersion: APP_VERSION,
         critical: true
     });
     
@@ -1218,7 +1221,7 @@ process.on('uncaughtException', (error) => {
         logger.warn('Ignoring non-fatal error to prevent server crash', {
             error: error.message,
             code: error.code,
-            appVersion: '6.3.0'
+            appVersion: APP_VERSION
         });
         return;
     }
@@ -1232,7 +1235,7 @@ process.on('unhandledRejection', (reason, promise) => {
         reason: reason?.message || reason,
         stack: reason?.stack,
         promise: promise,
-        appVersion: '6.3.0',
+        appVersion: APP_VERSION,
         critical: true
     });
     
