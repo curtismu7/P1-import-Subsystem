@@ -3,7 +3,8 @@
     ["@babel/preset-env", { 
       "targets": { 
         "browsers": ["> 1%", "last 2 versions", "not dead"]
-      }
+      },
+      "modules": "commonjs"
     }],
     "@babel/preset-react"
   ],
@@ -15,5 +16,6 @@
     "@babel/plugin-proposal-export-namespace-from",
     "@babel/plugin-proposal-private-methods",
     "@babel/plugin-proposal-private-property-in-object"
-  ]
+  ],
+  "sourceType": "unambiguous"
 }

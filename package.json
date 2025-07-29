@@ -26,6 +26,7 @@
     "fix:token-status": "node --experimental-modules --experimental-json-modules scripts/fix-token-status-widget.js",
     "fix:progress": "node --experimental-modules --experimental-json-modules scripts/fix-progress-subsystem.js",
     "build:bundle": "TIMESTAMP=$(date +%s) && npx browserify src/client/app.js -t [ babelify --configFile ./config/babel.config.json --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -o public/js/bundle-${TIMESTAMP}.js && echo '{\"bundleFile\": \"bundle-'${TIMESTAMP}'.js\"}' > public/js/bundle-manifest.json && node scripts/update-bundle-reference.js",
+    "build:bundle:dev": "npx browserify src/client/app.js --no-bundle-external -t [ babelify --configFile ./config/babel.config.json --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -o public/js/bundle-dev.js && echo '✅ Development bundle built (unminified)'",
     "postbuild:bundle": "node --experimental-modules --experimental-json-modules scripts/verify-build.js",
     "build:bundle:direct": "TIMESTAMP=$(date +%s) && npx browserify src/client/app.js -t [ babelify --configFile ./config/babel.config.json --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -o public/js/bundle-${TIMESTAMP}.js && echo '{\"bundleFile\": \"bundle-'${TIMESTAMP}'.js\"}' > public/js/bundle-manifest.json && node scripts/update-bundle-reference.js && echo '✅ Bundle built and HTML updated with direct loading'",
     "postbuild:bundle:direct": "node --experimental-modules --experimental-json-modules scripts/verify-build.js",
@@ -149,7 +150,8 @@
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^4.7.1",
     "ws": "^8.18.3",
-    "xss-clean": "^0.1.1"
+    "xss-clean": "^0.1.1",
+    "yamljs": "^0.3.0"
   },
   "devDependencies": {
     "@babel/plugin-proposal-class-properties": "^7.18.6",
@@ -223,7 +225,9 @@
     "testEnvironmentOptions": {
       "url": "http://localhost"
     },
-    "extensionsToTreatAsEsm": [".js"],
+    "extensionsToTreatAsEsm": [
+      ".js"
+    ],
     "globals": {
       "ts-jest": {
         "useESM": true

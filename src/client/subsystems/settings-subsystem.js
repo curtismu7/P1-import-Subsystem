@@ -18,7 +18,9 @@ class SettingsSubsystem {
         this.isSaving = false;
         this.currentSettings = null;
         
-        this.logger.info('Settings Subsystem initialized');
+        // Safe logger access with fallbacks
+        const infoLog = this.logger?.info || this.logger?.log || console.log;
+        infoLog('Settings Subsystem initialized');
         
         // Set up event listeners for cross-subsystem communication
         this.setupCrossSubsystemEvents();
@@ -31,9 +33,13 @@ class SettingsSubsystem {
         try {
             this.setupEventListeners();
             await this.loadCurrentSettings();
-            this.logger.info('Settings Subsystem initialized successfully');
+            // Safe logger access with fallbacks
+            const infoLog = this.logger?.info || this.logger?.log || console.log;
+            infoLog('Settings Subsystem initialized successfully');
         } catch (error) {
-            this.logger.error('Failed to initialize Settings Subsystem', error);
+            // Safe logger access with fallbacks
+            const errorLog = this.logger?.error || this.logger?.log || console.error;
+            errorLog('Failed to initialize Settings Subsystem', error);
             this.uiManager.showSettingsActionStatus('Failed to initialize Settings Subsystem: ' + error.message, 'error');
         }
     }
@@ -42,19 +48,23 @@ class SettingsSubsystem {
      * Set up event listeners for settings-related elements
      */
     setupEventListeners() {
-        this.logger.info('Setting up Settings Subsystem event listeners');
+        // Safe logger access with fallbacks
+        const infoLog = this.logger?.info || this.logger?.log || console.log;
+        const warnLog = this.logger?.warn || this.logger?.log || console.warn;
+        
+        infoLog('Setting up Settings Subsystem event listeners');
         
         // Save settings button
         const saveBtn = document.getElementById('save-settings');
         if (saveBtn) {
-            this.logger.info('Found save settings button, attaching event listener');
+            infoLog('Found save settings button, attaching event listener');
             saveBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
-                this.logger.info('Save settings button clicked');
+                infoLog('Save settings button clicked');
                 await this.saveSettings();
             });
         } else {
-            this.logger.warn('Save settings button not found in DOM');
+            warnLog('Save settings button not found in DOM');
         }
         
         // Test connection button
@@ -84,7 +94,7 @@ class SettingsSubsystem {
             });
         }
         
-        this.logger.info('Settings Subsystem event listeners setup complete');
+        infoLog('Settings Subsystem event listeners setup complete');
     }
     
     /**
@@ -94,9 +104,13 @@ class SettingsSubsystem {
         try {
             this.currentSettings = this.settingsManager.getSettings();
             this.populateSettingsForm(this.currentSettings);
-            this.logger.info('Current settings loaded successfully');
+            // Safe logger access with fallbacks
+            const infoLog = this.logger?.info || this.logger?.log || console.log;
+            infoLog('Current settings loaded successfully');
         } catch (error) {
-            this.logger.error('Failed to load current settings', error);
+            // Safe logger access with fallbacks
+            const errorLog = this.logger?.error || this.logger?.log || console.error;
+            errorLog('Failed to load current settings', error);
             throw error;
         }
     }
@@ -105,17 +119,23 @@ class SettingsSubsystem {
      * Save settings
      */
     async saveSettings() {
+        // Safe logger access with fallbacks
+        const infoLog = this.logger?.info || this.logger?.log || console.log;
+        const warnLog = this.logger?.warn || this.logger?.log || console.warn;
+        const errorLog = this.logger?.error || this.logger?.log || console.error;
+        const debugLog = this.logger?.debug || this.logger?.log || console.log;
+        
         if (this.isSaving) {
-            this.logger.warn('Settings save already in progress');
+            warnLog('Settings save already in progress');
             return;
         }
         
         try {
             this.isSaving = true;
-            this.logger.info('Starting settings save process');
+            infoLog('Starting settings save process');
             
             // Debug: Check all dependencies
-            this.logger.debug('Checking saveSettings dependencies:', {
+            debugLog('Checking saveSettings dependencies:', {
                 hasUIManager: !!this.uiManager,
                 hasLocalClient: !!this.localClient,
                 hasSettingsManager: !!this.settingsManager,
@@ -126,30 +146,30 @@ class SettingsSubsystem {
             // Show immediate feedback
             if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
                 this.uiManager.showSettingsActionStatus('Saving settings...', 'info');
-                this.logger.debug('UI feedback shown successfully');
+                debugLog('UI feedback shown successfully');
             } else {
-                this.logger.warn('UIManager or showSettingsActionStatus method not available');
+                warnLog('UIManager or showSettingsActionStatus method not available');
             }
             
             // Get form data
             let settings;
             try {
                 settings = this.getFormData();
-                this.logger.info('Form data extracted successfully:', settings);
+                infoLog('Form data extracted successfully:', settings);
             } catch (formError) {
-                this.logger.error('Failed to get form data:', formError);
+                errorLog('Failed to get form data:', formError);
                 throw new Error(`Form data extraction failed: ${formError.message}`);
             }
             
             // Validate settings
             try {
                 if (!this.validateSettings(settings)) {
-                    this.logger.error('Settings validation failed');
+                    errorLog('Settings validation failed');
                     return;
                 }
-                this.logger.debug('Settings validation passed');
+                debugLog('Settings validation passed');
             } catch (validationError) {
-                this.logger.error('Settings validation error:', validationError);
+                errorLog('Settings validation error:', validationError);
                 throw new Error(`Settings validation error: ${validationError.message}`);
             }
             
@@ -170,23 +190,23 @@ class SettingsSubsystem {
                     }
                     
                     this.credentialsManager.saveCredentials(credentials);
-                    this.logger.info('Credentials saved to localStorage successfully');
+                    infoLog('Credentials saved to localStorage successfully');
                 } catch (credentialsError) {
-                    this.logger.error('Credentials manager error:', credentialsError);
+                    errorLog('Credentials manager error:', credentialsError);
                     throw new Error(`Credentials save failed: ${credentialsError.message}`);
                 }
             } else {
-                this.logger.debug('No credentials manager available, skipping credentials save');
+                debugLog('No credentials manager available, skipping credentials save');
             }
             
             // Save to server
             if (this.localClient && typeof this.localClient.post === 'function') {
                 try {
-                    this.logger.debug('Attempting server save with localClient.post');
-                    const response = await this.localClient.post('/settings', settings);
-                    this.logger.info('Server save successful:', response);
+                    debugLog('Attempting server save with localClient.post');
+                    const response = await this.localClient.post('/api/settings', settings);
+                    infoLog('Server save successful:', response);
                 } catch (serverError) {
-                    this.logger.error('Failed to save to server:', serverError);
+                    errorLog('Failed to save to server:', serverError);
                     const errorMessage = serverError.message || 'Unknown server error';
                     if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
                         this.uiManager.showSettingsActionStatus('Failed to save settings: ' + errorMessage, 'error', { autoHide: false });
@@ -194,7 +214,7 @@ class SettingsSubsystem {
                     throw new Error(`Server save failed: ${errorMessage}`);
                 }
             } else {
-                this.logger.error('LocalClient not available or post method missing');
+                errorLog('LocalClient not available or post method missing');
                 throw new Error('LocalClient not available for server communication');
             }
             
@@ -203,13 +223,13 @@ class SettingsSubsystem {
                 try {
                     this.settingsManager.updateSettings(settings);
                     this.currentSettings = settings;
-                    this.logger.debug('Settings manager updated successfully');
+                    debugLog('Settings manager updated successfully');
                 } catch (settingsManagerError) {
-                    this.logger.error('Settings manager update error:', settingsManagerError);
+                    errorLog('Settings manager update error:', settingsManagerError);
                     throw new Error(`Settings manager update failed: ${settingsManagerError.message}`);
                 }
             } else {
-                this.logger.warn('Settings manager not available or updateSettings method missing');
+                warnLog('Settings manager not available or updateSettings method missing');
             }
             
             // Show success feedback
@@ -223,23 +243,23 @@ class SettingsSubsystem {
                     this.updateConnectionStatus('✅ Settings saved! Please - Get token', 'success');
                 }
             } catch (connectionStatusError) {
-                this.logger.warn('Connection status update failed:', connectionStatusError);
+                warnLog('Connection status update failed:', connectionStatusError);
             }
             
             // Emit event for other subsystems
             if (this.eventBus && typeof this.eventBus.emit === 'function') {
                 try {
                     this.eventBus.emit('settingsSaved', { settings });
-                    this.logger.debug('Settings saved event emitted successfully');
+                    debugLog('Settings saved event emitted successfully');
                 } catch (eventError) {
-                    this.logger.warn('Event emission failed:', eventError);
+                    warnLog('Event emission failed:', eventError);
                 }
             }
             
-            this.logger.info('Settings save process completed successfully');
+            infoLog('Settings save process completed successfully');
             
         } catch (error) {
-            this.logger.error('Failed to save settings - detailed error:', {
+            errorLog('Failed to save settings - detailed error:', {
                 message: error.message,
                 stack: error.stack,
                 name: error.name
@@ -253,7 +273,7 @@ class SettingsSubsystem {
             throw error;
         } finally {
             this.isSaving = false;
-            this.logger.debug('Settings save process finished, isSaving flag reset');
+            debugLog('Settings save process finished, isSaving flag reset');
         }
     }
     
@@ -301,14 +321,15 @@ class SettingsSubsystem {
             errors.push('Region is required');
         }
         
-        if (settings.rateLimit && (settings.rateLimit < 1 || settings.rateLimit > 1000)) {
-            errors.push('Rate limit must be between 1 and 1000');
-        }
-        
         if (errors.length > 0) {
-            const errorMessage = 'Validation failed: ' + errors.join(', ');
-            this.logger.error('Settings validation failed', { errors });
-            this.uiManager.showSettingsActionStatus(errorMessage, 'error', { autoHide: false });
+            // Safe logger access with fallbacks
+            const errorLog = this.logger?.error || this.logger?.log || console.error;
+            errorLog('Settings validation failed', { errors });
+            
+            if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                this.uiManager.showSettingsActionStatus('Validation failed: ' + errors.join(', '), 'error');
+            }
+            
             return false;
         }
         
@@ -321,56 +342,65 @@ class SettingsSubsystem {
     populateSettingsForm(settings) {
         if (!settings) return;
         
+        const form = document.getElementById('settings-form');
+        if (!form) return;
+        
+        // Populate form fields
         const fields = {
-            'environment-id': settings.environmentId,
-            'api-client-id': settings.apiClientId,
-            'api-secret': settings.apiSecret,
-            'region': settings.region,
-            'rate-limit': settings.rateLimit,
-            'population-id': settings.populationId
+            'environment-id': settings.environmentId || '',
+            'api-client-id': settings.apiClientId || '',
+            'api-secret': settings.apiSecret || '',
+            'region': settings.region || 'NorthAmerica',
+            'rate-limit': settings.rateLimit || 50,
+            'population-id': settings.populationId || ''
         };
         
-        Object.entries(fields).forEach(([fieldId, value]) => {
-            const field = document.getElementById(fieldId);
-            if (field && value !== undefined && value !== null) {
+        Object.entries(fields).forEach(([name, value]) => {
+            const field = form.querySelector(`[name="${name}"]`);
+            if (field) {
                 field.value = value;
             }
         });
         
-        this.logger.info('Settings form populated with current values');
+        // Safe logger access with fallbacks
+        const infoLog = this.logger?.info || this.logger?.log || console.log;
+        infoLog('Settings form populated with current values');
     }
     
     /**
      * Test connection
      */
     async testConnection() {
+        // Safe logger access with fallbacks
+        const infoLog = this.logger?.info || this.logger?.log || console.log;
+        const errorLog = this.logger?.error || this.logger?.log || console.error;
+        
         try {
-            this.logger.info('Testing connection...');
-            this.uiManager.showSettingsActionStatus('Testing connection...', 'info');
-            const settings = this.getFormData();
-            // Validate required fields
-            if (!settings.environmentId || !settings.apiClientId || !settings.apiSecret || !settings.region) {
-                this.uiManager.showSettingsActionStatus('Please fill in all required fields', 'error');
-                this.updateConnectionStatus('❌ Missing credentials', 'error');
-                return;
+            infoLog('Testing connection...');
+            
+            if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                this.uiManager.showSettingsActionStatus('Testing connection...', 'info');
             }
-            // Use POST request to match server-side endpoint
-            const response = await this.localClient.post('/api/pingone/test-connection', {
-                environmentId: settings.environmentId,
-                clientId: settings.apiClientId,
-                clientSecret: settings.apiSecret,
-                region: settings.region
-            });
+            
+            const response = await this.localClient.get('/api/pingone/test-connection');
+            
             if (response.success) {
-                this.uiManager.showSettingsActionStatus('Connection test successful', 'success', { autoHideDelay: 3000 });
+                if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                    this.uiManager.showSettingsActionStatus('Connection test successful!', 'success');
+                }
                 this.updateConnectionStatus('✅ Connection successful', 'success');
             } else {
-                this.uiManager.showSettingsActionStatus('Connection test failed: ' + (response.error || response.message), 'error');
+                if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                    this.uiManager.showSettingsActionStatus('Connection test failed: ' + (response.error || 'Unknown error'), 'error');
+                }
                 this.updateConnectionStatus('❌ Connection failed', 'error');
             }
         } catch (error) {
-            this.logger.error('Connection test failed', error);
-            this.uiManager.showSettingsActionStatus('Connection test failed: ' + error.message, 'error');
+            errorLog('Connection test failed', error);
+            
+            if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                this.uiManager.showSettingsActionStatus('Connection test failed: ' + error.message, 'error');
+            }
             this.updateConnectionStatus('❌ Connection failed', 'error');
         }
     }
@@ -379,47 +409,41 @@ class SettingsSubsystem {
      * Get token
      */
     async getToken() {
+        // Safe logger access with fallbacks
+        const infoLog = this.logger?.info || this.logger?.log || console.log;
+        const errorLog = this.logger?.error || this.logger?.log || console.error;
+        
         try {
-            this.logger.info('Getting token...');
-            this.uiManager.showSettingsActionStatus('Getting token...', 'info');
+            infoLog('Getting token...');
             
-            const settings = this.getFormData();
-            
-            // Get token via API
-            const response = await this.localClient.post('/api/v1/auth/token', settings);
-            
-            if (response.success) {
-                this.uiManager.showSettingsActionStatus('Token obtained successfully', 'success', { autoHideDelay: 3000 });
-                this.updateConnectionStatus('✅ Token obtained', 'success');
-                
-                // NEW: Direct global token status updater for sidebar
-                (this.logger?.debug || window.logger?.debug || console.log)('🚀 [DEBUG] SettingsSubsystem: About to call updateGlobalTokenStatusDirect');
-                try {
-                    // Get the main app instance to call the direct updater
-                    if (window.app && typeof window.app.updateGlobalTokenStatusDirect === 'function') {
-                        // Calculate time left from token response
-                        const timeLeft = response.timeLeft || response.timeRemaining || '';
-                        window.app.updateGlobalTokenStatusDirect(timeLeft);
-                        (this.logger?.debug || window.logger?.debug || console.log)('✅ [DEBUG] SettingsSubsystem: updateGlobalTokenStatusDirect called successfully with timeLeft:', timeLeft);
-                    } else {
-                        (this.logger?.warn || window.logger?.warn || console.warn)('⚠️ [DEBUG] SettingsSubsystem: window.app.updateGlobalTokenStatusDirect not available');
-                    }
-                } catch (error) {
-                    (this.logger?.error || window.logger?.error || console.error)('❌ [DEBUG] SettingsSubsystem: Error calling updateGlobalTokenStatusDirect:', error);
-                }
-                
-                // Emit event for other subsystems
-                if (this.eventBus) {
-                    this.eventBus.emit('tokenObtained', { token: response.token });
-                }
-            } else {
-                this.uiManager.showSettingsActionStatus('Failed to get token: ' + response.message, 'error');
-                this.updateConnectionStatus('❌ Token failed', 'error');
+            if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                this.uiManager.showSettingsActionStatus('Getting token...', 'info');
             }
             
+            const response = await this.localClient.post('/token/worker');
+            
+            if (response.success) {
+                if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                    this.uiManager.showSettingsActionStatus('Token retrieved successfully!', 'success');
+                }
+                this.updateConnectionStatus('✅ Token obtained', 'success');
+                
+                // Emit token obtained event
+                if (this.eventBus && typeof this.eventBus.emit === 'function') {
+                    this.eventBus.emit('tokenObtained', { token: response.data });
+                }
+            } else {
+                if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                    this.uiManager.showSettingsActionStatus('Failed to get token: ' + (response.error || 'Unknown error'), 'error');
+                }
+                this.updateConnectionStatus('❌ Token failed', 'error');
+            }
         } catch (error) {
-            this.logger.error('Failed to get token', error);
-            this.uiManager.showSettingsActionStatus('Failed to get token: ' + error.message, 'error');
+            errorLog('Failed to get token', error);
+            
+            if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                this.uiManager.showSettingsActionStatus('Failed to get token: ' + error.message, 'error');
+            }
             this.updateConnectionStatus('❌ Token failed', 'error');
         }
     }
@@ -461,46 +485,51 @@ class SettingsSubsystem {
      */
     setupCrossSubsystemEvents() {
         if (!this.eventBus) {
-            this.logger.warn('EventBus not available for cross-subsystem events');
+            // Safe logger access with fallbacks
+            const warnLog = this.logger?.warn || this.logger?.log || console.warn;
+            warnLog('EventBus not available for cross-subsystem events');
             return;
         }
         
-        // Listen for token expiration events
+        // Listen for token events
         this.eventBus.on('tokenExpired', (data) => {
-            this.logger.warn('Token expired');
-            this.updateConnectionStatus('⚠️ Token expired', 'warning');
+            // Safe logger access with fallbacks
+            const warnLog = this.logger?.warn || this.logger?.log || console.warn;
+            warnLog('Token expired');
+            this.updateConnectionStatus('❌ Token expired', 'error');
         });
         
-        // Listen for token error events
         this.eventBus.on('tokenError', (data) => {
-            this.logger.error('Token error detected', data);
+            // Safe logger access with fallbacks
+            const errorLog = this.logger?.error || this.logger?.log || console.error;
+            errorLog('Token error detected', data);
             this.updateConnectionStatus('❌ Token error', 'error');
         });
         
-        // Listen for token refresh events
         this.eventBus.on('tokenRefreshed', (data) => {
-            this.logger.info('Token refreshed successfully');
+            // Safe logger access with fallbacks
+            const infoLog = this.logger?.info || this.logger?.log || console.log;
+            infoLog('Token refreshed successfully');
             this.updateConnectionStatus('✅ Token refreshed', 'success');
         });
         
-        this.logger.debug('Cross-subsystem event listeners set up for SettingsSubsystem');
+        // Safe logger access with fallbacks
+        const debugLog = this.logger?.debug || this.logger?.log || console.log;
+        debugLog('Cross-subsystem event listeners set up for SettingsSubsystem');
     }
     
     /**
-     * Get all settings (required by App initialization)
-     * @returns {Object} All current settings
+     * Get all settings
      */
     getAllSettings() {
-        if (this.settingsManager && this.settingsManager.getAllSettings) {
-            return this.settingsManager.getAllSettings();
-        } else if (this.settingsManager && this.settingsManager.getSettings) {
-            return this.settingsManager.getSettings();
-        } else if (this.currentSettings) {
-            return this.currentSettings;
-        } else {
-            this.logger.warn('No settings available, returning empty object');
+        if (!this.settingsManager) {
+            // Safe logger access with fallbacks
+            const warnLog = this.logger?.warn || this.logger?.log || console.warn;
+            warnLog('No settings available, returning empty object');
             return {};
         }
+        
+        return this.settingsManager.getSettings() || {};
     }
 }
 

@@ -98,7 +98,7 @@ import indexRouter from './routes/index.js';
 import testRunnerRouter from './routes/test-runner.js';
 import importRouter from './routes/api/import.js';
 import exportRouter from './routes/api/export.js';
-import { setupSwagger } from './swagger.js';
+import { setupSwagger } from './swagger-modern.js';
 import session from 'express-session';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
