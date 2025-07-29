@@ -418,7 +418,7 @@ class SettingsManager {
             const exportData = {
                 settings: this.settings,
                 exportDate: new Date().toISOString(),
-                version: '1.0'
+                version: '6.5.1.2'
             };
             
             this.logger.info('Settings exported', { exportDate: exportData.exportDate });
