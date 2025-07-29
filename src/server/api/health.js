@@ -7,6 +7,9 @@
 import express from 'express';
 import { createLogger } from '../../shared/logging-service.js';
 import { getFeatureFlagStatus } from '../../shared/feature-flags.js';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { version: appVersion } = require('../../package.json');
 
 const router = express.Router();
 const logger = createLogger({ serviceName: 'health-check' });
@@ -53,7 +56,7 @@ router.get('/', async (req, res) => {
         const health = {
             status: 'healthy',
             timestamp: new Date().toISOString(),
-            version: process.env.APP_VERSION || '6.3.0',
+            version: process.env.APP_VERSION || appVersion,
             uptime: process.uptime(),
             environment: process.env.NODE_ENV || 'development',
             nodeVersion: process.version,
@@ -295,7 +298,7 @@ async function getDetailedHealthStatus() {
             pid: process.pid
         },
         application: {
-            version: '6.3.0',
+            version: appVersion,
             environment: process.env.NODE_ENV || 'development',
             featureFlags: getFeatureFlagStatus()
         },

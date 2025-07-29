@@ -31,6 +31,9 @@ import { sendProgressEvent, sendCompletionEvent, sendErrorEvent } from '../../se
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { version: appVersion } = require('../../../package.json');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -2253,9 +2256,8 @@ router.post('/pingone/get-token', async (req, res, next) => {
 
 // --- VERSION ENDPOINT ---
 router.get('/version', (req, res) => {
-    // You can import VersionManager or use a static version string
-    // For now, use a static version
-    res.json({ version: '6.3.0' });
+    // Use dynamic version from package.json
+    res.json({ version: appVersion });
 });
 
 // --- DELETE USERS ENDPOINT ---
