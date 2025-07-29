@@ -3,11 +3,11 @@
  * Handles user notifications for invalid/missing tokens and disabled functionality
  */
 
-import { createLogger } from '../utils/winston-logger.js';
+import { createWinstonLogger } from '../utils/winston-logger.js';
 
 export class TokenNotificationSubsystem {
     constructor(logger, eventBus, navigationSubsystem) {
-        this.logger = logger || createLogger({
+        this.logger = logger || createWinstonLogger({
             serviceName: 'token-notification-subsystem',
             environment: 'development'
         });

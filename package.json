@@ -15,7 +15,9 @@
     "restart:daemon": "node --experimental-modules --experimental-json-modules scripts/daemon.js restart",
     "status:background": "node --experimental-modules --experimental-json-modules scripts/start-background.js status",
     "status:daemon": "node --experimental-modules --experimental-json-modules scripts/daemon.js status",
-    "dev": "nodemon --experimental-modules --experimental-json-modules server.js",
+    "dev": "vite",
+    "dev:server": "nodemon --experimental-modules --experimental-json-modules server.js",
+    "dev:old": "nodemon --experimental-modules --experimental-json-modules server.js",
     "ensure-logs": "node --experimental-modules --experimental-json-modules scripts/ensure-logs-directory.js",
     "test:readable-log": "node --experimental-modules --experimental-json-modules scripts/test-readable-log.js",
     "analyze:bundle": "node --experimental-modules --experimental-json-modules scripts/analyze-bundle.js",
@@ -35,7 +37,10 @@
     "postbuild:production:quick": "node --experimental-modules --experimental-json-modules scripts/verify-build.js",
     "build:bundle:legacy": "npx browserify public/js/app.js -t [ babelify --configFile ./config/babel.config.json --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -o public/js/bundle-legacy.js",
     "verify:build": "node --experimental-modules --experimental-json-modules scripts/verify-build.js",
-    "build": "node --experimental-modules --experimental-json-modules scripts/unified-build.js",
+    "build": "vite build",
+    "build:vite": "vite build",
+    "preview": "vite preview",
+    "build:legacy": "node --experimental-modules --experimental-json-modules scripts/unified-build.js",
     "build:prod": "node --experimental-modules --experimental-json-modules scripts/unified-build.js --production",
     "lint": "eslint . --fix",
     "lint:check": "eslint .",
@@ -203,6 +208,7 @@
     "ts-jest": "^29.4.0",
     "typescript": "^5.8.3",
     "uglify-js": "^3.19.3",
+    "vite": "^7.0.6",
     "watchify": "^4.0.0",
     "whatwg-url": "^14.2.0"
   },
@@ -223,7 +229,9 @@
     "testEnvironmentOptions": {
       "url": "http://localhost"
     },
-    "extensionsToTreatAsEsm": [".js"],
+    "extensionsToTreatAsEsm": [
+      ".js"
+    ],
     "globals": {
       "ts-jest": {
         "useESM": true
