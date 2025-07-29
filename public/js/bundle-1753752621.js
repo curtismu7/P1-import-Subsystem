@@ -19521,7 +19521,7 @@ Object.defineProperty(exports, "__esModule", {
 exports.VersionManager = void 0;
 class VersionManager {
   constructor() {
-    this.version = '6.1'; // Update this with each new version
+    this.version = '6.5.1.4'; // Update this with each new version
     console.log(`Version Manager initialized with version ${this.version}`);
   }
   getVersion() {
@@ -20050,7 +20050,7 @@ class CentralizedLogger {
         userAgent: navigator.userAgent,
         url: window.location.href
       };
-      await fetch('/api/logs', {
+      await fetch('/api/logs/ui', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -20974,6 +20974,7 @@ var _tokenAlertModal = require("../../public/js/modules/token-alert-modal.js");
 var _tokenRefreshHandler = _interopRequireDefault(require("../../public/js/modules/token-refresh-handler.js"));
 var _socket = require("socket.io-client");
 var _featureFlags = require("../shared/feature-flags.js");
+console.log('[BUNDLE] Main bundle loaded and executing!');
 // File: app.js
 // Description: Main application entry point for PingOne user import tool
 // 
@@ -21149,6 +21150,7 @@ class App {
    */
   async init() {
     try {
+      console.debug('[APP INIT] Starting app initialization...');
       // Visual confirmation that latest fixes are active
       console.log('🚀 [FIXES ACTIVE] PopulationSubsystem and Settings API fixes loaded - Build: bundle-1753304368');
       this.logger.info('🚀 Initializing PingOne Import Application...');
@@ -21180,6 +21182,33 @@ class App {
       // Initialize UI
       await this.initializeUI();
 
+      // Force credentials modal for testing
+      if (this.credentialsManager && typeof this.credentialsManager.showCredentialsModal === 'function') {
+        console.debug('[APP INIT] Forcing credentials modal to show at startup (test mode)');
+        this.credentialsManager.showCredentialsModal();
+      }
+
+      // Force update of token status widget in sidebar with actual status check
+      if (this.uiManager && typeof this.uiManager.updateHomeTokenStatus === 'function') {
+        // First show loading state
+        this.uiManager.updateHomeTokenStatus(true, 'Checking token status...');
+
+        // Then check actual token status
+        try {
+          const authSubsystem = this.subsystems.authManagementSubsystem;
+          if (authSubsystem && typeof authSubsystem.checkInitialTokenStatus === 'function') {
+            await authSubsystem.checkInitialTokenStatus();
+            // The auth subsystem will update the UI with real status
+          } else {
+            // Fallback: show a default valid state
+            this.uiManager.updateHomeTokenStatus(false, 'Token status unknown');
+          }
+        } catch (error) {
+          this.logger.error('Failed to check initial token status', error);
+          this.uiManager.updateHomeTokenStatus(false, 'Token check failed');
+        }
+      }
+
       // Mark as initialized
       this.isInitialized = true;
 
@@ -21190,12 +21219,20 @@ class App {
         initializationTime: `${initTime}ms`,
         subsystemsEnabled: Object.keys(this.subsystems).length
       });
+
+      // Add spinner fallback
+      setTimeout(() => {
+        const spinner = document.getElementById('startup-wait-screen');
+        if (spinner && spinner.style.display !== 'none') {
+          spinner.style.display = 'none';
+          const errorDiv = document.createElement('div');
+          errorDiv.innerHTML = `<div style="color: red; text-align: center; padding: 20px; background: #ffe6e6; border: 1px solid #ff0000; margin: 10px;">[DEBUG] App failed to initialize in time. Please check the console for errors or reload the page.</div>`;
+          document.body.insertBefore(errorDiv, document.body.firstChild);
+          console.error('[APP INIT] Spinner fallback triggered: App failed to initialize in time.');
+        }
+      }, 7000);
     } catch (error) {
-      this.logger.error('Application initialization failed', {
-        error: error.message,
-        stack: error.stack
-      });
-      throw error;
+      console.error('[APP INIT] Error during initialization:', error);
     }
   }
 
@@ -22011,20 +22048,15 @@ class App {
         // Fallback: test connection directly
         // CRITICAL: This MUST be a GET request to match server-side endpoint
         // Server endpoint: routes/pingone-proxy-fixed.js - router.get('/test-connection')
-        // DO NOT change to POST without updating server-side endpoint
-        // Last fixed: 2025-07-21 - HTTP method mismatch caused 400 Bad Request errors
+        // FIXED: Changed from POST to GET to match backend endpoint
+        // Last fixed: 2025-07-24 - HTTP method mismatch resolved
         const settings = await this.settingsSubsystem.loadSettings();
         const response = await fetch('/api/pingone/test-connection', {
-          method: 'POST',
+          method: 'GET',
           headers: {
             'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            environmentId: settings.environmentId,
-            apiClientId: settings.apiClientId,
-            apiSecret: settings.apiSecret,
-            region: settings.region
-          })
+          }
+          // Note: GET requests don't have body, settings are passed via environment/session
         });
         const result = await response.json();
         if (result.success) {
@@ -25848,7 +25880,7 @@ class TestingHub {
         endpoint: '/api/history'
       }, {
         name: 'Logging Subsystem',
-        endpoint: '/api/logs'
+        endpoint: '/api/logs/ui'
       }, {
         name: 'Population Manager',
         endpoint: '/api/populations'
@@ -30108,19 +30140,29 @@ class AuthManagementSubsystem {
     try {
       this.logger.info('Getting new authentication token');
       this.showTokenProgress('Getting token...');
-
-      // Validate settings first
       await this.settingsSubsystem.loadCurrentSettings();
       const settings = this.settingsSubsystem.currentSettings;
-      if (!this.validateSettings(settings)) {
-        throw new Error('Invalid settings - please check your configuration');
+      if (!settings.clientId || !settings.clientSecret || !settings.environmentId || !settings.region) {
+        const missing = [];
+        if (!settings.clientId) missing.push('clientId');
+        if (!settings.clientSecret) missing.push('clientSecret');
+        if (!settings.environmentId) missing.push('environmentId');
+        if (!settings.region) missing.push('region');
+        const msg = `Missing required settings: ${missing.join(', ')}`;
+        this.logger.error(msg);
+        this.uiManager.showError('Authentication Failed', msg);
+        this.hideTokenProgress();
+        return;
       }
 
-      // Request token from server
+      // Request token from server using available credentials
+      const clientId = settings.clientId || settings['api-client-id'] || settings.apiClientId;
+      const clientSecret = settings.clientSecret || settings['api-secret'] || settings.apiSecret;
+      const environmentId = settings.environmentId || settings['environment-id'];
       const response = await this.localClient.post('/api/v1/auth/token', {
-        clientId: settings.clientId,
-        clientSecret: settings.clientSecret,
-        environmentId: settings.environmentId,
+        clientId: clientId,
+        clientSecret: clientSecret,
+        environmentId: environmentId,
         region: settings.region
       });
       if (!response.success) {
@@ -30266,7 +30308,12 @@ class AuthManagementSubsystem {
         this.isAuthenticated = true;
         this.updateTokenStatusUI(true, `Token is ${response.status}`);
         this.logger.info('✅ [STARTUP] Valid token found, authentication ready');
-      } else if (response.success && response.hasToken) {
+
+        // Update home token status widget
+        if (this.uiManager && typeof this.uiManager.updateHomeTokenStatus === 'function') {
+          this.uiManager.updateHomeTokenStatus(false, 'Token is Valid');
+        }
+      } else {
         // Token exists but is expired - attempt automatic refresh
         this.logger.warn('⚠️ [STARTUP] Token expired, attempting automatic refresh...');
         this.tokenStatus = response.status;
@@ -30276,27 +30323,28 @@ class AuthManagementSubsystem {
         const refreshSuccess = await this.attemptAutomaticTokenRefresh();
         if (refreshSuccess) {
           this.logger.info('✅ [STARTUP] Token automatically refreshed, authentication ready');
+          // Update home token status widget
+          if (this.uiManager && typeof this.uiManager.updateHomeTokenStatus === 'function') {
+            this.uiManager.updateHomeTokenStatus(false, 'Token Refreshed');
+          }
         } else {
           this.logger.warn('❌ [STARTUP] Automatic token refresh failed, user intervention required');
           this.isAuthenticated = false;
           this.updateTokenStatusUI(false, 'Token expired - refresh required');
-        }
-      } else {
-        // No token available - attempt automatic acquisition if credentials exist
-        this.logger.warn('⚠️ [STARTUP] No token found, attempting automatic acquisition...');
-        const acquisitionSuccess = await this.attemptAutomaticTokenRefresh();
-        if (acquisitionSuccess) {
-          this.logger.info('✅ [STARTUP] Token automatically acquired, authentication ready');
-        } else {
-          this.logger.warn('❌ [STARTUP] No token available and automatic acquisition failed');
-          this.isAuthenticated = false;
-          this.updateTokenStatusUI(false, response.status || 'No valid token');
+          // Update home token status widget
+          if (this.uiManager && typeof this.uiManager.updateHomeTokenStatus === 'function') {
+            this.uiManager.updateHomeTokenStatus(false, 'Token Expired');
+          }
         }
       }
     } catch (error) {
       this.logger.error('❌ [STARTUP] Failed to check token status', error);
       this.isAuthenticated = false;
       this.updateTokenStatusUI(false, 'Token status unknown');
+      // Update home token status widget
+      if (this.uiManager && typeof this.uiManager.updateHomeTokenStatus === 'function') {
+        this.uiManager.updateHomeTokenStatus(false, 'Token Check Failed');
+      }
     }
   }
 
@@ -30321,10 +30369,13 @@ class AuthManagementSubsystem {
       this.logger.debug('✅ [STARTUP] Valid credentials found, attempting token acquisition...');
 
       // Request token from server using available credentials
+      const clientId = settings.clientId || settings['api-client-id'] || settings.apiClientId;
+      const clientSecret = settings.clientSecret || settings['api-secret'] || settings.apiSecret;
+      const environmentId = settings.environmentId || settings['environment-id'];
       const response = await this.localClient.post('/api/v1/auth/token', {
-        clientId: settings.clientId,
-        clientSecret: settings.clientSecret,
-        environmentId: settings.environmentId,
+        clientId: clientId,
+        clientSecret: clientSecret,
+        environmentId: environmentId,
         region: settings.region
       });
       if (response.success && response.token) {
@@ -30381,17 +30432,37 @@ class AuthManagementSubsystem {
   }
 
   /**
-   * Validate settings object
+   * Validate required settings
    */
   validateSettings(settings) {
-    const required = ['clientId', 'clientSecret', 'environmentId', 'region'];
-    for (const field of required) {
-      if (!settings[field] || settings[field].trim() === '') {
-        this.logger.error('Missing required setting', {
-          field
-        });
-        return false;
-      }
+    // Check for both old and new field names for backward compatibility
+    const clientId = settings.clientId || settings['api-client-id'] || settings.apiClientId;
+    const clientSecret = settings.clientSecret || settings['api-secret'] || settings.apiSecret;
+    const environmentId = settings.environmentId || settings['environment-id'];
+    const region = settings.region;
+    if (!clientId || clientId.trim() === '') {
+      this.logger.error('Missing required setting', {
+        field: 'clientId/api-client-id'
+      });
+      return false;
+    }
+    if (!clientSecret || clientSecret.trim() === '') {
+      this.logger.error('Missing required setting', {
+        field: 'clientSecret/api-secret'
+      });
+      return false;
+    }
+    if (!environmentId || environmentId.trim() === '') {
+      this.logger.error('Missing required setting', {
+        field: 'environmentId/environment-id'
+      });
+      return false;
+    }
+    if (!region || region.trim() === '') {
+      this.logger.error('Missing required setting', {
+        field: 'region'
+      });
+      return false;
     }
     return true;
   }
@@ -33920,13 +33991,20 @@ exports.ImportSubsystem = void 0;
 class ImportSubsystem {
   constructor(logger, uiManager, localClient, settingsManager, eventBus, populationService) {
     let authManagementSubsystem = arguments.length > 6 && arguments[6] !== undefined ? arguments[6] : null;
-    this.logger = logger;
+    this.logger = logger || console;
     this.uiManager = uiManager;
     this.localClient = localClient;
     this.settingsManager = settingsManager;
     this.eventBus = eventBus;
     this.populationService = populationService;
     this.authManagementSubsystem = authManagementSubsystem;
+    // Defensive checks
+    if (!this.logger) console.warn('[ImportSubsystem] Logger is undefined');
+    if (!this.uiManager) this.logger.warn('[ImportSubsystem] UIManager is undefined');
+    if (!this.localClient) this.logger.warn('[ImportSubsystem] LocalClient is undefined');
+    if (!this.settingsManager) this.logger.warn('[ImportSubsystem] SettingsManager is undefined');
+    if (!this.eventBus) this.logger.warn('[ImportSubsystem] EventBus is undefined');
+    if (!this.populationService) this.logger.warn('[ImportSubsystem] PopulationService is undefined');
 
     // Import state management
     this.isImporting = false;
@@ -33950,21 +34028,22 @@ class ImportSubsystem {
    * Initialize the import subsystem
    */
   async init() {
-    (this.logger?.debug || window.logger?.debug || console.log)('🚀 [DEBUG] ImportSubsystem: init() method called');
+    const debugLog = this.logger?.debug || this.logger?.log || console.log;
+    debugLog('🚀 [DEBUG] ImportSubsystem: init() method called');
     try {
-      (this.logger?.debug || window.logger?.debug || console.log)('🔧 [DEBUG] ImportSubsystem: Setting up event listeners');
+      debugLog('🔧 [DEBUG] ImportSubsystem: Setting up event listeners');
       this.setupEventListeners();
-      (this.logger?.debug || window.logger?.debug || console.log)('📋 [DEBUG] ImportSubsystem: About to refresh population dropdown');
+      debugLog('📋 [DEBUG] ImportSubsystem: About to refresh population dropdown');
       // Initialize population dropdown
       this.refreshPopulationDropdown();
-      (this.logger?.debug || window.logger?.debug || console.log)('🔘 [DEBUG] ImportSubsystem: Setting initial button state');
+      debugLog('🔘 [DEBUG] ImportSubsystem: Setting initial button state');
       // Set initial button state (should be disabled until form is complete)
       this.validateAndUpdateButtonState();
-      (this.logger?.debug || window.logger?.debug || console.log)('✅ [DEBUG] ImportSubsystem: Init completed successfully');
-      (this.logger?.info || window.logger?.info || console.log)('Import Subsystem initialized successfully');
+      debugLog('✅ [DEBUG] ImportSubsystem: Init completed successfully');
+      (this.logger?.info || this.logger?.log || console.log)('Import Subsystem initialized successfully');
     } catch (error) {
-      (this.logger?.error || window.logger?.error || console.error)('❌ [DEBUG] ImportSubsystem: Init failed with error:', error);
-      (this.logger?.error || window.logger?.error || console.error)('Failed to initialize Import Subsystem', error);
+      (this.logger?.error || this.logger?.log || console.error)('❌ [DEBUG] ImportSubsystem: Init failed with error:', error);
+      (this.logger?.error || this.logger?.log || console.error)('Failed to initialize Import Subsystem', error);
       throw error;
     }
   }

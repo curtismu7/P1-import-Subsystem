@@ -775,7 +775,7 @@ async function runImportProcess(sessionId, app) {
         }
         
         // Get access token
-        const token = await tokenManager.getAccessToken();
+        const token = await tokenManager.getValidToken();
         if (!token) {
             throw new Error('Failed to get access token');
         }
@@ -1974,7 +1974,7 @@ router.get('/populations', async (req, res) => {
         const apiBaseUrl = tokenManager.getApiBaseUrl();
 
         // Get access token
-        const token = await tokenManager.getAccessToken();
+        const token = await tokenManager.getValidToken();
         if (!token) {
             apiLogger.error(`${functionName} - Failed to get access token`, { requestId: req.requestId });
             return res.status(401).json({ success: false, error: 'Failed to get access token' });
@@ -2219,7 +2219,7 @@ router.post('/export-users', async (req, res, next) => {
         });
 
         // Get access token and environment ID directly from token manager
-        const token = await tokenManager.getAccessToken();
+        const token = await tokenManager.getValidToken();
         if (!token) {
             return res.status(401).json({
                 success: false,
@@ -2745,18 +2745,18 @@ router.post('/pingone/get-token', async (req, res, next) => {
     try {
         console.log('[DEBUG] /api/pingone/get-token called');
         
-        // Get token manager from app
-        const tokenManager = req.app.get('tokenManager');
-        if (!tokenManager) {
-            console.error('[DEBUG] Token manager not available');
+        // Get token service from app
+        const tokenService = req.app.get('tokenService');
+        if (!tokenService) {
+            console.error('[DEBUG] Token service not available');
             return res.status(500).json({
                 success: false,
-                error: 'Token manager not available'
+                error: 'Token service not available'
             });
         }
 
-        // Get access token using token manager
-        const token = await tokenManager.getAccessToken();
+        // Get access token using token service
+        const token = await tokenService.getValidToken();
         
         if (!token) {
             console.error('[DEBUG] Failed to get access token');
@@ -2778,6 +2778,65 @@ router.post('/pingone/get-token', async (req, res, next) => {
 
     } catch (error) {
         console.error('[DEBUG] Error in /api/pingone/get-token:', error.stack || error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Internal server error'
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/token:
+ *   post:
+ *     summary: Get access token (alternative endpoint)
+ *     description: Alternative endpoint for getting PingOne access token
+ *     tags: [Authentication]
+ *     responses:
+ *       200:
+ *         description: Token retrieved successfully
+ *       401:
+ *         description: Authentication failed
+ *       500:
+ *         description: Server error
+ */
+router.post('/token', async (req, res) => {
+    try {
+        console.log('[DEBUG] /api/token called');
+        
+        // Get token service from app
+        const tokenService = req.app.get('tokenService');
+        if (!tokenService) {
+            console.error('[DEBUG] Token service not available');
+            return res.status(500).json({
+                success: false,
+                error: 'Token service not available'
+            });
+        }
+
+        // Get access token using token service
+        const token = await tokenService.getValidToken();
+        
+        if (!token) {
+            console.error('[DEBUG] Failed to get access token');
+            return res.status(401).json({
+                success: false,
+                error: 'Failed to get access token',
+                details: 'Please check your PingOne API credentials'
+            });
+        }
+
+        // Return token response
+        console.log('[DEBUG] Token retrieved successfully');
+        res.json({
+            success: true,
+            access_token: token,
+            token_type: 'Bearer',
+            expires_in: 3600
+        });
+
+    } catch (error) {
+        console.error('[DEBUG] Error in /api/token:', error.stack || error);
         res.status(500).json({
             success: false,
             error: error.message || 'Internal server error'
@@ -2812,7 +2871,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
         }
 
         // Get access token
-        const token = await tokenManager.getAccessToken();
+        const token = await tokenManager.getValidToken();
         if (!token) {
             return res.status(401).json({
                 success: false,
@@ -3148,7 +3207,7 @@ router.post('/test-connection', async (req, res) => {
         }
         
         // Attempt to get a new token
-        const token = await tokenManager.getAccessToken();
+        const token = await tokenManager.getValidToken();
         
         if (!token) {
             throw new Error('Failed to obtain access token - please check your PingOne API credentials');
@@ -3212,7 +3271,7 @@ router.get('/pingone/users', async (req, res) => {
         }
 
         // Get access token
-        const token = await tokenManager.getAccessToken();
+        const token = await tokenManager.getValidToken();
         if (!token) {
             return res.status(401).json({
                 success: false,

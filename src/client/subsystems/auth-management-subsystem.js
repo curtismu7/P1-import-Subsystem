@@ -100,11 +100,15 @@ export class AuthManagementSubsystem {
                 return;
             }
             
-            // Request token from server
+            // Request token from server using available credentials
+            const clientId = settings.clientId || settings['api-client-id'] || settings.apiClientId;
+            const clientSecret = settings.clientSecret || settings['api-secret'] || settings.apiSecret;
+            const environmentId = settings.environmentId || settings['environment-id'];
+            
             const response = await this.localClient.post('/api/v1/auth/token', {
-                clientId: settings.clientId,
-                clientSecret: settings.clientSecret,
-                environmentId: settings.environmentId,
+                clientId: clientId,
+                clientSecret: clientSecret,
+                environmentId: environmentId,
                 region: settings.region
             });
             
@@ -329,10 +333,14 @@ export class AuthManagementSubsystem {
             this.logger.debug('✅ [STARTUP] Valid credentials found, attempting token acquisition...');
             
             // Request token from server using available credentials
+            const clientId = settings.clientId || settings['api-client-id'] || settings.apiClientId;
+            const clientSecret = settings.clientSecret || settings['api-secret'] || settings.apiSecret;
+            const environmentId = settings.environmentId || settings['environment-id'];
+            
             const response = await this.localClient.post('/api/v1/auth/token', {
-                clientId: settings.clientId,
-                clientSecret: settings.clientSecret,
-                environmentId: settings.environmentId,
+                clientId: clientId,
+                clientSecret: clientSecret,
+                environmentId: environmentId,
                 region: settings.region
             });
             
@@ -396,16 +404,33 @@ export class AuthManagementSubsystem {
     }
     
     /**
-     * Validate settings object
+     * Validate required settings
      */
     validateSettings(settings) {
-        const required = ['clientId', 'clientSecret', 'environmentId', 'region'];
+        // Check for both old and new field names for backward compatibility
+        const clientId = settings.clientId || settings['api-client-id'] || settings.apiClientId;
+        const clientSecret = settings.clientSecret || settings['api-secret'] || settings.apiSecret;
+        const environmentId = settings.environmentId || settings['environment-id'];
+        const region = settings.region;
         
-        for (const field of required) {
-            if (!settings[field] || settings[field].trim() === '') {
-                this.logger.error('Missing required setting', { field });
-                return false;
-            }
+        if (!clientId || clientId.trim() === '') {
+            this.logger.error('Missing required setting', { field: 'clientId/api-client-id' });
+            return false;
+        }
+        
+        if (!clientSecret || clientSecret.trim() === '') {
+            this.logger.error('Missing required setting', { field: 'clientSecret/api-secret' });
+            return false;
+        }
+        
+        if (!environmentId || environmentId.trim() === '') {
+            this.logger.error('Missing required setting', { field: 'environmentId/environment-id' });
+            return false;
+        }
+        
+        if (!region || region.trim() === '') {
+            this.logger.error('Missing required setting', { field: 'region' });
+            return false;
         }
         
         return true;

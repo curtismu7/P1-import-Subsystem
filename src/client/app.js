@@ -1093,18 +1093,13 @@ class App {
                 // Fallback: test connection directly
                 // CRITICAL: This MUST be a GET request to match server-side endpoint
                 // Server endpoint: routes/pingone-proxy-fixed.js - router.get('/test-connection')
-                // DO NOT change to POST without updating server-side endpoint
-                // Last fixed: 2025-07-21 - HTTP method mismatch caused 400 Bad Request errors
+                // FIXED: Changed from POST to GET to match backend endpoint
+                // Last fixed: 2025-07-24 - HTTP method mismatch resolved
                 const settings = await this.settingsSubsystem.loadSettings();
                 const response = await fetch('/api/pingone/test-connection', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        environmentId: settings.environmentId,
-                        apiClientId: settings.apiClientId,
-                        apiSecret: settings.apiSecret,
-                        region: settings.region
-                    })
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                    // Note: GET requests don't have body, settings are passed via environment/session
                 });
                 
                 const result = await response.json();

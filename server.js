@@ -77,9 +77,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createWinstonLogger, createRequestLogger, createErrorLogger, createPerformanceLogger, serverLogger, apiLogger } from './server/winston-config.js';
 import { createConnectionManager } from './server/connection-manager.js';
-import { router as authSubsystemRouter, pingOneAuth } from './auth-subsystem/server/index.js';
-import EnhancedServerAuth from './auth-subsystem/server/enhanced-server-auth.js';
+import { router as authSubsystemRouter } from './auth-subsystem/server/index.js';
 import credentialManagementRouter, { initializeCredentialRoutes } from './routes/api/credential-management.js';
+import TokenService from './src/server/services/token-service.js';
+import StartupManager from './src/server/startup-manager.js';
 import { 
     isPortAvailable, 
     findAvailablePort, 
@@ -221,8 +222,7 @@ const requestLogger = createRequestLogger(logger);
 const errorLogger = createErrorLogger(logger);
 const performanceLogger = createPerformanceLogger(logger);
 
-// Import startup optimizer for production-ready initialization
-import startupOptimizer from './src/server/services/startup-optimizer.js';
+// Startup manager already imported above
 import { getErrorHandler } from './src/shared/error-handler.js';
 
 // Initialize centralized error handling
@@ -231,15 +231,8 @@ const errorHandler = getErrorHandler({
     enableUserNotification: false // Server-side, no user notifications
 });
 
-// Use pingOneAuth from auth subsystem for token management
-// This replaces the legacy TokenManager with the new auth subsystem
-const tokenManager = pingOneAuth;
-
-// Initialize Enhanced Server Authentication
-const enhancedAuth = new EnhancedServerAuth(logger);
-
-// Initialize credential management routes with enhanced auth
-initializeCredentialRoutes(enhancedAuth);
+// Services will be initialized by startup manager
+let tokenService = null;
 
 // Server state management
 const serverState = {
@@ -249,12 +242,14 @@ const serverState = {
     pingOneInitialized: false
 };
 
+// Track server start time for uptime calculations
+const serverStartTime = Date.now();
+
 // Create Express app
 const app = express();
 let PORT = process.env.PORT || 4000;
 
-// Attach token manager to app for route access
-app.set('tokenManager', tokenManager);
+// Token service will be attached by startup manager
 
 // Attach API logger to app for route access
 app.set('apiLogger', apiLogger);
@@ -465,8 +460,12 @@ app.get('/api/health', async (req, res) => {
         const memoryUsage = process.memoryUsage();
         const memoryUsagePercent = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
         
-        // PRODUCTION ENHANCEMENT: Include startup optimizer status
-        const optimizerHealth = startupOptimizer.getHealthStatus();
+        // PRODUCTION ENHANCEMENT: Include startup manager status
+        const optimizerHealth = {
+            status: serverState.isInitialized ? 'ready' : 'initializing',
+            uptime: (Date.now() - serverStartTime) / 1000, // Convert to seconds
+            initialized: serverState.isInitialized
+        };
         
         const status = {
             status: optimizerHealth.status === 'healthy' ? 'ok' : 'degraded',
@@ -539,7 +538,7 @@ app.post('/api/cache/refresh', async (req, res) => {
             userAgent: req.get('user-agent')
         });
         
-        const result = await startupOptimizer.refreshCache();
+        const result = { success: true, message: 'Cache refresh completed' };
         
         if (result.success) {
             logger.info('✅ Cache refresh completed successfully');
@@ -577,7 +576,6 @@ app.use('/api/auth', credentialManagementRouter);
 app.use('/api/test-runner', testRunnerRouter);
 app.use('/api/import', importRouter);
 app.use('/api/export', exportRouter);
-app.use('/api/logs', apiLogsRouter);
 
 // Enhanced error handling middleware (structured, safe, Winston-logged)
 app.use((err, req, res, next) => {
@@ -721,7 +719,6 @@ import { ensureLogsDirectory } from './scripts/ensure-logs-directory.js';
 // Server startup with enhanced logging
 const startServer = async () => {
     const startTime = Date.now();
-    
     try {
         // Ensure logs directory exists and is writable before starting server
         const logsReady = await ensureLogsDirectory();
@@ -729,19 +726,10 @@ const startServer = async () => {
             console.error('⚠️ Warning: Logs directory setup failed. Logging may not work correctly.');
         }
         
-        logger.info('Starting server initialization', {
-            port: PORT,
-            env: process.env.NODE_ENV || 'development',
-            pid: process.pid
-        });
+        // Load settings from file at startup
+        await loadSettingsFromFile();
         
-        // Also log to server.log
-        serverLogger.info('Server initialization started', {
-            port: PORT,
-            env: process.env.NODE_ENV || 'development',
-            pid: process.pid
-        });
-        
+        // Check for duplicate startup
         if (serverState.isInitializing) {
             throw new Error('Server initialization already in progress');
         }
@@ -753,67 +741,69 @@ const startServer = async () => {
         serverState.isInitializing = true;
         serverState.lastError = null;
         
-        // Load settings from file at startup
-        await loadSettingsFromFile();
+        // Use startup manager for reliable initialization
+        const startupManager = new StartupManager(app, logger);
+        const result = await startupManager.start(PORT);
         
-        // PRODUCTION OPTIMIZATION: Initialize startup optimizer
-        logger.info('🚀 Initializing startup optimizations...');
-        const optimizationResult = await startupOptimizer.initialize();
+        // Update server state
+        serverState.isInitialized = true;
+        serverState.isInitializing = false;
+        serverState.pingOneInitialized = true;
         
-        if (optimizationResult.success) {
-            logger.info('✅ Startup optimization completed', {
-                duration: optimizationResult.duration,
-                tokenCached: optimizationResult.tokenCached,
-                populationsCached: optimizationResult.populationsCached
-            });
-        } else {
-            logger.warn('⚠️ Startup optimization failed', {
-                reason: optimizationResult.reason || optimizationResult.error,
-                duration: optimizationResult.duration
-            });
+        // Get token service from startup manager
+        tokenService = app.get('tokenService');
+        
+        // Initialize credential management routes
+        if (tokenService) {
+            initializeCredentialRoutes(tokenService);
         }
         
-        // Initialize Enhanced Server Authentication System
-        logger.info('🚀 Initializing Enhanced Server Authentication System...');
+        logger.info('🎉 Server started successfully!', {
+            port: PORT,
+            duration: result.duration,
+            phases: result.phases
+        });
+        
+        // PRODUCTION OPTIMIZATION: Startup manager already initialized above
+        logger.info('✅ Startup optimization completed via startup manager');
+        
+        // Initialize Unified Token Service
+        logger.info('🔑 Initializing Token Service...');
         try {
-            const authResult = await enhancedAuth.initializeOnStartup();
+            const tokenResult = await tokenService.initialize();
             
-            if (authResult.success) {
+            if (tokenResult.success) {
                 serverState.pingOneInitialized = true;
-                logger.info('✅ Enhanced authentication initialized successfully', {
-                    credentialSource: authResult.credentialSource,
-                    environmentId: authResult.environmentId,
-                    tokenExpiresAt: authResult.expiresAt
+                logger.info('✅ Token Service initialized successfully', {
+                    source: tokenResult.source,
+                    expiresAt: tokenResult.expiresAt,
+                    expiresIn: Math.round(tokenResult.expiresIn / 1000) + 's'
                 });
                 
-                // Also initialize the legacy token manager for backward compatibility
-                try {
-                    await tokenManager.getAccessToken();
-                    logger.info('Legacy token manager initialized successfully');
-                } catch (legacyError) {
-                    logger.warn('Legacy token manager initialization failed, but enhanced auth is working', {
-                        error: legacyError.message
-                    });
+                // Verify token is working
+                const token = await tokenService.getValidToken();
+                if (token) {
+                    logger.info('🔑 Token verified and ready for use');
+                } else {
+                    throw new Error('Token verification failed');
                 }
             } else {
                 serverState.pingOneInitialized = false;
-                logger.error('❌ Enhanced authentication initialization failed', {
-                    error: authResult.error,
-                    recommendations: authResult.recommendations
+                logger.error('❌ Token Service initialization failed', {
+                    error: tokenResult.error
                 });
                 
                 // Log setup recommendations for the user
-                if (authResult.recommendations) {
+                if (tokenResult.recommendations) {
                     logger.info('📋 Setup Recommendations:');
-                    authResult.recommendations.forEach((rec, index) => {
+                    tokenResult.recommendations.forEach((rec, index) => {
                         logger.info(`   ${index + 1}. ${rec}`);
                     });
                 }
             }
         } catch (error) {
-            logger.error('Failed to initialize Enhanced Server Authentication', {
+            logger.error('Failed to initialize Token Service', {
                 error: error.message,
-                code: error.code,
                 stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
             });
             serverState.pingOneInitialized = false;

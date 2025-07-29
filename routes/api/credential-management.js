@@ -11,7 +11,7 @@
 
 import express from 'express';
 import { apiLogger, apiLogHelpers } from '../../server/winston-config.js';
-import EnhancedServerAuth from '../../auth-subsystem/server/enhanced-server-auth.js';
+import TokenService from '../../src/server/services/token-service.js';
 
 const router = express.Router();
 

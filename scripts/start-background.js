@@ -163,7 +163,7 @@ class BackgroundServerManager {
      * Spawn the server process
      */
     async spawnServerProcess() {
-        const serverScript = path.join(process.cwd(), 'server.js');
+        const serverScript = path.join(process.cwd(), 'server-simplified.js');
         
         // Open log files
         const logFile = await fs.open(this.options.logFile, 'a');
