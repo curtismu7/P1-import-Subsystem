@@ -171,13 +171,13 @@ class App {
             : new Logger();
             
         this.logger.info('Application initialization started', {
-            version: '6.3.0',
+            version: '6.5.1.2',
             featureFlags: FEATURE_FLAGS
         });
         
         // Debug logging
         debugLog.systemState('app', 'initialization_started', {
-            version: '6.3.0',
+            version: '6.5.1.2',
             featureFlags: FEATURE_FLAGS,
             userAgent: navigator.userAgent
         });

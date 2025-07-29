@@ -18,6 +18,9 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createReadableFormatter } from './log-formatter.js';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { version: appVersion } = require('../../package.json');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -149,7 +152,7 @@ export function createWinstonLogger(options = {}) {
             service,
             env,
             pid: process.pid,
-            version: process.env.APP_VERSION || '6.3.0'
+            version: process.env.APP_VERSION || appVersion
         },
         transports: [
             // Console transport for all environments
