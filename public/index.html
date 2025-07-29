@@ -46,6 +46,7 @@
     <!-- Status Bar Fix CSS -->
     <link rel="stylesheet" href="/css/status-bar-fix.css">
     <link rel="stylesheet" href="/css/version-widget.css">
+    <link rel="stylesheet" href="/css/worker-token-banner.css">
     <!-- Note: Individual ES module scripts removed - all functionality now bundled in bundle.js -->
     <!-- ES modules are properly bundled and transpiled via Browserify + Babel -->
     <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
@@ -59,6 +60,16 @@
     <div id="fix-banner" style="background: #4CAF50; color: white; padding: 10px; text-align: center; font-weight: bold; position: fixed; top: 0; left: 0; right: 0; z-index: 10000;">
         🚀 LATEST BUILD ACTIVE: Token status widget + Settings buttons fixed (Build: 1753314568, Version: v6.5.1.4)
         <button onclick="document.getElementById('fix-banner').style.display='none'" style="margin-left: 20px; background: white; color: green; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Hide</button>
+    </div>
+    
+    <!-- Worker Token Status Banner -->
+    <div id="worker-token-banner" class="worker-token-banner hidden">
+        <div class="status-icon">🔑</div>
+        <div class="status-content">
+            <div class="status-text">Checking worker token status...</div>
+            <div class="status-details">Initializing...</div>
+        </div>
+        <button class="close-btn" onclick="document.getElementById('worker-token-banner').classList.add('hidden')">×</button>
     </div>
     
     <!-- Add padding to body content to account for banner -->

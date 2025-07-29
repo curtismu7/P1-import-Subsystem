@@ -50,6 +50,7 @@ import { AnalyticsDashboardUI } from './components/analytics-dashboard-ui.js';
 import HistoryUIComponent from './components/history-ui.js';
 import EnhancedLoggingUIComponent from './components/logging-ui-enhanced.js';
 import TestingHub from './components/testing-hub.js';
+import { WorkerTokenBanner } from '../../public/js/modules/worker-token-banner.js';
 
 // Modern subsystems (replacing legacy modules)
 import { ProgressSubsystem } from '../../public/js/modules/progress-subsystem.js';
@@ -196,6 +197,7 @@ class App {
         
         // UI Components
         this.globalTokenManager = null;
+        this.workerTokenBanner = null;
         
         // Modern subsystems (replacing legacy managers)
         this.progressSubsystem = null;
@@ -386,6 +388,11 @@ class App {
         }
 
         this.logger.debug('Core components initialized');
+        
+        // Initialize worker token banner
+        this.workerTokenBanner = new WorkerTokenBanner(this.logger);
+        this.workerTokenBanner.init();
+        this.logger.debug('Worker token banner initialized');
     }
     
     /**
