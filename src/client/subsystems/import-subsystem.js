@@ -28,7 +28,9 @@ export class ImportSubsystem {
             formatMessage: (type, message) => `[${type.toUpperCase()}] ${message}`
         };
         
-        this.logger.info('Import Subsystem initialized');
+        // Safe logger access with fallbacks
+        const infoLog = this.logger?.info || this.logger?.log || console.log;
+        infoLog('Import Subsystem initialized');
         
         // Set up event listeners for cross-subsystem communication
         this.setupCrossSubsystemEvents();
