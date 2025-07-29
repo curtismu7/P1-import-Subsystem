@@ -11,7 +11,7 @@ export const API_CONFIG = {
         EXPORT: '/api/export',
         POPULATIONS: '/api/populations',
         TEST_CONNECTION: '/api/pingone/test-connection',
-        LOGS: '/api/logs'
+        LOGS: '/api/logs/ui'
     },
     
     TIMEOUTS: {
