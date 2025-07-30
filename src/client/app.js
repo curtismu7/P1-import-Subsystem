@@ -13,6 +13,7 @@
 // Browser-compatible logging system
 import { createLogger } from './utils/browser-logging-service.js';
 import { debugLog } from './utils/debug-logger.js';
+import { createSafeLogger } from './utils/safe-logger.js';
 
 // Debug-friendly utilities
 import '../../public/js/utils/utility-loader.js';
@@ -21,6 +22,9 @@ import '../../public/js/utils/utility-loader.js';
 import { Logger } from '../../public/js/modules/logger.js';
 import { FileLogger } from '../../public/js/modules/file-logger.js';
 import { EventBus } from '../../public/js/modules/event-bus.js';
+
+// Centralized logger
+import { CentralizedLogger } from '../../public/js/utils/centralized-logger.js';
 
 // Components
 import { SettingsManager } from '../../public/js/modules/settings-manager.js';
@@ -161,23 +165,44 @@ class SecretFieldToggle {
  */
 class App {
     constructor() {
-        // Initialize centralized logging
-        this.logger = FEATURE_FLAGS.USE_CENTRALIZED_LOGGING 
-            ? createLogger({
+        // Initialize centralized logger with safe wrapper to prevent logging errors from breaking the app
+        try {
+            this.logger = new CentralizedLogger({
                 serviceName: 'pingone-import-app',
-                enableServer: true,
-                enableConsole: true
-              })
-            : new Logger();
+                logLevel: 'debug',
+                enableConsole: true,
+                enableRemote: true
+            });
             
-        this.logger.info('Application initialization started', {
-            version: '6.3.0',
-            featureFlags: FEATURE_FLAGS
-        });
+            // Test the logger
+            this.logger.info('Centralized Logger initialized successfully', {
+                version: '6.5.1.5',
+                featureFlags: FEATURE_FLAGS,
+                userAgent: navigator.userAgent
+            });
+            
+        } catch (error) {
+            // Fallback to console logging if centralized logger fails
+            console.error('Failed to initialize CentralizedLogger, falling back to console logging:', error);
+            this.logger = {
+                debug: console.debug.bind(console),
+                info: console.info.bind(console),
+                warn: console.warn.bind(console),
+                error: console.error.bind(console),
+                startTimer: (label) => ({ label, startTime: Date.now() }),
+                endTimer: (timer) => {
+                    const duration = Date.now() - timer.startTime;
+                    console.log(`[${timer.label}] Completed in ${duration}ms`);
+                    return duration;
+                }
+            };
+            
+            this.logger.warn('Using fallback console logger due to CentralizedLogger initialization failure');
+        }
         
-        // Debug logging
-        debugLog.systemState('app', 'initialization_started', {
-            version: '6.3.0',
+        // Log application start
+        this.logger.info('Application initialization started', {
+            version: '6.5.1.5',
             featureFlags: FEATURE_FLAGS,
             userAgent: navigator.userAgent
         });
@@ -276,7 +301,7 @@ class App {
     }
     
     /**
-     * Hide the startup screen
+     * Hide the startup screen with a smooth transition and proper cleanup
      */
     hideStartupScreen() {
         try {
@@ -284,19 +309,70 @@ class App {
             const appContainer = document.querySelector('.app-container');
             
             if (startupScreen) {
-                this.logger.debug('Hiding startup wait screen');
-                startupScreen.style.display = 'none';
+                this.logger.debug('Starting to hide startup wait screen');
+                
+                // Add fade-out class to trigger CSS transition
+                startupScreen.classList.add('fade-out');
+                
+                // Remove the startup-loading class from app container to show the app
+                if (appContainer) {
+                    appContainer.classList.remove('startup-loading');
+                }
+                
+                // Set a timeout to remove the element after the transition completes
+                const removeStartupScreen = () => {
+                    try {
+                        if (startupScreen && startupScreen.parentNode) {
+                            // Force a reflow to ensure the fade-out animation plays
+                            void startupScreen.offsetHeight;
+                            
+                            // Remove the element from the DOM
+                            startupScreen.parentNode.removeChild(startupScreen);
+                            this.logger.debug('Startup wait screen removed from DOM');
+                        }
+                    } catch (error) {
+                        this.logger.error('Error removing startup screen from DOM:', error);
+                    }
+                };
+                
+                // Wait for the transition to complete before removing the element
+                // The transition duration is 0.5s (500ms) as defined in CSS
+                setTimeout(removeStartupScreen, 600);
+                
+                this.logger.debug('Startup wait screen hidden with animation');
             } else {
                 this.logger.warn('Startup wait screen element not found');
+                // Still try to show the app container if it's hidden
+                if (appContainer) {
+                    appContainer.classList.remove('startup-loading');
+                }
             }
             
-            if (appContainer) {
+            // Additional check to ensure app container is visible
+            if (appContainer && appContainer.classList.contains('startup-loading')) {
                 appContainer.classList.remove('startup-loading');
             }
             
-            this.logger.debug('Startup screen hidden successfully');
         } catch (error) {
-            this.logger.error('Failed to hide startup screen', { error: error.message });
+            this.logger.error('Error in hideStartupScreen:', error);
+            
+            // Fallback: Try to hide the startup screen directly if the animation fails
+            try {
+                const startupScreen = document.getElementById('startup-wait-screen');
+                if (startupScreen) {
+                    startupScreen.style.display = 'none';
+                    if (startupScreen.parentNode) {
+                        startupScreen.parentNode.removeChild(startupScreen);
+                    }
+                }
+                
+                const appContainer = document.querySelector('.app-container');
+                if (appContainer) {
+                    appContainer.classList.remove('startup-loading');
+                }
+            } catch (fallbackError) {
+                this.logger.error('Fallback error handling failed:', fallbackError);
+            }
         }
     }
     
@@ -401,6 +477,25 @@ class App {
             if (this.subsystems.advancedRealtime) {
                 this.realtimeCollaborationUI = new RealtimeCollaborationUI(this.eventBus, this.logger);
                 this.realtimeCollaborationUI.init();
+            }
+
+            // Initialize Analytics Dashboard UI if the subsystem is available
+            if (this.subsystems.analyticsDashboard) {
+                try {
+                    this.logger.debug('Initializing Analytics Dashboard UI...');
+                    this.analyticsDashboardUI = new AnalyticsDashboardUI(
+                        this.eventBus,
+                        this.subsystems.analyticsDashboard
+                    );
+                    await this.analyticsDashboardUI.init();
+                    this.logger.info('Analytics Dashboard UI initialized successfully');
+                } catch (error) {
+                    this.logger.error('Failed to initialize Analytics Dashboard UI', {
+                        error: error.message,
+                        stack: error.stack
+                    });
+                    // Don't rethrow to allow the app to continue without analytics UI
+                }
             }
 
             this.logger.info('All subsystems initialized successfully.');
