@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="8" failures="1" errors="0" time="0.692">
+  <testsuite name="UIManager (Basic)" errors="0" failures="1" skipped="0" timestamp="2025-07-30T03:07:10" time="0.663" tests="8">
+    <testcase classname="UIManager (Basic) initialization should initialize with provided dependencies" name="UIManager (Basic) initialization should initialize with provided dependencies" time="0.003">
+    </testcase>
+    <testcase classname="UIManager (Basic) showStatus should log status messages with info level by default" name="UIManager (Basic) showStatus should log status messages with info level by default" time="0.001">
+    </testcase>
+    <testcase classname="UIManager (Basic) showStatus should log error status messages with error level" name="UIManager (Basic) showStatus should log error status messages with error level" time="0.001">
+    </testcase>
+    <testcase classname="UIManager (Basic) updateProgress should log progress updates" name="UIManager (Basic) updateProgress should log progress updates" time="0.001">
+    </testcase>
+    <testcase classname="UIManager (Basic) showError should handle errors with error objects" name="UIManager (Basic) showError should handle errors with error objects" time="0.003">
+      <failure>Error: expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+- Expected
++ Received
+
+  [Error: Test error],
+  Object {
++   &quot;error&quot;: [Error: Test error],
+    &quot;message&quot;: &quot;Operation failed&quot;,
+    &quot;operation&quot;: &quot;test&quot;,
+  },
+
+Number of calls: 1
+    at Object.toHaveBeenCalledWith (/Users/cmuir/P1Import-apps/P1-import-Subsystem/test/unit/ui-manager-basic.test.mjs:157:44)
+    at Promise.then.completed (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-circus/build/run.js:316:40)
+    at _runTest (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-circus/build/run.js:121:9)
+    at _runTestsForDescribeBlock (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-circus/build/run.js:121:9)
+    at run (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname="UIManager (Basic) showError should create an error object from string messages" name="UIManager (Basic) showError should create an error object from string messages" time="0.001">
+    </testcase>
+    <testcase classname="UIManager (Basic) showNotification should log info notifications by default" name="UIManager (Basic) showNotification should log info notifications by default" time="0.001">
+    </testcase>
+    <testcase classname="UIManager (Basic) showNotification should log error notifications with error level" name="UIManager (Basic) showNotification should log error notifications with error level" time="0.003">
+    </testcase>
+  </testsuite>
+</testsuites>

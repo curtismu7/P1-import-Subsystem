@@ -794,6 +794,29 @@ const startServer = async () => {
                         error: legacyError.message
                     });
                 }
+                
+                // Perform startup token validation test
+                logger.info('🔍 Performing startup token validation test...');
+                try {
+                    const tokenInfo = tokenManager.getTokenInfo();
+                    if (tokenInfo && tokenInfo.isValid) {
+                        const timeUntilExpiry = Math.floor((tokenInfo.expiresAt - Date.now()) / 1000 / 60);
+                        logger.info('✅ Startup token validation passed', {
+                            tokenType: tokenInfo.tokenType,
+                            expiresInMinutes: timeUntilExpiry,
+                            isValid: tokenInfo.isValid
+                        });
+                        console.log(`✅ Token validation: PASSED (expires in ${timeUntilExpiry} minutes)`);
+                    } else {
+                        logger.warn('⚠️ Startup token validation: No valid token found');
+                        console.log('⚠️ Token validation: No valid token available');
+                    }
+                } catch (tokenValidationError) {
+                    logger.warn('⚠️ Startup token validation failed', {
+                        error: tokenValidationError.message
+                    });
+                    console.log('⚠️ Token validation: FAILED -', tokenValidationError.message);
+                }
             } else {
                 serverState.pingOneInitialized = false;
                 logger.error('❌ Enhanced authentication initialization failed', {

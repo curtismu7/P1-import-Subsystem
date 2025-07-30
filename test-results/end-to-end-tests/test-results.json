@@ -1,0 +1,25 @@
+{
+  "name": "End-to-End Tests",
+  "suite": "e2e",
+  "passed": true,
+  "duration": 1.198,
+  "startTime": "2025-07-29T23:18:35.784Z",
+  "endTime": "2025-07-29T23:18:36.982Z",
+  "config": {
+    "timeout": 600000,
+    "retries": 2,
+    "coverage": false,
+    "pattern": "**/test/e2e/**/*.test.js"
+  },
+  "testResults": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "coverage": null
+  },
+  "output": {
+    "stdout": "jest-haste-map: Haste module naming collision: p1-import-subsystem-error-logging\n  The following files share their name; please adjust your hasteImpl:\n    * <rootDir>/error-logging-subsystem/package.json\n    * <rootDir>/error-logging-subsystem/P1-import-Subsystem/package.json\n\n\u001b[1mNo tests found, exiting with code 0\u001b[22m\n----------|---------|----------|---------|---------|-------------------\nFile      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s \n----------|---------|----------|---------|---------|-------------------\nAll files |       0 |        0 |       0 |       0 | \u001b[31;1m                 \u001b[0m \n----------|---------|----------|---------|---------|-------------------\n",
+    "stderr": "",
+    "logFile": "/Users/cmuir/P1Import-apps/P1-import-Subsystem/test-results/end-to-end-tests/test-output.log"
+  }
+}

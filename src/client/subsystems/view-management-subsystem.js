@@ -361,27 +361,164 @@ export class ViewManagementSubsystem {
      * Initialize analytics view
      */
     async initializeAnalyticsView() {
+        const logPrefix = '[AnalyticsView]';
+        this.logger.debug(`${logPrefix} Starting initialization`);
+        
         try {
-            this.logger.debug('Initializing analytics view');
+            // Show loading state with spinner
+            this.showLoadingState('Loading analytics dashboard...');
             
-            // Check if analytics dashboard is available
-            if (window.app && window.app.analyticsDashboardUI) {
-                this.logger.debug('Analytics dashboard UI available, ensuring visibility');
-                
-                // Make sure analytics dashboard is visible when analytics view is shown
-                const analyticsContainer = document.getElementById('analytics-dashboard');
-                if (analyticsContainer) {
-                    analyticsContainer.style.display = 'block';
-                    this.logger.debug('Analytics dashboard container made visible');
-                } else {
-                    this.logger.warn('Analytics dashboard container not found');
-                }
-            } else {
-                this.logger.warn('Analytics dashboard UI not available for analytics view initialization');
+            // Get the analytics view container
+            const analyticsView = document.getElementById('analytics-view');
+            if (!analyticsView) {
+                throw new Error('Analytics view container (#analytics-view) not found in the DOM');
             }
+            
+            // Clear any existing content and show the view
+            analyticsView.innerHTML = '';
+            analyticsView.style.display = 'block';
+            
+            // Create a container for the dashboard
+            const container = document.createElement('div');
+            container.id = 'analytics-dashboard-container';
+            analyticsView.appendChild(container);
+            
+            // Check if we have access to the app
+            if (!window.app) {
+                throw new Error('App instance not available on window');
+            }
+            
+            // Verify analytics dashboard subsystem is available
+            if (!window.app.subsystems?.analyticsDashboard) {
+                throw new Error('Analytics dashboard subsystem not available');
+            }
+            
+            // Initialize analytics dashboard UI if not already done
+            if (!window.app.analyticsDashboardUI) {
+                try {
+                    this.logger.debug(`${logPrefix} Initializing AnalyticsDashboardUI...`);
+                    
+                    window.app.analyticsDashboardUI = new AnalyticsDashboardUI(
+                        window.app.eventBus,
+                        window.app.subsystems.analyticsDashboard
+                    );
+                    
+                    // Initialize the UI
+                    await window.app.analyticsDashboardUI.init();
+                    
+                    // Create the dashboard HTML
+                    if (typeof window.app.analyticsDashboardUI.createDashboardHTML === 'function') {
+                        window.app.analyticsDashboardUI.createDashboardHTML();
+                    }
+                    
+                    this.logger.info(`${logPrefix} AnalyticsDashboardUI initialized successfully`);
+                } catch (error) {
+                    throw new Error(`Failed to initialize Analytics Dashboard UI: ${error.message}`);
+                }
+            }
+            
+            // Show the analytics dashboard with a small delay to ensure DOM is ready
+            setTimeout(async () => {
+                try {
+                    if (window.app.analyticsDashboardUI) {
+                        await window.app.analyticsDashboardUI.show();
+                        this.logger.info(`${logPrefix} Analytics dashboard shown successfully`);
+                        this.hideLoadingState();
+                    }
+                } catch (error) {
+                    throw new Error(`Failed to show analytics dashboard: ${error.message}`);
+                }
+            }, 100);
+            
         } catch (error) {
-            this.logger.error('Failed to initialize analytics view:', error);
+            const errorMessage = `Failed to initialize analytics view: ${error.message}`;
+            this.logger.error(`${logPrefix} ${errorMessage}`, { error });
+            
+            // Show error message in the UI
+            const analyticsView = document.getElementById('analytics-view') || document.body;
+            analyticsView.innerHTML = `
+                <div class="alert alert-danger" style="margin: 20px;">
+                    <h4>Error Loading Analytics Dashboard</h4>
+                    <p>${errorMessage}</p>
+                    <p>Please check the browser console for more details.</p>
+                    <button id="retry-analytics" class="btn btn-primary mt-3">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>
+            `;
+            
+            // Add retry button handler
+            const retryButton = document.getElementById('retry-analytics');
+            if (retryButton) {
+                retryButton.addEventListener('click', () => this.initializeAnalyticsView());
+            }
+            
+            this.hideLoadingState();
         }
+    }
+    
+    /**
+     * Show loading state for analytics view
+     */
+    showLoadingState(message = 'Loading...') {
+        const analyticsView = document.getElementById('analytics-view');
+        if (!analyticsView) return;
+        
+        analyticsView.innerHTML = `
+            <div class="loading-overlay" style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                padding: 2rem;
+                text-align: center;
+                color: #666;
+            ">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h4>${message}</h4>
+                <p class="mt-2">Please wait while we load the analytics dashboard</p>
+            </div>
+        `;
+        analyticsView.style.display = 'block';
+    }
+    
+    /**
+     * Hide loading state
+     */
+    hideLoadingState() {
+        // The actual content will be shown by the dashboard UI
+    }
+    
+    /**
+     * Show error state in the analytics view
+     */
+    showErrorState(message) {
+        const analyticsView = document.getElementById('analytics-view');
+        if (!analyticsView) return;
+        
+        const errorDetails = process.env.NODE_ENV === 'development' 
+            ? `\n\n${new Error().stack}` 
+            : '';
+            
+        analyticsView.innerHTML = `
+            <div class="alert alert-danger" style="margin: 20px;">
+                <h4><i class="fas fa-exclamation-triangle me-2"></i>Error Loading Analytics</h4>
+                <p>${message}</p>
+                <div class="mt-3">
+                    <button class="btn btn-primary" onclick="window.location.reload()">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh Page
+                    </button>
+                </div>
+                ${process.env.NODE_ENV === 'development' ? 
+                    `<pre class="mt-3" style="background: #f8f9fa; padding: 10px; border-radius: 4px; overflow: auto;">${message}${errorDetails}</pre>` 
+                    : ''
+                }
+            </div>
+        `;
+        analyticsView.style.display = 'block';
     }
     
     /**
@@ -394,7 +531,7 @@ export class ViewManagementSubsystem {
         const hash = window.location.hash.substring(1);
         if (hash && this.isValidView(hash)) {
             initialView = hash;
-        }  
+        }
         
         await this.showView(initialView, false);
     }

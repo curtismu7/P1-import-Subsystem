@@ -19,8 +19,26 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.join(__dirname, '..');
 
-async function getAccessToken(clientId, clientSecret, environmentId) {
-    const tokenUrl = `https://auth.pingone.com/${environmentId}/as/token`;
+async function getAccessToken(clientId, clientSecret, environmentId, region = 'NorthAmerica') {
+    // Get region-specific auth domain
+    const getAuthDomain = (region) => {
+        const domainMap = {
+            'NorthAmerica': 'auth.pingone.com',
+            'Europe': 'auth.eu.pingone.com',
+            'Canada': 'auth.ca.pingone.com',
+            'Asia': 'auth.apsoutheast.pingone.com',
+            'Australia': 'auth.aus.pingone.com',
+            'US': 'auth.pingone.com',
+            'EU': 'auth.eu.pingone.com',
+            'AP': 'auth.apsoutheast.pingone.com'
+        };
+        return domainMap[region] || 'auth.pingone.com';
+    };
+    
+    const authDomain = getAuthDomain(region);
+    const tokenUrl = `https://${authDomain}/${environmentId}/as/token`;
+    console.log(`Using token URL: ${tokenUrl} (region: ${region})`);
+    
     const postData = new URLSearchParams({ 'grant_type': 'client_credentials' }).toString();
     const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
@@ -57,8 +75,26 @@ async function getAccessToken(clientId, clientSecret, environmentId) {
     });
 }
 
-async function getPopulations(accessToken, environmentId) {
-    const apiUrl = `https://api.pingone.com/v1/environments/${environmentId}/populations`;
+async function getPopulations(accessToken, environmentId, region = 'NorthAmerica') {
+    // Get region-specific API domain
+    const getApiDomain = (region) => {
+        const domainMap = {
+            'NorthAmerica': 'api.pingone.com',
+            'Europe': 'api.eu.pingone.com',
+            'Canada': 'api.ca.pingone.com',
+            'Asia': 'api.apsoutheast.pingone.com',
+            'Australia': 'api.aus.pingone.com',
+            'US': 'api.pingone.com',
+            'EU': 'api.eu.pingone.com',
+            'AP': 'api.apsoutheast.pingone.com'
+        };
+        return domainMap[region] || 'api.pingone.com';
+    };
+    
+    const apiDomain = getApiDomain(region);
+    const apiUrl = `https://${apiDomain}/v1/environments/${environmentId}/populations`;
+    console.log(`Using API URL: ${apiUrl} (region: ${region})`);
+    
     
     return new Promise((resolve, reject) => {
         const options = {
@@ -109,17 +145,18 @@ async function main() {
         const clientId = envVars.PINGONE_CLIENT_ID;
         const clientSecret = envVars.PINGONE_CLIENT_SECRET;
         const environmentId = envVars.PINGONE_ENVIRONMENT_ID;
+        const region = envVars.PINGONE_REGION || 'NorthAmerica';
 
         if (!clientId || !clientSecret || !environmentId) {
             throw new Error('Missing required environment variables in .env file');
         }
 
         console.log('🔑 Authenticating with PingOne...');
-        const accessToken = await getAccessToken(clientId, clientSecret, environmentId);
+        const accessToken = await getAccessToken(clientId, clientSecret, environmentId, region);
         console.log('✅ Authentication successful\n');
 
         console.log('👥 Fetching available populations...');
-        const populationsResponse = await getPopulations(accessToken, environmentId);
+        const populationsResponse = await getPopulations(accessToken, environmentId, region);
         
         if (!populationsResponse._embedded || !populationsResponse._embedded.populations) {
             throw new Error('No populations found in the environment');

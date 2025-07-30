@@ -1,15 +1,15 @@
 {
-  "bundlePath": "/Users/curtismuir/P1-Import-subsystems/P1-import-Subsystem/public/js/bundle-1753063208.min.js",
-  "bundleSize": 596673,
-  "gzippedSize": 129085,
-  "brotliSize": 98447,
+  "bundlePath": "/Users/cmuir/P1Import-apps/P1-import-Subsystem/public/js/bundle-1753876524.min.js",
+  "bundleSize": 666774,
+  "gzippedSize": 143364,
+  "brotliSize": 112088,
   "moduleAnalysis": {
-    "Core App": 59600,
-    "Subsystems": 114042,
-    "UI Components": 139545,
-    "Utilities": 245765,
-    "API Clients": 88087,
-    "Third-party": 8562,
+    "Core App": 66594,
+    "Subsystems": 129812,
+    "UI Components": 153922,
+    "Utilities": 274765,
+    "API Clients": 97793,
+    "Third-party": 9644,
     "Other": 0
   }
 }

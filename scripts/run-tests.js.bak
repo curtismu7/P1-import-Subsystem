@@ -1,0 +1,593 @@
+#!/usr/bin/env node
+
+import { spawn } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import chalk from 'chalk';
+
+// Configure environment
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.resolve(__dirname, '../');
+
+// Colors for console output
+const colors = {
+  info: chalk.blue,
+  success: chalk.green,
+  warning: chalk.yellow,
+  error: chalk.red,
+  highlight: chalk.cyan,
+  muted: chalk.gray
+};
+
+// Test configuration
+const testConfig = {
+  unit: {
+    name: 'Unit Tests',
+    description: 'Tests individual units of code in isolation',
+    pattern: '**/test/unit/**/*.test.js',
+    ignorePatterns: ['/node_modules/'],
+    timeout: 120000, // 120 seconds
+    retries: 1,
+    parallel: false,
+    env: {
+      NODE_ENV: 'test',
+      LOG_LEVEL: 'info',
+      TEST_TYPE: 'unit',
+      TEST_DB_PATH: './test-db-unit.sqlite'
+    },
+    coverage: {
+      collect: true,
+      reportDir: 'coverage/unit',
+      threshold: {
+          statements: 80,
+          branches: 70,
+          functions: 75,
+          lines: 80
+        }
+      }
+    }
+  },
+  integration: {
+    name: 'Integration Tests',
+    description: 'Tests interactions between components and modules',
+    pattern: '**/test/integration/**/*.test.js',
+    ignorePatterns: [
+      '/node_modules/'
+    ],
+    timeout: 300000, // 5 minutes
+    retries: 1,
+    parallel: false, // Integration tests often can't run in parallel
+    env: {
+      NODE_ENV: 'test',
+      LOG_LEVEL: process.env.LOG_LEVEL || 'error',
+      TEST_TYPE: 'integration',
+      TEST_SERVER_URL: 'http://localhost:4000',
+      TEST_DB_PATH: './test-db-integration.sqlite',
+      JEST_JUNIT_OUTPUT: 'test-results/integration/junit.xml',
+      // PingOne test credentials (use environment variables in production)
+      PINGONE_ENVIRONMENT_ID: process.env.PINGONE_ENVIRONMENT_ID || 'test-env-id',
+      PINGONE_CLIENT_ID: process.env.PINGONE_CLIENT_ID || 'test-client-id',
+      PINGONE_CLIENT_SECRET: process.env.PINGONE_CLIENT_SECRET || 'test-client-secret',
+      PINGONE_REGION: process.env.PINGONE_REGION || 'NorthAmerica'
+    },
+    coverage: {
+      collect: true,
+      reportDir: 'coverage/integration',
+      threshold: {
+        global: {
+          statements: 70,
+          branches: 60,
+          functions: 65,
+          lines: 70
+        }
+      }
+    },
+    setupFiles: [
+      '<rootDir>/test/setup-integration.js'
+    ],
+    teardownFiles: [
+      '<rootDir>/test/teardown-integration.js'
+    ]
+  },
+  e2e: {
+    name: 'End-to-End Tests',
+    description: 'Tests complete user flows in a browser environment',
+    pattern: '**/test/e2e/**/*.test.js',
+    ignorePatterns: [
+      '/node_modules/'
+    ],
+    timeout: 600000, // 10 minutes
+    retries: 2, // More retries for flaky E2E tests
+    parallel: false, // E2E tests typically can't run in parallel
+    env: {
+      NODE_ENV: 'test',
+      LOG_LEVEL: 'error',
+      TEST_TYPE: 'e2e',
+      TEST_BASE_URL: 'http://localhost:4001',
+      JEST_JUNIT_OUTPUT: 'test-results/e2e/results.xml'
+    },
+    args: ['--passWithNoTests', '--colors', '--runInBand']
+  }
+};
+
+// Colors for console output
+const colors = {
+  success: chalk.green,
+  error: chalk.red,
+  warning: chalk.yellow,
+  info: chalk.blue,
+  debug: chalk.gray,
+  suite: chalk.cyan.bold  // Added suite property for test suite headers
+};
+
+// Format test duration for better readability
+function formatDuration(ms) {
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(2)}s`;
+}
+
+// Run a single test suite with enhanced error handling and output
+async function runTestSuite(suiteName, config) {
+  const startTime = Date.now();
+  const outputDir = path.join(rootDir, 'test-results', suiteName);
+  
+  try {
+    console.log(colors.info(`\n${'='.repeat(80)}`));
+    console.log(colors.info.bold(`🚀  ${config.name.toUpperCase()}`));
+    console.log(colors.info(`${'='.repeat(80)}`));
+    console.log(colors.info(`📝 ${config.description}`));
+    console.log(colors.info(`⏱  Timeout: ${config.timeout / 1000}s | 🔄 Retries: ${config.retries}`));
+    console.log(colors.info(`📊 Coverage: ${config.coverage?.collect ? 'Enabled' : 'Disabled'}`));
+    console.log(colors.info(`${'-'.repeat(80)}\n`));
+
+    // Build Jest command
+    const buildJestCommand = () => {
+      const args = [
+        '--config', 'jest.config.js',
+        '--testMatch', `"${config.pattern}"`,
+        '--testPathIgnorePatterns', ...config.ignorePatterns,
+        '--testTimeout', config.timeout,
+        '--runInBand', // Run tests serially
+        '--detectOpenHandles',
+        '--forceExit',
+        '--no-cache',
+        '--no-watchman',
+        '--passWithNoTests',
+      ];
+
+      if (config.coverage?.collect) {
+        args.push(
+          '--coverage',
+          '--coverageDirectory', path.join(config.coverage.reportDir),
+          '--collectCoverageFrom', `"${config.pattern}"`,
+          '--coverageReporters', 'json', 'lcov', 'text', 'clover', 'text-summary'
+        );
+      }
+
+      return {
+        command: 'npx',
+        args: ['jest', ...args],
+        options: {
+          env: { ...process.env, NODE_ENV: 'test', BABEL_ENV: 'test' },
+          stdio: 'inherit',
+          shell: false
+        }
+      };
+    };
+
+    // Build and execute Jest command
+    const { command, args, options } = buildJestCommand();
+    console.log(colors.info(`🚀 Running: ${command} ${args.join(' ')}`));
+    
+    // Create output directory if it doesn't exist
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+    
+    return new Promise((resolve, reject) => {
+      const child = spawn(command, args, {
+        stdio: ['inherit', 'pipe', 'pipe'],
+        shell: true,
+        env: {
+          ...process.env,
+          NODE_ENV: 'test',
+          FORCE_COLOR: '1',
+          ...options.env
+        },
+        cwd: options.cwd || process.cwd()
+      });
+      
+      let stdoutData = '';
+      let stderrData = '';
+      
+      if (child.stdout) {
+        child.stdout.on('data', (data) => {
+          const str = data.toString();
+          process.stdout.write(colors.info(str));
+          stdoutData += str;
+        });
+      }
+      
+      if (child.stderr) {
+        child.stderr.on('data', (data) => {
+          const str = data.toString();
+          process.stderr.write(colors.warning(str));
+          stderrData += str;
+        });
+      }
+      
+      child.on('error', (error) => {
+        console.error(colors.error('Failed to start test process:'), error);
+        resolve({
+          success: false,
+          error: error.message,
+          output: `Failed to start test process: ${error.message}`,
+          stdout: stdoutData,
+          stderr: stderrData
+        });
+      });
+      
+      child.on('close', (code, signal) => {
+        try {
+          const result = {
+            success: code === 0,
+            code,
+            signal,
+            stdout: stdoutData,
+            stderr: stderrData,
+            output: code === 0 ? 'Tests completed successfully' : `Tests failed with code ${code}`
+          };
+          
+          // Save test results
+          const resultFile = path.join(outputDir, 'test-results.json');
+          fs.writeFileSync(resultFile, JSON.stringify(result, null, 2));
+          
+          if (code !== 0) {
+            const error = new Error(`Process exited with code ${code} and signal ${signal}`);
+            error.code = code;
+            error.signal = signal;
+            error.stdout = stdoutData;
+            error.stderr = stderrData;
+            reject(error);
+          } else {
+            resolve(result);
+          }
+        } catch (error) {
+          console.error('Error processing test results:', error);
+          reject(error);
+        }
+      });
+    });
+    // Parse test results summary
+    const testMatch = output.match(/Test Suites:.*?(\d+) passed, (\d+) total/);
+    const coverageMatch = output.match(/All files.*?(\d+\.\d+).*?(\d+\.\d+).*?(\d+\.\d+).*?(\d+\.\d+)/s);
+    const passed = !output.includes('FAIL') && !stderr && (!testMatch || parseInt(testMatch[1]) === parseInt(testMatch[2]));
+    
+    // Prepare test results object
+    const testResults = {
+      name: config.name,
+      suite: suiteName,
+      passed,
+      duration: duration / 1000, // Convert to seconds
+      startTime: suiteStartTime,
+      endTime: new Date().toISOString(),
+      config: {
+        timeout: config.timeout,
+        retries: config.retries || 0,
+        coverage: !!config.coverage?.collect,
+        pattern: config.pattern
+      },
+      testResults: {
+        total: testMatch ? parseInt(testMatch[2]) : 0,
+        passed: testMatch ? parseInt(testMatch[1]) : 0,
+        failed: testMatch ? (parseInt(testMatch[2]) - parseInt(testMatch[1])) : 0,
+        coverage: coverageMatch ? {
+          statements: parseFloat(coverageMatch[1]),
+          branches: parseFloat(coverageMatch[2]),
+          functions: parseFloat(coverageMatch[3]),
+          lines: parseFloat(coverageMatch[4])
+        } : null
+      },
+      output: {
+        stdout: stdout.substring(0, 1000) + (stdout.length > 1000 ? '... [truncated]' : ''),
+        stderr: stderr || '',
+        logFile: path.join(outputDir, 'test-output.log')
+      }
+    };
+    
+    // Write test output to file
+    fs.writeFileSync(path.join(outputDir, 'test-output.log'), output);
+    fs.writeFileSync(path.join(outputDir, 'test-results.json'), JSON.stringify(testResults, null, 2));
+    
+    // Log test results summary
+    console.log(colors.suite('─'.repeat(80)));
+    if (passed) {
+      console.log(colors.success.bold(`✅  ${config.name} COMPLETED SUCCESSFULLY`));
+    } else {
+      console.log(colors.error.bold(`❌  ${config.name} FAILED`));
+    }
+    
+    // Log test summary
+    if (testMatch) {
+      const passedSuites = testMatch[1];
+      const totalSuites = testMatch[2];
+      const failedSuites = parseInt(totalSuites) - parseInt(passedSuites);
+      
+      console.log(colors.info(`\n📊 Test Suites: ${passedSuites} passed, ${failedSuites} failed, ${totalSuites} total`));
+      
+      // Extract and log individual test results if available
+      const testResultsMatch = output.match(/(\d+) tests? passed.*?(\d+) total/);
+      if (testResultsMatch) {
+        const [, passedTests, totalTests] = testResultsMatch;
+        const failedTests = parseInt(totalTests) - parseInt(passedTests);
+        console.log(colors.info(`   Tests: ${passedTests} passed, ${failedTests} failed, ${totalTests} total`));
+      }
+    }
+    
+    // Log coverage summary if available
+    if (coverageMatch) {
+      console.log(colors.info('\n📈 Coverage Summary:'));
+      console.log(colors.info(`  Statements: ${coverageMatch[1]}%`));
+      console.log(colors.info(`   Functions: ${coverageMatch[3]}%`));
+      console.log(colors.info(`     Branches: ${coverageMatch[2]}%`));
+      console.log(colors.info(`        Lines: ${coverageMatch[4]}%`));
+      
+      // Check coverage thresholds if specified
+      if (config.coverage?.threshold?.global) {
+        console.log(colors.info('\n🎯 Coverage Thresholds:'));
+        Object.entries(config.coverage.threshold.global).forEach(([type, threshold]) => {
+          const coverageValue = parseFloat(coverageMatch[type === 'statements' ? 1 : 
+                                                      type === 'branches' ? 2 : 
+                                                      type === 'functions' ? 3 : 4]);
+          const meetsThreshold = coverageValue >= threshold;
+          const status = meetsThreshold ? colors.success('✓') : colors.error('✗');
+          console.log(colors.info(`  ${status} ${type.padEnd(10)}: ${coverageValue}% (required: ${threshold}%)`));
+        });
+      }
+    }
+    
+    // Log duration and output directory
+    console.log(colors.info(`\n⏱  Duration: ${(duration / 1000).toFixed(2)}s`));
+    console.log(colors.info(`📂 Output Directory: ${outputDir}`));
+    console.log(colors.suite('─'.repeat(80) + '\n'));
+    
+    return testResults;
+  } catch (error) {
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    const errorOutput = error.stderr || error.stdout || error.message;
+    
+    // Log error details
+    console.error(colors.error.bold(`\n❌  ${config.name} FAILED AFTER ${duration}s`));
+    console.error(colors.error('─'.repeat(80)));
+    
+    // Extract and log relevant error information
+    if (error.code === 'ETIMEDOUT' || error.killed) {
+      console.error(colors.error.bold('Test suite timed out'));
+    } else if (error.signal) {
+      console.error(colors.error.bold(`Process terminated with signal: ${error.signal}`));
+    }
+    
+    // Log the error output (truncated if too long)
+    const maxErrorLength = 2000;
+    const errorPreview = errorOutput.length > maxErrorLength 
+      ? errorOutput.substring(0, maxErrorLength) + '... [truncated]' 
+      : errorOutput;
+    
+    console.error(colors.error(errorPreview));
+    console.error(colors.error('─'.repeat(80) + '\n'));
+    
+    // Write full error to file
+    const errorLogPath = path.join(outputDir, 'error.log');
+    fs.writeFileSync(errorLogPath, `Test Suite: ${config.name}\n` +
+                                 `Error: ${error.message}\n` +
+                                 `Code: ${error.code || 'N/A'}\n` +
+                                 `Signal: ${error.signal || 'N/A'}\n` +
+                                 `Stack Trace: ${error.stack || 'N/A'}\n\n` +
+                                 `STDOUT:\n${error.stdout || 'N/A'}\n\n` +
+                                 `STDERR:\n${error.stderr || 'N/A'}`);
+    
+    console.error(colors.warning(`Full error log written to: ${errorLogPath}`));
+    
+    return {
+      name: config.name,
+      passed: false,
+      duration: parseFloat(duration),
+      startTime: suiteStartTime,
+      endTime: new Date().toISOString(),
+      error: {
+        message: error.message,
+        code: error.code,
+        signal: error.signal,
+        logFile: errorLogPath
+      },
+      output: {
+        stdout: error.stdout ? error.stdout.substring(0, 1000) + (error.stdout.length > 1000 ? '...' : '') : '',
+        stderr: error.stderr || error.message
+      }
+    };
+  }
+}
+
+// Main function to run all test suites with improved reporting
+async function runAllTests() {
+  // Create test results directory
+  const resultsDir = path.join(rootDir, 'test-results');
+  if (!fs.existsSync(resultsDir)) {
+    fs.mkdirSync(resultsDir, { recursive: true });
+  }
+  
+  console.log(colors.suite('\n' + '='.repeat(80)));
+  console.log(colors.suite('🚀  PINGONE IMPORT TOOL - TEST SUITE RUNNER'.padEnd(80, ' ')));
+  console.log(colors.suite('='.repeat(80)));
+  console.log(colors.info(`Start Time: ${new Date().toISOString()}`));
+  console.log(colors.info(`Node Version: ${process.version}`));
+  console.log(colors.info(`Platform: ${process.platform} ${process.arch}`));
+  console.log(colors.suite('='.repeat(80) + '\n'));
+  
+  const startTime = Date.now();
+  const results = [];
+  let totalTests = 0;
+  let passedTests = 0;
+  let failedTests = 0;
+  let allSuitesPassed = true;
+  
+  // Run each test suite
+  for (const [suiteName, config] of Object.entries(testConfig)) {
+    console.log(colors.suite('\n' + '═'.repeat(80)));
+    console.log(colors.suite(`  TEST SUITE: ${suiteName.toUpperCase()}`));
+    console.log(colors.suite('═'.repeat(80)));
+    
+    const result = await runTestSuite(suiteName, config);
+    results.push({ suiteName, ...result });
+    
+    // Update test counts
+    totalTests += result.total || 0;
+    passedTests += result.passed || 0;
+    failedTests += result.failed || 0;
+    
+    if (!result.passed) {
+      allSuitesPassed = false;
+    }
+  }
+  
+  // Generate detailed summary
+  const endTime = Date.now();
+  const duration = ((endTime - startTime) / 1000).toFixed(2);
+  const successRate = totalTests > 0 ? ((passedTests / totalTests) * 100).toFixed(1) : 0;
+  
+  // Create summary object for JSON output
+  const summary = {
+    timestamp: new Date().toISOString(),
+    duration: parseFloat(duration),
+    totalSuites: results.length,
+    passedSuites: results.filter(r => r.passed).length,
+    totalTests,
+    passedTests,
+    failedTests,
+    successRate: parseFloat(successRate),
+    suites: results.map(({ suiteName, passed, duration, total, passed: suitePassed, failed, skipped }) => ({
+      name: suiteName,
+      status: passed ? 'passed' : 'failed',
+      duration,
+      total,
+      passed: suitePassed,
+      failed,
+      skipped,
+      successRate: total > 0 ? Math.round((suitePassed / total) * 100) : 0
+    })),
+    environment: {
+      node: process.version,
+      platform: process.platform,
+      arch: process.arch,
+      cpus: os.cpus().length
+    }
+  };
+  
+  // Write summary to file
+  const summaryFile = path.join(resultsDir, `test-summary-${Date.now()}.json`);
+  fs.writeFileSync(summaryFile, JSON.stringify(summary, null, 2));
+  
+  // Print summary to console
+  console.log(colors.suite('\n' + '='.repeat(80)));
+  console.log(colors.suite('  TEST SUITE SUMMARY'.padEnd(80, ' ')));
+  console.log(colors.suite('='.repeat(80)));
+  
+  // Suite details
+  results.forEach(({ suiteName, passed, duration, total = 0, passed: suitePassed = 0, failed = 0, skipped = 0 }) => {
+    const status = passed ? colors.success('PASS') : colors.error('FAIL');
+    const suiteRate = total > 0 ? Math.round((suitePassed / total) * 100) : 0;
+    const details = `Tests: ${suitePassed}/${total} passed, ${failed} failed, ${skipped} skipped (${suiteRate}%)`;
+    console.log(`• ${colors.suite(suiteName.padEnd(15))}: ${status} (${duration}s)`.padEnd(50) + details);
+  });
+  
+  // Overall summary
+  console.log(colors.suite('='.repeat(80)));
+  console.log(colors.info(`Total Tests: ${totalTests}`));
+  console.log(colors.success(`Passed: ${passedTests}`));
+  console.log(colors.error(`Failed: ${failedTests}`));
+  console.log(colors.warning(`Skipped: ${totalTests - passedTests - failedTests}`));
+  console.log(colors.info(`Success Rate: ${successRate}%`));
+  console.log(colors.info(`Duration: ${duration}s`));
+  
+  // Final status
+  console.log(colors.suite('='.repeat(80)));
+  const status = allSuitesPassed ? 
+    colors.success.bold('✅  ALL TEST SUITES PASSED') : 
+    colors.error.bold('❌  SOME TEST SUITES FAILED');
+  console.log(`\n${status} (${duration}s)\n`);
+  console.log(colors.info(`Detailed results saved to: ${summaryFile}`));
+  
+  // Cleanup any test resources
+  await cleanupTestResources();
+  
+  // Exit with appropriate status code
+  process.exit(allSuitesPassed ? 0 : 1);
+}
+
+// Cleanup test resources
+async function cleanupTestResources() {
+  try {
+    // Clean up any test databases
+    if (process.env.TEST_DB_PATH && fs.existsSync(process.env.TEST_DB_PATH)) {
+      fs.unlinkSync(process.env.TEST_DB_PATH);
+    }
+    
+    // Clean up any test files
+    const testFiles = fs.readdirSync('.').filter(file => 
+      file.startsWith('test-') && (file.endsWith('.json') || file.endsWith('.tmp'))
+    );
+    
+    testFiles.forEach(file => {
+      try {
+        fs.unlinkSync(file);
+      } catch (err) {
+        // Ignore errors during cleanup
+      }
+    });
+    
+    // Close any open database connections or servers
+    if (global.testServer) {
+      await new Promise(resolve => global.testServer.close(resolve));
+    }
+    
+  } catch (error) {
+    console.error(colors.warning('Error during test cleanup:'), error.message);
+  }
+}
+
+// Error handler for uncaught exceptions
+process.on('uncaughtException', async (error) => {
+  console.error(colors.error('\n❌ Uncaught Exception:'));
+  console.error(error);
+  await cleanupTestResources();
+  process.exit(1);
+});
+
+// Error handler for unhandled promise rejections
+process.on('unhandledRejection', async (reason) => {
+  console.error(colors.error('\n❌ Unhandled Rejection:'));
+  console.error(reason);
+  await cleanupTestResources();
+  process.exit(1);
+});
+
+// Graceful shutdown handler
+process.on('SIGINT', async () => {
+  console.log(colors.warning('\n🛑 Test run interrupted by user. Cleaning up...'));
+  await cleanupTestResources();
+  process.exit(0);
+});
+
+// Main execution
+(async () => {
+  try {
+    await runAllTests();
+  } catch (error) {
+    console.error(colors.error('\n❌ Test runner failed with error:'));
+    console.error(error);
+    await cleanupTestResources();
+    process.exit(1);
+  }
+})();

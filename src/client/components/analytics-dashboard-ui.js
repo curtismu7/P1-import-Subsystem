@@ -23,31 +23,93 @@ export class AnalyticsDashboardUI {
         this.logger.debug('Initializing Simple Analytics Dashboard UI');
         
         try {
+            // Create the dashboard HTML structure
             this.createDashboardHTML();
+            
+            // Set up event listeners
             this.setupUIEventListeners();
+            this.setupEventListeners();
+            
+            // Initial data load
+            await this.refreshDashboard();
             
             this.logger.info('Simple Analytics Dashboard UI initialized successfully');
+            return true;
         } catch (error) {
-            this.logger.error('Failed to initialize Simple Analytics Dashboard UI', error);
-            throw error;
+            const errorMsg = `Failed to initialize Analytics Dashboard UI: ${error.message}`;
+            this.logger.error(errorMsg, error);
+            
+            // Show error in the UI if possible
+            const container = document.getElementById('analytics-dashboard-container') || 
+                             document.getElementById('analytics-view');
+            if (container) {
+                container.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h4>Failed to Initialize Dashboard</h4>
+                        <p>${error.message}</p>
+                        <button class="btn btn-primary mt-2" onclick="window.location.reload()">
+                            <i class="fas fa-sync-alt"></i> Reload
+                        </button>
+                    </div>
+                `;
+            }
+            
+            throw new Error(errorMsg);
         }
     }
     
     /**
      * Show the analytics dashboard
      */
-    show() {
+    async show() {
         if (this.isVisible) return;
         
-        this.isVisible = true;
-        const container = document.getElementById('analytics-dashboard-container');
-        if (container) {
-            container.classList.remove('hidden');
-            this.startRealTimeUpdates();
-            this.refreshDashboard();
+        try {
+            // Ensure the dashboard HTML is created
+            if (!document.getElementById('analytics-dashboard-container')) {
+                this.createDashboardHTML();
+            }
             
+            // Make the dashboard visible
+            const container = document.getElementById('analytics-dashboard-container');
+            if (!container) {
+                throw new Error('Analytics dashboard container not found');
+            }
+            
+            container.classList.remove('hidden');
+            this.isVisible = true;
+            
+            // Start real-time updates
+            this.startRealTimeUpdates();
+            
+            // Initial dashboard refresh
+            await this.refreshDashboard();
+            
+            // Notify that the dashboard is now visible
             this.eventBus.emit('analytics-dashboard:shown');
-            this.logger.debug('Analytics dashboard shown');
+            this.logger.info('Analytics dashboard shown successfully');
+            
+            return true;
+        } catch (error) {
+            const errorMsg = `Failed to show analytics dashboard: ${error.message}`;
+            this.logger.error(errorMsg, error);
+            
+            // Show error in the UI
+            const container = document.getElementById('analytics-dashboard-container') || 
+                             document.getElementById('analytics-view') || 
+                             document.body;
+            
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    <h4>Failed to Load Dashboard</h4>
+                    <p>${error.message}</p>
+                    <button class="btn btn-primary mt-2" onclick="window.app.analyticsDashboardUI.show()">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>
+            `;
+            
+            throw new Error(errorMsg);
         }
     }
     
@@ -83,10 +145,22 @@ export class AnalyticsDashboardUI {
      * Create the dashboard HTML structure
      */
     createDashboardHTML() {
-        const container = document.getElementById('analytics-view');
+        // Try to find the container in multiple possible locations
+        let container = document.getElementById('analytics-dashboard-container');
         if (!container) {
-            this.logger.error('Analytics view container (#analytics-view) not found.');
-            return;
+            // Fallback to analytics-view if the specific container isn't found
+            container = document.getElementById('analytics-view');
+            if (!container) {
+                this.logger.error('Analytics dashboard container not found in the DOM');
+                throw new Error('Analytics dashboard container not found. Please ensure the analytics view is properly initialized.');
+            }
+            
+            // Create the dashboard container inside the view
+            const dashboardContainer = document.createElement('div');
+            dashboardContainer.id = 'analytics-dashboard-container';
+            dashboardContainer.className = 'analytics-dashboard-container hidden';
+            container.appendChild(dashboardContainer);
+            container = dashboardContainer;
         }
 
         const dashboardHTML = `
