@@ -176,7 +176,7 @@ class App {
             
             // Test the logger
             this.logger.info('Centralized Logger initialized successfully', {
-                version: '6.5.1.5',
+                version: '6.5.2.0',
                 featureFlags: FEATURE_FLAGS,
                 userAgent: navigator.userAgent
             });
@@ -202,7 +202,7 @@ class App {
         
         // Log application start
         this.logger.info('Application initialization started', {
-            version: '6.5.1.5',
+            version: '6.5.2.0',
             featureFlags: FEATURE_FLAGS,
             userAgent: navigator.userAgent
         });
@@ -245,6 +245,9 @@ class App {
         this.currentView = 'home';
         this.socket = null;
         
+        // Application version
+        this.version = '6.5.2.0';
+        
         // Performance tracking
         this.logger.startTimer('app-initialization');
     }
@@ -253,8 +256,11 @@ class App {
      * Initialize the application
      */
     async init() {
+        console.log('🔧 [APP INIT] Starting app.init() method...');
         try {
+            console.log('🔧 [APP INIT] Logger available:', !!this.logger);
             this.logger.info('Starting application initialization');
+            console.log('🔧 [APP INIT] About to initialize core components...');
             this.updateStartupMessage('Initializing core components...');
             
             // Initialize core components
@@ -291,12 +297,114 @@ class App {
                 subsystemsEnabled: Object.keys(this.subsystems).length
             });
             
+            // Show success status bar with version and system info
+            this.showInitializationSuccessStatus();
+            
         } catch (error) {
             this.logger.error('Application initialization failed', {
                 error: error.message,
                 stack: error.stack
             });
             throw error;
+        }
+    }
+    
+    /**
+     * Show initialization success status with version and system info
+     */
+    showInitializationSuccessStatus() {
+        try {
+            // Get current bundle info
+            const scripts = document.querySelectorAll('script[src*="bundle-"]');
+            let bundleVersion = 'Unknown';
+            if (scripts.length > 0) {
+                const bundleSrc = scripts[scripts.length - 1].src;
+                const match = bundleSrc.match(/bundle-(\d+)\.js/);
+                if (match) {
+                    bundleVersion = match[1];
+                }
+            }
+            
+            // Get token status
+            let tokenStatus = 'No Token';
+            let tokenTimeLeft = '';
+            try {
+                if (this.subsystems.enhancedTokenStatus && 
+                    typeof this.subsystems.enhancedTokenStatus.getTokenStatus === 'function') {
+                    const status = this.subsystems.enhancedTokenStatus.getTokenStatus();
+                    if (status && status.isValid) {
+                        tokenStatus = 'Valid Token';
+                        tokenTimeLeft = ` (${status.expiresInMinutes}min left)`;
+                    } else {
+                        tokenStatus = 'Invalid Token';
+                    }
+                } else {
+                    // Check if we have valid credentials in settings
+                    const hasCredentials = this.checkCredentialsAvailable();
+                    tokenStatus = hasCredentials ? 'Checking Token...' : 'No Credentials';
+                }
+            } catch (error) {
+                this.logger.warn('Could not get token status', { error: error.message });
+                tokenStatus = 'Token Status Unknown';
+            }
+            
+            // Create status message
+            const statusMessage = `✅ v${this.version} Ready | Bundle: ${bundleVersion} | Last Update: UIManager & SafeDOM fixes | Token: ${tokenStatus}${tokenTimeLeft}`;
+            
+            // Show green success status bar
+            if (this.uiManager && this.uiManager.showStatusBar) {
+                this.uiManager.showStatusBar(statusMessage, 'success', {
+                    duration: 10000, // Show for 10 seconds
+                    autoDismiss: true
+                });
+            }
+            
+            this.logger.info('Initialization success status displayed', {
+                version: this.version,
+                bundleVersion,
+                tokenStatus,
+                tokenTimeLeft
+            });
+            
+        } catch (error) {
+            this.logger.error('Failed to show initialization success status', {
+                error: error.message,
+                stack: error.stack
+            });
+        }
+    }
+    
+    /**
+     * Check if PingOne credentials are available
+     */
+    checkCredentialsAvailable() {
+        try {
+            // Check environment variables first
+            if (typeof process !== 'undefined' && process.env) {
+                const hasEnvCredentials = process.env.PINGONE_CLIENT_ID && 
+                                        process.env.PINGONE_CLIENT_SECRET && 
+                                        process.env.PINGONE_ENVIRONMENT_ID;
+                if (hasEnvCredentials) {
+                    return true;
+                }
+            }
+            
+            // Check settings subsystem
+            if (this.subsystems.settings && 
+                typeof this.subsystems.settings.getSettings === 'function') {
+                const settings = this.subsystems.settings.getSettings();
+                const hasSettingsCredentials = settings.apiClientId && 
+                                             settings.apiSecret && 
+                                             settings.environmentId &&
+                                             !settings.apiClientId.includes('test-') &&
+                                             !settings.apiSecret.includes('test-');
+                return hasSettingsCredentials;
+            }
+            
+            return false;
+        } catch (error) {
+            this.logger.warn('Error checking credentials availability', { error: error.message });
+            return false;
         }
     }
     
@@ -464,18 +572,61 @@ class App {
 
             for (const sub of subsystemsToInit) {
                 if (sub.flag) {
-                    this.logger.debug(`Initializing ${sub.name} subsystem...`);
-                    // Resolve dependencies that are functions (lazy loading)
-                    const resolvedDeps = sub.deps.map(dep => (typeof dep === 'function' ? dep() : dep));
-                    this.subsystems[sub.name] = new sub.constructor(...resolvedDeps);
-                    await this.subsystems[sub.name].init();
-                    this.logger.info(`${sub.name} subsystem initialized.`);
+                    try {
+                        console.log(`🔧 [SUBSYSTEM INIT] Starting ${sub.name} subsystem initialization...`);
+                        this.logger.debug(`Initializing ${sub.name} subsystem...`);
+                        
+                        // Log dependency resolution
+                        console.log(`🔧 [SUBSYSTEM INIT] ${sub.name} dependencies:`, sub.deps.map(dep => typeof dep === 'function' ? 'function()' : dep));
+                        
+                        // Resolve dependencies that are functions (lazy loading)
+                        const resolvedDeps = sub.deps.map(dep => {
+                            if (typeof dep === 'function') {
+                                const resolved = dep();
+                                console.log(`🔧 [SUBSYSTEM INIT] ${sub.name} lazy dependency resolved:`, resolved ? 'success' : 'null/undefined');
+                                return resolved;
+                            }
+                            return dep;
+                        });
+                        
+                        console.log(`🔧 [SUBSYSTEM INIT] ${sub.name} resolved dependencies:`, resolvedDeps.map(dep => dep ? 'available' : 'null/undefined'));
+                        
+                        // Check if constructor exists
+                        if (!sub.constructor) {
+                            throw new Error(`Constructor not found for ${sub.name} subsystem`);
+                        }
+                        
+                        console.log(`🔧 [SUBSYSTEM INIT] ${sub.name} creating instance...`);
+                        this.subsystems[sub.name] = new sub.constructor(...resolvedDeps);
+                        
+                        console.log(`🔧 [SUBSYSTEM INIT] ${sub.name} calling init()...`);
+                        await this.subsystems[sub.name].init();
+                        
+                        console.log(`✅ [SUBSYSTEM INIT] ${sub.name} subsystem initialized successfully!`);
+                        this.logger.info(`${sub.name} subsystem initialized successfully.`);
+                    } catch (error) {
+                        console.error(`❌ [SUBSYSTEM INIT] Failed to initialize ${sub.name} subsystem:`, error);
+                        this.logger.error(`Failed to initialize ${sub.name} subsystem`, {
+                            error: error.message,
+                            stack: error.stack,
+                            subsystem: sub.name
+                        });
+                        // Continue with other subsystems instead of failing completely
+                        this.subsystems[sub.name] = null;
+                    }
+                } else {
+                    console.log(`⏭️ [SUBSYSTEM INIT] Skipping ${sub.name} subsystem (flag disabled)`);
                 }
             }
 
             // Initialize UI components that depend on subsystems
             if (this.subsystems.advancedRealtime) {
-                this.realtimeCollaborationUI = new RealtimeCollaborationUI(this.eventBus, this.logger);
+                this.realtimeCollaborationUI = new RealtimeCollaborationUI(
+                    this.logger, 
+                    this.eventBus, 
+                    this.subsystems.advancedRealtime, 
+                    this.uiManager
+                );
                 this.realtimeCollaborationUI.init();
             }
 
@@ -498,14 +649,15 @@ class App {
                 }
             }
 
-            this.logger.info('All subsystems initialized successfully.');
+            this.logger.info('Subsystem initialization completed (some may have failed).');
 
         } catch (error) {
-            this.logger.error('Subsystem initialization failed', {
+            this.logger.error('Critical error during subsystem initialization', {
                 error: error.message,
                 stack: error.stack
             });
-            throw error;
+            // Log the error but don't throw it to allow app initialization to continue
+            this.logger.warn('Continuing app initialization despite subsystem errors');
         }
 
         // Global Token Manager Subsystem
@@ -1424,8 +1576,13 @@ class App {
     async startImport() {
         this.logger.info('Starting import operation');
         
-        if (this.subsystems.importManager) {
+        // Check multiple possible import subsystem references
+        if (this.subsystems.import && typeof this.subsystems.import.startImport === 'function') {
+            return await this.subsystems.import.startImport();
+        } else if (this.subsystems.importManager && typeof this.subsystems.importManager.startImport === 'function') {
             return await this.subsystems.importManager.startImport();
+        } else if (this.importSubsystem && typeof this.importSubsystem.startImport === 'function') {
+            return await this.importSubsystem.startImport();
         } else {
             // Fallback to legacy import
             this.logger.warn('Using legacy import - subsystem not available');
@@ -1498,45 +1655,49 @@ class App {
             this.logger.error('Navigation failed', { viewName, error: error.message });
         }
     }
-    
-    /**
-     * Handle file selection from input
-     */
-    handleFileSelection(event) {
-        this.logger.debug('Handling file selection');
-        try {
-            const files = event.target.files;
-            if (files && files.length > 0) {
-                const file = files[0];
-                this.logger.info('File selected', {
-                    fileName: file.name,
-                    fileSize: file.size,
-                    fileType: file.type
-                });
 
-                // Use import subsystem if available
-                if (this.subsystems.importManager) {
-                    this.subsystems.importManager.handleFileSelection(file);
+/**
+ * Handle file selection from input
+ */
+handleFileSelection(event) {
+    this.logger.debug('Handling file selection');
+    try {
+        const files = event.target.files;
+        if (files && files.length > 0) {
+            const file = files[0];
+            this.logger.info('File selected', {
+                fileName: file.name,
+                fileSize: file.size,
+                fileType: file.type
+            });
+
+            // Use import subsystem if available (check multiple possible references)
+            if (this.subsystems.import && typeof this.subsystems.import.handleFileSelection === 'function') {
+                this.subsystems.import.handleFileSelection(file);
+            } else if (this.subsystems.importManager && typeof this.subsystems.importManager.handleFileSelection === 'function') {
+                this.subsystems.importManager.handleFileSelection(file);
+            } else if (this.importSubsystem && typeof this.importSubsystem.handleFileSelection === 'function') {
+                this.importSubsystem.handleFileSelection(file);
+            } else {
+                this.logger.warn('Import subsystem not available, using legacy import');
+                if (this.fileHandler && typeof this.fileHandler.handleFile === 'function') {
+                    this.fileHandler.handleFile(file);
                 } else {
-                    this.logger.warn('Import subsystem not available, using legacy import');
-                    if (this.fileHandler && typeof this.fileHandler.handleFile === 'function') {
-                        this.fileHandler.handleFile(file);
-                    } else {
-                        this.logger.error('No file handling method available');
-                        this.showMessage('File handling is not available. Please refresh the page.', 'error');
-                    }
+                    this.logger.error('No file handling method available');
+                    this.showMessage('File handling is not available. Please refresh the page.', 'error');
                 }
             }
-        } catch (error) {
-            this.logger.error('File selection handling failed', { error: error.message });
         }
+    } catch (error) {
+        this.logger.error('File selection handling failed', { error: error.message });
     }
+}
 
-    /**
-     * Handle file drop from drag and drop
-     */
-    handleFileDrop(event) {
-        this.logger.debug('Handling file drop');
+/**
+ * Handle file drop from drag and drop
+ */
+handleFileDrop(event) {
+    this.logger.debug('Handling file drop');
         try {
             const files = event.dataTransfer.files;
             if (files && files.length > 0) {
@@ -1547,9 +1708,13 @@ class App {
                     fileType: file.type
                 });
 
-                // Use import subsystem if available
-                if (this.subsystems.importManager) {
+                // Use import subsystem if available (check multiple possible references)
+                if (this.subsystems.import && typeof this.subsystems.import.handleFileSelection === 'function') {
+                    this.subsystems.import.handleFileSelection(file);
+                } else if (this.subsystems.importManager && typeof this.subsystems.importManager.handleFileSelection === 'function') {
                     this.subsystems.importManager.handleFileSelection(file);
+                } else if (this.importSubsystem && typeof this.importSubsystem.handleFileSelection === 'function') {
+                    this.importSubsystem.handleFileSelection(file);
                 } else {
                     this.logger.warn('Import subsystem not available, using legacy import');
                     if (this.fileHandler && typeof this.fileHandler.handleFile === 'function') {
@@ -1572,9 +1737,13 @@ class App {
         this.logger.debug('Cancelling import operation');
         
         try {
-            // Use import subsystem if available
-            if (this.subsystems.importManager) {
+            // Use import subsystem if available (check multiple possible references)
+            if (this.subsystems.import && typeof this.subsystems.import.cancelImport === 'function') {
+                this.subsystems.import.cancelImport();
+            } else if (this.subsystems.importManager && typeof this.subsystems.importManager.cancelImport === 'function') {
                 this.subsystems.importManager.cancelImport();
+            } else if (this.importSubsystem && typeof this.importSubsystem.cancelImport === 'function') {
+                this.importSubsystem.cancelImport();
             } else {
                 this.logger.warn('Import subsystem not available, using legacy cancel');
                 this.legacyCancelImport();

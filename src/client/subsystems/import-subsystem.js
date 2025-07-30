@@ -587,6 +587,9 @@ export class ImportSubsystem {
      * Validate form state and update Import button enabled/disabled state
      */
     validateAndUpdateButtonState() {
+        // Add explicit debug logging
+        console.log('🔍 [VALIDATION] validateAndUpdateButtonState called');
+        
         // Initialize utilities for safe DOM operations
         const safeDOM = window.safeDOM || new SafeDOM(this.logger);
         const errorHandler = window.errorHandler || new ErrorHandler(this.logger);
@@ -601,25 +604,42 @@ export class ImportSubsystem {
             }
         };
         
+        console.log('🔍 [VALIDATION] UI_CONFIG:', UI_CONFIG);
+        
         // Wrap the entire validation in error handler
         errorHandler.wrapSync(() => {
+            console.log('🔍 [VALIDATION] Inside error handler wrapper');
+            
             const importBtn = safeDOM.selectById(UI_CONFIG.SELECTORS.START_IMPORT_BTN);
+            console.log('🔍 [VALIDATION] Import button found:', !!importBtn, importBtn);
+            
             if (!importBtn) {
                 this.logger.warn('Import button not found for state validation');
+                console.log('❌ [VALIDATION] Import button not found, exiting');
                 return;
             }
             
             // Check if file is selected (using internal state for reliability)
             const hasFile = !!this.selectedFile;
+            console.log('🔍 [VALIDATION] File check:', { hasFile, selectedFile: this.selectedFile?.name });
             
             // Check if population is selected using Safe DOM
             const populationSelect = safeDOM.selectById(UI_CONFIG.SELECTORS.IMPORT_POPULATION_SELECT);
+            console.log('🔍 [VALIDATION] Population select found:', !!populationSelect, populationSelect);
+            
             const hasPopulation = populationSelect && populationSelect.value && populationSelect.value !== '';
+            console.log('🔍 [VALIDATION] Population check:', { 
+                hasPopulation, 
+                value: populationSelect?.value,
+                selectedText: populationSelect?.selectedOptions?.[0]?.text
+            });
             
             // Enable button only if both file and population are selected
             const shouldEnable = hasFile && hasPopulation;
+            console.log('🔍 [VALIDATION] Final validation:', { hasFile, hasPopulation, shouldEnable });
             
             importBtn.disabled = !shouldEnable;
+            console.log('🔍 [VALIDATION] Button disabled set to:', importBtn.disabled);
             
             this.logger.debug('Import button state updated', {
                 hasFile,
@@ -630,13 +650,22 @@ export class ImportSubsystem {
             
             // Update button appearance using Safe DOM
             if (shouldEnable) {
+                console.log('🔍 [VALIDATION] Enabling button - removing disabled class, adding primary');
                 safeDOM.removeClass(importBtn, UI_CONFIG.CLASSES.BTN_DISABLED);
                 safeDOM.addClass(importBtn, UI_CONFIG.CLASSES.BTN_PRIMARY);
             } else {
+                console.log('🔍 [VALIDATION] Disabling button - adding disabled class, removing primary');
                 safeDOM.addClass(importBtn, UI_CONFIG.CLASSES.BTN_DISABLED);
                 safeDOM.removeClass(importBtn, UI_CONFIG.CLASSES.BTN_PRIMARY);
             }
+            
+            console.log('🔍 [VALIDATION] Button final state:', {
+                disabled: importBtn.disabled,
+                classList: importBtn.classList.toString()
+            });
         }, 'Import button state validation')();
+        
+        console.log('🔍 [VALIDATION] validateAndUpdateButtonState completed');
     }
     
     /**

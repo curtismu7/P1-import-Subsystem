@@ -12,7 +12,7 @@ export const FEATURE_FLAGS = {
     ENABLE_ERROR_TRACKING: true,
     
     // Subsystem rollout flags
-    USE_NAVIGATION_SUBSYSTEM: false, // Disabled to avoid conflict with ViewManagementSubsystem
+    USE_NAVIGATION_SUBSYSTEM: true, // Re-enabled for Settings navigation
     USE_CONNECTION_MANAGER: true,
     USE_AUTH_MANAGEMENT: true,
     USE_VIEW_MANAGEMENT: true,

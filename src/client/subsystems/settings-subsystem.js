@@ -88,13 +88,45 @@ export class SettingsSubsystem {
     }
     
     /**
-     * Load current settings from settings manager
+     * Load current settings from server API first, then fall back to local storage
      */
     async loadCurrentSettings() {
         try {
+            // First try to load from server API
+            try {
+                this.logger.info('🔧 SETTINGS: Loading settings from server API...');
+                const response = await fetch('/api/settings');
+                
+                if (response.ok) {
+                    const serverSettings = await response.json();
+                    this.logger.info('🔧 SETTINGS: Server settings loaded successfully', {
+                        hasEnvironmentId: !!serverSettings.environmentId,
+                        hasApiClientId: !!serverSettings.apiClientId,
+                        region: serverSettings.region
+                    });
+                    
+                    // Update local settings manager with server settings
+                    if (serverSettings && Object.keys(serverSettings).length > 0) {
+                        this.currentSettings = serverSettings;
+                        this.populateSettingsForm(this.currentSettings);
+                        this.logger.info('🔧 SETTINGS: Form fields populated successfully');
+                        return;
+                    }
+                } else {
+                    this.logger.warn('🔧 SETTINGS: Server API returned non-OK status:', response.status);
+                }
+            } catch (apiError) {
+                this.logger.warn('🔧 SETTINGS: Failed to load from server API, falling back to local storage', {
+                    error: apiError.message
+                });
+            }
+            
+            // Fallback to local settings manager
+            this.logger.info('🔧 SETTINGS: Loading settings from local storage...');
             this.currentSettings = this.settingsManager.getSettings();
             this.populateSettingsForm(this.currentSettings);
-            this.logger.info('Current settings loaded successfully');
+            this.logger.info('🔧 SETTINGS: Local settings loaded successfully');
+            
         } catch (error) {
             this.logger.error('Failed to load current settings', error);
             throw error;
