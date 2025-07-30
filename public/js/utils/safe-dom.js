@@ -77,6 +77,13 @@ class SafeDOM {
     }
 
     /**
+     * Alias for getElementById for backward compatibility
+     */
+    selectById(id) {
+        return this.getElementById(id);
+    }
+
+    /**
      * Safely set text content
      */
     setText(element, text) {

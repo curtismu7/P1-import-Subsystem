@@ -104,53 +104,69 @@ class CentralizedLogger {
             return; // Suppress debug log if not in debug mode
         }
 
-        const formattedMessage = this.formatMessage('debug', message, data);
-        
-        if (this.enableConsoleLogging) {
-            console.debug(formattedMessage);
+        try {
+            const formattedMessage = this.formatMessage ? this.formatMessage('debug', message, data) : `[DEBUG] ${message}`;
+            
+            if (this.enableConsoleLogging) {
+                console.debug(formattedMessage);
+            }
+            
+            // Optionally, send debug logs remotely if needed for remote debugging sessions
+            this.sendRemoteLog('debug', message, data);
+        } catch (error) {
+            console.debug(`[DEBUG] ${message}`, data);
         }
-        
-        // Optionally, send debug logs remotely if needed for remote debugging sessions
-        this.sendRemoteLog('debug', message, data);
     }
 
     /**
      * Log info message
      */
     info(message, data = null) {
-        const formattedMessage = this.formatMessage('info', message, data);
-        
-        if (this.enableConsoleLogging) {
-            console.log(formattedMessage);
+        try {
+            const formattedMessage = this.formatMessage ? this.formatMessage('info', message, data) : `[INFO] ${message}`;
+            
+            if (this.enableConsoleLogging) {
+                console.log(formattedMessage);
+            }
+            
+            this.sendRemoteLog('info', message, data);
+        } catch (error) {
+            console.log(`[INFO] ${message}`, data);
         }
-        
-        this.sendRemoteLog('info', message, data);
     }
 
     /**
      * Log warning message
      */
     warn(message, data = null) {
-        const formattedMessage = this.formatMessage('warn', message, data);
-        
-        if (this.enableConsoleLogging) {
-            console.warn(formattedMessage);
+        try {
+            const formattedMessage = this.formatMessage ? this.formatMessage('warn', message, data) : `[WARN] ${message}`;
+            
+            if (this.enableConsoleLogging) {
+                console.warn(formattedMessage);
+            }
+            
+            this.sendRemoteLog('warn', message, data);
+        } catch (error) {
+            console.warn(`[WARN] ${message}`, data);
         }
-        
-        this.sendRemoteLog('warn', message, data);
     }
 
     /**
      * Log error message
      */
     error(message, data = null) {
-        const formattedMessage = this.formatMessage('error', message, data);
-        
-        if (this.enableConsoleLogging) {
-            console.error(formattedMessage);
+        try {
+            const formattedMessage = this.formatMessage ? this.formatMessage('error', message, data) : `[ERROR] ${message}`;
+            
+            if (this.enableConsoleLogging) {
+                console.error(formattedMessage);
+            }
+            
+            this.sendRemoteLog('error', message, data);
+        } catch (error) {
+            console.error(`[ERROR] ${message}`, data);
         }
-        
-        this.sendRemoteLog('error', message, data);
     }
 
     /**

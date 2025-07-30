@@ -275,6 +275,50 @@ async function updateEnvironmentVariables(settings) {
     }
 }
 
+// Helper function to normalize field names (both camelCase and kebab-case supported)
+function normalizeSettingsFields(settings) {
+    if (!settings || typeof settings !== 'object') {
+        return settings;
+    }
+    
+    const normalized = { ...settings };
+    
+    // Map kebab-case to camelCase for compatibility
+    const fieldMappings = {
+        'environment-id': 'environmentId',
+        'api-client-id': 'apiClientId', 
+        'client-id': 'apiClientId',  // Alternative mapping
+        'api-secret': 'apiSecret',
+        'client-secret': 'apiSecret',  // Alternative mapping
+        'population-id': 'populationId',
+        'rate-limit': 'rateLimit'
+    };
+    
+    // Convert kebab-case fields to camelCase
+    for (const [kebabKey, camelKey] of Object.entries(fieldMappings)) {
+        if (kebabKey in normalized) {
+            normalized[camelKey] = normalized[kebabKey];
+            delete normalized[kebabKey];
+            logger.debug(`Normalized field: ${kebabKey} -> ${camelKey}`);
+        }
+    }
+    
+    // Also handle alternative camelCase variations
+    if (normalized.clientId && !normalized.apiClientId) {
+        normalized.apiClientId = normalized.clientId;
+        delete normalized.clientId;
+        logger.debug('Normalized field: clientId -> apiClientId');
+    }
+    
+    if (normalized.clientSecret && !normalized.apiSecret) {
+        normalized.apiSecret = normalized.clientSecret;
+        delete normalized.clientSecret;
+        logger.debug('Normalized field: clientSecret -> apiSecret');
+    }
+    
+    return normalized;
+}
+
 // Helper function to read settings
 async function readSettings() {
     // First, check environment variables
@@ -290,7 +334,18 @@ async function readSettings() {
     try {
         // Then try to read from settings file
         const data = await fs.readFile(SETTINGS_PATH, "utf8");
-        const fileSettings = JSON.parse(data);
+        const rawFileSettings = JSON.parse(data);
+        
+        // Normalize field names to handle both camelCase and kebab-case
+        const fileSettings = normalizeSettingsFields(rawFileSettings);
+        
+        logger.info('Settings loaded and normalized', {
+            originalFields: Object.keys(rawFileSettings),
+            normalizedFields: Object.keys(fileSettings),
+            hasEnvironmentId: !!fileSettings.environmentId,
+            hasApiClientId: !!fileSettings.apiClientId
+        });
+        
         // File settings take precedence; only use env if file is missing a value
         const settings = { ...envSettings, ...fileSettings };
         

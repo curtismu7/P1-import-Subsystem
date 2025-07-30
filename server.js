@@ -90,6 +90,7 @@ import {
     checkPortStatus 
 } from './server/port-checker.js';
 import pingoneProxyRouter from './routes/pingone-proxy-fixed.js';
+import { runStartupTokenTest } from './server/startup-token-test.js';
 import apiRouter from './routes/api/index.js';
 import settingsRouter from './routes/settings.js';
 import debugLogRouter from './routes/api/debug-log.js';
@@ -924,6 +925,15 @@ const startServer = async () => {
                 console.log(`   📚 Swagger UI: ${url}/swagger.html`);
                 console.log(`   📄 Swagger JSON: ${url}/swagger.json`);
                 console.log('='.repeat(60) + '\n');
+                
+                // Test PingOne token acquisition at startup
+                setTimeout(async () => {
+                    try {
+                        await runStartupTokenTest(logger);
+                    } catch (error) {
+                        logger.error('Startup token test failed:', error);
+                    }
+                }, 1000); // Wait 1 second for server to fully initialize
             }
         }).on('error', async (error) => {
             if (error.code === 'EADDRINUSE') {

@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import workerTokenManager from '../auth/workerTokenManager.js';
+import { testConnection } from '../server/pingone-connection-tester.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,7 +49,7 @@ const PINGONE_API_BASE_URLS = {
     'US': 'https://api.pingone.com',
     'EU': 'https://api.eu.pingone.com',
     'AP': 'https://api.apsoutheast.pingone.com',
-    'default': 'https://auth.pingone.com'
+    'default': 'https://api.pingone.com'
 };
 
 // Middleware to validate required settings
@@ -590,225 +591,10 @@ router.get('/populations', getPopulations);
 // CRITICAL: This MUST be a GET endpoint to match client-side expectations
 // Client-side files making GET requests: population-dropdown-fix.js, app.js, bundle files
 // DO NOT change to POST without updating ALL client-side calls
-// Last fixed: 2025-07-21 - HTTP method mismatch caused 400 Bad Request errors
-router.get('/test-connection', async (req, res) => {
-    const requestId = uuidv4();
-    
-    // DEBUG: Log HTTP method to catch future mismatches
-    console.log(`[${requestId}] Testing PingOne connection... (Method: ${req.method})`);
-    
-    // VALIDATION: Ensure this is a GET request (defensive programming)
-    if (!validateHttpMethod(req, res, 'GET', '/api/pingone/test-connection')) {
-        return; // validateHttpMethod already sent the error response
-    }
-    
-    // Helper function to send error response
-    const sendError = (status, code, message, details = {}) => {
-        console.error(`[${requestId}] Connection test failed: ${message}`, details);
-        return res.status(status).json({
-            success: false,
-            error: {
-                code,
-                message,
-                ...details
-            },
-            timestamp: new Date().toISOString(),
-            requestId
-        });
-    };
-    
-    try {
-        // Get settings from multiple sources with fallback priority:
-        // 1. Environment variables (for production/server deployment)
-        // 2. Request settings (injected by middleware from user settings)
-        // 3. Fallback to settings file/database
-        let settings = {
-            environmentId: process.env.PINGONE_ENVIRONMENT_ID,
-            apiClientId: process.env.PINGONE_CLIENT_ID,
-            apiSecret: process.env.PINGONE_CLIENT_SECRET,
-            region: process.env.PINGONE_REGION || 'NorthAmerica'
-        };
-        
-        console.log(`[${requestId}] Initial settings from environment:`, {
-            hasEnvId: !!settings.environmentId,
-            hasClientId: !!settings.apiClientId,
-            hasSecret: !!settings.apiSecret,
-            region: settings.region
-        });
-        
-        // If environment variables are missing, try to get from request settings (user configuration)
-        if (!settings.environmentId || !settings.apiClientId || !settings.apiSecret) {
-            console.log(`[${requestId}] Environment variables missing, checking user settings...`);
-            
-            if (req.settings && req.settings.environmentId && req.settings.apiClientId && req.settings.apiSecret) {
-                settings = {
-                    environmentId: req.settings.environmentId,
-                    apiClientId: req.settings.apiClientId,
-                    apiSecret: req.settings.apiSecret,
-                    region: req.settings.region || 'NorthAmerica'
-                };
-                console.log(`[${requestId}] Using user-configured settings from request`);
-            } else {
-                // Try to load from settings file as last resort
-                try {
-                    const fs = await import('fs/promises');
-                    const path = await import('path');
-                    const settingsPath = path.resolve(process.cwd(), 'data/settings.json');
-                    const settingsFile = await fs.readFile(settingsPath, 'utf8');
-                    const fileSettings = JSON.parse(settingsFile);
-                    
-                    if (fileSettings.environmentId && fileSettings.apiClientId && fileSettings.apiSecret) {
-                        settings = {
-                            environmentId: fileSettings.environmentId,
-                            apiClientId: fileSettings.apiClientId,
-                            apiSecret: fileSettings.apiSecret,
-                            region: fileSettings.region || 'NorthAmerica'
-                        };
-                        console.log(`[${requestId}] Using settings from file:`, {
-                            settingsPath,
-                            hasEnvId: !!settings.environmentId,
-                            hasClientId: !!settings.apiClientId,
-                            hasSecret: !!settings.apiSecret,
-                            region: settings.region
-                        });
-                    } else {
-                        console.error(`[${requestId}] Incomplete settings in file:`, {
-                            hasEnvId: !!fileSettings.environmentId,
-                            hasClientId: !!fileSettings.apiClientId,
-                            hasSecret: !!fileSettings.apiSecret,
-                            region: fileSettings.region
-                        });
-                    }
-                } catch (fileError) {
-                    console.error(`[${requestId}] Could not load settings from file:`, fileError);
-                    return sendError(400, 'MISSING_CREDENTIALS', 'Missing required PingOne API credentials', {
-                        details: 'Could not load credentials from any source (env, request, or file)',
-                        fileError: fileError.message
-                    });
-                }
-            }
-        }
-        
-        // Validate we have all required settings
-        if (!settings.environmentId || !settings.apiClientId || !settings.apiSecret) {
-            console.error(`[${requestId}] Missing required credentials:`, {
-                hasEnvId: !!settings.environmentId,
-                hasClientId: !!settings.apiClientId,
-                hasSecret: !!settings.apiSecret,
-                region: settings.region
-            });
-            return sendError(400, 'MISSING_CREDENTIALS', 'Missing required PingOne API credentials', {
-                details: 'One or more required credentials are missing',
-                hasEnvironmentId: !!settings.environmentId,
-                hasClientId: !!settings.apiClientId,
-                hasClientSecret: !!settings.apiSecret
-            });
-        } else {
-            console.log(`[${requestId}] Using environment variables`);
-        }
-        
-        // Final validation - if still no credentials, return helpful error
-        if (!settings.environmentId || !settings.apiClientId || !settings.apiSecret) {
-            console.log(`[${requestId}] No valid credentials found in any source`);
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required credentials. Please configure your PingOne settings in the Settings page.',
-                debug: {
-                    hasEnvVars: !!(process.env.PINGONE_ENVIRONMENT_ID && process.env.PINGONE_CLIENT_ID && process.env.PINGONE_CLIENT_SECRET),
-                    hasReqSettings: !!(req.settings && req.settings.environmentId && req.settings.apiClientId && req.settings.apiSecret),
-                    message: 'Configure credentials in Settings page or set environment variables'
-                }
-            });
-        }
-        
-        // Get region-specific auth domain for token URL
-        const getAuthDomain = (region) => {
-            const domainMap = {
-                'NorthAmerica': 'auth.pingone.com',
-                'Europe': 'auth.eu.pingone.com', 
-                'Canada': 'auth.ca.pingone.com',
-                'Asia': 'auth.apsoutheast.pingone.com',
-                'Australia': 'auth.aus.pingone.com',
-                'US': 'auth.pingone.com',
-                'EU': 'auth.eu.pingone.com',
-                'AP': 'auth.apsoutheast.pingone.com'
-            };
-            return domainMap[region] || 'auth.pingone.com';
-        };
-        
-        // Try to get a token to test the connection using region-specific URL
-        const authDomain = getAuthDomain(settings.region);
-        const tokenUrl = `https://${authDomain}/${settings.environmentId}/as/token.oauth2`;
-        console.log(`[${requestId}] Using token URL: ${tokenUrl}`);
-        
-        const tokenData = new URLSearchParams({
-            grant_type: 'client_credentials',
-            client_id: settings.apiClientId,
-            client_secret: settings.apiSecret
-        });
-        
-        const tokenResponse = await fetch(tokenUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: tokenData
-        });
-        
-        if (!tokenResponse.ok) {
-            const errorText = await tokenResponse.text();
-            console.error(`[${requestId}] Token request failed:`, errorText);
-            return res.status(400).json({
-                success: false,
-                error: 'Authentication failed. Please check your credentials.'
-            });
-        }
-        
-        const tokenResult = await tokenResponse.json();
-        
-        if (!tokenResult.access_token) {
-            return res.status(400).json({
-                success: false,
-                error: 'Failed to obtain access token. Please check your credentials.'
-            });
-        }
-        
-        // Test API access with the token
-        const apiBaseUrl = PINGONE_API_BASE_URLS[settings.region] || PINGONE_API_BASE_URLS.default;
-        const testUrl = `${apiBaseUrl}/v1/environments/${settings.environmentId}`;
-        
-        const testResponse = await fetch(testUrl, {
-            headers: {
-                'Authorization': `Bearer ${tokenResult.access_token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (!testResponse.ok) {
-            const errorText = await testResponse.text();
-            console.error(`[${requestId}] API test failed:`, errorText);
-            return res.status(400).json({
-                success: false,
-                error: 'API access failed. Please check your environment ID and permissions.'
-            });
-        }
-        
-        console.log(`[${requestId}] Connection test successful`);
-        res.json({
-            success: true,
-            message: 'Connection test successful',
-            environmentId: settings.environmentId,
-            region: settings.region
-        });
-        
-    } catch (error) {
-        console.error(`[${requestId}] Connection test error:`, error);
-        res.status(500).json({
-            success: false,
-            error: 'Connection test failed: ' + error.message
-        });
-    }
-});
+// Last fixed: 2025-07-30 - Moved to dedicated module for stability
+// ⚠️  IMPLEMENTATION MOVED TO: server/pingone-connection-tester.js
+// ⚠️  DO NOT MODIFY THIS ROUTE - USE THE MODULE INSTEAD
+router.get('/test-connection', testConnection);
 
 // Get token endpoint
 router.post('/token', async (req, res) => {
