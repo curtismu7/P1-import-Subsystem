@@ -11,6 +11,7 @@ class CentralizedLogger {
         this.level = options.level || 'info';
         this.enableRemoteLogging = options.enableRemoteLogging !== false;
         this.enableConsoleLogging = options.enableConsoleLogging !== false;
+        this.timers = new Map();
         this.sensitivePatterns = [
             /password/i,
             /token/i,
@@ -153,6 +154,60 @@ class CentralizedLogger {
     }
 
     /**
+     * Start a performance timer
+     */
+    startTimer(label) {
+        if (!this.timers) {
+            this.timers = new Map();
+        }
+        
+        const startTime = performance ? performance.now() : Date.now();
+        this.timers.set(label, startTime);
+        
+        if (console.time) {
+            console.time(label);
+        }
+        
+        this.debug(`Timer started: ${label}`);
+        
+        return {
+            label,
+            startTime
+        };
+    }
+
+    /**
+     * End a performance timer
+     */
+    endTimer(timer) {
+        if (!timer || !timer.label) {
+            this.warn('Invalid timer object provided to endTimer');
+            return 0;
+        }
+        
+        const label = timer.label;
+        
+        if (!this.timers || !this.timers.has(label)) {
+            this.warn(`Timer '${label}' not found`);
+            return 0;
+        }
+        
+        const startTime = this.timers.get(label);
+        const endTime = performance ? performance.now() : Date.now();
+        const duration = endTime - startTime;
+        
+        this.timers.delete(label);
+        
+        if (console.timeEnd) {
+            console.timeEnd(label);
+        }
+        
+        this.info(`Timer '${label}' completed in ${duration.toFixed(2)}ms`);
+        
+        return duration;
+    }
+
+    /**
      * Create child logger with additional component context
      */
     child(options = {}) {
@@ -172,9 +227,47 @@ class CentralizedLogger {
 
 // Export for both ES modules and CommonJS
 if (typeof module !== 'undefined' && module.exports) {
+    // CommonJS
     module.exports = { CentralizedLogger };
+} else if (typeof define === 'function' && define.amd) {
+    // AMD/RequireJS
+    define([], function() {
+        return { CentralizedLogger };
+    });
 } else if (typeof window !== 'undefined') {
+    // Browser global
     window.CentralizedLogger = CentralizedLogger;
 }
 
-export { CentralizedLogger };
+// ES Module export
+try {
+    if (typeof exports !== 'undefined' && !exports.nodeType) {
+        if (typeof module !== 'undefined' && !module.nodeType && module.exports) {
+            exports = module.exports = { CentralizedLogger };
+        }
+        exports.CentralizedLogger = CentralizedLogger;
+    } else if (typeof define === 'function' && define.amd) {
+        // Already handled by AMD above
+    } else if (typeof window !== 'undefined') {
+        // Already handled by browser global above
+    } else {
+        // Fallback for other environments
+        var root = typeof global !== 'undefined' ? global : window || {};
+        root.CentralizedLogger = CentralizedLogger;
+    }
+} catch (e) {
+    // Silent catch for environments where exports/define might not be available
+    if (typeof console !== 'undefined' && console.warn) {
+        console.warn('CentralizedLogger export failed:', e);
+    }
+}
+
+// ES Module export only if in module context
+if (typeof window === 'undefined' && typeof exports !== 'undefined') {
+    // Node.js environment
+    try {
+        exports.CentralizedLogger = CentralizedLogger;
+    } catch (e) {
+        // Silent catch
+    }
+}

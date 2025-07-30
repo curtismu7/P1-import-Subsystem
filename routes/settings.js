@@ -300,7 +300,8 @@ async function readSettings() {
             const defaultPopulationId = await fetchDefaultPopulation(
                 settings.environmentId,
                 settings.apiClientId,
-                process.env.PINGONE_CLIENT_SECRET
+                process.env.PINGONE_CLIENT_SECRET,
+                settings.region || 'NorthAmerica'
             );
             
             if (defaultPopulationId) {
@@ -332,12 +333,43 @@ async function readSettings() {
 }
 
 // Helper function to fetch default population
-async function fetchDefaultPopulation(environmentId, clientId, clientSecret) {
+async function fetchDefaultPopulation(environmentId, clientId, clientSecret, region = 'NorthAmerica') {
     try {
         const https = await import('https');
         
-        // Get access token first
-        const tokenUrl = 'https://auth.pingone.com/as/token.oauth2';
+        // Get region-specific auth domain
+        const getAuthDomain = (region) => {
+            const domainMap = {
+                'NorthAmerica': 'auth.pingone.com',
+                'Europe': 'auth.eu.pingone.com',
+                'Canada': 'auth.ca.pingone.com', 
+                'Asia': 'auth.apsoutheast.pingone.com',
+                'Australia': 'auth.aus.pingone.com',
+                'US': 'auth.pingone.com',
+                'EU': 'auth.eu.pingone.com',
+                'AP': 'auth.apsoutheast.pingone.com'
+            };
+            return domainMap[region] || 'auth.pingone.com';
+        };
+        
+        // Get region-specific API domain
+        const getApiDomain = (region) => {
+            const domainMap = {
+                'NorthAmerica': 'api.pingone.com',
+                'Europe': 'api.eu.pingone.com',
+                'Canada': 'api.ca.pingone.com',
+                'Asia': 'api.apsoutheast.pingone.com', 
+                'Australia': 'api.aus.pingone.com',
+                'US': 'api.pingone.com',
+                'EU': 'api.eu.pingone.com',
+                'AP': 'api.apsoutheast.pingone.com'
+            };
+            return domainMap[region] || 'api.pingone.com';
+        };
+        
+        // Get access token first using region-specific URL
+        const authDomain = getAuthDomain(region);
+        const tokenUrl = `https://${authDomain}/${environmentId}/as/token.oauth2`;
         const tokenData = new URLSearchParams({
             grant_type: 'client_credentials',
             client_id: clientId,
@@ -368,8 +400,9 @@ async function fetchDefaultPopulation(environmentId, clientId, clientSecret) {
             req.end();
         });
 
-        // Fetch populations
-        const apiUrl = `https://api.pingone.com/v1/environments/${environmentId}/populations`;
+        // Fetch populations using region-specific URL
+        const apiDomain = getApiDomain(region);
+        const apiUrl = `https://${apiDomain}/v1/environments/${environmentId}/populations`;
         
         const populations = await new Promise((resolve, reject) => {
             const options = {

@@ -5,9 +5,13 @@
  * Manages file validation, progress tracking, real-time updates, and error handling.
  */
 
+import { createSafeLogger } from '../utils/safe-logger.js';
+
 export class ImportSubsystem {
     constructor(logger, uiManager, localClient, settingsManager, eventBus, populationService, authManagementSubsystem = null) {
-        this.logger = logger;
+        // Wrap the logger with our safe logger to prevent logging errors from breaking the app
+        this.logger = createSafeLogger(logger || console);
+        
         this.uiManager = uiManager;
         this.localClient = localClient;
         this.settingsManager = settingsManager;
@@ -28,34 +32,67 @@ export class ImportSubsystem {
             formatMessage: (type, message) => `[${type.toUpperCase()}] ${message}`
         };
         
-        this.logger.info('Import Subsystem initialized');
+        try {
+            this.logger.info('Import Subsystem initialized');
+        } catch (e) {
+            console.error('Failed to log Import Subsystem initialization:', e);
+        }
         
         // Set up event listeners for cross-subsystem communication
-        this.setupCrossSubsystemEvents();
+        try {
+            this.setupCrossSubsystemEvents();
+        } catch (e) {
+            console.error('Failed to set up cross-subsystem events:', e);
+        }
     }
     
     /**
      * Initialize the import subsystem
      */
     async init() {
-        (this.logger?.debug || window.logger?.debug || console.log)('🚀 [DEBUG] ImportSubsystem: init() method called');
         try {
-            (this.logger?.debug || window.logger?.debug || console.log)('🔧 [DEBUG] ImportSubsystem: Setting up event listeners');
-            this.setupEventListeners();
+            const debugLog = (msg) => {
+                try {
+                    if (this.logger?.debug) {
+                        this.logger.debug(msg);
+                    } else if (window.logger?.debug) {
+                        window.logger.debug(msg);
+                    } else {
+                        console.log(`[DEBUG] ${msg}`);
+                    }
+                } catch (e) {
+                    console.log(`[DEBUG] ${msg} (fallback logging)`);
+                }
+            };
             
-            (this.logger?.debug || window.logger?.debug || console.log)('📋 [DEBUG] ImportSubsystem: About to refresh population dropdown');
-            // Initialize population dropdown
-            this.refreshPopulationDropdown();
+            debugLog('🚀 [DEBUG] ImportSubsystem: init() method called');
             
-            (this.logger?.debug || window.logger?.debug || console.log)('🔘 [DEBUG] ImportSubsystem: Setting initial button state');
+            try {
+                debugLog('🔧 [DEBUG] ImportSubsystem: Setting up event listeners');
+                this.setupEventListeners();
+            } catch (e) {
+                console.error('Failed to set up event listeners:', e);
+                throw e; // Re-throw to be caught by the outer try-catch
+            }
+            
+            try {
+                debugLog('📋 [DEBUG] ImportSubsystem: About to refresh population dropdown');
+                // Initialize population dropdown
+                await this.refreshPopulationDropdown();
+            } catch (e) {
+                console.error('Failed to refresh population dropdown:', e);
+                // Continue initialization even if population refresh fails
+            }
+            
+            debugLog('🔘 [DEBUG] ImportSubsystem: Setting initial button state');
             // Set initial button state (should be disabled until form is complete)
             this.validateAndUpdateButtonState();
             
-            (this.logger?.debug || window.logger?.debug || console.log)('✅ [DEBUG] ImportSubsystem: Init completed successfully');
-            (this.logger?.info || window.logger?.info || console.log)('Import Subsystem initialized successfully');
+            this.logger.debug('✅ [DEBUG] ImportSubsystem: Init completed successfully');
+            this.logger.info('Import Subsystem initialized successfully');
         } catch (error) {
-            (this.logger?.error || window.logger?.error || console.error)('❌ [DEBUG] ImportSubsystem: Init failed with error:', error);
-            (this.logger?.error || window.logger?.error || console.error)('Failed to initialize Import Subsystem', error);
+            this.logger.error('❌ [DEBUG] ImportSubsystem: Init failed with error:', error);
+            this.logger.error('Failed to initialize Import Subsystem', error);
             throw error;
         }
     }

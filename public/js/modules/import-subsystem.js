@@ -238,53 +238,90 @@ export class ImportSubsystem {
      */
     async handleFileSelect(file) {
         try {
-            this.logger.info('File selected for import', {
-                name: file.name,
-                size: file.size,
-                type: file.type
-            });
-            
-            // Validate file
-            if (!this.validateFile(file)) {
-                return;
+            if (!file) {
+                throw new Error('No file selected');
             }
-            
-            // Show file info
-            this.displayFileInfo(file);
-            
+
+            // Check file type
+            if (!file.name.endsWith('.csv') && !file.name.endsWith('.txt')) {
+                throw new Error('Please select a valid CSV or text file');
+            }
+
+            // Check file size (10MB max)
+            const maxSize = 10 * 1024 * 1024; // 10MB
+            if (file.size > maxSize) {
+                throw new Error('File size must be less than 10MB');
+            }
+
+            // Store the selected file
+            this.selectedFile = file;
+
+            // Update UI to show selected file
+            this.updateFileInfoUI(file);
+
+            // Show success message in status bar
+            this.uiManager.showStatusBar(
+                `File '${file.name}' selected successfully (${this.formatFileSize(file.size)})`,
+                'success',
+                {
+                    duration: 5000,
+                    source: 'file-upload',
+                    context: {
+                        fileName: file.name,
+                        fileSize: file.size,
+                        fileType: file.type || 'text/csv'
+                    }
+                }
+            );
+
+            // Enable import button
+            const importBtn = document.getElementById('import-btn');
+            if (importBtn) {
+                importBtn.disabled = false;
+            }
+
         } catch (error) {
-            this.logger.error('File selection failed', error);
-            this.uiManager.showError('File Selection Error', error.message);
+            this.uiManager.showStatusBar(
+                error.message,
+                'error',
+                {
+                    autoDismiss: false,
+                    errorId: 'file-selection-error',
+                    source: 'file-upload'
+                }
+            );
+            
+            // Clear file input
+            const fileInput = document.getElementById('csv-file');
+            if (fileInput) {
+                fileInput.value = '';
+            }
         }
+    }
+
+    /**
+     * Format file size in human-readable format
+     * @param {number} bytes - File size in bytes
+     * @returns {string} Formatted file size
+     */
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
     
     /**
-     * Validate selected file
+     * Update file info UI
      */
-    validateFile(file) {
-        if (!file.name.toLowerCase().endsWith('.csv')) {
-            this.uiManager.showError('Invalid File Type', 'Please select a CSV file');
-            return false;
-        }
-        
-        if (file.size > 10 * 1024 * 1024) { // 10MB limit
-            this.uiManager.showError('File Too Large', 'File size must be less than 10MB');
-            return false;
-        }
-        
-        return true;
-    }
-    
-    /**
-     * Display file information
-     */
-    displayFileInfo(file) {
+    updateFileInfoUI(file) {
         const fileInfoElement = document.getElementById('file-info');
         if (fileInfoElement) {
             fileInfoElement.innerHTML = `
                 <div class="file-info">
                     <strong>Selected File:</strong> ${file.name}<br>
-                    <strong>Size:</strong> ${(file.size / 1024).toFixed(2)} KB<br>
+                    <strong>Size:</strong> ${this.formatFileSize(file.size)}<br>
                     <strong>Type:</strong> ${file.type || 'CSV'}
                 </div>
             `;

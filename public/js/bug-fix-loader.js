@@ -13,15 +13,11 @@
     
     // Load order is critical - security and error handling first
     const modules = [
-        'security-utils.js',
-        'global-error-handler.js',
-        'resource-manager.js',
-        'safe-api.js',
-        'utils/centralized-logger.js',
-        'utils/safe-dom.js',
-        'utils/error-handler.js',
-        'utils/config-constants.js',
-        'utils/event-manager.js'
+        'error-fix.js',
+        'modules/security-utils.js',
+        'modules/global-error-handler.js',
+        'modules/resource-manager.js',
+        'modules/safe-api.js'
     ];
     
     let loadedCount = 0;
@@ -30,7 +26,7 @@
     function loadModule(modulePath) {
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = `/js/modules/${modulePath}`;
+            script.src = `/js/${modulePath}`;
             script.async = false; // Maintain load order
             
             script.onload = () => {
