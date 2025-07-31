@@ -167,16 +167,16 @@ class App {
     constructor() {
         // Initialize centralized logger with safe wrapper to prevent logging errors from breaking the app
         try {
-            this.logger = new CentralizedLogger({
-                serviceName: 'pingone-import-app',
-                logLevel: 'debug',
+            this.logger = new Logger({
+                context: 'app',
+                version: '6.5.2.1',
                 enableConsole: true,
-                enableRemote: true
+                enableStorage: false
             });
             
             // Test the logger
             this.logger.info('Centralized Logger initialized successfully', {
-                version: '6.5.2.0',
+                version: '6.5.2.1',
                 featureFlags: FEATURE_FLAGS,
                 userAgent: navigator.userAgent
             });
@@ -201,10 +201,11 @@ class App {
         }
         
         // Log application start
-        this.logger.info('Application initialization started', {
-            version: '6.5.2.0',
-            featureFlags: FEATURE_FLAGS,
-            userAgent: navigator.userAgent
+        this.logger.info('🚀 PingOne Import Tool starting...', {
+            version: '6.5.2.1',
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            url: window.location.href
         });
         
         // Core components
@@ -246,7 +247,13 @@ class App {
         this.socket = null;
         
         // Application version
-        this.version = '6.5.2.0';
+        this.version = '6.5.2.1';
+        this.buildTimestamp = new Date().toISOString();
+        this.environment = 'development';
+        this.features = {
+            bulletproofProgressContainer: true,
+            analyticsDataMethod: true
+        };
         
         // Performance tracking
         this.logger.startTimer('app-initialization');
