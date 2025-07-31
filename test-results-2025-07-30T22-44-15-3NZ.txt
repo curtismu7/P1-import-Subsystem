@@ -1,0 +1,84 @@
+
+> pingone-import-cursor@6.5.2.3 test
+> NODE_OPTIONS='--experimental-vm-modules' node scripts/run-tests.js
+
+
+🚀 Starting Test Runner
+
+
+================================================================================
+🚀  UNIT TESTS
+================================================================================
+📝 Tests individual units of code in isolation
+⏱  Timeout: 120s | 🔄 Retries: 1
+📊 Coverage: Enabled
+--------------------------------------------------------------------------------
+
+🚀 Running: npx jest --config jest.config.js --testMatch "**/test/unit/**/*.test.js" --testPathIgnorePatterns /node_modules/ --testTimeout 120000 --runInBand --detectOpenHandles --forceExit --no-cache --no-watchman --passWithNoTests --coverage --coverageDirectory coverage/unit --collectCoverageFrom "**/test/unit/**/*.test.js" --coverageReporters json lcov text clover text-summary
+[31mError: Can't find a root directory while resolving a config file path.[39m
+[31mProvided path to resolve: jest.config.js[39m
+[31mcwd: /Users/cmuir/P1Import-apps/P1-import-Subsystem[39m
+[31m    at resolveConfigPath (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/resolveConfigPath.js:123:11)[39m
+[31m    at readInitialOptions (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:386:55)[39m
+[31m    at readConfig (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:147:54)[39m
+[31m    at readConfigs (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:424:32)[39m
+[31m    at runCLI (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/@jest/core/build/cli/index.js:152:29)[39m
+[31m    at Object.run (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-cli/build/run.js:130:62)[39m
+
+────────────────────────────────────────────────────────────────────────────────
+❌  Unit Tests FAILED
+⏱  Duration: 0s
+
+Test output:
+[31mError: Can't find a root directory while resolving a config file path.[39m
+[31mProvided path to resolve: jest.config.js[39m
+[31mcwd: /Users/cmuir/P1Import-apps/P1-import-Subsystem[39m
+[31m    at resolveConfigPath (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/resolveConfigPath.js:123:11)[39m
+[31m    at readInitialOptions (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:386:55)[39m
+[31m    at readConfig (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:147:54)[39m
+[31m    at readConfigs (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:424:32)[39m
+[31m    at runCLI (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/@jest/core/build/cli/index.js:152:29)[39m
+[31m    at Object.run (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-cli/build/run.js:130:62)[39m
+
+
+================================================================================
+🚀  INTEGRATION TESTS
+================================================================================
+📝 Tests integration between components
+⏱  Timeout: 180s | 🔄 Retries: 1
+📊 Coverage: Enabled
+--------------------------------------------------------------------------------
+
+🚀 Running: npx jest --config jest.config.js --testMatch "**/test/integration/**/*.test.js" --testPathIgnorePatterns /node_modules/ --testTimeout 180000 --runInBand --detectOpenHandles --forceExit --no-cache --no-watchman --passWithNoTests --coverage --coverageDirectory coverage/integration --collectCoverageFrom "**/test/integration/**/*.test.js" --coverageReporters json lcov text clover text-summary
+[31mError: Can't find a root directory while resolving a config file path.[39m
+[31mProvided path to resolve: jest.config.js[39m
+[31mcwd: /Users/cmuir/P1Import-apps/P1-import-Subsystem[39m
+[31m    at resolveConfigPath (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/resolveConfigPath.js:123:11)[39m
+[31m    at readInitialOptions (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:386:55)[39m
+[31m    at readConfig (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:147:54)[39m
+[31m    at readConfigs (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:424:32)[39m
+[31m    at runCLI (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/@jest/core/build/cli/index.js:152:29)[39m
+[31m    at Object.run (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-cli/build/run.js:130:62)[39m
+
+────────────────────────────────────────────────────────────────────────────────
+❌  Integration Tests FAILED
+⏱  Duration: 0s
+
+Test output:
+[31mError: Can't find a root directory while resolving a config file path.[39m
+[31mProvided path to resolve: jest.config.js[39m
+[31mcwd: /Users/cmuir/P1Import-apps/P1-import-Subsystem[39m
+[31m    at resolveConfigPath (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/resolveConfigPath.js:123:11)[39m
+[31m    at readInitialOptions (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:386:55)[39m
+[31m    at readConfig (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:147:54)[39m
+[31m    at readConfigs (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:424:32)[39m
+[31m    at runCLI (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/@jest/core/build/cli/index.js:152:29)[39m
+[31m    at Object.run (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-cli/build/run.js:130:62)[39m
+
+
+📊 Test Suite Summary
+
+FAIL unit                         0s
+FAIL integration                  0s
+
+❌ Some tests failed

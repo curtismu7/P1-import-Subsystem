@@ -588,7 +588,7 @@
         console.log('🔐 Retrieving PingOne worker token...');
         
         // Make secure HTTPS request to refresh token endpoint (existing subsystem)
-        const response = await fetch('/api/auth/refresh-token', {
+        const response = await fetch('/api/pingone/get-token', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -604,13 +604,15 @@
         
         const tokenData = await response.json();
         
-        if (!tokenData.success || !tokenData.token) {
+        if (!tokenData.success || !tokenData.access_token) {
           throw new Error(tokenData.error || 'Invalid token response');
         }
         
         // Store token data securely
-        currentToken = tokenData.token;
-        tokenExpiryTime = new Date(tokenData.expiresAt);
+        currentToken = tokenData.access_token;
+        // Calculate expiry time from expires_in (seconds)
+        const expiresInMs = (tokenData.expires_in || 3600) * 1000;
+        tokenExpiryTime = new Date(Date.now() + expiresInMs);
         
         // Update UI with success state
         updateTokenStatus('valid');
@@ -666,7 +668,7 @@
         
         console.log('🔄 Refreshing worker token...');
         
-        const response = await fetch('/api/auth/refresh-token', {
+        const response = await fetch('/api/pingone/get-token', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -682,13 +684,15 @@
         
         const tokenData = await response.json();
         
-        if (!tokenData.success || !tokenData.token) {
+        if (!tokenData.success || !tokenData.access_token) {
           throw new Error(tokenData.error || 'Invalid refresh response');
         }
         
         // Update token data
-        currentToken = tokenData.token;
-        tokenExpiryTime = new Date(tokenData.expiresAt);
+        currentToken = tokenData.access_token;
+        // Calculate expiry time from expires_in (seconds)
+        const expiresInMs = (tokenData.expires_in || 3600) * 1000;
+        tokenExpiryTime = new Date(Date.now() + expiresInMs);
         
         // Update UI
         updateTokenStatus('valid');

@@ -373,13 +373,13 @@ class GlobalTokenManagerSubsystem {
                     // Token expiring soon
                     statusBox.className = 'global-token-status expiring';
                     if (icon) icon.textContent = '⚠️';
-                    if (text) text.textContent = 'Token expiring soon';
+                    if (text) text.textContent = `Expires in ${formattedTime}`;
                     if (getTokenBtn) getTokenBtn.style.display = 'none';
                 } else {
                     // Token valid
                     statusBox.className = 'global-token-status valid';
                     if (icon) icon.textContent = '✅';
-                    if (text) text.textContent = 'Token valid';
+                    if (text) text.textContent = `Expires in ${formattedTime}`;
                     if (getTokenBtn) getTokenBtn.style.display = 'none';
                 }
             } else {

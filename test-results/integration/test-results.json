@@ -2,7 +2,7 @@
   "success": false,
   "code": 1,
   "signal": null,
-  "duration": 563,
+  "duration": 543,
   "stdout": "",
   "stderr": "\u001b[31mError: Can't find a root directory while resolving a config file path.\u001b[39m\n\u001b[31mProvided path to resolve: jest.config.js\u001b[39m\n\u001b[31mcwd: /Users/cmuir/P1Import-apps/P1-import-Subsystem\u001b[39m\n\u001b[31m    at resolveConfigPath (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/resolveConfigPath.js:123:11)\u001b[39m\n\u001b[31m    at readInitialOptions (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:386:55)\u001b[39m\n\u001b[31m    at readConfig (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:147:54)\u001b[39m\n\u001b[31m    at readConfigs (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-config/build/index.js:424:32)\u001b[39m\n\u001b[31m    at runCLI (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/@jest/core/build/cli/index.js:152:29)\u001b[39m\n\u001b[31m    at Object.run (/Users/cmuir/P1Import-apps/P1-import-Subsystem/node_modules/jest-cli/build/run.js:130:62)\u001b[39m\n",
   "output": "Tests failed with code 1"

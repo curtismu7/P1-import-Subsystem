@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PingOne User Import v6.5.2.1</title>
+    <title>PingOne User Import v6.5.2.4</title>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
@@ -106,10 +106,6 @@
                     <li class="nav-item" data-view="history">
                         <i class="fas fa-history"></i>
                         <span>History</span>
-                    </li>
-                    <li class="nav-item" data-view="analytics">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Analytics</span>
                     </li>
                     <li class="nav-item" data-view="delete-csv">
                         <i class="fas fa-trash"></i>
@@ -960,7 +956,7 @@
                             <i class="fas fa-save"></i> Save Settings
                         </button>
                         <button id="test-connection-btn" class="btn btn-secondary">
-                            <i class="fas fa-plug"></i> Test Connection
+                            <i class="fas fa-key"></i> Get Token
                         </button>
                         <button id="get-token-btn" class="btn btn-success">
                             <i class="fas fa-key"></i> Get Token
@@ -982,7 +978,6 @@
                     
                     <div class="settings-status-container">
                         <div id="settings-connection-status" class="connection-status" style="display: none;"></div>
-                        <div class="settings-save-status" id="settings-save-status"></div>
                     </div>
                 </div>
             </div>
@@ -1181,8 +1176,8 @@
                         <span class="ping-trademark">PingIdentity<span class="trademark-symbol">™</span></span>
                     </div>
                     <span class="footer-copyright">
-                        &copy; 2025 PingOne Import Tool v6.5.2.1
-                        <span class="version-display" style="display: block; font-size: 0.9em; margin-top: 5px;">v6.5.2.1</span>
+                        &copy; 2025 PingOne Import Tool v6.5.2.4
+                        <span class="version-display" style="display: block; font-size: 0.9em; margin-top: 5px;">v6.5.2.4</span>
                     </span>
                 </div>
                 <div class="footer-right">
@@ -1210,7 +1205,7 @@
     <!-- This loads the latest bundle directly without complex API calls -->
     <!-- Last fixed: 2025-07-22 - Replaced broken dynamic loading system -->
         <script src="/js/bug-fix-loader.js"></script>
-    <script src="/js/bundle-1753919827.js"></script>
+    <script src="/js/bundle-1753966939.js"></script>
     
     <!-- Fallback error handling for bundle loading -->
     <script>
@@ -1243,6 +1238,6 @@
 
     
     <!-- Version Display Component -->
-    <div id="version-display" class="version-widget">v6.5.2.1</div>
+    <div id="version-display" class="version-widget">v6.5.2.4</div>
 </body>
 </html>

@@ -136,6 +136,44 @@
     color: #155724;
 }
 
+/* Comprehensive green banner for detailed token info */
+.global-token-status.valid.comprehensive {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: 2px solid #28a745;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    min-width: 800px;
+    max-width: 95vw;
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    font-weight: 500;
+}
+
+.global-token-status.valid.comprehensive .global-token-icon,
+.global-token-status.valid.comprehensive .global-token-text,
+.global-token-status.valid.comprehensive .global-token-title {
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
+
+.global-token-status.valid.comprehensive .global-token-text {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.global-token-status.valid.comprehensive .global-token-countdown {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-weight: bold;
+    border-radius: 4px;
+    padding: 4px 8px;
+}
+
 /* Yellow = Token expiring (under 5 minutes) */
 .global-token-status.expiring {
     background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
@@ -293,5 +331,3 @@
         font-size: 9px;
     }
 }
-</content>
-</invoke>
