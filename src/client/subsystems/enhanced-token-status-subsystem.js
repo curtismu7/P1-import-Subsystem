@@ -288,13 +288,24 @@ export class EnhancedTokenStatusSubsystem {
             
             if (token && expiry) {
                 const expiryTime = parseInt(expiry, 10);
-                const currentTime = Math.floor(Date.now() / 1000);
-                const expiresIn = Math.max(0, expiryTime - currentTime);
+                const currentTime = Date.now();
+                
+                // Handle both milliseconds and seconds format
+                let expiryMs, expiresInSeconds;
+                if (expiryTime > 9999999999) {
+                    // Value is in milliseconds
+                    expiryMs = expiryTime;
+                    expiresInSeconds = Math.max(0, Math.floor((expiryMs - currentTime) / 1000));
+                } else {
+                    // Value is in seconds
+                    expiryMs = expiryTime * 1000;
+                    expiresInSeconds = Math.max(0, expiryTime - Math.floor(currentTime / 1000));
+                }
                 
                 return {
-                    isValid: expiresIn > 0,
-                    expiresAt: new Date(expiryTime * 1000).toISOString(),
-                    expiresIn: expiresIn,
+                    isValid: expiresInSeconds > 0,
+                    expiresAt: new Date(expiryMs).toISOString(),
+                    expiresIn: expiresInSeconds,
                     tokenType: 'Bearer'
                 };
             }
@@ -382,9 +393,10 @@ export class EnhancedTokenStatusSubsystem {
         const elements = this.statusElements.global;
         if (!elements) return;
         
-        // Update container class
+        // Update container class - Add comprehensive class for valid tokens
         if (elements.container) {
-            elements.container.className = `global-token-status ${status.className}`;
+            const className = status.className === 'valid' ? 'valid comprehensive' : status.className;
+            elements.container.className = `global-token-status ${className}`;
         }
         
         // Update icon
@@ -392,9 +404,19 @@ export class EnhancedTokenStatusSubsystem {
             elements.icon.textContent = status.icon;
         }
         
-        // Update text
+        // Update text with comprehensive information for valid tokens
         if (elements.text) {
-            elements.text.textContent = status.text;
+            if (status.className === 'valid' && this.tokenInfo.isValid) {
+                // Show comprehensive green banner with all requested info
+                const timeLeft = this.formatTimeRemaining();
+                const buildNumber = 'bundle-1753964322';
+                const version = '6.5.2.3';
+                const lastChange = 'Comprehensive token status banner with build info and version display';
+                
+                elements.text.textContent = `🟢 TOKEN OBTAINED | Time Left: ${timeLeft} | Build: ${buildNumber} | Version: ${version} | Last Change: ${lastChange}`;
+            } else {
+                elements.text.textContent = status.text;
+            }
         }
         
         // Update countdown

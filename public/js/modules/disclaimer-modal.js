@@ -402,34 +402,11 @@ class DisclaimerModal {
     // === CONFIGURATION ===
     // Set to true for session-only disclaimer (shows once per browser session)
     static DISCLAIMER_SESSION_ONLY = false; // set true for sessionStorage, false for localStorage
-    // Set expiry in days (set to 0 for no expiry)
-    static DISCLAIMER_EXPIRY_DAYS = 7; // e.g. 7 days, or 0 for no expiry
-
-    // Static method to check if disclaimer was previously accepted (with expiry/session logic)
+    
+    // Static method to check if disclaimer was previously accepted
     static isDisclaimerAccepted() {
-        // TEMPORARY: Force disclaimer to always show for debugging
-        return false;
-        
-        // Original logic (commented out for debugging):
-        // if (DisclaimerModal.DISCLAIMER_SESSION_ONLY) {
-        //     return sessionStorage.getItem('disclaimerAccepted') === 'true';
-        // }
-        // // Expiry logic
-        // const accepted = localStorage.getItem('disclaimerAccepted') === 'true';
-        // if (!accepted) return false;
-        // if (DisclaimerModal.DISCLAIMER_EXPIRY_DAYS > 0) {
-        //     const acceptedAt = localStorage.getItem('disclaimerAcceptedAt');
-        //     if (!acceptedAt) return false;
-        //     const acceptedDate = new Date(acceptedAt);
-        //     const now = new Date();
-        //     const diffDays = (now - acceptedDate) / (1000 * 60 * 60 * 24);
-        //     if (diffDays > DisclaimerModal.DISCLAIMER_EXPIRY_DAYS) {
-        //         // Expired, reset
-        //         DisclaimerModal.resetDisclaimerAcceptance();
-        //         return false;
-        //     }
-        // }
-        // return true;
+        // DEVELOPMENT MODE: Always return true to skip disclaimer during testing
+        return true;
     }
 
     // Static method to set acceptance (handles session/local/expiry)

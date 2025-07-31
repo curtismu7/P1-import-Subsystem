@@ -275,6 +275,50 @@ async function updateEnvironmentVariables(settings) {
     }
 }
 
+// Helper function to normalize field names (both camelCase and kebab-case supported)
+function normalizeSettingsFields(settings) {
+    if (!settings || typeof settings !== 'object') {
+        return settings;
+    }
+    
+    const normalized = { ...settings };
+    
+    // Map kebab-case to camelCase for compatibility
+    const fieldMappings = {
+        'environment-id': 'environmentId',
+        'api-client-id': 'apiClientId', 
+        'client-id': 'apiClientId',  // Alternative mapping
+        'api-secret': 'apiSecret',
+        'client-secret': 'apiSecret',  // Alternative mapping
+        'population-id': 'populationId',
+        'rate-limit': 'rateLimit'
+    };
+    
+    // Convert kebab-case fields to camelCase
+    for (const [kebabKey, camelKey] of Object.entries(fieldMappings)) {
+        if (kebabKey in normalized) {
+            normalized[camelKey] = normalized[kebabKey];
+            delete normalized[kebabKey];
+            logger.debug(`Normalized field: ${kebabKey} -> ${camelKey}`);
+        }
+    }
+    
+    // Also handle alternative camelCase variations
+    if (normalized.clientId && !normalized.apiClientId) {
+        normalized.apiClientId = normalized.clientId;
+        delete normalized.clientId;
+        logger.debug('Normalized field: clientId -> apiClientId');
+    }
+    
+    if (normalized.clientSecret && !normalized.apiSecret) {
+        normalized.apiSecret = normalized.clientSecret;
+        delete normalized.clientSecret;
+        logger.debug('Normalized field: clientSecret -> apiSecret');
+    }
+    
+    return normalized;
+}
+
 // Helper function to read settings
 async function readSettings() {
     // First, check environment variables
@@ -290,7 +334,18 @@ async function readSettings() {
     try {
         // Then try to read from settings file
         const data = await fs.readFile(SETTINGS_PATH, "utf8");
-        const fileSettings = JSON.parse(data);
+        const rawFileSettings = JSON.parse(data);
+        
+        // Normalize field names to handle both camelCase and kebab-case
+        const fileSettings = normalizeSettingsFields(rawFileSettings);
+        
+        logger.info('Settings loaded and normalized', {
+            originalFields: Object.keys(rawFileSettings),
+            normalizedFields: Object.keys(fileSettings),
+            hasEnvironmentId: !!fileSettings.environmentId,
+            hasApiClientId: !!fileSettings.apiClientId
+        });
+        
         // File settings take precedence; only use env if file is missing a value
         const settings = { ...envSettings, ...fileSettings };
         
@@ -300,7 +355,8 @@ async function readSettings() {
             const defaultPopulationId = await fetchDefaultPopulation(
                 settings.environmentId,
                 settings.apiClientId,
-                process.env.PINGONE_CLIENT_SECRET
+                process.env.PINGONE_CLIENT_SECRET,
+                settings.region || 'NorthAmerica'
             );
             
             if (defaultPopulationId) {
@@ -332,12 +388,43 @@ async function readSettings() {
 }
 
 // Helper function to fetch default population
-async function fetchDefaultPopulation(environmentId, clientId, clientSecret) {
+async function fetchDefaultPopulation(environmentId, clientId, clientSecret, region = 'NorthAmerica') {
     try {
         const https = await import('https');
         
-        // Get access token first
-        const tokenUrl = 'https://auth.pingone.com/as/token.oauth2';
+        // Get region-specific auth domain
+        const getAuthDomain = (region) => {
+            const domainMap = {
+                'NorthAmerica': 'auth.pingone.com',
+                'Europe': 'auth.eu.pingone.com',
+                'Canada': 'auth.ca.pingone.com', 
+                'Asia': 'auth.apsoutheast.pingone.com',
+                'Australia': 'auth.aus.pingone.com',
+                'US': 'auth.pingone.com',
+                'EU': 'auth.eu.pingone.com',
+                'AP': 'auth.apsoutheast.pingone.com'
+            };
+            return domainMap[region] || 'auth.pingone.com';
+        };
+        
+        // Get region-specific API domain
+        const getApiDomain = (region) => {
+            const domainMap = {
+                'NorthAmerica': 'api.pingone.com',
+                'Europe': 'api.eu.pingone.com',
+                'Canada': 'api.ca.pingone.com',
+                'Asia': 'api.apsoutheast.pingone.com', 
+                'Australia': 'api.aus.pingone.com',
+                'US': 'api.pingone.com',
+                'EU': 'api.eu.pingone.com',
+                'AP': 'api.apsoutheast.pingone.com'
+            };
+            return domainMap[region] || 'api.pingone.com';
+        };
+        
+        // Get access token first using region-specific URL
+        const authDomain = getAuthDomain(region);
+        const tokenUrl = `https://${authDomain}/${environmentId}/as/token.oauth2`;
         const tokenData = new URLSearchParams({
             grant_type: 'client_credentials',
             client_id: clientId,
@@ -368,8 +455,9 @@ async function fetchDefaultPopulation(environmentId, clientId, clientSecret) {
             req.end();
         });
 
-        // Fetch populations
-        const apiUrl = `https://api.pingone.com/v1/environments/${environmentId}/populations`;
+        // Fetch populations using region-specific URL
+        const apiDomain = getApiDomain(region);
+        const apiUrl = `https://${apiDomain}/v1/environments/${environmentId}/populations`;
         
         const populations = await new Promise((resolve, reject) => {
             const options = {

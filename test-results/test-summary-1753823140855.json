@@ -1,0 +1,39 @@
+{
+  "timestamp": "2025-07-29T21:05:40.854Z",
+  "duration": 3.6,
+  "totalSuites": 3,
+  "passedSuites": 1,
+  "totalTests": 0,
+  "passedTests": 1,
+  "failedTests": 0,
+  "successRate": 0,
+  "suites": [
+    {
+      "name": "unit",
+      "status": "failed",
+      "duration": 1.16,
+      "passed": false,
+      "successRate": 0
+    },
+    {
+      "name": "integration",
+      "status": "failed",
+      "duration": 1.25,
+      "passed": false,
+      "successRate": 0
+    },
+    {
+      "name": "e2e",
+      "status": "passed",
+      "duration": 1.191,
+      "passed": true,
+      "successRate": 0
+    }
+  ],
+  "environment": {
+    "node": "v22.16.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpus": 10
+  }
+}

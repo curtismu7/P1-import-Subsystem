@@ -264,10 +264,29 @@ async function runImportProcess(sessionId, app) {
         const settingsData = await settingsResponse.json();
         const settings = settingsData.success && settingsData.data ? settingsData.data : settingsData;
         const environmentId = settings.environmentId;
+        const region = settings.region || 'NorthAmerica';
         
         if (!environmentId) {
             throw new Error('Environment ID not configured');
         }
+        
+        // Helper function to get region-specific API domain
+        const getApiDomain = (region) => {
+            const domainMap = {
+                'NorthAmerica': 'api.pingone.com',
+                'Europe': 'api.eu.pingone.com',
+                'Canada': 'api.ca.pingone.com',
+                'Asia': 'api.apsoutheast.pingone.com',
+                'Australia': 'api.aus.pingone.com',
+                'US': 'api.pingone.com',
+                'EU': 'api.eu.pingone.com',
+                'AP': 'api.apsoutheast.pingone.com'
+            };
+            return domainMap[region] || 'api.pingone.com';
+        };
+        
+        const apiDomain = getApiDomain(region);
+        logger.info(`Using API domain: ${apiDomain} (region: ${region})`, { region, apiDomain });
         
         debugLog("Import", "🔑 Authentication ready", { environmentId });
         if (logger.flush) await logger.flush();
@@ -307,7 +326,7 @@ async function runImportProcess(sessionId, app) {
                     const skipDuplicateCheck = process.env.SKIP_DUPLICATE_CHECK === 'true' || app.get('skipDuplicateCheck') === true;
                     
                     if (!skipDuplicateCheck) {
-                        const checkUrl = `https://api.pingone.com/v1/environments/${environmentId}/users?username=${encodeURIComponent(username)}`;
+                        const checkUrl = `https://${apiDomain}/v1/environments/${environmentId}/users?username=${encodeURIComponent(username)}`;
                         
                         // DEBUG: Log the duplicate check request
                         logger.info(`[${new Date().toISOString()}] [DEBUG] Checking if user exists`, {
@@ -388,7 +407,7 @@ async function runImportProcess(sessionId, app) {
                     if (logger.flush) await logger.flush();
                     
                     // Create user in PingOne
-                    const createUrl = `https://api.pingone.com/v1/environments/${environmentId}/users`;
+                    const createUrl = `https://${apiDomain}/v1/environments/${environmentId}/users`;
                     const userData = {
                         username: username,
                         email: user.email || username,

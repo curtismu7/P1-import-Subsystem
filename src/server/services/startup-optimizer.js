@@ -345,7 +345,25 @@ class StartupOptimizer {
         try {
             this.logger.info('🔑 Acquiring worker token...');
             
-            const tokenUrl = `https://auth.pingone.com/${settings.environmentId}/as/token`;
+            // Get region-specific auth domain
+            const getAuthDomain = (region) => {
+                const domainMap = {
+                    'NorthAmerica': 'auth.pingone.com',
+                    'Europe': 'auth.eu.pingone.com',
+                    'Canada': 'auth.ca.pingone.com',
+                    'Asia': 'auth.apsoutheast.pingone.com',
+                    'Australia': 'auth.aus.pingone.com',
+                    'US': 'auth.pingone.com',
+                    'EU': 'auth.eu.pingone.com',
+                    'AP': 'auth.apsoutheast.pingone.com'
+                };
+                return domainMap[region] || 'auth.pingone.com';
+            };
+            
+            const authDomain = getAuthDomain(settings.region || 'NorthAmerica');
+            const tokenUrl = `https://${authDomain}/${settings.environmentId}/as/token`;
+            this.logger.debug('Using token URL:', { tokenUrl, region: settings.region });
+            
             const tokenData = new URLSearchParams({
                 grant_type: 'client_credentials',
                 client_id: settings.apiClientId,
@@ -405,7 +423,24 @@ class StartupOptimizer {
             
             this.logger.info('👥 Pre-fetching population data...');
             
-            const populationsUrl = `https://api.pingone.com/v1/environments/${settings.environmentId}/populations?limit=100`;
+            // Get region-specific API domain
+            const getApiDomain = (region) => {
+                const domainMap = {
+                    'NorthAmerica': 'api.pingone.com',
+                    'Europe': 'api.eu.pingone.com',
+                    'Canada': 'api.ca.pingone.com',
+                    'Asia': 'api.apsoutheast.pingone.com',
+                    'Australia': 'api.aus.pingone.com',
+                    'US': 'api.pingone.com',
+                    'EU': 'api.eu.pingone.com',
+                    'AP': 'api.apsoutheast.pingone.com'
+                };
+                return domainMap[region] || 'api.pingone.com';
+            };
+            
+            const apiDomain = getApiDomain(settings.region || 'NorthAmerica');
+            const populationsUrl = `https://${apiDomain}/v1/environments/${settings.environmentId}/populations?limit=100`;
+            this.logger.debug('Using populations URL:', { populationsUrl, region: settings.region });
             
             const response = await fetch(populationsUrl, {
                 method: 'GET',

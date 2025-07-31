@@ -45,7 +45,7 @@
  * 
  * @fileoverview Main server entry point for PingOne Import Tool
  * @author PingOne Import Tool Team
- * @version ${appVersion}
+ * @version 6.5.2.4
  * @since 1.0.0
  * 
  * @requires express Express.js web framework
@@ -90,6 +90,7 @@ import {
     checkPortStatus 
 } from './server/port-checker.js';
 import pingoneProxyRouter from './routes/pingone-proxy-fixed.js';
+import { runStartupTokenTest } from './server/startup-token-test.js';
 import apiRouter from './routes/api/index.js';
 import settingsRouter from './routes/settings.js';
 import debugLogRouter from './routes/api/debug-log.js';
@@ -719,6 +720,9 @@ app.use(async (err, req, res, next) => {
 // Import the logs directory check
 import { ensureLogsDirectory } from './scripts/ensure-logs-directory.js';
 
+// Version constant for DRYness
+const APP_VERSION = '6.5.1.4';
+
 // Server startup with enhanced logging
 const startServer = async () => {
     const startTime = Date.now();
@@ -795,6 +799,29 @@ const startServer = async () => {
                     logger.warn('Legacy token manager initialization failed, but enhanced auth is working', {
                         error: legacyError.message
                     });
+                }
+                
+                // Perform startup token validation test
+                logger.info('🔍 Performing startup token validation test...');
+                try {
+                    const tokenInfo = tokenManager.getTokenInfo();
+                    if (tokenInfo && tokenInfo.isValid) {
+                        const timeUntilExpiry = Math.floor((tokenInfo.expiresAt - Date.now()) / 1000 / 60);
+                        logger.info('✅ Startup token validation passed', {
+                            tokenType: tokenInfo.tokenType,
+                            expiresInMinutes: timeUntilExpiry,
+                            isValid: tokenInfo.isValid
+                        });
+                        console.log(`✅ Token validation: PASSED (expires in ${timeUntilExpiry} minutes)`);
+                    } else {
+                        logger.warn('⚠️ Startup token validation: No valid token found');
+                        console.log('⚠️ Token validation: No valid token available');
+                    }
+                } catch (tokenValidationError) {
+                    logger.warn('⚠️ Startup token validation failed', {
+                        error: tokenValidationError.message
+                    });
+                    console.log('⚠️ Token validation: FAILED -', tokenValidationError.message);
                 }
             } else {
                 serverState.pingOneInitialized = false;
@@ -883,7 +910,7 @@ const startServer = async () => {
                 node: process.version,
                 platform: process.platform,
                 env: process.env.NODE_ENV || 'development',
-                appVersion: appVersion,
+                appVersion: APP_VERSION,
                 pingOneInitialized: serverState.pingOneInitialized,
                 duration: `${duration}ms`,
                 critical: true
@@ -898,11 +925,20 @@ const startServer = async () => {
                 console.log(`   Node: ${process.version}`);
                 console.log(`   Platform: ${process.platform}`);
                 console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-                console.log(`   Version: 6.3.0`);
+                console.log(`   Version: ${APP_VERSION}`);
                 console.log(`   PingOne: ${serverState.pingOneInitialized ? '✅ Connected' : '⚠️  Not connected'}`);
                 console.log(`   📚 Swagger UI: ${url}/swagger.html`);
                 console.log(`   📄 Swagger JSON: ${url}/swagger.json`);
                 console.log('='.repeat(60) + '\n');
+                
+                // Test PingOne token acquisition at startup
+                setTimeout(async () => {
+                    try {
+                        await runStartupTokenTest(logger);
+                    } catch (error) {
+                        logger.error('Startup token test failed:', error);
+                    }
+                }, 1000); // Wait 1 second for server to fully initialize
             }
         }).on('error', async (error) => {
             if (error.code === 'EADDRINUSE') {
@@ -1214,7 +1250,7 @@ process.on('uncaughtException', (error) => {
         error: error.message,
         stack: error.stack,
         code: error.code,
-        appVersion: appVersion,
+        appVersion: APP_VERSION,
         critical: true
     });
     
@@ -1223,7 +1259,7 @@ process.on('uncaughtException', (error) => {
         logger.warn('Ignoring non-fatal error to prevent server crash', {
             error: error.message,
             code: error.code,
-            appVersion: appVersion
+            appVersion: APP_VERSION
         });
         return;
     }
@@ -1237,7 +1273,7 @@ process.on('unhandledRejection', (reason, promise) => {
         reason: reason?.message || reason,
         stack: reason?.stack,
         promise: promise,
-        appVersion: appVersion,
+        appVersion: APP_VERSION,
         critical: true
     });
     

@@ -98,15 +98,45 @@ class SettingsSubsystem {
     }
     
     /**
-     * Load current settings from settings manager
+     * Load current settings from server API first, then fall back to local storage
      */
     async loadCurrentSettings() {
         try {
+            // First try to load from server API
+            try {
+                this.logger.info('🔧 SETTINGS: Loading settings from server API...');
+                const response = await fetch('/api/settings');
+                
+                if (response.ok) {
+                    const serverSettings = await response.json();
+                    this.logger.info('🔧 SETTINGS: Server settings loaded successfully', {
+                        hasEnvironmentId: !!serverSettings.environmentId,
+                        hasApiClientId: !!serverSettings.apiClientId,
+                        region: serverSettings.region
+                    });
+                    
+                    // Update local settings manager with server settings
+                    if (serverSettings && Object.keys(serverSettings).length > 0) {
+                        this.currentSettings = serverSettings;
+                        this.populateSettingsForm(this.currentSettings);
+                        this.logger.info('🔧 SETTINGS: Form fields populated successfully');
+                        return;
+                    }
+                } else {
+                    this.logger.warn('🔧 SETTINGS: Server API returned non-OK status:', response.status);
+                }
+            } catch (apiError) {
+                this.logger.warn('🔧 SETTINGS: Failed to load from server API, falling back to local storage', {
+                    error: apiError.message
+                });
+            }
+            
+            // Fallback to local settings manager
+            this.logger.info('🔧 SETTINGS: Loading settings from local storage...');
             this.currentSettings = this.settingsManager.getSettings();
             this.populateSettingsForm(this.currentSettings);
-            // Safe logger access with fallbacks
-            const infoLog = this.logger?.info || this.logger?.log || console.log;
-            infoLog('Current settings loaded successfully');
+            this.logger.info('🔧 SETTINGS: Local settings loaded successfully');
+            
         } catch (error) {
             // Safe logger access with fallbacks
             const errorLog = this.logger?.error || this.logger?.log || console.error;
@@ -385,10 +415,12 @@ class SettingsSubsystem {
             const response = await this.localClient.get('/api/pingone/test-connection');
             
             if (response.success) {
-                if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
-                    this.uiManager.showSettingsActionStatus('Connection test successful!', 'success');
+                let successMessage = response.message || 'Success - Token minted';
+                if (response.token && response.token.timeLeft) {
+                    successMessage += ` - Time left: ${response.token.timeLeft}`;
                 }
-                this.updateConnectionStatus('✅ Connection successful', 'success');
+                this.uiManager.showSettingsActionStatus(successMessage, 'success', { autoHideDelay: 5000 });
+                this.updateConnectionStatus('✅ ' + successMessage, 'success');
             } else {
                 if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
                     this.uiManager.showSettingsActionStatus('Connection test failed: ' + (response.error || 'Unknown error'), 'error');

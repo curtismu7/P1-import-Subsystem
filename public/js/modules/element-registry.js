@@ -59,6 +59,7 @@ export const ElementRegistry = {
   
   // Notification and progress containers
   notificationContainer: () => getElement('#notification-area', 'Notification Container'),
+  statusBar: () => getElement('#global-status-bar', 'Global Status Bar'),
   progressContainer: () => {
     // Try specific progress containers first, then fallback to generic
     return getElement('#import-progress-container', 'Import Progress Container', false) ||

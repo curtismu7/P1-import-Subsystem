@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swagger Fix Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .swagger-link {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .swagger-link:hover {
+            background: #218838;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 Swagger UI Fix Verification</h1>
+        <p>This page tests the fixes applied to the Swagger UI integration.</p>
+        
+        <a href="/swagger/index.html" target="_blank" class="swagger-link">
+            🚀 Open Fixed Swagger UI
+        </a>
+    </div>
+
+    <div class="test-container">
+        <h2>🧪 API Endpoint Tests</h2>
+        <p>Testing the corrected API endpoints that Swagger UI depends on:</p>
+        
+        <button onclick="testTokenEndpoint()">Test Token Endpoint</button>
+        <button onclick="testPopulationsEndpoint()">Test Populations Endpoint</button>
+        <button onclick="testSettingsEndpoint()">Test Settings Endpoint</button>
+        <button onclick="testAllEndpoints()">Test All Endpoints</button>
+        
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>🔍 Swagger UI Integration Test</h2>
+        <p>Testing the Swagger UI initialization and token management:</p>
+        
+        <button onclick="testSwaggerInitialization()">Test Swagger Initialization</button>
+        <button onclick="testTokenManagement()">Test Token Management</button>
+        <button onclick="testPopulationLoading()">Test Population Loading</button>
+        
+        <div id="swagger-test-results"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>📋 Fix Summary</h2>
+        <div class="info">
+            <h3>Issues Fixed:</h3>
+            <ul>
+                <li>✅ Corrected token endpoint from <code>/api/token</code> to <code>/api/pingone/get-token</code></li>
+                <li>✅ Fixed token response structure to use <code>access_token</code> instead of <code>token</code></li>
+                <li>✅ Updated token expiry calculation to use <code>expires_in</code> seconds</li>
+                <li>✅ Added fallback token loading from <code>/api/auth/token-info</code></li>
+                <li>✅ Maintained existing clear credentials functionality</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const resultsContainer = document.getElementById('test-results');
+        const swaggerResultsContainer = document.getElementById('swagger-test-results');
+
+        function addResult(container, message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            container.appendChild(div);
+        }
+
+        async function testTokenEndpoint() {
+            addResult(resultsContainer, '🔄 Testing token endpoint...', 'info');
+            
+            try {
+                const response = await fetch('/api/pingone/get-token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.access_token) {
+                    addResult(resultsContainer, '✅ Token endpoint working correctly', 'success');
+                    addResult(resultsContainer, `Token type: ${data.token_type}, Expires in: ${data.expires_in}s`, 'info');
+                } else {
+                    addResult(resultsContainer, `❌ Token endpoint failed: ${data.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                addResult(resultsContainer, `❌ Token endpoint error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPopulationsEndpoint() {
+            addResult(resultsContainer, '🔄 Testing populations endpoint...', 'info');
+            
+            try {
+                const response = await fetch('/api/populations');
+                const data = await response.json();
+                
+                if (data.success && Array.isArray(data.populations)) {
+                    addResult(resultsContainer, `✅ Populations endpoint working: ${data.populations.length} populations found`, 'success');
+                } else {
+                    addResult(resultsContainer, `❌ Populations endpoint failed: ${data.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                addResult(resultsContainer, `❌ Populations endpoint error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSettingsEndpoint() {
+            addResult(resultsContainer, '🔄 Testing settings endpoint...', 'info');
+            
+            try {
+                const response = await fetch('/api/settings');
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    addResult(resultsContainer, '✅ Settings endpoint working correctly', 'success');
+                } else {
+                    addResult(resultsContainer, `❌ Settings endpoint failed: ${data.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                addResult(resultsContainer, `❌ Settings endpoint error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAllEndpoints() {
+            resultsContainer.innerHTML = '';
+            addResult(resultsContainer, '🚀 Running comprehensive endpoint tests...', 'info');
+            
+            await testTokenEndpoint();
+            await testPopulationsEndpoint();
+            await testSettingsEndpoint();
+            
+            addResult(resultsContainer, '✅ All endpoint tests completed', 'success');
+        }
+
+        async function testSwaggerInitialization() {
+            addResult(swaggerResultsContainer, '🔄 Testing Swagger UI initialization...', 'info');
+            
+            try {
+                // Test if Swagger HTML loads
+                const response = await fetch('/swagger/index.html');
+                if (response.ok) {
+                    addResult(swaggerResultsContainer, '✅ Swagger HTML loads successfully', 'success');
+                } else {
+                    addResult(swaggerResultsContainer, '❌ Swagger HTML failed to load', 'error');
+                    return;
+                }
+                
+                // Test if Swagger initializer loads
+                const initResponse = await fetch('/swagger/swagger-initializer.js');
+                if (initResponse.ok) {
+                    addResult(swaggerResultsContainer, '✅ Swagger initializer loads successfully', 'success');
+                } else {
+                    addResult(swaggerResultsContainer, '❌ Swagger initializer failed to load', 'error');
+                }
+                
+                // Test if Swagger bundle loads
+                const bundleResponse = await fetch('/swagger/swagger-ui-bundle.js');
+                if (bundleResponse.ok) {
+                    addResult(swaggerResultsContainer, '✅ Swagger UI bundle loads successfully', 'success');
+                } else {
+                    addResult(swaggerResultsContainer, '❌ Swagger UI bundle failed to load', 'error');
+                }
+                
+            } catch (error) {
+                addResult(swaggerResultsContainer, `❌ Swagger initialization test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testTokenManagement() {
+            addResult(swaggerResultsContainer, '🔄 Testing token management functionality...', 'info');
+            
+            try {
+                // Test the corrected token endpoint
+                const tokenResponse = await fetch('/api/pingone/get-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const tokenData = await tokenResponse.json();
+                
+                if (tokenData.success && tokenData.access_token) {
+                    addResult(swaggerResultsContainer, '✅ Token management working with correct endpoint', 'success');
+                    
+                    // Test token info endpoint
+                    const infoResponse = await fetch('/api/auth/token-info');
+                    if (infoResponse.ok) {
+                        const infoData = await infoResponse.json();
+                        if (infoData.success) {
+                            addResult(swaggerResultsContainer, '✅ Token info endpoint accessible', 'success');
+                        }
+                    }
+                } else {
+                    addResult(swaggerResultsContainer, `❌ Token management failed: ${tokenData.error}`, 'error');
+                }
+            } catch (error) {
+                addResult(swaggerResultsContainer, `❌ Token management test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPopulationLoading() {
+            addResult(swaggerResultsContainer, '🔄 Testing population loading for Swagger UI...', 'info');
+            
+            try {
+                const response = await fetch('/api/populations');
+                const data = await response.json();
+                
+                if (data.success && Array.isArray(data.populations) && data.populations.length > 0) {
+                    addResult(swaggerResultsContainer, `✅ Population loading working: ${data.populations.length} populations available`, 'success');
+                    
+                    // Show first few populations
+                    const samplePops = data.populations.slice(0, 3).map(p => `${p.name} (${p.userCount} users)`).join(', ');
+                    addResult(swaggerResultsContainer, `Sample populations: ${samplePops}`, 'info');
+                } else {
+                    addResult(swaggerResultsContainer, '❌ No populations found or endpoint failed', 'error');
+                }
+            } catch (error) {
+                addResult(swaggerResultsContainer, `❌ Population loading test error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run basic tests on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                addResult(resultsContainer, '🔄 Running initial endpoint verification...', 'info');
+                testAllEndpoints();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
