@@ -1,12 +1,34 @@
 {
   "name": "pingone-import-cursor",
-  "version": "6.5.1.3",
+  "version": "6.5.2.4",
   "description": "A modern web application for importing users into PingOne using the PingOne Admin API.",
   "main": "server.js",
   "type": "module",
+  "engines": {
+    "node": ">=14.0.0"
+  },
   "scripts": {
-    "start": "cross-env NODE_ENV=development node --experimental-modules --experimental-json-modules scripts/always-background.js",
-    "start:foreground": "cross-env NODE_ENV=development node --experimental-modules --experimental-json-modules server.js",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' node scripts/run-tests.js",
+    "test:unit": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest test/unit/**/*.test.js --config=jest.config.mjs",
+    "test:integration": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest test/integration/**/*.test.js --config=jest.config.mjs",
+    "test:e2e": "NODE_OPTIONS='--experimental-vm-modules' node scripts/run-tests.js e2e",
+    "test:frontend": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest test/unit/ui-manager.test.js --config=jest.config.mjs",
+    "test:bulletproof": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest test/unit/bulletproof-*.test.js test/integration/bulletproof-*.test.js test/bulletproof-*.test.mjs --config=jest.bulletproof.config.mjs",
+    "test:bulletproof:unit": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest test/unit/bulletproof-*.test.js --config=jest.bulletproof.config.mjs",
+    "test:bulletproof:integration": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest test/integration/bulletproof-*.test.js --config=jest.bulletproof.config.mjs",
+    "test:bulletproof:watch": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest test/unit/bulletproof-*.test.js test/integration/bulletproof-*.test.js test/bulletproof-*.test.mjs --watch --config=jest.bulletproof.config.mjs",
+    "test:bulletproof:runner": "node --experimental-modules --experimental-json-modules scripts/run-bulletproof-tests.js",
+    "test:bulletproof:coverage": "node --experimental-modules --experimental-json-modules scripts/run-bulletproof-tests.js --coverage",
+    "test:coverage": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest --coverage --config=jest.config.mjs",
+    "test:watch": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest --watch --config=jest.config.mjs",
+    "test:debug": "cross-env NODE_OPTIONS='--inspect-brk --experimental-vm-modules' NODE_ENV=test jest --runInBand --config=jest.config.mjs",
+    "test:update": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest --updateSnapshot --config=jest.config.mjs",
+    "test:ci": "NODE_OPTIONS='--experimental-vm-modules' node scripts/run-tests.js --ci",
+    "test:setup": "node scripts/setup-test-env.js",
+    "test:readable-log": "node --experimental-modules --experimental-json-modules scripts/test-readable-log.js",
+    "test:ui:checklist": "node --experimental-modules --experimental-json-modules scripts/test-ui-functionality.js",
+    "start": "node --experimental-modules --experimental-json-modules scripts/always-background.js",
+    "start:foreground": "node --experimental-modules --experimental-json-modules server.js",
     "start:background": "node --experimental-modules --experimental-json-modules scripts/start-background.js start",
     "start:daemon": "node --experimental-modules --experimental-json-modules scripts/daemon.js start",
     "stop:background": "node --experimental-modules --experimental-json-modules scripts/start-background.js stop",
@@ -15,71 +37,28 @@
     "restart:daemon": "node --experimental-modules --experimental-json-modules scripts/daemon.js restart",
     "status:background": "node --experimental-modules --experimental-json-modules scripts/start-background.js status",
     "status:daemon": "node --experimental-modules --experimental-json-modules scripts/daemon.js status",
-    "dev": "cross-env NODE_ENV=development nodemon --experimental-modules --experimental-json-modules server.js",
-    "ensure-logs": "node --experimental-modules --experimental-json-modules scripts/ensure-logs-directory.js",
-    "test:readable-log": "node --experimental-modules --experimental-json-modules scripts/test-readable-log.js",
-    "analyze:bundle": "node --experimental-modules --experimental-json-modules scripts/analyze-bundle.js",
-    "minify:bundle": "node --experimental-modules --experimental-json-modules scripts/minify-bundle.js",
+    "dev": "nodemon --experimental-modules --experimental-json-modules server.js",
+    "stop": "pkill -f 'node.*server.js' || true",
+    "build": "node --experimental-modules --experimental-json-modules scripts/unified-build.js",
+    "build:prod": "node --experimental-modules --experimental-json-modules scripts/unified-build.js --production",
     "build:optimized": "npm run build:bundle && npm run minify:bundle",
-    "test:ui:checklist": "node --experimental-modules --experimental-json-modules scripts/test-ui-functionality.js",
+    "build:bundle": "TIMESTAMP=$(date +%s) && npx browserify src/client/app.js -t [ babelify --configFile ./babel.config.mjs ] -o public/js/bundle-${TIMESTAMP}.js && echo '{\"bundleFile\": \"bundle-'${TIMESTAMP}'.js\"}' > public/js/bundle-manifest.json && node scripts/update-bundle-reference.js",
+    "minify:bundle": "node --experimental-modules --experimental-json-modules scripts/minify-bundle.js",
+    "analyze:bundle": "node --experimental-modules --experimental-json-modules scripts/analyze-bundle.js",
+    "verify:build": "node --experimental-modules --experimental-json-modules scripts/verify-build.js",
+    "postinstall": "npm run build:bundle",
     "fix:population-dropdown": "node --experimental-modules --experimental-json-modules scripts/fix-population-dropdown.js",
     "fix:token-status": "node --experimental-modules --experimental-json-modules scripts/fix-token-status-widget.js",
     "fix:progress": "node --experimental-modules --experimental-json-modules scripts/fix-progress-subsystem.js",
-    "build:bundle": "TIMESTAMP=$(date +%s) && npx browserify src/client/app.js -t [ babelify --configFile ./config/babel.config.json --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -o public/js/bundle-${TIMESTAMP}.js && echo '{\"bundleFile\": \"bundle-'${TIMESTAMP}'.js\"}' > public/js/bundle-manifest.json && node scripts/update-bundle-reference.js",
-    "build:bundle:dev": "npx browserify src/client/app.js --no-bundle-external -t [ babelify --configFile ./config/babel.config.json --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -o public/js/bundle-dev.js && echo '✅ Development bundle built (unminified)'",
-    "postbuild:bundle": "node --experimental-modules --experimental-json-modules scripts/verify-build.js",
-    "build:bundle:direct": "TIMESTAMP=$(date +%s) && npx browserify src/client/app.js -t [ babelify --configFile ./config/babel.config.json --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -o public/js/bundle-${TIMESTAMP}.js && echo '{\"bundleFile\": \"bundle-'${TIMESTAMP}'.js\"}' > public/js/bundle-manifest.json && node scripts/update-bundle-reference.js && echo '✅ Bundle built and HTML updated with direct loading'",
-    "postbuild:bundle:direct": "node --experimental-modules --experimental-json-modules scripts/verify-build.js",
-    "build:production": "node scripts/production-bundle-optimizer.js --analyze --minify",
-    "postbuild:production": "node --experimental-modules --experimental-json-modules scripts/verify-build.js",
-    "build:production:quick": "node scripts/production-bundle-optimizer.js --minify",
-    "postbuild:production:quick": "node --experimental-modules --experimental-json-modules scripts/verify-build.js",
-    "build:bundle:legacy": "npx browserify public/js/app.js -t [ babelify --configFile ./config/babel.config.json --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -o public/js/bundle-legacy.js",
-    "verify:build": "node --experimental-modules --experimental-json-modules scripts/verify-build.js",
-    "build": "node --experimental-modules --experimental-json-modules scripts/unified-build.js",
-    "build:prod": "node --experimental-modules --experimental-json-modules scripts/unified-build.js --production",
-    "lint": "eslint . --fix",
-    "lint:check": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"**/*.{js,json,md}\"",
-    "format:check": "prettier --check \"**/*.{js,json,md}\"",
-    "debug:config": "node --experimental-modules --experimental-json-modules scripts/debug-helper.js config",
-    "debug:stats": "node --experimental-modules --experimental-json-modules scripts/debug-helper.js stats",
-    "debug:memory": "node --experimental-modules --experimental-json-modules scripts/debug-helper.js memory",
-    "debug:errors": "node --experimental-modules --experimental-json-modules scripts/debug-helper.js errors",
-    "debug:health": "node --experimental-modules --experimental-json-modules scripts/debug-helper.js health",
-    "debug:test-logging": "node --experimental-modules --experimental-json-modules scripts/debug-helper.js test-logging",
-    "test": "jest --detectOpenHandles --forceExit --config=jest.config.js",
-    "test:unit": "cross-env NODE_ENV=test jest tests/unit/**/*.test.js --config=jest.config.mjs",
-    "test:integration": "cross-env NODE_ENV=test jest tests/integration/**/*.test.js --config=jest.config.mjs",
-    "test:integration:real": "cross-env NODE_ENV=test jest test/integration/real-api-integration.test.js --config=jest.config.mjs --verbose",
-    "test:integration:setup": "cross-env NODE_ENV=test jest test/integration/setup-verification.test.js --config=jest.config.mjs --verbose",
-    "test:api": "cross-env NODE_ENV=test jest test/api/**/*.test.js --config=jest.config.mjs",
-    "test:api:run": "node --experimental-modules --experimental-json-modules test/api/run-api-tests.js",
-    "test:api:endpoints": "cross-env NODE_ENV=test jest test/api/endpoints-api.test.js --config=jest.config.mjs",
-    "test:api:integration": "cross-env NODE_ENV=test jest test/api/integration-api.test.js --config=jest.config.mjs",
-    "test:api:performance": "cross-env NODE_ENV=test jest test/api/performance-api.test.js --config=jest.config.mjs",
-    "test:api:security": "cross-env NODE_ENV=test jest test/api/security-api.test.js --config=jest.config.mjs",
-    "test:api:load": "cross-env NODE_ENV=test jest test/api/load-api.test.js --config=jest.config.mjs",
-    "test:api:mock": "cross-env NODE_ENV=test jest test/api/mock-api.test.js --config=jest.config.mjs",
-    "test:frontend": "cross-env NODE_ENV=test jest test/frontend/**/*.test.js --config=jest.config.mjs",
-    "test:ui": "node test/run-ui-tests.js",
-    "test:ui:single": "npx jest --config=jest.ui.config.cjs",
-    "test:integration:pingone": "jest --config=jest.integration.config.js",
-    "test:integration:pingone:verbose": "jest --config=jest.integration.config.js --verbose",
-    "test:watch": "cross-env NODE_ENV=test jest --watch --config=jest.config.mjs",
-    "test:coverage": "cross-env NODE_ENV=test jest --coverage --config=jest.config.mjs",
-    "test:update": "cross-env NODE_ENV=test jest --updateSnapshot --config=jest.config.mjs",
-    "test:debug": "cross-env NODE_OPTIONS='--inspect-brk --experimental-vm-modules --experimental-specifier-resolution=node' NODE_ENV=test jest --runInBand --config=jest.config.mjs",
-    "test:all": "NODE_ENV=test jest --config=jest.config.mjs",
-    "test:setup": "cp test/integration/env.test.example test/integration/.env.test",
+    "ensure-logs": "node --experimental-modules --experimental-json-modules scripts/ensure-logs-directory.js",
     "setup": "cp .env.example .env",
-    "postinstall": "npm run build:bundle",
     "update:check": "node scripts/package-updater.cjs",
     "update:auto": "node scripts/auto-update.cjs",
     "update:conflicts": "node scripts/conflict-checker.cjs",
     "update:safe": "npm run update:conflicts && npm run update:auto",
-    "stop": "pkill -f 'node.*server.js' || true",
+    "version:update": "node scripts/update-version.js",
+    "version:check": "node -e \"console.log('Current version:', require('./package.json').version)\"",
+    "version:validate": "node scripts/validate-version-consistency.js",
     "restart": "npm run stop && sleep 2 && npm start",
     "restart:safe": "npm run stop && npm run check:port && npm run start:background",
     "restart:force": "node scripts/restart-server.js --no-kill",
@@ -110,12 +89,39 @@
       ]
     ]
   },
+  "jest": {
+    "collectCoverage": true,
+    "coverageDirectory": "coverage",
+    "testEnvironment": "jsdom",
+    "transform": {
+      "^.+\\.(js|mjs)$": [
+        "babel-jest",
+        {
+          "configFile": "./config/babel.config.json"
+        }
+      ]
+    },
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/public/js/$1",
+      "^@modules/(.*)$": "<rootDir>/public/js/modules/$1",
+      "^@test/(.*)$": "<rootDir>/test/$1"
+    },
+    "testMatch": [
+      "**/test/**/*.test.js",
+      "**/__tests__/**/*.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/dist/",
+      "/public/"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/test/setup.js"
+    ]
+  },
   "dependencies": {
     "@babel/core": "^7.28.0",
-    "@babel/plugin-transform-runtime": "^7.28.0",
-    "@babel/preset-env": "^7.28.0",
-    "@babel/runtime": "^7.27.6",
-    "@babel/runtime-corejs3": "^7.27.6",
+    "@babel/runtime": "^7.28.2",
     "@socket.io/redis-adapter": "^8.2.1",
     "axios": "^0.27.2",
     "babelify": "^10.0.0",
@@ -155,14 +161,25 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-class-properties": "^7.18.6",
+    "@babel/plugin-proposal-class-static-block": "^7.21.0",
+    "@babel/plugin-proposal-decorators": "^7.28.0",
     "@babel/plugin-proposal-export-default-from": "^7.27.1",
     "@babel/plugin-proposal-export-namespace-from": "^7.18.9",
+    "@babel/plugin-proposal-logical-assignment-operators": "^7.20.7",
+    "@babel/plugin-proposal-nullish-coalescing-operator": "^7.18.6",
+    "@babel/plugin-proposal-numeric-separator": "^7.18.6",
+    "@babel/plugin-proposal-optional-chaining": "^7.21.0",
     "@babel/plugin-proposal-private-methods": "^7.18.6",
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@babel/plugin-syntax-dynamic-import": "^7.8.3",
+    "@babel/plugin-syntax-top-level-await": "^7.14.5",
     "@babel/plugin-transform-modules-commonjs": "^7.27.1",
+    "@babel/plugin-transform-runtime": "^7.28.0",
+    "@babel/preset-env": "^7.28.0",
     "@babel/preset-react": "^7.27.1",
     "@babel/preset-typescript": "^7.27.1",
     "@babel/register": "^7.27.0",
+    "@babel/runtime-corejs3": "^7.28.2",
     "@eslint/js": "^9.31.0",
     "@jest/globals": "^29.7.0",
     "@testing-library/dom": "^9.3.4",
@@ -171,6 +188,7 @@
     "@testing-library/user-event": "^13.5.0",
     "@types/jest": "^30.0.0",
     "babel-jest": "^29.7.0",
+    "babel-plugin-dynamic-import-node": "^2.3.3",
     "babel-plugin-istanbul": "^6.1.1",
     "chai": "^5.2.0",
     "chai-http": "^4.4.0",
@@ -185,9 +203,11 @@
     "faker": "^5.5.3",
     "globals": "^16.3.0",
     "husky": "^9.0.11",
+    "identity-obj-proxy": "^3.0.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "jest-extended": "^4.0.2",
+    "jest-junit": "^16.0.0",
     "jsdom": "^26.1.0",
     "lint-staged": "^15.2.0",
     "markdown-pdf": "^11.0.0",
@@ -208,52 +228,17 @@
     "watchify": "^4.0.0",
     "whatwg-url": "^14.2.0"
   },
-  "engines": {
-    "node": ">=14.0.0"
-  },
   "browserslist": [
     ">0.2%",
     "not dead",
     "not ie <= 11",
     "not op_mini all"
   ],
-  "jest": {
-    "testEnvironment": "node",
-    "testMatch": [
-      "**/test/**/*.test.js"
-    ],
-    "testEnvironmentOptions": {
-      "url": "http://localhost"
-    },
-    "extensionsToTreatAsEsm": [
-      ".js"
-    ],
-    "globals": {
-      "ts-jest": {
-        "useESM": true
-      }
-    },
-    "transform": {
-      "^.+\\.m?js$": [
-        "babel-jest",
-        {
-          "configFile": "./config/babel.config.json",
-          "rootMode": "upward"
-        }
-      ]
-    },
-    "transformIgnorePatterns": [
-      "node_modules/(?!(uuid|whatwg-url|socket\\.io|socket\\.io-client)/)"
-    ],
-    "setupFilesAfterEnv": [
-      "<rootDir>/test/setup.js"
-    ],
-    "testPathIgnorePatterns": [
-      "/node_modules/",
-      "/dist/"
-    ],
-    "moduleNameMapping": {
-      "^(\\.{1,2}/.*)\\.js$": "$1"
-    }
+  "testPathIgnorePatterns": [
+    "/node_modules/",
+    "/dist/"
+  ],
+  "moduleNameMapping": {
+    "^(\\.{1,2}/.*)\\.js$": "$1"
   }
 }

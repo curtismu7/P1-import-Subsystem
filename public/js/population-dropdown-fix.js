@@ -59,12 +59,22 @@
       // CRITICAL: This MUST be a GET request to match server-side endpoint
       // Server endpoint: routes/pingone-proxy-fixed.js - router.get('/test-connection')
       // DO NOT change to POST without updating server-side endpoint
-      // Last fixed: 2025-07-21 - HTTP method mismatch caused 400 Bad Request errors
+      // Last fixed: 2025-07-30 - Fixed 400 Bad Request by ensuring proper GET request
       const response = await fetch('/api/pingone/test-connection', {
-        method: 'GET', // MUST match server endpoint method
+        method: 'GET', // MUST be GET to match server endpoint
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Accept': 'application/json',
+          'X-Request-ID': 'popdd-' + Date.now() // Add request ID for debugging
+        },
+        credentials: 'same-origin' // Include cookies if needed for auth
+      });
+      
+      const responseData = await response.text();
+      log('🔧 Test connection response:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        body: responseData
       });
       
       if (response.ok) {
@@ -75,7 +85,38 @@
         log('🔧 Worker token not available - credentials required');
       } else {
         workerTokenStatus.available = false;
-        log(`🔧 Worker token test failed - ${response.status} ${response.statusText}`);
+        const errorInfo = `Status: ${response.status} ${response.statusText}`;
+        
+        // Parse response to check if it's a credentials issue
+        let isCredentialsIssue = false;
+        try {
+          const errorData = JSON.parse(responseData);
+          isCredentialsIssue = errorData.error && (
+            errorData.error.includes('Authentication failed') ||
+            errorData.error.includes('credentials') ||
+            errorData.error.includes('Target URL is required')
+          );
+        } catch (e) {
+          // Response is not JSON, check text content
+          isCredentialsIssue = responseData.includes('Authentication failed') ||
+                              responseData.includes('credentials') ||
+                              responseData.includes('Target URL is required');
+        }
+        
+        if (isCredentialsIssue) {
+          log('🔧 Worker token not available - credentials not configured (expected)');
+        } else {
+          log(`🔧 Worker token test failed - ${errorInfo}`, responseData);
+          
+          // Only log detailed error info for unexpected errors
+          console.warn('Worker token test failed:', {
+            status: response.status,
+            statusText: response.statusText,
+            url: response.url,
+            headers: Object.fromEntries(response.headers.entries()),
+            body: responseData
+          });
+        }
       }
     } catch (error) {
       workerTokenStatus.available = false;

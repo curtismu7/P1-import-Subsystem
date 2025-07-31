@@ -11,6 +11,7 @@ class CentralizedLogger {
         this.level = options.level || 'info';
         this.enableRemoteLogging = options.enableRemoteLogging !== false;
         this.enableConsoleLogging = options.enableConsoleLogging !== false;
+        this.timers = new Map();
         this.sensitivePatterns = [
             /password/i,
             /token/i,
@@ -103,53 +104,123 @@ class CentralizedLogger {
             return; // Suppress debug log if not in debug mode
         }
 
-        const formattedMessage = this.formatMessage('debug', message, data);
-        
-        if (this.enableConsoleLogging) {
-            console.debug(formattedMessage);
+        try {
+            const formattedMessage = this.formatMessage ? this.formatMessage('debug', message, data) : `[DEBUG] ${message}`;
+            
+            if (this.enableConsoleLogging) {
+                console.debug(formattedMessage);
+            }
+            
+            // Optionally, send debug logs remotely if needed for remote debugging sessions
+            this.sendRemoteLog('debug', message, data);
+        } catch (error) {
+            console.debug(`[DEBUG] ${message}`, data);
         }
-        
-        // Optionally, send debug logs remotely if needed for remote debugging sessions
-        this.sendRemoteLog('debug', message, data);
     }
 
     /**
      * Log info message
      */
     info(message, data = null) {
-        const formattedMessage = this.formatMessage('info', message, data);
-        
-        if (this.enableConsoleLogging) {
-            console.log(formattedMessage);
+        try {
+            const formattedMessage = this.formatMessage ? this.formatMessage('info', message, data) : `[INFO] ${message}`;
+            
+            if (this.enableConsoleLogging) {
+                console.log(formattedMessage);
+            }
+            
+            this.sendRemoteLog('info', message, data);
+        } catch (error) {
+            console.log(`[INFO] ${message}`, data);
         }
-        
-        this.sendRemoteLog('info', message, data);
     }
 
     /**
      * Log warning message
      */
     warn(message, data = null) {
-        const formattedMessage = this.formatMessage('warn', message, data);
-        
-        if (this.enableConsoleLogging) {
-            console.warn(formattedMessage);
+        try {
+            const formattedMessage = this.formatMessage ? this.formatMessage('warn', message, data) : `[WARN] ${message}`;
+            
+            if (this.enableConsoleLogging) {
+                console.warn(formattedMessage);
+            }
+            
+            this.sendRemoteLog('warn', message, data);
+        } catch (error) {
+            console.warn(`[WARN] ${message}`, data);
         }
-        
-        this.sendRemoteLog('warn', message, data);
     }
 
     /**
      * Log error message
      */
     error(message, data = null) {
-        const formattedMessage = this.formatMessage('error', message, data);
-        
-        if (this.enableConsoleLogging) {
-            console.error(formattedMessage);
+        try {
+            const formattedMessage = this.formatMessage ? this.formatMessage('error', message, data) : `[ERROR] ${message}`;
+            
+            if (this.enableConsoleLogging) {
+                console.error(formattedMessage);
+            }
+            
+            this.sendRemoteLog('error', message, data);
+        } catch (error) {
+            console.error(`[ERROR] ${message}`, data);
+        }
+    }
+
+    /**
+     * Start a performance timer
+     */
+    startTimer(label) {
+        if (!this.timers) {
+            this.timers = new Map();
         }
         
-        this.sendRemoteLog('error', message, data);
+        const startTime = performance ? performance.now() : Date.now();
+        this.timers.set(label, startTime);
+        
+        if (console.time) {
+            console.time(label);
+        }
+        
+        this.debug(`Timer started: ${label}`);
+        
+        return {
+            label,
+            startTime
+        };
+    }
+
+    /**
+     * End a performance timer
+     */
+    endTimer(timer) {
+        if (!timer || !timer.label) {
+            this.warn('Invalid timer object provided to endTimer');
+            return 0;
+        }
+        
+        const label = timer.label;
+        
+        if (!this.timers || !this.timers.has(label)) {
+            this.warn(`Timer '${label}' not found`);
+            return 0;
+        }
+        
+        const startTime = this.timers.get(label);
+        const endTime = performance ? performance.now() : Date.now();
+        const duration = endTime - startTime;
+        
+        this.timers.delete(label);
+        
+        if (console.timeEnd) {
+            console.timeEnd(label);
+        }
+        
+        this.info(`Timer '${label}' completed in ${duration.toFixed(2)}ms`);
+        
+        return duration;
     }
 
     /**
@@ -172,9 +243,47 @@ class CentralizedLogger {
 
 // Export for both ES modules and CommonJS
 if (typeof module !== 'undefined' && module.exports) {
+    // CommonJS
     module.exports = { CentralizedLogger };
+} else if (typeof define === 'function' && define.amd) {
+    // AMD/RequireJS
+    define([], function() {
+        return { CentralizedLogger };
+    });
 } else if (typeof window !== 'undefined') {
+    // Browser global
     window.CentralizedLogger = CentralizedLogger;
 }
 
-export { CentralizedLogger };
+// ES Module export
+try {
+    if (typeof exports !== 'undefined' && !exports.nodeType) {
+        if (typeof module !== 'undefined' && !module.nodeType && module.exports) {
+            exports = module.exports = { CentralizedLogger };
+        }
+        exports.CentralizedLogger = CentralizedLogger;
+    } else if (typeof define === 'function' && define.amd) {
+        // Already handled by AMD above
+    } else if (typeof window !== 'undefined') {
+        // Already handled by browser global above
+    } else {
+        // Fallback for other environments
+        var root = typeof global !== 'undefined' ? global : window || {};
+        root.CentralizedLogger = CentralizedLogger;
+    }
+} catch (e) {
+    // Silent catch for environments where exports/define might not be available
+    if (typeof console !== 'undefined' && console.warn) {
+        console.warn('CentralizedLogger export failed:', e);
+    }
+}
+
+// ES Module export only if in module context
+if (typeof window === 'undefined' && typeof exports !== 'undefined') {
+    // Node.js environment
+    try {
+        exports.CentralizedLogger = CentralizedLogger;
+    } catch (e) {
+        // Silent catch
+    }
+}

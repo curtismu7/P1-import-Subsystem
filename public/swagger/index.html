@@ -1,1 +1,1202 @@
-<!DOCTYPE html><html><head><title>PingOne API Docs</title></head><body><div id="swagger-ui"></div><script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script><script>window.onload=function(){SwaggerUIBundle({url:"/swagger.json",dom_id:"#swagger-ui",deepLinking:true,presets:[SwaggerUIBundle.presets.apis,SwaggerUIStandalonePreset],plugins:[SwaggerUIBundle.plugins.DownloadUrl],layout:"StandaloneLayout"});};</script></body></html>
+<!--
+  Swagger API Tool - Professional API Documentation Interface
+  ----------------------------------------------------------
+  Enhanced Swagger interface with comprehensive token management and high-contrast design.
+  
+  Key Features:
+  - Professional "Swagger API Tool" branding
+  - High-contrast, accessible color scheme
+  - Secure PingOne worker token retrieval and status display
+  - Integration with AuthManagementSubsystem and TokenManager
+  - Real-time token validation and expiration tracking
+  - Enhanced UX with modern design patterns
+  - HTTPS-secured API communication
+  - Comprehensive error handling and user feedback
+  
+  Architecture:
+  - Uses subsystem architecture for authentication and settings
+  - Event-driven coordination via EventBus patterns
+  - ES module patterns with secure credential handling
+  - Professional UI aligned with Ping Identity design system
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swagger API Tool - PingOne Import Tool</title>
+  
+  <!-- Swagger UI Styles -->
+  <link rel="stylesheet" type="text/css" href="/swagger/swagger-ui.css" />
+  <link rel="icon" href="/favicon.ico" />
+  
+  <!-- Modern Application Styles -->
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/ping-identity.css">
+  <link rel="stylesheet" href="../css/swagger-custom.css">
+  <style>
+    /* High-Contrast Light Theme Swagger API Tool Styles */
+    body { 
+      margin: 0; 
+      background: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #000000;
+      line-height: 1.6;
+    }
+    
+    /* Override Swagger UI dark theme */
+    .swagger-ui {
+      background: #ffffff !important;
+      color: #000000 !important;
+    }
+    
+    .swagger-ui .scheme-container {
+      background: #f8f9fa !important;
+      border: 2px solid #dee2e6 !important;
+    }
+    
+    .swagger-ui .opblock {
+      background: #ffffff !important;
+      border: 2px solid #dee2e6 !important;
+      color: #000000 !important;
+    }
+    
+    .swagger-ui .opblock .opblock-summary {
+      background: #f8f9fa !important;
+      color: #000000 !important;
+    }
+    
+    .swagger-ui .opblock.opblock-post {
+      border-color: #28a745 !important;
+    }
+    
+    .swagger-ui .opblock.opblock-post .opblock-summary {
+      border-color: #28a745 !important;
+      background: #d4edda !important;
+    }
+    
+    .swagger-ui .opblock.opblock-get {
+      border-color: #007bff !important;
+    }
+    
+    .swagger-ui .opblock.opblock-get .opblock-summary {
+      border-color: #007bff !important;
+      background: #d1ecf1 !important;
+    }
+    
+    .swagger-ui .opblock.opblock-put {
+      border-color: #fd7e14 !important;
+    }
+    
+    .swagger-ui .opblock.opblock-put .opblock-summary {
+      border-color: #fd7e14 !important;
+      background: #ffeaa7 !important;
+    }
+    
+    .swagger-ui .opblock.opblock-delete {
+      border-color: #dc3545 !important;
+    }
+    
+    .swagger-ui .opblock.opblock-delete .opblock-summary {
+      border-color: #dc3545 !important;
+      background: #f8d7da !important;
+    }
+    
+    .swagger-ui .parameters-col_description p,
+    .swagger-ui .parameters-col_name .parameter__name,
+    .swagger-ui .parameter__type {
+      color: #000000 !important;
+    }
+    
+    .swagger-ui .model {
+      background: #f8f9fa !important;
+      color: #000000 !important;
+    }
+    
+    .swagger-ui .model-title {
+      color: #000000 !important;
+    }
+    
+    .swagger-ui .prop-type {
+      color: #007bff !important;
+    }
+    
+    .swagger-ui .prop-format {
+      color: #6c757d !important;
+    }
+    
+    #swagger-ui { 
+      max-width: 1200px; 
+      margin: 0 auto; 
+      padding: 20px;
+      background: #ffffff;
+      border: 2px solid #dee2e6;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      margin-top: 20px;
+      margin-bottom: 20px;
+    }
+    
+    /* Professional Header Styles - High Contrast */
+    .swagger-header {
+      background: #f8f9fa;
+      color: #212529;
+      padding: 24px;
+      border-radius: 8px 8px 0 0;
+      margin: -20px -20px 20px -20px;
+      text-align: center;
+      border-bottom: 3px solid #007bff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .swagger-header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 700;
+      color: #212529;
+    }
+    
+    .swagger-header p {
+      margin: 8px 0 0 0;
+      color: #6c757d;
+      font-size: 16px;
+      font-weight: 400;
+    }
+    
+    /* Token Management Panel Styles */
+    .token-management-panel {
+      background: #f8f9fa;
+      border: 2px solid #dee2e6;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .token-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    
+    .token-panel-header h3 {
+      margin: 0;
+      color: #212529;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .token-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      padding: 8px 16px;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .btn-primary {
+      background: #007bff;
+      color: #ffffff;
+      border-color: #007bff;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      background: #0056b3;
+      border-color: #0056b3;
+      transform: translateY(-1px);
+    }
+    
+    .btn-secondary {
+      background: #6c757d;
+      color: #ffffff;
+      border-color: #6c757d;
+    }
+    
+    .btn-secondary:hover:not(:disabled) {
+      background: #545b62;
+      border-color: #545b62;
+      transform: translateY(-1px);
+    }
+    
+    .btn-danger {
+      background: #dc3545;
+      color: #ffffff;
+      border-color: #dc3545;
+    }
+    
+    .btn-danger:hover:not(:disabled) {
+      background: #c82333;
+      border-color: #c82333;
+      transform: translateY(-1px);
+    }
+    
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .token-status-display {
+      background: #ffffff;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    
+    .token-status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .token-status-row:last-child {
+      margin-bottom: 0;
+    }
+    
+    .token-label {
+      font-weight: 600;
+      color: #495057;
+      font-size: 14px;
+    }
+    
+    .token-status-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .status-valid {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .status-expired {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .status-error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .status-unknown {
+      background: #e2e3e5;
+      color: #383d41;
+      border: 1px solid #d6d8db;
+    }
+    
+    .token-expiry-time, .token-remaining-time {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #6c757d;
+      font-weight: 500;
+    }
+    
+    .token-error-display {
+      background: #f8d7da;
+      border: 2px solid #f5c6cb;
+      border-radius: 6px;
+      padding: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    
+    .error-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    
+    .error-message {
+      flex: 1;
+      color: #721c24;
+      font-size: 14px;
+    }
+    
+    /* Enhanced Population Selector - High Contrast */
+    .population-selector {
+      background: #ffffff;
+      border: 2px solid #dee2e6;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+    }
+    
+    .population-selector:hover {
+      border-color: #007bff;
+      box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+    }
+    
+    .population-selector h3 {
+      margin: 0 0 12px 0;
+      color: #212529;
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .population-selector select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #dee2e6;
+      border-radius: 6px;
+      font-size: 16px;
+      background: #ffffff;
+      color: #212529;
+      transition: all 0.3s ease;
+      font-weight: 500;
+    }
+    
+    .population-selector select:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+      background: #ffffff;
+    }
+    
+    .population-info {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #6c757d;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+    }
+    
+    .loading-populations {
+      color: #007bff;
+      font-style: italic;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+    
+    .error-populations {
+      color: #dc3545;
+      font-size: 14px;
+      font-weight: 600;
+      background: #f8d7da;
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: 1px solid #f5c6cb;
+    }
+    
+    /* Status Indicators - High Contrast */
+    .status-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+      animation: pulse 2s infinite;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .status-success { background-color: #28a745; }
+    .status-warning { background-color: #ffc107; }
+    .status-error { background-color: #dc3545; }
+    .status-info { background-color: #17a2b8; }
+    
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    
+    /* Loading Spinner */
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      #swagger-ui {
+        margin: 10px;
+        padding: 15px;
+      }
+      
+      .swagger-header {
+        margin: -15px -15px 15px -15px;
+        padding: 20px;
+      }
+      
+      .swagger-header h1 {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Professional Swagger API Tool Header -->
+  <div class="swagger-header">
+    <div style="position: relative;">
+      <div class="swagger-version-widget" style="text-align: center; margin-bottom: 10px; background-color: red; color: black; padding: 5px 10px; border-radius: 5px; font-family: monospace; font-size: 14px; font-weight: bold; display: inline-block;">v6.4</div>
+      <h1>📚 Swagger API Tool</h1>
+      <p>Professional API documentation and testing interface for PingOne Import Tool</p>
+    </div>
+  </div>
+
+  <!-- Secure Token Management Panel -->
+  <div class="token-management-panel">
+    <div class="token-panel-header">
+      <h3>🔐 PingOne Worker Token Management</h3>
+      <div class="token-actions">
+        <button id="retrieve-token-btn" class="btn btn-primary">Retrieve Token</button>
+        <button id="refresh-token-btn" class="btn btn-secondary" disabled>Refresh Token</button>
+        <button id="clear-token-btn" class="btn btn-danger" disabled>Clear Token</button>
+      </div>
+    </div>
+    
+    <div class="token-status-display">
+      <div class="token-status-row">
+        <span class="token-label">Status:</span>
+        <span id="token-status" class="token-status-badge status-unknown">Unknown</span>
+      </div>
+      <div class="token-status-row">
+        <span class="token-label">Expires:</span>
+        <span id="token-expiry" class="token-expiry-time">Not available</span>
+      </div>
+      <div class="token-status-row">
+        <span class="token-label">Time Remaining:</span>
+        <span id="token-remaining" class="token-remaining-time">Not available</span>
+      </div>
+    </div>
+    
+    <div id="token-error-display" class="token-error-display" style="display: none;">
+      <div class="error-icon">⚠️</div>
+      <div class="error-message">
+        <strong>Token Error:</strong>
+        <span id="token-error-message">No error</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enhanced Population Selector -->
+  <div class="population-selector" id="population-selector-container">
+    <h3>
+      <span>👥</span>
+      <span>Population Selection</span>
+      <span class="status-indicator status-info" id="population-status-indicator"></span>
+    </h3>
+    <label for="population-selector" id="population-selector-label" style="font-size: 14px; font-weight: 500; display: block; margin-bottom: 8px; color: #6c757d;">
+      Select a population for API operations <span style="color: #dc3545; font-weight: 600;">(Required)</span>
+    </label>
+    <select id="population-selector">
+      <option value="">🔄 Loading populations from subsystem...</option>
+    </select>
+    <div class="population-info">
+      <span id="population-status" class="loading-populations">
+        <div class="loading-spinner"></div>
+        <span>Loading populations via PopulationSubsystem...</span>
+      </span>
+      <span id="selected-population-details" style="display:none;"></span>
+    </div>
+  </div>
+  
+  <!-- Swagger UI Container -->
+  <div id="swagger-ui"></div>
+  
+  <!-- Modern JavaScript with Subsystem Integration -->
+  <script src="/swagger/swagger-ui-bundle.js"></script>
+  <script src="/swagger/swagger-ui-standalone-preset.js"></script>
+  <script src="/swagger/swagger-initializer.js"></script>
+  <script>
+    /**
+     * Modern Swagger UI Integration with Subsystem Architecture
+     * This script enhances the base swagger-initializer.js with additional
+     * population management and legacy compatibility features.
+     */
+    
+    // Modern subsystem integration variables
+    let selectedPopulationId = null;
+    let populations = [];
+    let subsystemsReady = false;
+    
+    // Token management variables
+    let currentToken = null;
+    let tokenExpiryTime = null;
+    let tokenUpdateInterval = null;
+    let tokenStatusElements = {
+      status: document.getElementById('token-status'),
+      expiry: document.getElementById('token-expiry'),
+      remaining: document.getElementById('token-remaining'),
+      errorDisplay: document.getElementById('token-error-display'),
+      errorMessage: document.getElementById('token-error-message')
+    };
+
+    /**
+     * Secure Token Management Functions
+     */
+    
+    /**
+     * Retrieve PingOne worker token using secure HTTPS communication
+     */
+    async function retrieveWorkerToken() {
+      const retrieveBtn = document.getElementById('retrieve-token-btn');
+      const refreshBtn = document.getElementById('refresh-token-btn');
+      const clearBtn = document.getElementById('clear-token-btn');
+      
+      try {
+        // Update UI to show loading state
+        retrieveBtn.disabled = true;
+        retrieveBtn.textContent = '🔄 Retrieving...';
+        hideTokenError();
+        
+        console.log('🔐 Retrieving PingOne worker token...');
+        
+        // Make secure HTTPS request to refresh token endpoint (existing subsystem)
+        const response = await fetch('/api/pingone/get-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+          throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const tokenData = await response.json();
+        
+        if (!tokenData.success || !tokenData.access_token) {
+          throw new Error(tokenData.error || 'Invalid token response');
+        }
+        
+        // Store token data securely
+        currentToken = tokenData.access_token;
+        // Calculate expiry time from expires_in (seconds)
+        const expiresInMs = (tokenData.expires_in || 3600) * 1000;
+        tokenExpiryTime = new Date(Date.now() + expiresInMs);
+        
+        // Update UI with success state
+        updateTokenStatus('valid');
+        updateTokenExpiry(tokenExpiryTime);
+        
+        // Enable refresh and clear buttons
+        refreshBtn.disabled = false;
+        clearBtn.disabled = false;
+        
+        // Start token monitoring
+        startTokenMonitoring();
+        
+        console.log('✅ Worker token retrieved successfully');
+        
+        // Dispatch event for Swagger UI integration
+        window.dispatchEvent(new CustomEvent('worker-token-updated', {
+          detail: { token: currentToken, expiresAt: tokenExpiryTime }
+        }));
+        
+      } catch (error) {
+        console.error('❌ Failed to retrieve worker token:', error);
+        showTokenError(error.message);
+        updateTokenStatus('error');
+        
+        // Reset token state
+        currentToken = null;
+        tokenExpiryTime = null;
+        refreshBtn.disabled = true;
+        clearBtn.disabled = true;
+        
+      } finally {
+        // Reset retrieve button
+        retrieveBtn.disabled = false;
+        retrieveBtn.textContent = 'Retrieve Token';
+      }
+    }
+    
+    /**
+     * Refresh existing worker token
+     */
+    async function refreshWorkerToken() {
+      if (!currentToken) {
+        showTokenError('No token to refresh. Please retrieve a new token.');
+        return;
+      }
+      
+      const refreshBtn = document.getElementById('refresh-token-btn');
+      
+      try {
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = '🔄 Refreshing...';
+        hideTokenError();
+        
+        console.log('🔄 Refreshing worker token...');
+        
+        const response = await fetch('/api/pingone/get-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+          throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const tokenData = await response.json();
+        
+        if (!tokenData.success || !tokenData.access_token) {
+          throw new Error(tokenData.error || 'Invalid refresh response');
+        }
+        
+        // Update token data
+        currentToken = tokenData.access_token;
+        // Calculate expiry time from expires_in (seconds)
+        const expiresInMs = (tokenData.expires_in || 3600) * 1000;
+        tokenExpiryTime = new Date(Date.now() + expiresInMs);
+        
+        // Update UI
+        updateTokenStatus('valid');
+        updateTokenExpiry(tokenExpiryTime);
+        
+        console.log('✅ Worker token refreshed successfully');
+        
+        // Dispatch event for Swagger UI integration
+        window.dispatchEvent(new CustomEvent('worker-token-updated', {
+          detail: { token: currentToken, expiresAt: tokenExpiryTime }
+        }));
+        
+      } catch (error) {
+        console.error('❌ Failed to refresh worker token:', error);
+        showTokenError(error.message);
+        updateTokenStatus('error');
+        
+      } finally {
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = 'Refresh Token';
+      }
+    }
+    
+    /**
+     * Clear current worker token
+     */
+    async function clearWorkerToken() {
+      console.log('🗑️ Clearing worker token...');
+      
+      try {
+        // Call the clear credentials endpoint
+        const response = await fetch('/api/auth/clear-credentials', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+          throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        console.log('✅ Server credentials cleared');
+      } catch (error) {
+        console.warn('⚠️ Could not clear server credentials:', error.message);
+        // Continue with client-side cleanup even if server clear fails
+      }
+      
+      // Clear token data
+      currentToken = null;
+      tokenExpiryTime = null;
+      
+      // Stop monitoring
+      stopTokenMonitoring();
+      
+      // Update UI
+      updateTokenStatus('unknown');
+      tokenStatusElements.expiry.textContent = 'Not available';
+      tokenStatusElements.remaining.textContent = 'Not available';
+      hideTokenError();
+      
+      // Disable buttons
+      document.getElementById('refresh-token-btn').disabled = true;
+      document.getElementById('clear-token-btn').disabled = true;
+      
+      console.log('✅ Worker token cleared');
+      
+      // Dispatch event for Swagger UI integration
+      window.dispatchEvent(new CustomEvent('worker-token-cleared'));
+    }
+    
+    /**
+     * Update token status display
+     */
+    function updateTokenStatus(status) {
+      const statusElement = tokenStatusElements.status;
+      
+      // Remove existing status classes
+      statusElement.classList.remove('status-valid', 'status-expired', 'status-error', 'status-unknown');
+      
+      // Add new status class and update text
+      switch (status) {
+        case 'valid':
+          statusElement.classList.add('status-valid');
+          statusElement.textContent = 'Valid';
+          break;
+        case 'expired':
+          statusElement.classList.add('status-expired');
+          statusElement.textContent = 'Expired';
+          break;
+        case 'error':
+          statusElement.classList.add('status-error');
+          statusElement.textContent = 'Error';
+          break;
+        default:
+          statusElement.classList.add('status-unknown');
+          statusElement.textContent = 'Unknown';
+      }
+    }
+    
+    /**
+     * Update token expiry display
+     */
+    function updateTokenExpiry(expiryTime) {
+      if (!expiryTime) {
+        tokenStatusElements.expiry.textContent = 'Not available';
+        return;
+      }
+      
+      const formattedTime = expiryTime.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+      
+      tokenStatusElements.expiry.textContent = formattedTime;
+    }
+    
+    /**
+     * Update remaining time display
+     */
+    function updateRemainingTime() {
+      if (!tokenExpiryTime) {
+        tokenStatusElements.remaining.textContent = 'Not available';
+        return;
+      }
+      
+      const now = new Date();
+      const remaining = tokenExpiryTime.getTime() - now.getTime();
+      
+      if (remaining <= 0) {
+        tokenStatusElements.remaining.textContent = 'Expired';
+        updateTokenStatus('expired');
+        document.getElementById('refresh-token-btn').disabled = true;
+        return;
+      }
+      
+      // Convert to human-readable format
+      const hours = Math.floor(remaining / (1000 * 60 * 60));
+      const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+      
+      let timeString = '';
+      if (hours > 0) timeString += `${hours}h `;
+      if (minutes > 0) timeString += `${minutes}m `;
+      timeString += `${seconds}s`;
+      
+      tokenStatusElements.remaining.textContent = timeString;
+      
+      // Warn if token expires soon (less than 5 minutes)
+      if (remaining < 5 * 60 * 1000) {
+        tokenStatusElements.remaining.style.color = '#dc3545';
+        tokenStatusElements.remaining.style.fontWeight = '700';
+      } else {
+        tokenStatusElements.remaining.style.color = '#6c757d';
+        tokenStatusElements.remaining.style.fontWeight = '500';
+      }
+    }
+    
+    /**
+     * Start token monitoring interval
+     */
+    function startTokenMonitoring() {
+      stopTokenMonitoring(); // Clear any existing interval
+      
+      tokenUpdateInterval = setInterval(() => {
+        updateRemainingTime();
+      }, 1000); // Update every second
+    }
+    
+    /**
+     * Stop token monitoring interval
+     */
+    function stopTokenMonitoring() {
+      if (tokenUpdateInterval) {
+        clearInterval(tokenUpdateInterval);
+        tokenUpdateInterval = null;
+      }
+    }
+    
+    /**
+     * Show token error message
+     */
+    function showTokenError(message) {
+      tokenStatusElements.errorMessage.textContent = message;
+      tokenStatusElements.errorDisplay.style.display = 'flex';
+    }
+    
+    /**
+     * Hide token error message
+     */
+    function hideTokenError() {
+      tokenStatusElements.errorDisplay.style.display = 'none';
+    }
+    
+    /**
+     * Enhanced population loading using subsystem APIs
+     */
+    async function loadPopulationsFromSubsystem() {
+      const statusEl = document.getElementById('population-status');
+      const selectorEl = document.getElementById('population-selector');
+      const indicatorEl = document.getElementById('population-status-indicator');
+      
+      try {
+        console.log('🔄 Loading populations from PopulationSubsystem');
+        
+        // Update UI to show loading state
+        statusEl.innerHTML = `
+          <div class="loading-spinner"></div>
+          <span>Loading populations via PopulationSubsystem...</span>
+        `;
+        indicatorEl.className = 'status-indicator status-info';
+        
+        // Load populations from subsystem API
+        const response = await fetch('/api/populations');
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load populations: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && Array.isArray(data.populations)) {
+          populations = data.populations;
+          
+          // Update selector with populations
+          selectorEl.innerHTML = '<option value="">🎯 Select a population...</option>';
+          
+          populations.forEach(pop => {
+            const option = document.createElement('option');
+            option.value = pop.id;
+            option.textContent = `${pop.name} (${pop.id})`;
+            selectorEl.appendChild(option);
+          });
+          
+          // Update status
+          statusEl.innerHTML = `
+            <span class="status-indicator status-success"></span>
+            <span>✅ Loaded ${populations.length} populations from subsystem</span>
+          `;
+          indicatorEl.className = 'status-indicator status-success';
+          
+          console.log(`✅ Loaded ${populations.length} populations from subsystem`);
+          
+        } else {
+          throw new Error('Invalid populations response from subsystem');
+        }
+        
+      } catch (error) {
+        console.error('❌ Failed to load populations from subsystem:', error);
+        
+        // Update UI to show error state
+        statusEl.innerHTML = `
+          <span class="status-indicator status-error"></span>
+          <span class="error-populations">❌ Failed to load populations: ${error.message}</span>
+        `;
+        indicatorEl.className = 'status-indicator status-error';
+        
+        // Set fallback option
+        selectorEl.innerHTML = '<option value="">❌ Failed to load populations</option>';
+      }
+    }
+
+    /**
+     * Handle population selection with enhanced UI feedback
+     */
+    function handlePopulationSelection() {
+      const selectorEl = document.getElementById('population-selector');
+      const detailsEl = document.getElementById('selected-population-details');
+      const labelEl = document.getElementById('population-selector-label');
+      
+      selectedPopulationId = selectorEl.value;
+      
+      if (selectedPopulationId) {
+        const selectedPop = populations.find(p => p.id === selectedPopulationId);
+        
+        if (selectedPop) {
+          // Show selection details
+          detailsEl.style.display = 'block';
+          detailsEl.innerHTML = `
+            <span class="status-indicator status-success"></span>
+            <strong>Selected:</strong> ${selectedPop.name} 
+            <span style="color: #6c757d;">(ID: ${selectedPop.id})</span>
+          `;
+          
+          // Reset selector styling
+          selectorEl.style.border = '2px solid #28a745';
+          selectorEl.style.background = 'white';
+          labelEl.style.color = '#28a745';
+          
+          console.log('✅ Population selected:', selectedPop);
+          
+          // Dispatch event for subsystem integration
+          window.dispatchEvent(new CustomEvent('population-selected', {
+            detail: { population: selectedPop }
+          }));
+        }
+      } else {
+        // Clear selection
+        detailsEl.style.display = 'none';
+        selectorEl.style.border = '2px solid #e1e5e9';
+        selectorEl.style.background = 'white';
+        labelEl.style.color = '#6c757d';
+        
+        console.log('Population selection cleared');
+        
+        // Dispatch event for subsystem integration
+        window.dispatchEvent(new CustomEvent('population-cleared'));
+      }
+    }
+
+    /**
+     * Initialize Swagger API Tool with comprehensive token management
+     */
+    async function initializeSwaggerAPITool() {
+      try {
+        console.log('🚀 Initializing Swagger API Tool with Token Management');
+        
+        // Initialize token management UI
+        initializeTokenManagement();
+        
+        // Load populations from subsystem
+        await loadPopulationsFromSubsystem();
+        
+        // Setup population selector event handler
+        const selectorEl = document.getElementById('population-selector');
+        if (selectorEl) {
+          selectorEl.addEventListener('change', handlePopulationSelection);
+        }
+        
+        // Setup event listeners for subsystem integration
+        window.addEventListener('auth-token-updated', (event) => {
+          console.log('🔐 Auth token updated from subsystem event');
+        });
+        
+        window.addEventListener('settings-updated', (event) => {
+          console.log('⚙️ Settings updated from subsystem event');
+        });
+        
+        // Setup Swagger UI token integration
+        window.addEventListener('worker-token-updated', (event) => {
+          console.log('🔐 Worker token updated for Swagger UI integration');
+          // Integrate token with Swagger UI if available
+          if (window.ui && window.ui.preauthorizeApiKey) {
+            window.ui.preauthorizeApiKey('BearerAuth', event.detail.token);
+          }
+        });
+        
+        window.addEventListener('worker-token-cleared', () => {
+          console.log('🗑️ Worker token cleared from Swagger UI');
+          // Clear token from Swagger UI if available
+          if (window.ui && window.ui.preauthorizeApiKey) {
+            window.ui.preauthorizeApiKey('BearerAuth', null);
+          }
+        });
+        
+        // Mark subsystems as ready
+        subsystemsReady = true;
+        
+        console.log('✅ Swagger API Tool initialization complete');
+        
+      } catch (error) {
+        console.error('❌ Failed to initialize Swagger API Tool:', error);
+      }
+    }
+    
+    /**
+     * Initialize token management event handlers
+     */
+    function initializeTokenManagement() {
+      console.log('🔐 Initializing token management...');
+      
+      // Setup button event handlers
+      const retrieveBtn = document.getElementById('retrieve-token-btn');
+      const refreshBtn = document.getElementById('refresh-token-btn');
+      const clearBtn = document.getElementById('clear-token-btn');
+      
+      if (retrieveBtn) {
+        retrieveBtn.addEventListener('click', retrieveWorkerToken);
+      }
+      
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', refreshWorkerToken);
+      }
+      
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (confirm('Are you sure you want to clear the current worker token?')) {
+            clearWorkerToken();
+          }
+        });
+      }
+      
+      // Initialize token status elements after DOM is ready
+      setTimeout(() => {
+        tokenStatusElements = {
+          status: document.getElementById('token-status'),
+          expiry: document.getElementById('token-expiry'),
+          remaining: document.getElementById('token-remaining'),
+          errorDisplay: document.getElementById('token-error-display'),
+          errorMessage: document.getElementById('token-error-message')
+        };
+        
+        // Check for any existing token on page load
+        checkExistingToken();
+      }, 100);
+      
+      console.log('✅ Token management initialized');
+    }
+    
+    /**
+     * Check for existing token on page load
+     */
+    async function checkExistingToken() {
+      try {
+        console.log('🔍 Checking for existing worker token...');
+        
+        const response = await fetch('/api/auth/token-info', {
+          method: 'GET',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'same-origin'
+        });
+        
+        if (response.ok) {
+          const tokenData = await response.json();
+          
+          if (tokenData.success && tokenData.tokenInfo && tokenData.tokenInfo.expiresAt) {
+            const expiryTime = new Date(tokenData.tokenInfo.expiresAt);
+            
+            if (expiryTime > new Date()) {
+              // Token is still valid
+              currentToken = 'existing'; // Don't store actual token for security
+              tokenExpiryTime = expiryTime;
+              
+              updateTokenStatus('valid');
+              updateTokenExpiry(tokenExpiryTime);
+              
+              // Enable refresh and clear buttons
+              document.getElementById('refresh-token-btn').disabled = false;
+              document.getElementById('clear-token-btn').disabled = false;
+              
+              // Start monitoring
+              startTokenMonitoring();
+              
+              console.log('✅ Found existing valid token');
+            } else {
+              console.log('⚠️ Found expired token');
+              updateTokenStatus('expired');
+            }
+          } else {
+            console.log('ℹ️ No existing token found');
+          }
+        }
+      } catch (error) {
+        console.log('ℹ️ Could not check existing token:', error.message);
+      }
+    }
+    
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeSwaggerAPITool);
+    } else {
+      initializeSwaggerAPITool();
+    }
+    
+    // Note: The main Swagger UI initialization is handled by swagger-initializer.js
+    // This script provides comprehensive token management and enhanced population features
+    
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      stopTokenMonitoring();
+    });
+    
+    // Handle visibility changes to pause/resume monitoring
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        stopTokenMonitoring();
+      } else if (currentToken && tokenExpiryTime) {
+        startTokenMonitoring();
+      }
+    });
+  </script>
+  
+  <!-- Footer -->
+  <footer class="app-footer" style="text-align: center; padding: 20px; color: #6c757d; font-size: 14px;">
+    <div class="footer-content">
+      <div class="footer-logo" style="margin-bottom: 10px;">
+        <img src="/ping-identity-logo.svg" alt="Ping Identity Logo" height="28" width="auto" loading="lazy" />
+      </div>
+      <div class="footer-text">
+        <span>&copy; 2025 Ping Identity. All rights reserved.</span>
+        <br>
+        <span style="font-size: 12px; opacity: 0.8;">🚀 Powered by Modern Subsystem Architecture</span>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

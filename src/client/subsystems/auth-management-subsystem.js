@@ -151,9 +151,17 @@ export class AuthManagementSubsystem {
             if (!response.success) {
                 throw new Error(response.error || 'Connection test failed');
             }
+            
+            // Format success message with token information
+            let successMessage = response.message || 'Success - Token minted';
+            if (response.token && response.token.timeLeft) {
+                successMessage += ` - Time left: ${response.token.timeLeft}`;
+            }
+            
             // Update UI
-            this.updateConnectionStatusUI(true, 'Connection successful');
-            this.uiManager.showSuccess('Connection test successful');
+            this.updateConnectionStatusUI(true, successMessage);
+            this.uiManager.showSuccess(successMessage);
+            
             this.logger.info('Connection test successful');
         } catch (error) {
             this.logger.error('Connection test failed', error);

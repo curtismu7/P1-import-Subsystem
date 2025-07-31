@@ -14,16 +14,11 @@
     // Load order is critical - security and error handling first
     // Only load files that don't contain ES module exports to avoid syntax errors
     const modules = [
+        'error-fix.js',
         'modules/security-utils.js',
         'modules/global-error-handler.js',
+        'modules/resource-manager.js',
         'modules/safe-api.js'
-        // Removed modules that contain ES exports:
-        // - modules/resource-manager.js (likely has exports)
-        // - utils/centralized-logger.js (likely has exports)
-        // - utils/safe-dom.js (likely has exports)
-        // - utils/error-handler.js (likely has exports)
-        // - utils/config-constants.js (likely has exports)
-        // - utils/event-manager.js (likely has exports)
     ];
     
     let loadedCount = 0;
@@ -32,7 +27,7 @@
     function loadModule(modulePath) {
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = `/js/modules/${modulePath}`;
+            script.src = `/js/${modulePath}`;
             script.async = false; // Maintain load order
             
             script.onload = () => {

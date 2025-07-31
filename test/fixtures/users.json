@@ -1,0 +1,12 @@
+[
+  {
+    "id": "user1",
+    "username": "testuser1@example.com",
+    "status": "ENABLED"
+  },
+  {
+    "id": "user2",
+    "username": "testuser2@example.com",
+    "status": "ENABLED"
+  }
+]

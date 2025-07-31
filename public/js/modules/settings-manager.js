@@ -116,6 +116,54 @@ class SettingsManager {
     }
     
     /**
+     * Normalize field names to support both camelCase and kebab-case formats
+     * @param {Object} settings - Settings object to normalize
+     * @returns {Object} Normalized settings
+     */
+    normalizeSettingsFields(settings) {
+        if (!settings || typeof settings !== 'object') {
+            return settings;
+        }
+        
+        const normalized = { ...settings };
+        
+        // Map kebab-case to camelCase for compatibility
+        const fieldMappings = {
+            'environment-id': 'environmentId',
+            'api-client-id': 'apiClientId',
+            'client-id': 'apiClientId',  // Alternative mapping
+            'api-secret': 'apiSecret',
+            'client-secret': 'apiSecret',  // Alternative mapping
+            'population-id': 'populationId',
+            'rate-limit': 'rateLimit'
+        };
+        
+        // Convert kebab-case fields to camelCase
+        for (const [kebabKey, camelKey] of Object.entries(fieldMappings)) {
+            if (kebabKey in normalized) {
+                normalized[camelKey] = normalized[kebabKey];
+                delete normalized[kebabKey];
+                this.logger.debug(`Normalized field: ${kebabKey} -> ${camelKey}`);
+            }
+        }
+        
+        // Also handle alternative camelCase variations
+        if (normalized.clientId && !normalized.apiClientId) {
+            normalized.apiClientId = normalized.clientId;
+            delete normalized.clientId;
+            this.logger.debug('Normalized field: clientId -> apiClientId');
+        }
+        
+        if (normalized.clientSecret && !normalized.apiSecret) {
+            normalized.apiSecret = normalized.clientSecret;
+            delete normalized.clientSecret;
+            this.logger.debug('Normalized field: clientSecret -> apiSecret');
+        }
+        
+        return normalized;
+    }
+
+    /**
      * Load settings from storage
      * @returns {Promise<Object>} Loaded settings
      */
@@ -129,8 +177,9 @@ class SettingsManager {
             
             // Try to parse as JSON first (unencrypted)
             try {
-                const parsedSettings = JSON.parse(storedData);
-                this.settings = { ...this.getDefaultSettings(), ...parsedSettings };
+                const rawSettings = JSON.parse(storedData);
+                const normalizedSettings = this.normalizeSettingsFields(rawSettings);
+                this.settings = { ...this.getDefaultSettings(), ...normalizedSettings };
                 
                 this.logger.info('Settings loaded successfully (unencrypted)', {
                     hasEnvironmentId: !!this.settings.environmentId,
@@ -148,10 +197,11 @@ class SettingsManager {
                 
                 try {
                     const decryptedData = await CryptoUtils.decrypt(storedData, this.encryptionKey);
-                    const parsedSettings = JSON.parse(decryptedData);
+                    const rawSettings = JSON.parse(decryptedData);
+                    const normalizedSettings = this.normalizeSettingsFields(rawSettings);
                     
                     // Merge with defaults to ensure all properties exist
-                    this.settings = { ...this.getDefaultSettings(), ...parsedSettings };
+                    this.settings = { ...this.getDefaultSettings(), ...normalizedSettings };
                     
                     this.logger.info('Settings loaded successfully (encrypted)', {
                         hasEnvironmentId: !!this.settings.environmentId,

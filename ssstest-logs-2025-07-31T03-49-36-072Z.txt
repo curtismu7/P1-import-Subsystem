@@ -1,0 +1,248 @@
+[8:52:30 PM] All tests cleared and reset to initial state
+[8:52:31 PM] Starting 60 tests...
+[8:52:31 PM] Running test: View Switching
+[8:52:32 PM] Test View Switching passed in 1.10s
+[8:52:32 PM] Running test: Navigation History
+[8:52:33 PM] Test Navigation History passed in 0.87s
+[8:52:33 PM] Running test: Show/Hide Views
+[8:52:34 PM] Test Show/Hide Views passed in 0.54s
+[8:52:34 PM] Running test: Login Process
+[8:52:35 PM] Test Login Process passed in 0.54s
+[8:52:35 PM] Running test: Token Refresh
+[8:52:36 PM] Test Token Refresh failed in 1.12s
+[8:52:36 PM] Running test: Establish Connection
+[8:52:37 PM] Test Establish Connection passed in 0.69s
+[8:52:37 PM] Running test: Reconnection
+[8:52:38 PM] Test Reconnection passed in 1.19s
+[8:52:38 PM] Running test: Import Operation
+[8:52:39 PM] Test Import Operation passed in 0.67s
+[8:52:39 PM] Running test: Export Operation
+[8:52:40 PM] Test Export Operation passed in 1.19s
+[8:52:40 PM] Running test: Cancel Operation
+[8:52:41 PM] Test Cancel Operation passed in 0.85s
+[8:52:41 PM] Running test: WebSocket Communication
+[8:52:42 PM] Test WebSocket Communication passed in 1.24s
+[8:52:42 PM] Running test: Socket.IO Communication
+[8:52:43 PM] Test Socket.IO Communication passed in 0.72s
+[8:52:43 PM] Running test: File and Population Selection
+[8:52:44 PM] Test File and Population Selection passed in 1.31s
+[8:52:45 PM] Running test: Start and Cancel Import
+[8:52:45 PM] Test Start and Cancel Import passed in 0.69s
+[8:52:45 PM] Running test: Population Selection
+[8:52:46 PM] Test Population Selection passed in 0.91s
+[8:52:46 PM] Running test: Start and Cancel Export
+[8:52:48 PM] Test Start and Cancel Export passed in 1.45s
+[8:52:48 PM] Running test: Request Configuration
+[8:52:49 PM] Test Request Configuration passed in 1.09s
+[8:52:49 PM] Running test: Request Execution
+[8:52:50 PM] Test Request Execution passed in 1.28s
+[8:52:51 PM] Running test: Error Handling
+[8:52:52 PM] Test Error Handling passed in 0.99s
+[8:52:52 PM] Running test: PingOne API Integration
+[8:52:52 PM] Test PingOne API Integration passed in 0.64s
+[8:52:52 PM] Running test: Retry Logic
+[8:52:53 PM] Test Retry Logic passed in 0.89s
+[8:52:53 PM] Running test: Token Management
+[8:52:55 PM] Test Token Management passed in 1.20s
+[8:52:55 PM] Running test: Log Level Controls
+[8:52:56 PM] Test Log Level Controls passed in 1.14s
+[8:52:56 PM] Running test: Debug Logging
+[8:52:57 PM] Test Debug Logging passed in 1.16s
+[8:52:57 PM] Running test: Info Logging
+[8:52:58 PM] Test Info Logging passed in 0.79s
+[8:52:58 PM] Running test: Warning Logging
+[8:52:59 PM] Test Warning Logging passed in 0.59s
+[8:52:59 PM] Running test: Error Logging
+[8:53:00 PM] Test Error Logging passed in 1.05s
+[8:53:00 PM] Running test: Validation Error Creation
+[8:53:00 PM] Test Validation Error Creation passed in 0.56s
+[8:53:01 PM] Running test: Network Error Creation
+[8:53:01 PM] Test Network Error Creation passed in 0.69s
+[8:53:01 PM] Running test: Error History
+[8:53:02 PM] Test Error History passed in 0.97s
+[8:53:02 PM] Running test: File Input Selection
+[8:53:04 PM] Test File Input Selection passed in 1.16s
+[8:53:04 PM] Running test: CSV Processing
+[8:53:04 PM] Test CSV Processing passed in 0.71s
+[8:53:05 PM] Running test: JSON Processing
+[8:53:06 PM] Test JSON Processing passed in 1.27s
+[8:53:06 PM] Running test: File Validation
+[8:53:07 PM] Test File Validation passed in 0.87s
+[8:53:07 PM] Running test: Population Loading
+[8:53:08 PM] Test Population Loading passed in 1.12s
+[8:53:08 PM] Running test: Population Creation
+[8:53:09 PM] Test Population Creation passed in 0.58s
+[8:53:09 PM] Running test: Population Deletion
+[8:53:09 PM] Test Population Deletion passed in 0.72s
+[8:53:10 PM] Running test: Progress Start
+[8:53:10 PM] Test Progress Start passed in 0.54s
+[8:53:10 PM] Running test: Progress Update
+[8:53:11 PM] Test Progress Update passed in 0.79s
+[8:53:11 PM] Running test: Progress Completion
+[8:53:12 PM] Test Progress Completion passed in 1.02s
+[8:53:12 PM] Running test: Progress Cancellation
+[8:53:13 PM] Test Progress Cancellation passed in 0.76s
+[8:53:13 PM] Running test: Settings Form
+[8:53:14 PM] Test Settings Form passed in 0.72s
+[8:53:14 PM] Running test: Settings Reset
+[8:53:15 PM] Test Settings Reset passed in 0.92s
+[8:53:15 PM] Running test: Notifications
+[8:53:16 PM] Test Notifications passed in 1.35s
+[8:53:16 PM] Running test: Modal Dialogs
+[8:53:18 PM] Test Modal Dialogs failed in 1.19s
+[8:53:18 PM] Running test: Theme Management
+[8:53:19 PM] Test Theme Management passed in 1.01s
+[8:53:19 PM] Running test: WebSocket Connection
+[8:53:20 PM] Test WebSocket Connection passed in 1.28s
+[8:53:20 PM] Running test: WebSocket Disconnection
+[8:53:21 PM] Test WebSocket Disconnection passed in 1.01s
+[8:53:21 PM] Running test: WebSocket Messaging
+[8:53:22 PM] Test WebSocket Messaging passed in 0.89s
+[8:53:22 PM] Running test: WebSocket Fallback
+[8:53:24 PM] Test WebSocket Fallback passed in 1.45s
+[8:53:24 PM] Running test: Full Workflow
+[8:53:25 PM] Test Full Workflow passed in 0.88s
+[8:53:25 PM] Running test: Error Handling Integration
+[8:53:26 PM] Test Error Handling Integration passed in 1.16s
+[8:53:26 PM] Running test: Concurrent Operations
+[8:53:27 PM] Test Concurrent Operations passed in 1.03s
+[8:53:27 PM] Running test: Authentication
+[8:53:28 PM] Test Authentication passed in 0.79s
+[8:53:28 PM] Running test: Populations API
+[8:53:29 PM] Test Populations API passed in 0.89s
+[8:53:29 PM] Running test: Create Users
+[8:53:30 PM] Test Create Users passed in 0.97s
+[8:53:30 PM] Running test: Fetch Users
+[8:53:31 PM] Test Fetch Users passed in 1.18s
+[8:53:31 PM] Running test: Update Users
+[8:53:32 PM] Test Update Users passed in 0.73s
+[8:53:32 PM] Running test: Delete Users
+[8:53:33 PM] Test Delete Users passed in 0.57s
+[8:53:33 PM] Running test: API Error Handling
+[8:53:34 PM] Test API Error Handling passed in 0.96s
+[8:53:34 PM] Test run completed in 62.83s
+[8:53:34 PM] Results: 58 passed, 2 failed
+[10:48:05 PM] Logs exported
+[10:48:23 PM] Starting 60 tests...
+[10:48:23 PM] Running test: View Switching
+[10:48:24 PM] Test View Switching passed in 0.81s
+[10:48:24 PM] Running test: Navigation History
+[10:48:25 PM] Test Navigation History passed in 0.67s
+[10:48:25 PM] Running test: Show/Hide Views
+[10:48:25 PM] Test Show/Hide Views passed in 0.53s
+[10:48:25 PM] Running test: Login Process
+[10:48:27 PM] Test Login Process passed in 1.21s
+[10:48:27 PM] Running test: Token Refresh
+[10:48:27 PM] Test Token Refresh passed in 0.54s
+[10:48:27 PM] Running test: Establish Connection
+[10:48:28 PM] Test Establish Connection passed in 0.65s
+[10:48:28 PM] Running test: Reconnection
+[10:48:29 PM] Test Reconnection passed in 0.54s
+[10:48:29 PM] Running test: Import Operation
+[10:48:29 PM] Test Import Operation passed in 0.68s
+[10:48:30 PM] Running test: Export Operation
+[10:48:31 PM] Test Export Operation passed in 1.24s
+[10:48:31 PM] Running test: Cancel Operation
+[10:48:32 PM] Test Cancel Operation passed in 1.45s
+[10:48:32 PM] Running test: WebSocket Communication
+[10:48:33 PM] Test WebSocket Communication passed in 0.62s
+[10:48:33 PM] Running test: Socket.IO Communication
+[10:48:35 PM] Test Socket.IO Communication passed in 1.35s
+[10:48:35 PM] Running test: File and Population Selection
+[10:48:36 PM] Test File and Population Selection passed in 0.95s
+[10:48:36 PM] Running test: Start and Cancel Import
+[10:48:36 PM] Test Start and Cancel Import passed in 0.62s
+[10:48:36 PM] Running test: Population Selection
+[10:48:37 PM] Test Population Selection passed in 1.04s
+[10:48:38 PM] Running test: Start and Cancel Export
+[10:48:39 PM] Test Start and Cancel Export passed in 1.10s
+[10:48:39 PM] Running test: Request Configuration
+[10:48:40 PM] Test Request Configuration passed in 1.07s
+[10:48:40 PM] Running test: Request Execution
+[10:48:41 PM] Test Request Execution passed in 1.08s
+[10:48:41 PM] Running test: Error Handling
+[10:48:42 PM] Test Error Handling passed in 1.17s
+[10:48:42 PM] Running test: PingOne API Integration
+[10:48:44 PM] Test PingOne API Integration failed in 1.22s
+[10:48:44 PM] Running test: Retry Logic
+[10:48:45 PM] Test Retry Logic passed in 1.34s
+[10:48:45 PM] Running test: Token Management
+[10:48:46 PM] Test Token Management passed in 1.25s
+[10:48:46 PM] Running test: Log Level Controls
+[10:48:48 PM] Test Log Level Controls passed in 1.41s
+[10:48:48 PM] Running test: Debug Logging
+[10:48:49 PM] Test Debug Logging passed in 0.57s
+[10:48:49 PM] Running test: Info Logging
+[10:48:50 PM] Test Info Logging passed in 0.86s
+[10:48:50 PM] Running test: Warning Logging
+[10:48:51 PM] Test Warning Logging passed in 1.49s
+[10:48:51 PM] Running test: Error Logging
+[10:48:52 PM] Test Error Logging passed in 1.03s
+[10:48:52 PM] Running test: Validation Error Creation
+[10:48:54 PM] Test Validation Error Creation passed in 1.32s
+[10:48:54 PM] Running test: Network Error Creation
+[10:48:55 PM] Test Network Error Creation passed in 0.98s
+[10:48:55 PM] Running test: Error History
+[10:48:56 PM] Test Error History passed in 0.92s
+[10:48:56 PM] Running test: File Input Selection
+[10:48:57 PM] Test File Input Selection failed in 1.31s
+[10:48:57 PM] Running test: CSV Processing
+[10:48:59 PM] Test CSV Processing passed in 1.33s
+[10:48:59 PM] Running test: JSON Processing
+[10:49:00 PM] Test JSON Processing failed in 0.85s
+[10:49:00 PM] Running test: File Validation
+[10:49:01 PM] Test File Validation passed in 0.88s
+[10:49:01 PM] Running test: Population Loading
+[10:49:01 PM] Test Population Loading passed in 0.58s
+[10:49:01 PM] Running test: Population Creation
+[10:49:02 PM] Test Population Creation passed in 0.52s
+[10:49:02 PM] Running test: Population Deletion
+[10:49:03 PM] Test Population Deletion passed in 0.94s
+[10:49:03 PM] Running test: Progress Start
+[10:49:04 PM] Test Progress Start passed in 0.51s
+[10:49:04 PM] Running test: Progress Update
+[10:49:05 PM] Test Progress Update passed in 0.92s
+[10:49:05 PM] Running test: Progress Completion
+[10:49:06 PM] Test Progress Completion passed in 0.97s
+[10:49:06 PM] Running test: Progress Cancellation
+[10:49:06 PM] Test Progress Cancellation passed in 0.68s
+[10:49:07 PM] Running test: Settings Form
+[10:49:07 PM] Test Settings Form passed in 0.63s
+[10:49:07 PM] Running test: Settings Reset
+[10:49:08 PM] Test Settings Reset passed in 1.23s
+[10:49:09 PM] Running test: Notifications
+[10:49:09 PM] Test Notifications failed in 0.67s
+[10:49:09 PM] Running test: Modal Dialogs
+[10:49:10 PM] Test Modal Dialogs failed in 0.77s
+[10:49:10 PM] Running test: Theme Management
+[10:49:11 PM] Test Theme Management failed in 1.01s
+[10:49:11 PM] Running test: WebSocket Connection
+[10:49:13 PM] Test WebSocket Connection passed in 1.44s
+[10:49:13 PM] Running test: WebSocket Disconnection
+[10:49:14 PM] Test WebSocket Disconnection passed in 0.81s
+[10:49:14 PM] Running test: WebSocket Messaging
+[10:49:15 PM] Test WebSocket Messaging passed in 1.45s
+[10:49:15 PM] Running test: WebSocket Fallback
+[10:49:16 PM] Test WebSocket Fallback passed in 0.93s
+[10:49:16 PM] Running test: Full Workflow
+[10:49:18 PM] Test Full Workflow passed in 1.25s
+[10:49:18 PM] Running test: Error Handling Integration
+[10:49:18 PM] Test Error Handling Integration failed in 0.71s
+[10:49:19 PM] Running test: Concurrent Operations
+[10:49:19 PM] Test Concurrent Operations passed in 0.80s
+[10:49:19 PM] Running test: Authentication
+[10:49:21 PM] Test Authentication passed in 1.25s
+[10:49:21 PM] Running test: Populations API
+[10:49:22 PM] Test Populations API passed in 1.15s
+[10:49:22 PM] Running test: Create Users
+[10:49:23 PM] Test Create Users passed in 1.37s
+[10:49:24 PM] Running test: Fetch Users
+[10:49:25 PM] Test Fetch Users passed in 1.21s
+[10:49:25 PM] Running test: Update Users
+[10:49:26 PM] Test Update Users passed in 1.17s
+[10:49:26 PM] Running test: Delete Users
+[10:49:27 PM] Test Delete Users passed in 1.22s
+[10:49:27 PM] Running test: API Error Handling
+[10:49:29 PM] Test API Error Handling passed in 1.05s
+[10:49:29 PM] Test run completed in 65.54s
+[10:49:29 PM] Results: 53 passed, 7 failed
