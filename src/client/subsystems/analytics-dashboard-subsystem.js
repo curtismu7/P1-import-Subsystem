@@ -1276,4 +1276,105 @@ export class AnalyticsDashboardSubsystem {
         });
         return total;
     }
+
+    /**
+     * Get comprehensive analytics data for dashboard display
+     * This method is called by AnalyticsDashboardUI.refreshDashboard()
+     */
+    async getAnalyticsData() {
+        try {
+            this.logger.debug('Getting analytics data for dashboard');
+            
+            // Collect fresh metrics before returning data
+            await this.collectPeriodicMetrics();
+            
+            // Get system performance metrics
+            const systemMetrics = this.getSystemPerformanceMetrics();
+            
+            // Get operation statistics
+            const operationStats = {
+                successful: this.getSuccessfulOperationsCount(),
+                failed: this.getFailedOperationsCount(),
+                averageResponseTime: this.getAverageResponseTime(),
+                totalOperations: this.metrics.operations.imports.length + 
+                                this.metrics.operations.exports.length + 
+                                this.metrics.operations.modifications.length + 
+                                this.metrics.operations.deletions.length
+            };
+            
+            // Get user session data
+            const sessionData = {
+                averageDuration: this.getAverageSessionDuration(),
+                totalSessions: this.metrics.users.sessions.length,
+                activeUsers: this.getActiveUsersCount(),
+                sessionStart: this.sessionStart,
+                lastActivity: this.lastActivity
+            };
+            
+            // Get realtime metrics
+            const realtimeMetrics = {
+                averageLatency: this.getRecentAverageLatency(),
+                connectionCount: this.metrics.realtime.connections.length,
+                messageCount: this.metrics.realtime.messages.length,
+                errorRate: this.getRecentErrorRate()
+            };
+            
+            // Get alerts
+            const alerts = this.getActiveAlerts();
+            
+            // Get recent activity
+            const recentActivity = this.activityHistory.slice(-10);
+            
+            const analyticsData = {
+                timestamp: new Date(),
+                system: systemMetrics,
+                operations: operationStats,
+                sessions: sessionData,
+                realtime: realtimeMetrics,
+                alerts: alerts,
+                recentActivity: recentActivity,
+                status: this.getStatus(),
+                summary: {
+                    totalMetrics: this.getTotalMetricsCount(),
+                    dataCollectionActive: this.isCollecting,
+                    alertsActive: alerts.length,
+                    uptime: Date.now() - this.sessionStart
+                }
+            };
+            
+            this.logger.debug('Analytics data compiled successfully', {
+                metricsCount: analyticsData.summary.totalMetrics,
+                alertsCount: analyticsData.alerts.length,
+                operationsCount: analyticsData.operations.totalOperations
+            });
+            
+            return analyticsData;
+            
+        } catch (error) {
+            this.logger.error('Failed to get analytics data', error);
+            
+            // Return minimal fallback data to prevent UI errors
+            return {
+                timestamp: new Date(),
+                system: { memory: { used: 0, total: 0 }, cpu: 0, connections: 0 },
+                operations: { successful: 0, failed: 0, averageResponseTime: 0, totalOperations: 0 },
+                sessions: { averageDuration: 0, totalSessions: 0, activeUsers: 0 },
+                realtime: { averageLatency: 0, connectionCount: 0, messageCount: 0, errorRate: 0 },
+                alerts: [],
+                recentActivity: [],
+                status: { isInitialized: false, isCollecting: false },
+                summary: { totalMetrics: 0, dataCollectionActive: false, alertsActive: 0, uptime: 0 },
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Get active users count (estimated)
+     */
+    getActiveUsersCount() {
+        // For single-user application, return 1 if there's recent activity
+        const recentActivityThreshold = 5 * 60 * 1000; // 5 minutes
+        return (Date.now() - this.lastActivity) < recentActivityThreshold ? 1 : 0;
+    }
 }
