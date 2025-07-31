@@ -67,13 +67,6 @@ class CredentialsModal {
         // Create modal content
         overlay.innerHTML = `
             <div class="credentials-modal" tabindex="-1">
-                <div class="credentials-modal-header">
-                    <h2 id="credentials-title">
-                        <span class="credentials-icon" aria-hidden="true">🔐</span>
-                        <span>PingOne Credentials</span>
-                    </h2>
-                </div>
-                
                 <div class="credentials-modal-body">
                     <div id="credentials-content" class="credentials-content">
                         ${hasCredentials ? this.createCredentialsContent() : this.createNoCredentialsContent()}
@@ -994,9 +987,9 @@ class CredentialsModal {
      * @returns {Promise<boolean>} True if modal should be shown
      */
     static async shouldShowCredentialsModal() {
-        // TEMPORARY: Force credentials modal to always show for debugging
-        console.log('DEBUGGING: Forcing credentials modal to show');
-        return true;
+        // TEMPORARY: Disable credentials modal for import UI testing
+        console.log('DEBUGGING: Disabling credentials modal for import UI testing');
+        return false;
         
         // Original logic (commented out for debugging):
         // try {

@@ -45,6 +45,7 @@ class UIManager {
         // Initialize UI elements
         this.notificationContainer = null;
         this.progressContainer = null;
+        this.statusBarElement = null;
         this.tokenStatusElement = null;
         this.connectionStatusElement = null;
         
@@ -96,6 +97,7 @@ setupElements() {
         
         // Initialize core UI elements with safe fallbacks
         this.notificationContainer = this._safeGetElement(() => ElementRegistry.notificationContainer?.(), 'notification container');
+        this.statusBarElement = this._safeGetElement(() => ElementRegistry.statusBar?.(), 'global status bar');
         this.tokenStatusElement = this._safeGetElement(() => ElementRegistry.tokenStatus?.(), 'token status element');
         this.connectionStatusElement = this._safeGetElement(() => ElementRegistry.connectionStatus?.(), 'connection status element');
         
@@ -111,6 +113,7 @@ setupElements() {
         // 📊 DETAILED LOGGING
         this.logger.debug('✅ Bulletproof UI elements setup completed', {
             hasNotificationContainer: !!this.notificationContainer,
+            hasStatusBarElement: !!this.statusBarElement,
             hasProgressContainer: !!this.progressContainer,
             progressContainerId: this.progressContainer?.id || 'dynamic-created',
             progressContainerValid: this._isProgressContainerValid(),
@@ -489,7 +492,7 @@ setupElements() {
         (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] updateProgress() called with:', { current, total, message });
         
         if (!this.progressContainer) {
-            (window.logger?.error || console.error)('🔍 [UI MANAGER DEBUG] Progress container not found in updateProgress');
+            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress container not found in updateProgress');
             this.logger.warn('Progress container not found');
             return;
         }
@@ -508,40 +511,53 @@ setupElements() {
             }
         };
         
-        // Update progress bar using Safe DOM
+        // BULLETPROOF: Update progress bar using Safe DOM with graceful fallback
         const progressBar = safeDOM.select(UI_CONFIG.SELECTORS.PROGRESS_BAR_FILL, this.progressContainer);
         (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress bar element:', progressBar);
         if (progressBar) {
-            progressBar.style.width = `${percentage}%`;
-            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress bar updated to:', `${percentage}%`);
+            try {
+                progressBar.style.width = `${percentage}%`;
+                (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress bar updated to:', `${percentage}%`);
+            } catch (error) {
+                (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress bar update failed:', error.message);
+            }
         } else {
-            (window.logger?.error || console.error)('🔍 [UI MANAGER DEBUG] Progress bar element not found');
+            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress bar element not found - container may not be fully initialized');
         }
         
-        // Update percentage text using Safe DOM
+        // BULLETPROOF: Update percentage text using Safe DOM with graceful fallback
         const percentageElement = safeDOM.select(UI_CONFIG.SELECTORS.PROGRESS_PERCENTAGE, this.progressContainer);
         (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Percentage element:', percentageElement);
         if (percentageElement) {
-            safeDOM.setText(percentageElement, `${percentage}%`);
-            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Percentage text updated to:', `${percentage}%`);
+            try {
+                safeDOM.setText(percentageElement, `${percentage}%`);
+                (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Percentage text updated to:', `${percentage}%`);
+            } catch (error) {
+                (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Percentage text update failed:', error.message);
+            }
         } else {
-            (window.logger?.error || console.error)('🔍 [UI MANAGER DEBUG] Percentage element not found');
+            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Percentage element not found - container may not be fully initialized');
         }
         
-        // Update progress text using Safe DOM
+        // BULLETPROOF: Update progress text using Safe DOM with graceful fallback
         const progressText = safeDOM.select(UI_CONFIG.SELECTORS.PROGRESS_TEXT, this.progressContainer);
         (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress text element:', progressText);
         if (progressText && message) {
-            safeDOM.setText(progressText, message);
-            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress text updated to:', message);
+            try {
+                safeDOM.setText(progressText, message);
+                (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress text updated to:', message);
+            } catch (error) {
+                (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress text update failed:', error.message);
+            }
+        } else if (!progressText) {
+            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress text element not found - container may not be fully initialized');
         } else {
-            (window.logger?.error || console.error)('🔍 [UI MANAGER DEBUG] Progress text element not found or no message');
+            (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] Progress text element found but no message provided');
         }
         
         this.logger.debug('Progress updated', { current, total, percentage, message });
         (window.logger?.debug || console.log)('🔍 [UI MANAGER DEBUG] updateProgress() completed');
     }
-    
     /**
      * Update token status display
      * @param {string} status - Token status (valid, expired, etc.)

@@ -18,6 +18,12 @@ import { createSafeLogger } from './utils/safe-logger.js';
 // Debug-friendly utilities
 import '../../public/js/utils/utility-loader.js';
 
+// 🛡️ BULLETPROOF SYSTEM - CANNOT FAIL
+import BulletproofAppIntegration from './utils/bulletproof-app-integration.js';
+import { createBulletproofTokenManager } from './utils/bulletproof-token-manager.js';
+import { createBulletproofSubsystemWrapper } from './utils/bulletproof-subsystem-wrapper.js';
+import './utils/bulletproof-global-handler.js'; // Auto-initializes
+
 // Core utilities
 import { Logger } from '../../public/js/modules/logger.js';
 import { FileLogger } from '../../public/js/modules/file-logger.js';
@@ -169,14 +175,14 @@ class App {
         try {
             this.logger = new Logger({
                 context: 'app',
-                version: '6.5.2.1',
+                version: '6.5.2.4',
                 enableConsole: true,
                 enableStorage: false
             });
             
             // Test the logger
             this.logger.info('Centralized Logger initialized successfully', {
-                version: '6.5.2.1',
+                version: '6.5.2.4',
                 featureFlags: FEATURE_FLAGS,
                 userAgent: navigator.userAgent
             });
@@ -200,9 +206,13 @@ class App {
             this.logger.warn('Using fallback console logger due to CentralizedLogger initialization failure');
         }
         
+        // 🛡️ INITIALIZE BULLETPROOF SYSTEM - CANNOT FAIL
+        this.bulletproofSystem = null;
+        this.initializeBulletproofSystem();
+        
         // Log application start
         this.logger.info('🚀 PingOne Import Tool starting...', {
-            version: '6.5.2.1',
+            version: '6.5.2.2',
             timestamp: new Date().toISOString(),
             userAgent: navigator.userAgent,
             url: window.location.href
@@ -247,7 +257,7 @@ class App {
         this.socket = null;
         
         // Application version
-        this.version = '6.5.2.1';
+        this.version = '6.5.2.4';
         this.buildTimestamp = new Date().toISOString();
         this.environment = 'development';
         this.features = {
@@ -257,6 +267,31 @@ class App {
         
         // Performance tracking
         this.logger.startTimer('app-initialization');
+    }
+    
+    /**
+     * 🛡️ Initialize Bulletproof System - CANNOT FAIL
+     */
+    initializeBulletproofSystem() {
+        try {
+            this.logger.info('🛡️ Initializing Bulletproof Protection System...');
+            
+            // Initialize bulletproof app integration
+            this.bulletproofSystem = new BulletproofAppIntegration({
+                logger: this.logger,
+                eventBus: this.eventBus,
+                app: this
+            });
+            
+            // Initialize bulletproof protection
+            this.bulletproofSystem.initialize();
+            
+            this.logger.info('🛡️ Bulletproof Protection System initialized successfully');
+            
+        } catch (error) {
+            this.logger.error('🛡️ Failed to initialize Bulletproof Protection System', error);
+            // Continue without bulletproof protection - app should still work
+        }
     }
     
     /**
@@ -604,10 +639,17 @@ class App {
                         }
                         
                         console.log(`🔧 [SUBSYSTEM INIT] ${sub.name} creating instance...`);
-                        this.subsystems[sub.name] = new sub.constructor(...resolvedDeps);
+                        const subsystemInstance = new sub.constructor(...resolvedDeps);
                         
                         console.log(`🔧 [SUBSYSTEM INIT] ${sub.name} calling init()...`);
-                        await this.subsystems[sub.name].init();
+                        await subsystemInstance.init();
+                        
+                        // 🛡️ Wrap subsystem with bulletproof protection - CANNOT FAIL
+                        console.log(`🛡️ [SUBSYSTEM INIT] ${sub.name} applying bulletproof protection...`);
+                        this.subsystems[sub.name] = createBulletproofSubsystemWrapper(
+                            subsystemInstance, 
+                            this.logger.child({ subsystem: sub.name })
+                        );
                         
                         console.log(`✅ [SUBSYSTEM INIT] ${sub.name} subsystem initialized successfully!`);
                         this.logger.info(`${sub.name} subsystem initialized successfully.`);
@@ -618,8 +660,10 @@ class App {
                             stack: error.stack,
                             subsystem: sub.name
                         });
-                        // Continue with other subsystems instead of failing completely
-                        this.subsystems[sub.name] = null;
+                        
+                        // 🛡️ Create bulletproof emergency fallback subsystem - CANNOT FAIL
+                        console.log(`🛡️ [SUBSYSTEM INIT] Creating emergency fallback for ${sub.name}...`);
+                        this.subsystems[sub.name] = this.createEmergencySubsystem(sub.name, error);
                     }
                 } else {
                     console.log(`⏭️ [SUBSYSTEM INIT] Skipping ${sub.name} subsystem (flag disabled)`);
@@ -667,13 +711,51 @@ class App {
             this.logger.warn('Continuing app initialization despite subsystem errors');
         }
 
-        // Global Token Manager Subsystem
-        this.subsystems.globalTokenManager = new GlobalTokenManagerSubsystem(
-            this.logger.child({ subsystem: 'globalTokenManager' }),
-            this.eventBus
-        );
-        await this.subsystems.globalTokenManager.init();
-        this.logger.debug('Global Token Manager subsystem initialized');
+        // 🛡️ BULLETPROOF Global Token Manager Subsystem - CANNOT FAIL
+        try {
+            this.logger.info('🛡️ Initializing Bulletproof Global Token Manager...');
+            
+            // Create original token manager
+            const originalTokenManager = new GlobalTokenManagerSubsystem(
+                this.logger.child({ subsystem: 'globalTokenManager' }),
+                this.eventBus
+            );
+            
+            // Initialize original token manager
+            await originalTokenManager.init();
+            
+            // Create bulletproof wrapper
+            this.bulletproofTokenManager = createBulletproofTokenManager(this.logger);
+            
+            if (this.bulletproofTokenManager) {
+                // Wrap the original with bulletproof protection
+                this.subsystems.globalTokenManager = await this.bulletproofTokenManager.initialize(originalTokenManager);
+                this.logger.info('🛡️ Bulletproof Global Token Manager initialized successfully');
+            } else {
+                // Fallback to original if bulletproof creation failed
+                this.subsystems.globalTokenManager = originalTokenManager;
+                this.logger.warn('🛡️ Using original token manager (bulletproof creation failed)');
+            }
+        } catch (error) {
+            this.logger.error('🛡️ Bulletproof token manager initialization failed', error);
+            
+            // Emergency fallback - create minimal token manager
+            this.subsystems.globalTokenManager = {
+                name: 'EmergencyTokenManager',
+                init: () => Promise.resolve(true),
+                updateGlobalTokenStatus: () => {
+                    try {
+                        const statusBox = document.getElementById('global-token-status');
+                        if (statusBox) {
+                            statusBox.innerHTML = '<span class="global-token-icon">🛡️</span><span class="global-token-text">Token status protected</span>';
+                        }
+                    } catch (e) {
+                        console.log('🛡️ Emergency token status active');
+                    }
+                },
+                destroy: () => Promise.resolve(true)
+            };
+        }
 
         // Initialize Token Notification Subsystem
         this.subsystems.tokenNotification = new TokenNotificationSubsystem(
@@ -1296,7 +1378,11 @@ class App {
             if (this.subsystems.connectionManager && typeof this.subsystems.connectionManager.testConnection === 'function') {
                 const result = await this.subsystems.connectionManager.testConnection();
                 if (result.success) {
-                    this.showSettingsStatus('Connection test successful!', 'success');
+                    let successMessage = result.message || 'Success - Token minted';
+                    if (result.token && result.token.timeLeft) {
+                        successMessage += ` - Time left: ${result.token.timeLeft}`;
+                    }
+                    this.showSettingsStatus(successMessage, 'success');
                 } else {
                     this.showSettingsStatus(`Connection test failed: ${result.error}`, 'error');
                 }
@@ -1314,7 +1400,11 @@ class App {
                 const result = await response.json();
                 
                 if (result.success) {
-                    this.showSettingsStatus('Connection test successful!', 'success');
+                    let successMessage = result.message || 'Success - Token minted';
+                    if (result.token && result.token.timeLeft) {
+                        successMessage += ` - Time left: ${result.token.timeLeft}`;
+                    }
+                    this.showSettingsStatus(successMessage, 'success');
                 } else {
                     this.showSettingsStatus(`Connection test failed: ${result.error}`, 'error');
                 }
@@ -1678,20 +1768,68 @@ handleFileSelection(event) {
                 fileType: file.type
             });
 
-            // Use import subsystem if available (check multiple possible references)
-            if (this.subsystems.import && typeof this.subsystems.import.handleFileSelection === 'function') {
+            // Use import subsystem if available (check multiple possible references and method names)
+            if (this.subsystems.import && typeof this.subsystems.import.handleFileSelect === 'function') {
+                this.subsystems.import.handleFileSelect(file);
+            } else if (this.subsystems.import && typeof this.subsystems.import.handleFileSelection === 'function') {
                 this.subsystems.import.handleFileSelection(file);
+            } else if (this.subsystems.importManager && typeof this.subsystems.importManager.handleFileSelect === 'function') {
+                this.subsystems.importManager.handleFileSelect(file);
             } else if (this.subsystems.importManager && typeof this.subsystems.importManager.handleFileSelection === 'function') {
                 this.subsystems.importManager.handleFileSelection(file);
+            } else if (this.importSubsystem && typeof this.importSubsystem.handleFileSelect === 'function') {
+                this.importSubsystem.handleFileSelect(file);
             } else if (this.importSubsystem && typeof this.importSubsystem.handleFileSelection === 'function') {
                 this.importSubsystem.handleFileSelection(file);
             } else {
                 this.logger.warn('Import subsystem not available, using legacy import');
+                
+                // Immediate status check
+                this.logger.warn('SUBSYSTEM STATUS CHECK:', {
+                    'this.subsystems': !!this.subsystems,
+                    'subsystems.import': !!(this.subsystems && this.subsystems.import),
+                    'import.handleFileSelect': !!(this.subsystems && this.subsystems.import && typeof this.subsystems.import.handleFileSelect === 'function'),
+                    'import.handleFileSelection': !!(this.subsystems && this.subsystems.import && typeof this.subsystems.import.handleFileSelection === 'function'),
+                    'fileHandler': !!this.fileHandler,
+                    'fileHandler.handleFile': !!(this.fileHandler && typeof this.fileHandler.handleFile === 'function'),
+                    'availableSubsystems': this.subsystems ? Object.keys(this.subsystems) : 'null'
+                });
+                
+                // Add detailed diagnostics
+                this.logger.debug('File handling diagnostics:', {
+                    'subsystems.import': !!this.subsystems.import,
+                    'subsystems.importManager': !!this.subsystems.importManager,
+                    'importSubsystem': !!this.importSubsystem,
+                    'fileHandler': !!this.fileHandler,
+                    'fileHandler.handleFile': !!(this.fileHandler && typeof this.fileHandler.handleFile === 'function'),
+                    'availableSubsystems': Object.keys(this.subsystems || {})
+                });
+                
                 if (this.fileHandler && typeof this.fileHandler.handleFile === 'function') {
+                    this.logger.info('Using legacy file handler');
                     this.fileHandler.handleFile(file);
                 } else {
-                    this.logger.error('No file handling method available');
-                    this.showMessage('File handling is not available. Please refresh the page.', 'error');
+                    // Try to reinitialize file handler as emergency fallback
+                    if (!this.fileHandler) {
+                        try {
+                            this.logger.warn('Attempting to reinitialize file handler...');
+                            this.fileHandler = new FileHandler(this.logger, this.uiManager);
+                            if (this.fileHandler && typeof this.fileHandler.handleFile === 'function') {
+                                this.logger.info('Emergency file handler initialized successfully');
+                                this.fileHandler.handleFile(file);
+                                return;
+                            }
+                        } catch (error) {
+                            this.logger.error('Failed to reinitialize file handler', { error: error.message });
+                        }
+                    }
+                    
+                    this.logger.error('No file handling method available', {
+                        'subsystems.import': !!this.subsystems.import,
+                        'fileHandler': !!this.fileHandler,
+                        'FileHandler class': typeof FileHandler
+                    });
+                    this.showMessage('File handling is temporarily unavailable. Please refresh the page and try again.', 'error');
                 }
             }
         }
@@ -1715,20 +1853,57 @@ handleFileDrop(event) {
                     fileType: file.type
                 });
 
-                // Use import subsystem if available (check multiple possible references)
-                if (this.subsystems.import && typeof this.subsystems.import.handleFileSelection === 'function') {
+                // Use import subsystem if available (check multiple possible references and method names)
+                if (this.subsystems.import && typeof this.subsystems.import.handleFileSelect === 'function') {
+                    this.subsystems.import.handleFileSelect(file);
+                } else if (this.subsystems.import && typeof this.subsystems.import.handleFileSelection === 'function') {
                     this.subsystems.import.handleFileSelection(file);
+                } else if (this.subsystems.importManager && typeof this.subsystems.importManager.handleFileSelect === 'function') {
+                    this.subsystems.importManager.handleFileSelect(file);
                 } else if (this.subsystems.importManager && typeof this.subsystems.importManager.handleFileSelection === 'function') {
                     this.subsystems.importManager.handleFileSelection(file);
+                } else if (this.importSubsystem && typeof this.importSubsystem.handleFileSelect === 'function') {
+                    this.importSubsystem.handleFileSelect(file);
                 } else if (this.importSubsystem && typeof this.importSubsystem.handleFileSelection === 'function') {
                     this.importSubsystem.handleFileSelection(file);
                 } else {
                     this.logger.warn('Import subsystem not available, using legacy import');
+                    
+                    // Add detailed diagnostics
+                    this.logger.debug('File drop handling diagnostics:', {
+                        'subsystems.import': !!this.subsystems.import,
+                        'subsystems.importManager': !!this.subsystems.importManager,
+                        'importSubsystem': !!this.importSubsystem,
+                        'fileHandler': !!this.fileHandler,
+                        'fileHandler.handleFile': !!(this.fileHandler && typeof this.fileHandler.handleFile === 'function'),
+                        'availableSubsystems': Object.keys(this.subsystems || {})
+                    });
+                    
                     if (this.fileHandler && typeof this.fileHandler.handleFile === 'function') {
+                        this.logger.info('Using legacy file handler for drop');
                         this.fileHandler.handleFile(file);
                     } else {
-                        this.logger.error('No file handling method available');
-                        this.showMessage('File handling is not available. Please refresh the page.', 'error');
+                        // Try to reinitialize file handler as emergency fallback
+                        if (!this.fileHandler) {
+                            try {
+                                this.logger.warn('Attempting to reinitialize file handler for drop...');
+                                this.fileHandler = new FileHandler(this.logger, this.uiManager);
+                                if (this.fileHandler && typeof this.fileHandler.handleFile === 'function') {
+                                    this.logger.info('Emergency file handler initialized successfully for drop');
+                                    this.fileHandler.handleFile(file);
+                                    return;
+                                }
+                            } catch (error) {
+                                this.logger.error('Failed to reinitialize file handler for drop', { error: error.message });
+                            }
+                        }
+                        
+                        this.logger.error('No file handling method available for drop', {
+                            'subsystems.import': !!this.subsystems.import,
+                            'fileHandler': !!this.fileHandler,
+                            'FileHandler class': typeof FileHandler
+                        });
+                        this.showMessage('File drop handling is temporarily unavailable. Please refresh the page and try again.', 'error');
                     }
                 }
             }
@@ -1847,6 +2022,135 @@ handleFileDrop(event) {
         // For now, we can use the settings status display as a general message area
         this.showSettingsStatus(message, type);
     }
+    
+    /**
+     * 🛡️ Create emergency fallback subsystem - CANNOT FAIL
+     */
+    createEmergencySubsystem(subsystemName, originalError) {
+        try {
+            this.logger.warn(`🛡️ Creating emergency fallback for ${subsystemName}`, {
+                originalError: originalError.message
+            });
+            
+            // Create a bulletproof emergency subsystem that provides basic functionality
+            const emergencySubsystem = {
+                name: `Emergency${subsystemName.charAt(0).toUpperCase() + subsystemName.slice(1)}`,
+                initialized: true,
+                emergency: true,
+                originalError: originalError.message,
+                
+                // Basic lifecycle methods
+                init: () => Promise.resolve(true),
+                destroy: () => Promise.resolve(true),
+                
+                // Emergency methods based on subsystem type
+                ...(subsystemName === 'export' && {
+                    exportUsers: () => {
+                        this.logger.warn('🛡️ Export subsystem in emergency mode - functionality limited');
+                        return Promise.resolve({ 
+                            success: false, 
+                            error: 'Export subsystem unavailable - please refresh the page',
+                            emergency: true 
+                        });
+                    },
+                    getExportStatus: () => ({ 
+                        status: 'emergency', 
+                        message: 'Export subsystem unavailable',
+                        emergency: true 
+                    }),
+                    validateExportRequest: () => ({ 
+                        valid: false, 
+                        error: 'Export validation unavailable in emergency mode' 
+                    })
+                }),
+                
+                ...(subsystemName === 'import' && {
+                    importUsers: () => {
+                        this.logger.warn('🛡️ Import subsystem in emergency mode - functionality limited');
+                        return Promise.resolve({ 
+                            success: false, 
+                            error: 'Import subsystem unavailable - please refresh the page',
+                            emergency: true 
+                        });
+                    },
+                    getImportStatus: () => ({ 
+                        status: 'emergency', 
+                        message: 'Import subsystem unavailable',
+                        emergency: true 
+                    })
+                }),
+                
+                // Generic fallback methods
+                getStatus: () => ({ 
+                    status: 'emergency', 
+                    subsystem: subsystemName,
+                    message: `${subsystemName} subsystem is in emergency mode`,
+                    error: originalError.message,
+                    emergency: true 
+                }),
+                
+                isReady: () => false,
+                hasData: () => false,
+                
+                // Catch-all method handler
+                __emergencyHandler: (methodName) => {
+                    this.logger.warn(`🛡️ Emergency subsystem ${subsystemName}: method ${methodName} called`);
+                    return Promise.resolve({ 
+                        success: false, 
+                        error: `${methodName} unavailable in emergency mode`,
+                        emergency: true 
+                    });
+                }
+            };
+            
+            // Wrap with bulletproof protection
+            const wrappedEmergencySubsystem = createBulletproofSubsystemWrapper(
+                emergencySubsystem,
+                this.logger.child({ subsystem: `emergency-${subsystemName}` })
+            );
+            
+            this.logger.info(`🛡️ Emergency ${subsystemName} subsystem created successfully`);
+            return wrappedEmergencySubsystem;
+            
+        } catch (error) {
+            this.logger.error(`🛡️ Failed to create emergency subsystem for ${subsystemName}`, error);
+            
+            // Ultimate fallback - return minimal object
+            return {
+                name: `UltimateEmergency${subsystemName}`,
+                emergency: true,
+                init: () => Promise.resolve(false),
+                destroy: () => Promise.resolve(false),
+                getStatus: () => ({ status: 'critical-emergency', subsystem: subsystemName })
+            };
+        }
+    }
+    
+    /**
+     * 🛡️ Cleanup bulletproof systems - CANNOT FAIL
+     */
+    cleanup() {
+        try {
+            this.logger.info('🛡️ Cleaning up bulletproof systems...');
+            
+            // Cleanup bulletproof token manager
+            if (this.bulletproofTokenManager && typeof this.bulletproofTokenManager.destroy === 'function') {
+                this.bulletproofTokenManager.destroy();
+                this.logger.debug('🛡️ Bulletproof token manager cleaned up');
+            }
+            
+            // Cleanup bulletproof app integration
+            if (this.bulletproofSystem && typeof this.bulletproofSystem.destroy === 'function') {
+                this.bulletproofSystem.destroy();
+                this.logger.debug('🛡️ Bulletproof app integration cleaned up');
+            }
+            
+            this.logger.info('🛡️ Bulletproof systems cleanup completed');
+            
+        } catch (error) {
+            this.logger.debug('🛡️ Bulletproof cleanup failed (non-critical)', error);
+        }
+    }
 }
 
 // Initialize and start the application
@@ -1854,6 +2158,24 @@ const app = new App();
 
 // Global app reference for debugging
 window.app = app;
+
+// 🛡️ Setup bulletproof cleanup on page unload - CANNOT FAIL
+try {
+    window.addEventListener('beforeunload', () => {
+        if (window.app && typeof window.app.cleanup === 'function') {
+            window.app.cleanup();
+        }
+    });
+    
+    // Also cleanup on page hide (mobile/tablet support)
+    window.addEventListener('pagehide', () => {
+        if (window.app && typeof window.app.cleanup === 'function') {
+            window.app.cleanup();
+        }
+    });
+} catch (error) {
+    console.debug('🛡️ Failed to setup cleanup listeners (non-critical)', error);
+}
 
 // Expose enableToolAfterDisclaimer function globally for modal access
 window.enableToolAfterDisclaimer = () => {

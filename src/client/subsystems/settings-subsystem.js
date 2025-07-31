@@ -389,8 +389,12 @@ export class SettingsSubsystem {
             const response = await this.localClient.get('/api/pingone/test-connection');
             
             if (response.success) {
-                this.uiManager.showSettingsActionStatus('Connection test successful', 'success', { autoHideDelay: 3000 });
-                this.updateConnectionStatus('✅ Connection successful', 'success');
+                let successMessage = response.message || 'Success - Token minted';
+                if (response.token && response.token.timeLeft) {
+                    successMessage += ` - Time left: ${response.token.timeLeft}`;
+                }
+                this.uiManager.showSettingsActionStatus(successMessage, 'success', { autoHideDelay: 5000 });
+                this.updateConnectionStatus('✅ ' + successMessage, 'success');
             } else {
                 this.uiManager.showSettingsActionStatus('Connection test failed: ' + response.message, 'error');
                 this.updateConnectionStatus('❌ Connection failed', 'error');

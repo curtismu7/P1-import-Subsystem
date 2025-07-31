@@ -409,14 +409,32 @@ async function testConnection(req, res) {
             });
         }
         
-        console.log(`[${requestId}] Connection test successful`);
+        // Calculate token expiration information
+        const expiresIn = tokenResult.expires_in || 3600; // Default to 1 hour if not provided
+        const expiresAtMs = Date.now() + (expiresIn * 1000);
+        const expiresAt = new Date(expiresAtMs);
+        
+        // Calculate time left in human readable format
+        const timeLeftMinutes = Math.floor(expiresIn / 60);
+        const timeLeftSeconds = expiresIn % 60;
+        const timeLeftFormatted = timeLeftMinutes > 0 
+            ? `${timeLeftMinutes}m ${timeLeftSeconds}s`
+            : `${timeLeftSeconds}s`;
+        
+        console.log(`[${requestId}] Token minted successfully - expires in ${timeLeftFormatted}`);
         res.json({
             success: true,
-            message: 'Connection test successful',
+            message: 'Success - Token minted',
             environmentId: settings.environmentId,
             region: settings.region,
             timestamp: new Date().toISOString(),
-            requestId
+            requestId,
+            token: {
+                expiresIn: expiresIn,
+                expiresAt: expiresAt.toISOString(),
+                timeLeft: timeLeftFormatted,
+                timeLeftSeconds: expiresIn
+            }
         });
         
     } catch (error) {

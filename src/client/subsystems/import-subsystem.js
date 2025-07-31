@@ -350,7 +350,20 @@ export class ImportSubsystem {
      */
     handleImportCompletion(data) {
         this.logger.info('Import completed', data);
-        // TODO: Refactor: Use Notification from UI subsystem instead of alert.
+        
+        // Show green success status bar that auto-dismisses after 5 seconds
+        if (this.uiManager && this.uiManager.showSuccess) {
+            const successMessage = data.message || `Import completed successfully! ${data.imported || 0} users imported.`;
+            this.uiManager.showSuccess(successMessage, {
+                imported: data.imported,
+                total: data.total,
+                duration: data.duration
+            });
+        } else {
+            // Fallback to console if UI manager not available
+            this.logger.warn('UI Manager not available for success message display');
+        }
+        
         this.cleanupConnections();
     }
     

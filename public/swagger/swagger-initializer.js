@@ -50,7 +50,7 @@ class SwaggerUIManager {
    */
   async loadSettings() {
     try {
-      const response = await fetch('/api/settings');
+      const response = await fetch('http://localhost:4000/api/settings');
       if (response.ok) {
         const data = await response.json();
         this.settings = data.success ? data.data : null;
@@ -66,12 +66,30 @@ class SwaggerUIManager {
    */
   async loadAuthToken() {
     try {
-      const response = await fetch('/api/token');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.token) {
-          this.authToken = data.token;
+      // Try to get token info first
+      const tokenInfoResponse = await fetch('http://localhost:4000/api/auth/token-info');
+      if (tokenInfoResponse.ok) {
+        const tokenData = await tokenInfoResponse.json();
+        if (tokenData.success && tokenData.data && tokenData.data.access_token) {
+          this.authToken = tokenData.data.access_token;
           console.log('🔐 Authentication token loaded from subsystem');
+          return;
+        }
+      }
+      
+      // If no existing token, try to get a new one
+      const tokenResponse = await fetch('http://localhost:4000/api/pingone/get-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (tokenResponse.ok) {
+        const data = await tokenResponse.json();
+        if (data.success && data.access_token) {
+          this.authToken = data.access_token;
+          console.log('🔐 New authentication token retrieved from subsystem');
         }
       }
     } catch (error) {
@@ -84,7 +102,7 @@ class SwaggerUIManager {
    */
   initializeSwaggerUI() {
     const config = {
-      url: '/swagger.json', // Use our local OpenAPI spec
+      url: 'http://localhost:4000/swagger.json', // Use our local OpenAPI spec from main server
       dom_id: '#swagger-ui',
       deepLinking: true,
       presets: [
@@ -135,7 +153,7 @@ class SwaggerUIManager {
     console.log('🔄 Initializing fallback Swagger UI');
     
     window.ui = SwaggerUIBundle({
-      url: '/swagger.json',
+      url: 'http://localhost:4000/swagger.json',
       dom_id: '#swagger-ui',
       deepLinking: true,
       presets: [
