@@ -392,9 +392,9 @@ export class BulletproofTokenManager {
             if (tokenInfo.hasToken && tokenInfo.isValid) {
             // Token is valid - Show comprehensive green banner
             const formattedTime = this.formatTime(tokenInfo.timeLeft);
-            const buildNumber = 'bundle-1753964067';
-            const version = '6.5.2.3';
-            const lastChange = 'Bulletproof token system with comprehensive status display';
+            const buildNumber = 'bundle-1754046267';
+            const version = '6.5.2.4';
+            const lastChange = 'Updated to latest version 6.5.2.4 with current build';
             
             this.safeSetAttribute(statusBox, 'className', 'global-token-status valid comprehensive');
             this.safeSetTextContent(icon, '✅');

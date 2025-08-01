@@ -14,12 +14,29 @@ const LOG_LEVELS = {
     TRACE: 4
 };
 
+// Browser-compatible environment detection
+const getBrowserEnvironment = () => {
+    if (typeof window !== 'undefined') {
+        // Check hostname for development detection
+        if (window.location?.hostname === 'localhost' || window.location?.hostname === '127.0.0.1') {
+            return 'development';
+        }
+        // Check for test environment indicators
+        if (window.location?.search?.includes('test=true') || window.location?.pathname?.includes('/test')) {
+            return 'test';
+        }
+    }
+    return 'production';
+};
+
+const browserEnv = getBrowserEnvironment();
+
 // Default log level based on environment
-const DEFAULT_LEVEL = process.env.NODE_ENV === 'production' ? 'INFO' : 'DEBUG';
+const DEFAULT_LEVEL = browserEnv === 'production' ? 'INFO' : 'DEBUG';
 
 // Environment detection
-const isProduction = process.env.NODE_ENV === 'production';
-const isTest = process.env.NODE_ENV === 'test';
+const isProduction = browserEnv === 'production';
+const isTest = browserEnv === 'test';
 
 /**
  * Create a safe logger instance
@@ -220,9 +237,9 @@ if (typeof window !== 'undefined') {
     try {
         const globalLogger = window.logger || console;
         window.safeLogger = createSafeLogger(globalLogger, {
-            level: process.env.LOG_LEVEL || DEFAULT_LEVEL,
+            level: DEFAULT_LEVEL,
             defaultMeta: {
-                env: process.env.NODE_ENV || 'development',
+                env: browserEnv,
                 app: 'pingone-import-tool'
             }
         });

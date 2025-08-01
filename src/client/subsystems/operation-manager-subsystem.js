@@ -14,6 +14,7 @@
  */
 
 import { createLogger } from '../utils/browser-logging-service.js';
+import { showOperationSummary } from '../../public/js/modules/operation-summary.js';
 
 export class OperationManagerSubsystem {
     constructor(logger, uiManager, settingsManager, apiClient) {
@@ -360,6 +361,10 @@ export class OperationManagerSubsystem {
                 
                 if (data.status === 'completed') {
                     eventSource.close();
+                    // Display operation summary
+                    if (typeof showOperationSummary === 'function') {
+                        showOperationSummary(data, operation.type);
+                    }
                     resolve(data);
                 } else if (data.status === 'failed') {
                     eventSource.close();
@@ -396,6 +401,10 @@ export class OperationManagerSubsystem {
                     this.handleProgressUpdate(operation, response.data);
                     
                     if (response.data.status === 'completed') {
+                        // Display operation summary
+                        if (typeof showOperationSummary === 'function') {
+                            showOperationSummary(response.data, operation.type);
+                        }
                         resolve(response.data);
                     } else if (response.data.status === 'failed') {
                         reject(new Error(response.data.error || 'Operation failed'));

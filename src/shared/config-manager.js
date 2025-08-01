@@ -386,10 +386,10 @@ class ConfigManager extends EventEmitter {
         environment: this.getEnvironment()
       },
       pingone: {
-        environmentId: settings.environmentId,
-        clientId: settings.apiClientId,
-        clientSecret: settings.apiSecret,
-        region: settings.region || 'NorthAmerica'
+        environmentId: settings.environmentId || settings['environment-id'],
+        clientId: settings.apiClientId || settings['api-client-id'],
+        clientSecret: settings.apiSecret || settings['api-secret'],
+        region: settings.region || settings['region'] || 'NorthAmerica'
       },
       features: {
         maxFileUploadSize: settings.maxFileSize || 10485760,

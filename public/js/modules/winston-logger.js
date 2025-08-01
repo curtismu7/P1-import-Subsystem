@@ -22,7 +22,7 @@ class WinstonLogger {
     constructor(options = {}) {
         this.level = options.level || this.getDefaultLevel();
         this.service = options.service || 'pingone-import-frontend';
-        this.environment = options.environment || (process.env.NODE_ENV || 'development');
+        this.environment = options.environment || (typeof process !== 'undefined' && process.env ? process.env.NODE_ENV : null) || 'development';
         this.enableServerLogging = options.enableServerLogging !== false;
         this.enableConsoleLogging = options.enableConsoleLogging !== false;
         

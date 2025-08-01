@@ -111,7 +111,7 @@ class GlobalTokenManager {
     getTokenInfo() {
         try {
             // Try to get token info from localStorage or token manager
-            const token = localStorage.getItem('pingone_worker_token');
+            const token = localStorage.getItem('pingone_token');
             const expiry = localStorage.getItem('pingone_token_expiry');
             
             if (!token || !expiry) {

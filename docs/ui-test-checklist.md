@@ -4,10 +4,10 @@ This checklist helps verify that all UI functionality works correctly with the o
 
 ## 1. Core Functionality
 
-- [x] 1.1. Application loads without errors
-- [x] 1.2. Startup screen appears and then disappears
-- [x] 1.3. Navigation between views works (Home, Import, Export, etc.)
-- [x] 1.4. Sidebar navigation highlights active view
+- [ ] 1.1. Application loads without errors
+- [ ] 1.2. Startup screen appears and then disappears
+- [ ] 1.3. Navigation between views works (Home, Import, Export, etc.)
+- [ ] 1.4. Sidebar navigation highlights active view
 - [ ] 1.5. Token status indicator shows correct status
 - [ ] 1.6. Global status bar shows messages correctly
 

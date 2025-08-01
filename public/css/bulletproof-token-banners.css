@@ -1,0 +1,182 @@
+/* Bulletproof Token Banner System */
+.bulletproof-banner-container {
+    position: relative;
+    z-index: 1000;
+    margin: 4px 0;
+}
+
+/* Green Banner - Token Status */
+.bulletproof-green-banner {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    font-weight: 500;
+    z-index: 1001;
+    border-left: 4px solid #1e7e34;
+}
+
+.bulletproof-green-banner.expiring {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    border-left-color: #e65100;
+}
+
+.bulletproof-green-banner .banner-icon {
+    margin-right: 8px;
+    font-size: 1.1em;
+}
+
+.bulletproof-green-banner .banner-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.bulletproof-green-banner .banner-text {
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+.bulletproof-green-banner .banner-info {
+    font-size: 0.8em;
+    opacity: 0.9;
+    background: rgba(255,255,255,0.2);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+/* Red Banner - Authentication Required */
+.bulletproof-red-banner {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    font-weight: 500;
+    z-index: 1002;
+    border-left: 4px solid #721c24;
+}
+
+.bulletproof-red-banner .banner-icon {
+    margin-right: 12px;
+    font-size: 1.2em;
+}
+
+.bulletproof-red-banner .banner-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.bulletproof-red-banner .banner-text {
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+.bulletproof-red-banner .banner-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: 16px;
+}
+
+.bulletproof-red-banner .banner-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-decoration: none;
+}
+
+.bulletproof-red-banner .banner-btn:hover {
+    background: rgba(255,255,255,0.3);
+    color: white;
+    text-decoration: none;
+}
+
+/* Banner coexistence - both can show simultaneously */
+.bulletproof-banner-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .bulletproof-green-banner,
+    .bulletproof-red-banner {
+        padding: 8px 12px;
+        font-size: 0.9em;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .bulletproof-green-banner .banner-content,
+    .bulletproof-red-banner .banner-content {
+        width: 100%;
+    }
+    
+    .bulletproof-red-banner .banner-actions {
+        margin-left: 0;
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .bulletproof-green-banner .banner-text,
+    .bulletproof-red-banner .banner-text {
+        font-size: 0.85em;
+    }
+}
+
+/* Animation for banner appearance */
+.bulletproof-banner-enter {
+    animation: bulletproofBannerSlideIn 0.3s ease-out;
+}
+
+.bulletproof-banner-exit {
+    animation: bulletproofBannerSlideOut 0.3s ease-in;
+}
+
+@keyframes bulletproofBannerSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes bulletproofBannerSlideOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+/* Integration with existing token status */
+.bulletproof-green-banner + .global-token-status {
+    margin-top: 8px;
+}
+
+/* Ensure banners don't interfere with existing UI */
+.bulletproof-banner-container + .view {
+    margin-top: 8px;
+}

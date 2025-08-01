@@ -690,6 +690,47 @@ label {
     gap: 10px;
 }
 
+.token-status.valid {
+    color: #28a745;
+}
+
+.token-status.invalid {
+    color: #dc3545;
+}
+
+.token-status.warning {
+    color: #ffc107;
+}
+
+.token-status .status-indicator {
+    font-size: 0.6rem;
+}
+
+.bundle-indicator .bundle-text {
+    font-weight: 600;
+    color: #007bff;
+}
+
+.global-status-bar .status-content .token-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.global-status-bar .status-content .bundle-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    background: #e8f4f8;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid #c2e0ec;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .sidebar {

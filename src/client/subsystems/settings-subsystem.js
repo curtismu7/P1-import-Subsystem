@@ -6,13 +6,14 @@
  */
 
 export class SettingsSubsystem {
-    constructor(logger, uiManager, localClient, settingsManager, eventBus, credentialsManager) {
+    constructor(logger, uiManager, localClient, settingsManager, eventBus, credentialsManager, globalUIManager = null) {
         this.logger = logger;
         this.uiManager = uiManager;
         this.localClient = localClient;
         this.settingsManager = settingsManager;
         this.eventBus = eventBus;
         this.credentialsManager = credentialsManager;
+        this.globalUIManager = globalUIManager;
         
         // Settings state management
         this.isSaving = false;
@@ -485,6 +486,32 @@ export class SettingsSubsystem {
         if (statusElement) {
             statusElement.textContent = message;
             statusElement.className = `connection-status status-${type}`;
+        }
+    }
+    
+    /**
+     * Show settings action status
+     */
+    showSettingsActionStatus(message, type = 'info', options = {}) {
+        // Use global UI manager if available, otherwise fall back to direct DOM manipulation
+        if (this.globalUIManager) {
+            const title = type.charAt(0).toUpperCase() + type.slice(1);
+            this.globalUIManager[`show${title}`](message, title);
+        } else {
+            // Fallback to direct DOM manipulation
+            const statusElement = document.getElementById('settings-action-status');
+            if (statusElement) {
+                statusElement.textContent = message;
+                statusElement.className = `alert alert-${type} mt-3`;
+                statusElement.style.display = 'block';
+                
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    statusElement.style.display = 'none';
+                }, 5000);
+            } else {
+                this.logger.warn('Settings action status element not found');
+            }
         }
     }
     

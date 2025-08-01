@@ -25,9 +25,12 @@ import { createWinstonLogger } from './winston-logger.js';
  */
 class MessageFormatter {
     constructor() {
+        // Browser-compatible environment detection
+        const environment = (typeof window !== 'undefined' && window.location?.hostname === 'localhost') ? 'development' : 'production';
+        
         this.logger = createWinstonLogger({
             service: 'pingone-message-formatter',
-            environment: process.env.NODE_ENV || 'development'
+            environment: environment
         });
 
         // Message formatting options

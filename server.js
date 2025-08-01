@@ -102,6 +102,7 @@ import exportRouter from './routes/api/export.js';
 import { setupSwagger } from './swagger.js';
 import session from 'express-session';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import { WebSocketServer } from 'ws';
 import { Server as SocketIOServer } from 'socket.io';
 
@@ -336,21 +337,169 @@ app.use(['/swagger.html', '/swagger', '/swagger.json'], ensureAuthenticated);
 // Setup Swagger documentation
 setupSwagger(app);
 
-// Static file serving with caching headers
-app.use(express.static(path.join(__dirname, 'public'), {
-    etag: true,
-    lastModified: true,
-    setHeaders: (res, filePath) => {
-        const fileExt = path.extname(filePath);
-        if (fileExt === '.html' || filePath.includes('bundle-')) {
-            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-            res.setHeader('Pragma', 'no-cache');
-            res.setHeader('Expires', '0');
-        } else {
-            res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache other assets for 1 day
+// 🛡️ BULLETPROOF STATIC FILE SERVING - PUBLIC DIRECTORY
+try {
+    const publicPath = path.join(__dirname, 'public');
+    
+    // Verify public directory exists
+    if (!fsSync.existsSync(publicPath)) {
+        console.error('❌ BULLETPROOF: Public directory not found, creating:', publicPath);
+        fsSync.mkdirSync(publicPath, { recursive: true });
+    }
+    
+    app.use(express.static(publicPath, {
+        etag: true,
+        lastModified: true,
+        dotfiles: 'deny', // Security: deny access to dotfiles
+        index: ['index.html', 'index.htm'],
+        maxAge: 0, // Default no cache
+        setHeaders: (res, filePath) => {
+            try {
+                const fileExt = path.extname(filePath).toLowerCase();
+                const fileName = path.basename(filePath);
+                
+                // Security headers for all files
+                res.setHeader('X-Content-Type-Options', 'nosniff');
+                res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+                
+                // Cache control based on file type
+                if (fileExt === '.html' || fileName.includes('bundle-') || fileName.includes('index')) {
+                    // No cache for HTML and bundles
+                    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+                    res.setHeader('Pragma', 'no-cache');
+                    res.setHeader('Expires', '0');
+                } else if (['.js', '.css'].includes(fileExt)) {
+                    // Short cache for JS/CSS
+                    res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour
+                } else if (['.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg'].includes(fileExt)) {
+                    // Longer cache for images
+                    res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+                } else {
+                    // Default short cache
+                    res.setHeader('Cache-Control', 'public, max-age=1800'); // 30 minutes
+                }
+                
+                // Content type enforcement
+                if (fileExt === '.js') {
+                    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+                } else if (fileExt === '.css') {
+                    res.setHeader('Content-Type', 'text/css; charset=utf-8');
+                } else if (fileExt === '.html') {
+                    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+                }
+                
+            } catch (headerError) {
+                console.error('🛡️ BULLETPROOF: Header setting error for', filePath, headerError);
+                // Fallback headers
+                res.setHeader('Cache-Control', 'no-cache');
+                res.setHeader('X-Content-Type-Options', 'nosniff');
+            }
+        }
+    }));
+    
+    console.log('✅ BULLETPROOF: Public directory served successfully:', publicPath);
+    
+} catch (publicError) {
+    console.error('❌ BULLETPROOF: Failed to setup public directory serving:', publicError);
+    // Fallback: serve with minimal configuration
+    try {
+        app.use(express.static(path.join(__dirname, 'public')));
+        console.log('⚠️  BULLETPROOF: Fallback public serving enabled');
+    } catch (fallbackError) {
+        console.error('💥 BULLETPROOF: Complete failure serving public directory:', fallbackError);
+    }
+}
+
+// 🛡️ BULLETPROOF STATIC FILE SERVING - SRC DIRECTORY
+try {
+    const srcPath = path.join(__dirname, 'src');
+    
+    // Verify src directory exists
+    if (!fsSync.existsSync(srcPath)) {
+        console.error('❌ BULLETPROOF: Src directory not found, creating:', srcPath);
+        fsSync.mkdirSync(srcPath, { recursive: true });
+        
+        // Create basic client structure
+        const clientPath = path.join(srcPath, 'client');
+        const utilsPath = path.join(clientPath, 'utils');
+        fsSync.mkdirSync(utilsPath, { recursive: true });
+        
+        // Create placeholder safe-logger.js if missing
+        const safeLoggerPath = path.join(utilsPath, 'safe-logger.js');
+        if (!fsSync.existsSync(safeLoggerPath)) {
+            fsSync.writeFileSync(safeLoggerPath, `// Bulletproof Safe Logger Placeholder
+export const safeLog = (level, message, data) => {
+    try {
+        console[level] || console.log(level, message, data);
+    } catch (e) {
+        console.log('LOG:', level, message, data);
+    }
+};
+export default { safeLog };`);
         }
     }
-}));
+    
+    app.use('/src', express.static(srcPath, {
+        etag: true,
+        lastModified: true,
+        dotfiles: 'deny', // Security: deny access to dotfiles
+        index: false, // No directory indexing
+        maxAge: 0, // Always fresh for development files
+        setHeaders: (res, filePath) => {
+            try {
+                const fileExt = path.extname(filePath).toLowerCase();
+                
+                // Security headers for all src files
+                res.setHeader('X-Content-Type-Options', 'nosniff');
+                res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+                res.setHeader('X-XSS-Protection', '1; mode=block');
+                
+                // Always no-cache for src files (development)
+                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+                res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
+                
+                // Enforce JavaScript content type
+                if (fileExt === '.js') {
+                    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+                } else if (fileExt === '.json') {
+                    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+                } else if (fileExt === '.css') {
+                    res.setHeader('Content-Type', 'text/css; charset=utf-8');
+                }
+                
+                // Add CORS headers for src files
+                res.setHeader('Access-Control-Allow-Origin', '*');
+                res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+                res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+                
+            } catch (headerError) {
+                console.error('🛡️ BULLETPROOF: Src header setting error for', filePath, headerError);
+                // Fallback headers
+                res.setHeader('Cache-Control', 'no-cache');
+                res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+                res.setHeader('X-Content-Type-Options', 'nosniff');
+            }
+        }
+    }));
+    
+    console.log('✅ BULLETPROOF: Src directory served successfully:', srcPath);
+    
+} catch (srcError) {
+    console.error('❌ BULLETPROOF: Failed to setup src directory serving:', srcError);
+    // Fallback: serve with minimal configuration
+    try {
+        app.use('/src', express.static(path.join(__dirname, 'src'), {
+            setHeaders: (res) => {
+                res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+                res.setHeader('Cache-Control', 'no-cache');
+            }
+        }));
+        console.log('⚠️  BULLETPROOF: Fallback src serving enabled');
+    } catch (fallbackError) {
+        console.error('💥 BULLETPROOF: Complete failure serving src directory:', fallbackError);
+    }
+}
 
 console.log('📚 Swagger UI available at http://localhost:4000/swagger.html');
 console.log('📄 Swagger JSON available at http://localhost:4000/swagger.json');
@@ -786,14 +935,34 @@ const startServer = async () => {
                     tokenExpiresAt: authResult.expiresAt
                 });
                 
-                // Also initialize the legacy token manager for backward compatibility
-                try {
-                    await tokenManager.getAccessToken();
-                    logger.info('Legacy token manager initialized successfully');
-                } catch (legacyError) {
-                    logger.warn('Legacy token manager initialization failed, but enhanced auth is working', {
-                        error: legacyError.message
-                    });
+                // Also initialize the legacy token manager for backward compatibility with bulletproof retry mechanism
+                let tokenAcquired = false;
+                let retryCount = 0;
+                const maxRetries = 3;
+                
+                while (!tokenAcquired && retryCount < maxRetries) {
+                    try {
+                        logger.info(`Attempting to acquire token (attempt ${retryCount + 1}/${maxRetries})`);
+                        await tokenManager.getAccessToken();
+                        tokenAcquired = true;
+                        logger.info('Legacy token manager initialized successfully');
+                    } catch (legacyError) {
+                        retryCount++;
+                        logger.warn(`Token acquisition attempt ${retryCount}/${maxRetries} failed`, {
+                            error: legacyError.message
+                        });
+                        
+                        if (retryCount < maxRetries) {
+                            // Exponential backoff for retries
+                            const backoffTime = 1000 * Math.pow(2, retryCount - 1);
+                            logger.info(`Retrying token acquisition in ${backoffTime}ms`);
+                            await new Promise(resolve => setTimeout(resolve, backoffTime));
+                        } else {
+                            logger.warn('Legacy token manager initialization failed after maximum retries, but enhanced auth is working', {
+                                error: legacyError.message
+                            });
+                        }
+                    }
                 }
                 
                 // Perform startup token validation test

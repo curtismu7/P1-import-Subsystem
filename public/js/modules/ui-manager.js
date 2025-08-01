@@ -23,11 +23,11 @@ class UIManager {
     constructor({ errorManager, logManager, instanceId = 'default' } = {}) {
         // Initialize safe logger with context
         this.logger = createSafeLogger(logManager?.getLogger('UIManager') || console, {
-            level: process.env.LOG_LEVEL || 'INFO',
+            level: (typeof process !== 'undefined' && process.env ? process.env.LOG_LEVEL : null) || 'INFO',
             defaultMeta: {
                 component: 'UIManager',
                 instanceId,
-                env: process.env.NODE_ENV || 'development'
+                env: (typeof process !== 'undefined' && process.env ? process.env.NODE_ENV : null) || 'development'
             }
         });
         
@@ -493,3 +493,9 @@ class UIManager {
 
 // Export the UIManager class
 export { UIManager };
+
+// Create a default UI manager instance for convenience
+const defaultUIManager = new UIManager();
+
+// Export as default for backward compatibility
+export default defaultUIManager;

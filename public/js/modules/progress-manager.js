@@ -25,7 +25,7 @@ import { sessionManager } from './session-manager.js';
 import messageFormatter from './message-formatter.js';
 
 // Enable debug mode for development (set to false in production)
-const DEBUG_MODE = process.env.NODE_ENV !== 'production';
+const DEBUG_MODE = (typeof process !== 'undefined' && process.env ? process.env.NODE_ENV : 'development') !== 'production';
 
 /**
  * Enhanced Progress Manager Class

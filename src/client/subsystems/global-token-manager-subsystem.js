@@ -432,7 +432,7 @@ formatTime(seconds) {
 getTokenInfoSync() {
     try {
         // Only check localStorage for sync version to avoid async issues during init
-        const token = localStorage.getItem('pingone_worker_token');
+        const token = localStorage.getItem('pingone_token');
         const expiry = localStorage.getItem('pingone_token_expiry');
         
         if (!token || !expiry) {
@@ -483,7 +483,7 @@ async getTokenInfo() {
         }
         
         // Fallback to localStorage
-        const token = localStorage.getItem('pingone_worker_token');
+        const token = localStorage.getItem('pingone_token');
         const expiry = localStorage.getItem('pingone_token_expiry');
         
         if (!token || !expiry) {
@@ -657,27 +657,36 @@ async getNewToken() {
      */
     async getTokenInfo() {
         try {
-            // First try to get token info from server API
-            try {
-                const response = await fetch('/api/token/status');
-                if (response.ok) {
-                    const serverTokenInfo = await response.json();
-                    if (serverTokenInfo.hasToken) {
-                        return {
-                            hasToken: true,
-                            timeLeft: serverTokenInfo.timeLeft || 0,
-                            source: 'server'
-                        };
+            // First try to get token info from server API using the correct endpoint
+            // Try both old and new endpoints for bulletproof compatibility
+            const endpoints = [
+                '/api/auth/test-connection',
+                '/api/pingone/test-connection'
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint);
+                    if (response.ok) {
+                        const serverTokenInfo = await response.json();
+                        if (serverTokenInfo.success) {
+                            // Convert the response format to match what the frontend expects
+                            return {
+                                hasToken: true,
+                                timeLeft: serverTokenInfo.token?.timeLeftSeconds || 0,
+                                source: 'server'
+                            };
+                        }
                     }
+                } catch (serverError) {
+                    this.logger.debug(`Could not fetch token info from ${endpoint}, trying next endpoint`, {
+                        error: serverError.message
+                    });
                 }
-            } catch (serverError) {
-                this.logger.debug('Could not fetch token info from server, checking localStorage', {
-                    error: serverError.message
-                });
             }
             
             // Fallback to localStorage
-            const token = localStorage.getItem('pingone_worker_token');
+            const token = localStorage.getItem('pingone_token');
             const expiry = localStorage.getItem('pingone_token_expiry');
             
             if (!token || !expiry) {
@@ -790,19 +799,38 @@ async getNewToken() {
                 await window.app.getToken();
                 this.logger.info('Token refreshed successfully via app');
             } else {
-                // Fallback: try to trigger token refresh through API
-                const response = await fetch('/api/auth/refresh-token', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
+                // Fallback: try to trigger token refresh through API using the correct endpoint
+                // Try both old and new endpoints for bulletproof compatibility
+                const endpoints = [
+                    '/api/pingone/get-token',
+                    '/api/token'
+                ];
                 
-                if (response.ok) {
-                    const result = await response.json();
-                    this.logger.info('Token refreshed via API', result);
-                } else {
-                    throw new Error(`API request failed: ${response.statusText}`);
+                let success = false;
+                for (const endpoint of endpoints) {
+                    try {
+                        const response = await fetch(endpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const result = await response.json();
+                            this.logger.info(`Token refreshed via ${endpoint}`, result);
+                            success = true;
+                            break;
+                        }
+                    } catch (error) {
+                        this.logger.debug(`Could not refresh token via ${endpoint}, trying next endpoint`, {
+                            error: error.message
+                        });
+                    }
+                }
+                
+                if (!success) {
+                    throw new Error('Failed to refresh token via any available endpoint');
                 }
             }
             

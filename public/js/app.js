@@ -3651,7 +3651,7 @@ class App {
             
             // Verify localStorage storage
             if (typeof localStorage !== 'undefined') {
-                const storedToken = localStorage.getItem('pingone_worker_token');
+                const storedToken = localStorage.getItem('pingone_token');
                 const storedExpiry = localStorage.getItem('pingone_token_expiry');
                 console.log('localStorage verification:', {
                     hasStoredToken: !!storedToken,

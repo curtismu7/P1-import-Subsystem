@@ -18,6 +18,18 @@
     <link rel="stylesheet" href="/css/styles-fixed.css">
     <!-- Ping Identity Theme CSS -->
     <link rel="stylesheet" href="/css/ping-identity.css">
+    <!-- Bulletproof Token Banner System CSS -->
+    <link rel="stylesheet" href="/css/bulletproof-token-banner-system.css">
+    <!-- Single Token Banner CSS -->
+    <link rel="stylesheet" href="/css/single-token-banner.css">
+    <!-- App Footer CSS -->
+    <link rel="stylesheet" href="/css/app-footer.css">
+    <!-- Version Indicator CSS -->
+    <link rel="stylesheet" href="/css/version-indicator.css">
+    <!-- Global Version Indicator CSS -->
+    <link rel="stylesheet" href="/css/global-version-indicator.css">
+    <!-- Primary Token Banners CSS - DISABLED -->
+    <link rel="stylesheet" href="/css/primary-token-banners.css">
     <!-- Token Status Indicator CSS -->
     <link rel="stylesheet" href="/css/token-status-indicator.css">
     <link rel="stylesheet" href="/css/enhanced-token-status.css">
@@ -33,6 +45,8 @@
     <link rel="stylesheet" href="/css/credentials-modal.css">
     <!-- Status Bar CSS -->
     <link rel="stylesheet" href="/css/status-bar.css">
+    <!-- Notification Area CSS -->
+    <link rel="stylesheet" href="/css/notification-area.css">
     <!-- Real-time Collaboration UI Styles -->
     <link rel="stylesheet" href="/css/realtime-collaboration.css">
     <!-- Analytics Dashboard UI Styles -->
@@ -54,6 +68,28 @@
     <link rel="stylesheet" href="css/bug-fix-notifications.css">
 </head>
 <body class="ping-identity-theme">
+    <!-- Notification Area -->
+    <div id="notification-area" class="notification-area"></div>
+    
+    <!-- Global Status Bar -->
+    <div id="global-status-bar" class="global-status-bar">
+        <div class="container">
+            <div class="status-content">
+                <span id="bundle-version" class="bundle-version">
+                    v6.5.2.4 | Bundle: <span id="bundle-number">loading...</span>
+                </span>
+                <span id="token-status" class="token-status">
+                    <i class="fas fa-circle status-indicator"></i>
+                    <span class="status-text">Initializing...</span>
+                </span>
+                <span id="bundle-indicator" class="bundle-indicator">
+                    <i class="fas fa-code-branch"></i>
+                    <span class="bundle-text">Bundle: <span id="bundle-footer-number">loading...</span></span>
+                </span>
+            </div>
+        </div>
+    </div>
+    
     <!-- Safe Logger Fallback - Loads first to ensure logging is always available -->
     <script src="/js/utils/centralized-logger-fallback.js"></script>
     
@@ -172,7 +208,7 @@
         <!-- Main Content -->
         <main class="main-content">
             <!-- Global Status Bar -->
-            <div id="global-status-bar" class="global-status-bar" style="display: none;">
+
                 <div class="container">
                     <div class="status-content">
                         <i class="status-icon"></i>
@@ -188,8 +224,8 @@
             
             <!-- Connection Status -->
             <div id="connection-status" class="connection-status" style="display: none;"></div>
+            
             <!-- Dedicated Status Header -->
-            <div id="notification-area" class="status-header"></div>
             
             <!-- Current Token Status Element -->
             <div id="current-token-status" class="current-token-status" style="display: none;"></div>
@@ -204,7 +240,7 @@
             <div id="home-view" class="view active">
                 <div class="home-header">
                     <h1>PingOne User Import Tool</h1>
-                    
+                    <!-- Version indicator moved to footer -->
 
                 </div>
                 
@@ -708,6 +744,86 @@
                             </select>
                             <div id="export-population-api-url" class="api-url-display" style="margin-top: 0.25rem; font-size: 0.9em; color: #007bff;"></div>
                         </div>
+
+                    <!-- Export Options -->
+                    <div class="export-options-section">
+                        <h3>Export Options</h3>
+                        <div class="form-group">
+                            <label for="export-population-filter">Filter Users:</label>
+                            <select id="export-population-filter" class="form-control">
+                                <option value="all" selected>All Users</option>
+                                <option value="active">Active Users Only</option>
+                                <option value="inactive">Inactive Users Only</option>
+                                <option value="archived">Archived Users Only</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="export-format">Export Format:</label>
+                            <select id="export-format" class="form-control">
+                                <option value="csv">CSV</option>
+                                <option value="json">JSON</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="export-include-disabled" checked>
+                                Include disabled users
+                            </label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="export-include-metadata" checked>
+                                Include user metadata
+                            </label>
+                        </div>
+                        
+                        <div class="export-actions">
+                            <button id="export-btn" class="btn btn-primary" type="button">
+                                <i class="fas fa-download"></i> Export Users
+                            </button>
+                            <button id="cancel-export-btn" class="btn btn-secondary" type="button" style="display: none;">
+                                <i class="fas fa-times"></i> Cancel Export
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Export Progress -->
+                    <div id="export-progress-container" class="progress-container" style="display: none;">
+                        <div class="progress-section">
+                            <div class="progress-header">
+                                <h3><i class="fas fa-download"></i> Export Progress</h3>
+                            </div>
+                            <div class="progress-content">
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar">
+                                        <div id="export-progress-bar" class="progress-bar-fill" style="width: 0%"></div>
+                                    </div>
+                                    <div class="progress-text">
+                                        <span id="export-progress-text">Preparing export...</span>
+                                        <span id="export-progress-percentage">0%</span>
+                                    </div>
+                                </div>
+                                <div class="progress-stats">
+                                    <div class="stat">
+                                        <span class="stat-label">Processed:</span>
+                                        <span id="export-processed-count">0</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">Total:</span>
+                                        <span id="export-total-count">0</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">Errors:</span>
+                                        <span id="export-error-count">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     </div>
 
                     <!-- Export Credentials Override Section -->
@@ -847,40 +963,7 @@
                         </div>
                     </div>
 
-                    <!-- Export Options -->
-                    <div class="export-options-container">
-                        <h3>Export Options</h3>
-                        <div class="form-group">
-                            <label for="export-population-filter">User Status Filter:</label>
-                            <select id="export-population-filter" class="form-control">
-                                <option value="all" selected>All Users</option>
-                                <option value="active">Active Users Only</option>
-                                <option value="inactive">Inactive Users Only</option>
-                                <option value="archived">Archived Users Only</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="export-format">Export Format:</label>
-                            <select id="export-format" class="form-control">
-                                <option value="csv">CSV</option>
-                                <option value="json">JSON</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox" id="export-include-disabled" checked>
-                                Include disabled users
-                            </label>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox" id="export-include-metadata" checked>
-                                Include user metadata
-                            </label>
-                        </div>
+
                     </div>
                     
                     <div class="form-actions">
@@ -1163,6 +1246,82 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Operation Summary View -->
+            <div id="operation-summary-view" class="view operation-summary-view" style="display: none;">
+                <div class="operation-summary-header">
+                    <h1>Operation Summary</h1>
+                    <div class="operation-type">Operation: <span id="summary-operation-type">Import</span></div>
+                    <div class="operation-timestamp">Completed: <span id="summary-timestamp">Just now</span></div>
+                </div>
+                
+                <div class="summary-cards">
+                    <div class="summary-card success">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                        <span class="count" id="success-count">0</span>
+                        <span class="label">Successful</span>
+                    </div>
+                    
+                    <div class="summary-card failure">
+                        <i class="fas fa-times-circle fa-2x"></i>
+                        <span class="count" id="failure-count">0</span>
+                        <span class="label">Failed</span>
+                    </div>
+                    
+                    <div class="summary-card skipped">
+                        <i class="fas fa-exclamation-circle fa-2x"></i>
+                        <span class="count" id="skipped-count">0</span>
+                        <span class="label">Skipped</span>
+                    </div>
+                    
+                    <div class="summary-card total">
+                        <i class="fas fa-list-ol fa-2x"></i>
+                        <span class="count" id="total-count">0</span>
+                        <span class="label">Total Records</span>
+                    </div>
+                </div>
+                
+                <div class="summary-details">
+                    <h2>Operation Details</h2>
+                    <div class="details-content">
+                        <div class="detail-row">
+                            <span class="detail-label">Operation ID:</span>
+                            <span class="detail-value" id="operation-id">N/A</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Started At:</span>
+                            <span class="detail-value" id="started-at">N/A</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Duration:</span>
+                            <span class="detail-value" id="duration">N/A</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Population:</span>
+                            <span class="detail-value" id="population-name">N/A</span>
+                        </div>
+                    </div>
+                    
+                    <div class="details-actions">
+                        <button id="view-details-btn" class="btn btn-primary">
+                            <i class="fas fa-search"></i> View Detailed Results
+                        </button>
+                        <button id="export-results-btn" class="btn btn-secondary">
+                            <i class="fas fa-download"></i> Export Results
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="operation-actions">
+                    <button id="back-to-home" class="btn btn-outline-secondary">
+                        <i class="fas fa-home"></i> Back to Home
+                    </button>
+                    <button id="new-operation" class="btn btn-primary">
+                        <i class="fas fa-redo"></i> Start New Operation
+                    </button>
+                </div>
+            </div>
+            
         </main>
     </div>
 
@@ -1176,8 +1335,17 @@
                         <span class="ping-trademark">PingIdentity<span class="trademark-symbol">™</span></span>
                     </div>
                     <span class="footer-copyright">
-                        &copy; 2025 PingOne Import Tool v6.5.2.4
-                        <span class="version-display" style="display: block; font-size: 0.9em; margin-top: 5px;">v6.5.2.4</span>
+                        &copy; 2025 PingOne Import Tool <span class="version-text"></span>
+                        <div class="version-display">
+                            <span class="version-badge">
+                                <span class="version-icon">🔹</span>
+                                <span class="version-text"></span>
+                                <span class="build-badge">
+                                    <span class="build-icon">🔧</span>
+                                    <span class="build-text"></span>
+                                </span>
+                            </span>
+                        </div>
                     </span>
                 </div>
                 <div class="footer-right">
@@ -1200,12 +1368,32 @@
     <script src="/js/delete-page-handler.js"></script>
     <!-- API URL Subsystem Client Script -->
     <script src="/js/api-url-subsystem-client.js"></script>
+    <!-- Version Manager -->
+    <script src="/js/version-manager.js"></script>
+    
     <!-- JavaScript -->
     <!-- CRITICAL: Direct bundle loading - no more dynamic manifest system -->
     <!-- This loads the latest bundle directly without complex API calls -->
-    <!-- Last fixed: 2025-07-22 - Replaced broken dynamic loading system -->
-        <script src="/js/bug-fix-loader.js"></script>
-    <script src="/js/bundle-1753966939.js"></script>
+    <script src="/js/bundle-1754046267.js"></script>
+    
+    <!-- Bundle information script -->
+    <script src="/js/bundle-info.js"></script>
+    
+    <!-- Fallback error handling for bundle loading -->
+    <script src="/js/bug-fix-loader.js"></script>
+    <!-- Bulletproof Token Banner System - Loaded from bundle -->
+    <script>
+        // Initialize the banner system after the bundle loads
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.BulletproofTokenBannerSystem) {
+                // If available in the global scope, initialize it
+                window.bulletproofTokenBannerSystem = new BulletproofTokenBannerSystem();
+            }
+        });
+    </script>
+    <!-- Global Version Indicator - MINIMIZED -->
+    <!-- <script src="/js/modules/global-version-indicator.js"></script> DISABLED TO PREVENT DUPLICATION -->
+    <!-- Bulletproof Token Banners - DISABLED -->
     
     <!-- Fallback error handling for bundle loading -->
     <script>
@@ -1230,7 +1418,11 @@
             }
         });
     </script>
-    <script src="/js/modules/log-manager.js"></script>
+    <!-- <script src="/js/modules/log-manager.js"></script> DISABLED TO PREVENT CONFLICTS WITH BUNDLE -->
+    
+    <!-- Bulletproof Components - DISABLED TO PREVENT CONFLICTS WITH BUNDLE -->
+    <!-- Bulletproof Components - DISABLED TO PREVENT CONFLICTS WITH BUNDLE -->
+    <script src="/js/modules/bulletproof-token-banners.js"></script>
     
     <!-- Simple Navigation Fallback -->
     <script src="/js/simple-navigation.js"></script>

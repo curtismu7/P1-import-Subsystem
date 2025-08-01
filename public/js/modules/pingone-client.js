@@ -71,7 +71,7 @@ class PingOneClient {
     loadTokenFromStorage() {
         try {
             if (typeof localStorage !== 'undefined') {
-                const storedToken = localStorage.getItem('pingone_worker_token');
+                const storedToken = localStorage.getItem('pingone_token');
                 const storedExpiry = localStorage.getItem('pingone_token_expiry');
                 
                 if (storedToken && storedExpiry) {
@@ -108,7 +108,7 @@ class PingOneClient {
             if (typeof localStorage !== 'undefined') {
                 const expiryTime = Date.now() + (expiresIn * 1000);
                 
-                localStorage.setItem('pingone_worker_token', token);
+                localStorage.setItem('pingone_token', token);
                 localStorage.setItem('pingone_token_expiry', expiryTime.toString());
                 
                 this.accessToken = token;
@@ -137,7 +137,7 @@ class PingOneClient {
     clearToken() {
         try {
             if (typeof localStorage !== 'undefined') {
-                localStorage.removeItem('pingone_worker_token');
+                localStorage.removeItem('pingone_token');
                 localStorage.removeItem('pingone_token_expiry');
             }
             

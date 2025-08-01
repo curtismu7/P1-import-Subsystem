@@ -1,0 +1,132 @@
+
+/* Global Version Indicator System */
+.global-version-indicator {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 9999;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 6px 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 0.8em;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.global-version-indicator:hover {
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    transform: translateY(-1px);
+}
+
+.global-version-indicator .version-badge,
+.global-version-indicator .build-badge,
+.global-version-indicator .status-badge {
+    display: inline-block;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+}
+
+.global-version-indicator .version-badge {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    border: 1px solid #0056b3;
+}
+
+.global-version-indicator .build-badge {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    border: 1px solid #495057;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75em;
+}
+
+.global-version-indicator .status-badge {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+    border: 1px solid #1e7e34;
+}
+
+/* Page-specific version indicators (keep existing ones but make them complementary) */
+.view .version-indicator {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    opacity: 0.8;
+}
+
+.view .version-indicator .version-badge,
+.view .version-indicator .build-badge,
+.view .version-indicator .status-badge {
+    display: inline-block;
+    padding: 3px 6px;
+    border-radius: 3px;
+    font-size: 0.75em;
+    font-weight: 500;
+    color: white;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+}
+
+.view .version-indicator .version-badge {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.view .version-indicator .build-badge {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    font-family: 'Courier New', monospace;
+}
+
+.view .version-indicator .status-badge {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .global-version-indicator {
+        position: relative;
+        top: auto;
+        right: auto;
+        margin: 8px 0;
+        justify-content: center;
+    }
+    
+    .global-version-indicator .version-badge,
+    .global-version-indicator .build-badge,
+    .global-version-indicator .status-badge {
+        font-size: 0.7em;
+        padding: 2px 4px;
+    }
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+    .global-version-indicator {
+        background: rgba(33, 37, 41, 0.95);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+    
+    .global-version-indicator:hover {
+        background: rgba(33, 37, 41, 1);
+    }
+}
+
+/* Animation for version updates */
+.global-version-indicator.updating {
+    animation: versionPulse 0.5s ease-in-out;
+}
+
+@keyframes versionPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}

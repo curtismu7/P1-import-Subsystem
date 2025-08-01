@@ -9,7 +9,6 @@
  * - Ensures the UI remains responsive at all times
  * - Supports multiple export formats with validation
  * 
- * Version: 6.5.2.2
  * Status: PRODUCTION READY - BULLETPROOF
  */
 

@@ -63,7 +63,7 @@ class Logger {
         // Initialize Winston-compatible logger
         this.winstonLogger = createWinstonLogger({
             service: 'pingone-import-frontend',
-            environment: process.env.NODE_ENV || 'development',
+            environment: (typeof process !== 'undefined' && process.env ? process.env.NODE_ENV : null) || 'development',
             enableServerLogging: true,
             enableConsoleLogging: true
         });
@@ -520,3 +520,9 @@ class Logger {
 
 // Export the Logger class
 export { Logger };
+
+// Create a default logger instance for convenience
+const defaultLogger = new Logger();
+
+// Export as default for backward compatibility
+export default defaultLogger;

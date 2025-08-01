@@ -1333,7 +1333,7 @@ export class AnalyticsDashboardUI {
             isCollecting: statusData.isCollecting || false,
             hasErrors: statusData.hasErrors || false,
             lastUpdate: statusData.lastUpdate || new Date().toISOString(),
-            version: statusData.version || '6.5.2.1'
+            version: statusData.version || '6.5.2.4'
         };
     }
     
@@ -1380,7 +1380,7 @@ export class AnalyticsDashboardUI {
             },
             status: {
                 isInitialized: false, isCollecting: false, hasErrors: true,
-                lastUpdate: now.toISOString(), version: '6.5.2.1'
+                lastUpdate: now.toISOString(), version: '6.5.2.4'
             },
             timestamp: now,
             emergency: true

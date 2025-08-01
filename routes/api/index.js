@@ -2824,7 +2824,7 @@ router.post('/pingone/get-token', async (req, res, next) => {
 router.get('/version', (req, res) => {
     // You can import VersionManager or use a static version string
     // For now, use a static version
-    res.json({ version: '6.3.0' });
+    res.json({ version: '6.5.2.4' });
 });
 
 // --- DELETE USERS ENDPOINT ---

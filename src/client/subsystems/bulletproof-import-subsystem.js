@@ -8,7 +8,6 @@
  * - Maintains detailed logging for debugging
  * - Ensures the UI remains responsive at all times
  * 
- * Version: 6.5.2.2
  * Status: PRODUCTION READY - BULLETPROOF
  */
 

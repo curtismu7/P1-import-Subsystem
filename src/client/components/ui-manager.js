@@ -785,7 +785,7 @@ setupElements() {
                 return false;
             }
             
-            const token = localStorage.getItem('pingone_worker_token');
+            const token = localStorage.getItem('pingone_token');
             const expiry = localStorage.getItem('pingone_token_expiry');
             
             if (!token || !expiry) {

@@ -1,0 +1,193 @@
+/* Global Status Bar */
+.global-status-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--ping-green, #00a186);
+    color: white;
+    padding: 6px 0;
+    z-index: 9998;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 13px;
+}
+
+.global-status-bar .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+.bundle-version {
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.token-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 2px 10px 2px 6px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.token-status .status-indicator {
+    font-size: 8px;
+    color: #ffeb3b; /* Default to yellow for initializing */
+}
+
+.token-status.valid .status-indicator {
+    color: #4caf50; /* Green for valid */
+}
+
+.token-status.invalid .status-indicator {
+    color: #f44336; /* Red for invalid */
+}
+
+/* Notification Area Styles */
+.notification-area {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 400px;
+    width: 100%;
+    pointer-events: none;
+}
+
+.notification {
+    margin-bottom: 10px;
+    padding: 12px 16px;
+    border-radius: var(--border-radius, 6px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: white;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s ease;
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.notification-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--ping-black, #222222);
+}
+
+.notification-message {
+    font-size: 14px;
+    color: var(--ping-gray, #6E6E6E);
+    line-height: 1.4;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: var(--ping-gray, #6E6E6E);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0;
+    margin-left: 8px;
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.notification-close:hover {
+    opacity: 1;
+}
+
+/* Notification Types */
+.notification.success {
+    border-left: 4px solid var(--ping-success-green, #2E8540);
+}
+
+.notification.success .notification-icon {
+    color: var(--ping-success-green, #2E8540);
+}
+
+.notification.error {
+    border-left: 4px solid var(--ping-primary-red, #E1001A);
+}
+
+.notification.error .notification-icon {
+    color: var(--ping-primary-red, #E1001A);
+}
+
+.notification.warning {
+    border-left: 4px solid var(--ping-warning-yellow, #FFC20E);
+}
+
+.notification.warning .notification-icon {
+    color: var(--ping-warning-yellow, #FFC20E);
+}
+
+.notification.info {
+    border-left: 4px solid var(--ping-info-blue, #0073C8);
+}
+
+.notification.info .notification-icon {
+    color: var(--ping-info-blue, #0073C8);
+}
+
+/* Animation for notification entry/exit */
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+.notification.slide-in {
+    animation: slideIn 0.3s ease forwards;
+}
+
+.notification.slide-out {
+    animation: slideOut 0.3s ease forwards;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .notification-area {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    
+    .notification {
+        padding: 10px 14px;
+    }
+    
+    .notification-message {
+        font-size: 13px;
+    }
+}
