@@ -25,7 +25,469 @@ export class ExportSubsystem {
         this.setupCrossSubsystemEvents();
     }
     
+    
+
+    
+
     /**
+     * Initialize export view - called when view becomes active
+     */
+    async initialize() {
+        try {
+            this.logger.info('🔄 EXPORT: Initializing export view...');
+            
+            // Load populations for dropdown
+            await this.loadPopulations();
+            
+            // Set up event listeners
+            this.setupEventListeners();
+            
+            this.logger.info('✅ EXPORT: Export view initialized successfully');
+        } catch (error) {
+            this.logger.error('❌ EXPORT: Failed to initialize export view:', error);
+        }
+    }
+    
+    /**
+     * Set up event listeners for export functionality
+     */
+    setupEventListeners() {
+        const exportBtn = document.getElementById('export-btn');
+        const cancelBtn = document.getElementById('cancel-export-btn');
+        
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                this.startExport();
+            });
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                this.cancelExport();
+            });
+        }
+    }
+    
+    /**
+     * Start export operation
+     */
+    async startExport() {
+        try {
+            const populationSelect = document.getElementById('export-population-select');
+            const formatSelect = document.getElementById('export-format');
+            const includeHeaders = document.getElementById('include-headers');
+            
+            if (!populationSelect || !populationSelect.value) {
+                this.uiManager.showError('No Population Selected', 'Please select a population to export');
+                return;
+            }
+            
+            const exportData = {
+                populationId: populationSelect.value,
+                format: formatSelect ? formatSelect.value : 'csv',
+                includeHeaders: includeHeaders ? includeHeaders.checked : true
+            };
+            
+            this.logger.info('🚀 EXPORT: Starting export operation...', exportData);
+            
+            // Show progress container
+            const progressContainer = document.getElementById('export-progress-container');
+            if (progressContainer) {
+                progressContainer.style.display = 'block';
+            }
+            
+            // Disable export button, enable cancel button
+            const exportBtn = document.getElementById('export-btn');
+            const cancelBtn = document.getElementById('cancel-export-btn');
+            
+            if (exportBtn) exportBtn.disabled = true;
+            if (cancelBtn) cancelBtn.style.display = 'inline-block';
+            
+            // Start export via API
+            const response = await this.localClient.post('/api/export/users', exportData);
+            
+            if (response.success) {
+                this.logger.info('✅ EXPORT: Export started successfully');
+                this.monitorExportProgress(response.sessionId);
+            } else {
+                throw new Error(response.error || 'Failed to start export');
+            }
+            
+        } catch (error) {
+            this.logger.error('❌ EXPORT: Export failed:', error);
+            this.uiManager.showError('Export Failed', error.message);
+            this.resetExportUI();
+        }
+    }
+    
+    /**
+     * Monitor export progress
+     */
+    async monitorExportProgress(sessionId) {
+        const checkProgress = async () => {
+            try {
+                const response = await this.localClient.get('/api/export/status');
+                
+                if (response.success) {
+                    const status = response.status;
+                    
+                    // Update progress UI
+                    this.updateProgressUI(status);
+                    
+                    if (status.status === 'completed') {
+                        this.handleExportComplete(status);
+                    } else if (status.status === 'failed') {
+                        this.handleExportFailed(status);
+                    } else if (status.status === 'running') {
+                        // Continue monitoring
+                        setTimeout(checkProgress, 1000);
+                    }
+                }
+            } catch (error) {
+                this.logger.error('❌ EXPORT: Progress monitoring failed:', error);
+                this.resetExportUI();
+            }
+        };
+        
+        checkProgress();
+    }
+    
+    /**
+     * Update progress UI
+     */
+    updateProgressUI(status) {
+        const progressBar = document.getElementById('export-progress-bar');
+        const progressText = document.getElementById('export-progress-text');
+        const progressPercentage = document.getElementById('export-progress-percentage');
+        const processedCount = document.getElementById('export-processed-count');
+        const totalCount = document.getElementById('export-total-count');
+        const errorCount = document.getElementById('export-error-count');
+        
+        if (progressBar) {
+            progressBar.style.width = `${status.progress}%`;
+        }
+        
+        if (progressText) {
+            progressText.textContent = status.status === 'running' ? 'Exporting users...' : 'Processing...';
+        }
+        
+        if (progressPercentage) {
+            progressPercentage.textContent = `${Math.round(status.progress)}%`;
+        }
+        
+        if (processedCount) {
+            processedCount.textContent = status.processed || 0;
+        }
+        
+        if (totalCount) {
+            totalCount.textContent = status.total || 0;
+        }
+        
+        if (errorCount) {
+            errorCount.textContent = status.errors || 0;
+        }
+    }
+    
+    /**
+     * Handle export completion
+     */
+    handleExportComplete(status) {
+        this.logger.info('✅ EXPORT: Export completed successfully');
+        
+        // Show download link
+        if (status.downloadUrl) {
+            const downloadLink = document.createElement('a');
+            downloadLink.href = status.downloadUrl;
+            downloadLink.download = status.outputFile;
+            downloadLink.textContent = 'Download Export File';
+            downloadLink.className = 'btn btn-success';
+            
+            const progressContainer = document.getElementById('export-progress-container');
+            if (progressContainer) {
+                const downloadSection = document.createElement('div');
+                downloadSection.className = 'download-section';
+                downloadSection.innerHTML = `
+                    <h4>Export Complete!</h4>
+                    <p>Your export has been completed successfully.</p>
+                `;
+                downloadSection.appendChild(downloadLink);
+                progressContainer.appendChild(downloadSection);
+            }
+        }
+        
+        this.resetExportUI();
+        this.uiManager.showSuccess('Export Complete', 'Your export has been completed successfully.');
+    }
+    
+    /**
+     * Handle export failure
+     */
+    handleExportFailed(status) {
+        this.logger.error('❌ EXPORT: Export failed');
+        this.resetExportUI();
+        this.uiManager.showError('Export Failed', 'The export operation failed. Please try again.');
+    }
+    
+    /**
+     * Reset export UI to initial state
+     */
+    resetExportUI() {
+        const exportBtn = document.getElementById('export-btn');
+        const cancelBtn = document.getElementById('cancel-export-btn');
+        const progressContainer = document.getElementById('export-progress-container');
+        
+        if (exportBtn) exportBtn.disabled = false;
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        if (progressContainer) progressContainer.style.display = 'none';
+    }
+    
+    /**
+     * Cancel export operation
+     */
+    async cancelExport() {
+        try {
+            this.logger.info('🛑 EXPORT: Cancelling export operation...');
+            
+            // Call cancel API if available
+            await this.localClient.post('/api/export/cancel');
+            
+            this.resetExportUI();
+            this.uiManager.showInfo('Export Cancelled', 'The export operation has been cancelled.');
+            
+        } catch (error) {
+            this.logger.error('❌ EXPORT: Failed to cancel export:', error);
+        }
+    }
+/**
+     * Initialize export view - called when view becomes active
+     */
+    async initialize() {
+        try {
+            this.logger.info('🔄 EXPORT: Initializing export view...');
+            
+            // Load populations for dropdown
+            await this.loadPopulations();
+            
+            // Set up event listeners
+            this.setupEventListeners();
+            
+            this.logger.info('✅ EXPORT: Export view initialized successfully');
+        } catch (error) {
+            this.logger.error('❌ EXPORT: Failed to initialize export view:', error);
+        }
+    }
+    
+    /**
+     * Set up event listeners for export functionality
+     */
+    setupEventListeners() {
+        const exportBtn = document.getElementById('export-btn');
+        const cancelBtn = document.getElementById('cancel-export-btn');
+        
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                this.startExport();
+            });
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                this.cancelExport();
+            });
+        }
+    }
+    
+    /**
+     * Start export operation
+     */
+    async startExport() {
+        try {
+            const populationSelect = document.getElementById('export-population-select');
+            const formatSelect = document.getElementById('export-format');
+            const includeHeaders = document.getElementById('include-headers');
+            
+            if (!populationSelect || !populationSelect.value) {
+                this.uiManager.showError('No Population Selected', 'Please select a population to export');
+                return;
+            }
+            
+            const exportData = {
+                populationId: populationSelect.value,
+                format: formatSelect ? formatSelect.value : 'csv',
+                includeHeaders: includeHeaders ? includeHeaders.checked : true
+            };
+            
+            this.logger.info('🚀 EXPORT: Starting export operation...', exportData);
+            
+            // Show progress container
+            const progressContainer = document.getElementById('export-progress-container');
+            if (progressContainer) {
+                progressContainer.style.display = 'block';
+            }
+            
+            // Disable export button, enable cancel button
+            const exportBtn = document.getElementById('export-btn');
+            const cancelBtn = document.getElementById('cancel-export-btn');
+            
+            if (exportBtn) exportBtn.disabled = true;
+            if (cancelBtn) cancelBtn.style.display = 'inline-block';
+            
+            // Start export via API
+            const response = await this.localClient.post('/api/export/users', exportData);
+            
+            if (response.success) {
+                this.logger.info('✅ EXPORT: Export started successfully');
+                this.monitorExportProgress(response.sessionId);
+            } else {
+                throw new Error(response.error || 'Failed to start export');
+            }
+            
+        } catch (error) {
+            this.logger.error('❌ EXPORT: Export failed:', error);
+            this.uiManager.showError('Export Failed', error.message);
+            this.resetExportUI();
+        }
+    }
+    
+    /**
+     * Monitor export progress
+     */
+    async monitorExportProgress(sessionId) {
+        const checkProgress = async () => {
+            try {
+                const response = await this.localClient.get('/api/export/status');
+                
+                if (response.success) {
+                    const status = response.status;
+                    
+                    // Update progress UI
+                    this.updateProgressUI(status);
+                    
+                    if (status.status === 'completed') {
+                        this.handleExportComplete(status);
+                    } else if (status.status === 'failed') {
+                        this.handleExportFailed(status);
+                    } else if (status.status === 'running') {
+                        // Continue monitoring
+                        setTimeout(checkProgress, 1000);
+                    }
+                }
+            } catch (error) {
+                this.logger.error('❌ EXPORT: Progress monitoring failed:', error);
+                this.resetExportUI();
+            }
+        };
+        
+        checkProgress();
+    }
+    
+    /**
+     * Update progress UI
+     */
+    updateProgressUI(status) {
+        const progressBar = document.getElementById('export-progress-bar');
+        const progressText = document.getElementById('export-progress-text');
+        const progressPercentage = document.getElementById('export-progress-percentage');
+        const processedCount = document.getElementById('export-processed-count');
+        const totalCount = document.getElementById('export-total-count');
+        const errorCount = document.getElementById('export-error-count');
+        
+        if (progressBar) {
+            progressBar.style.width = `${status.progress}%`;
+        }
+        
+        if (progressText) {
+            progressText.textContent = status.status === 'running' ? 'Exporting users...' : 'Processing...';
+        }
+        
+        if (progressPercentage) {
+            progressPercentage.textContent = `${Math.round(status.progress)}%`;
+        }
+        
+        if (processedCount) {
+            processedCount.textContent = status.processed || 0;
+        }
+        
+        if (totalCount) {
+            totalCount.textContent = status.total || 0;
+        }
+        
+        if (errorCount) {
+            errorCount.textContent = status.errors || 0;
+        }
+    }
+    
+    /**
+     * Handle export completion
+     */
+    handleExportComplete(status) {
+        this.logger.info('✅ EXPORT: Export completed successfully');
+        
+        // Show download link
+        if (status.downloadUrl) {
+            const downloadLink = document.createElement('a');
+            downloadLink.href = status.downloadUrl;
+            downloadLink.download = status.outputFile;
+            downloadLink.textContent = 'Download Export File';
+            downloadLink.className = 'btn btn-success';
+            
+            const progressContainer = document.getElementById('export-progress-container');
+            if (progressContainer) {
+                const downloadSection = document.createElement('div');
+                downloadSection.className = 'download-section';
+                downloadSection.innerHTML = `
+                    <h4>Export Complete!</h4>
+                    <p>Your export has been completed successfully.</p>
+                `;
+                downloadSection.appendChild(downloadLink);
+                progressContainer.appendChild(downloadSection);
+            }
+        }
+        
+        this.resetExportUI();
+        this.uiManager.showSuccess('Export Complete', 'Your export has been completed successfully.');
+    }
+    
+    /**
+     * Handle export failure
+     */
+    handleExportFailed(status) {
+        this.logger.error('❌ EXPORT: Export failed');
+        this.resetExportUI();
+        this.uiManager.showError('Export Failed', 'The export operation failed. Please try again.');
+    }
+    
+    /**
+     * Reset export UI to initial state
+     */
+    resetExportUI() {
+        const exportBtn = document.getElementById('export-btn');
+        const cancelBtn = document.getElementById('cancel-export-btn');
+        const progressContainer = document.getElementById('export-progress-container');
+        
+        if (exportBtn) exportBtn.disabled = false;
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        if (progressContainer) progressContainer.style.display = 'none';
+    }
+    
+    /**
+     * Cancel export operation
+     */
+    async cancelExport() {
+        try {
+            this.logger.info('🛑 EXPORT: Cancelling export operation...');
+            
+            // Call cancel API if available
+            await this.localClient.post('/api/export/cancel');
+            
+            this.resetExportUI();
+            this.uiManager.showInfo('Export Cancelled', 'The export operation has been cancelled.');
+            
+        } catch (error) {
+            this.logger.error('❌ EXPORT: Failed to cancel export:', error);
+        }
+    }
+/**
      * Initialize the export subsystem
      */
     async init() {

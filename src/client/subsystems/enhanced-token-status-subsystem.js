@@ -283,7 +283,7 @@ export class EnhancedTokenStatusSubsystem {
         
         // Try to get from localStorage
         try {
-            const token = localStorage.getItem('pingone_worker_token');
+            const token = localStorage.getItem('pingone_token');
             const expiry = localStorage.getItem('pingone_token_expiry');
             
             if (token && expiry) {
@@ -409,9 +409,9 @@ export class EnhancedTokenStatusSubsystem {
             if (status.className === 'valid' && this.tokenInfo.isValid) {
                 // Show comprehensive green banner with all requested info
                 const timeLeft = this.formatTimeRemaining();
-                const buildNumber = 'bundle-1753964322';
-                const version = '6.5.2.3';
-                const lastChange = 'Comprehensive token status banner with build info and version display';
+                const buildNumber = 'bundle-1754046267';
+                const version = '6.5.2.4';
+                const lastChange = 'Updated to latest version 6.5.2.4 with current build';
                 
                 elements.text.textContent = `🟢 TOKEN OBTAINED | Time Left: ${timeLeft} | Build: ${buildNumber} | Version: ${version} | Last Change: ${lastChange}`;
             } else {

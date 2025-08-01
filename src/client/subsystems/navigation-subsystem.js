@@ -257,7 +257,7 @@ export class NavigationSubsystem {
             'history': 'History'
         };
         
-        const baseTitle = 'PingOne User Import v6.5.2.1';
+        const baseTitle = 'PingOne User Import v6.5.2.4';
         const viewTitle = titles[view];
         
         if (viewTitle) {
@@ -300,8 +300,15 @@ export class NavigationSubsystem {
         
         // Export view initializer
         this.registerViewInitializer('export', async () => {
-            if (window.exportManager && typeof window.exportManager.loadPopulations === 'function') {
-                await window.exportManager.loadPopulations();
+            try {
+                // Initialize export subsystem
+                if (window.app && window.app.subsystems && window.app.subsystems.export) {
+                    await window.app.subsystems.export.initialize();
+                } else {
+                    console.warn('Export subsystem not found');
+                }
+            } catch (error) {
+                console.error('Failed to initialize export view:', error);
             }
         });
         

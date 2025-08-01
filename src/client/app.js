@@ -24,10 +24,14 @@ import { createBulletproofTokenManager } from './utils/bulletproof-token-manager
 import { createBulletproofSubsystemWrapper } from './utils/bulletproof-subsystem-wrapper.js';
 import './utils/bulletproof-global-handler.js'; // Auto-initializes
 
+// Initialize the comprehensive banner system
+import './init-banner-system.js';
+
 // Core utilities
 import { Logger } from '../../public/js/modules/logger.js';
 import { FileLogger } from '../../public/js/modules/file-logger.js';
 import { EventBus } from '../../public/js/modules/event-bus.js';
+import { GlobalUIManager } from '../../public/js/modules/global-ui-manager.js';
 
 // Centralized logger
 import { CentralizedLogger } from '../../public/js/utils/centralized-logger.js';
@@ -212,7 +216,7 @@ class App {
         
         // Log application start
         this.logger.info('🚀 PingOne Import Tool starting...', {
-            version: '6.5.2.2',
+            version: '6.5.2.4',
             timestamp: new Date().toISOString(),
             userAgent: navigator.userAgent,
             url: window.location.href
@@ -225,6 +229,7 @@ class App {
         this.tokenManager = null;
         this.fileHandler = null;
         this.versionManager = null;
+        this.globalUIManager = null;
         
         // API clients
         this.localClient = null;
@@ -532,6 +537,11 @@ class App {
     async initializeCoreComponents() {
         this.logger.debug('Initializing core components');
 
+        // Initialize Global UI Manager first as it provides UI feedback for other components
+        this.globalUIManager = new GlobalUIManager(this);
+        await this.globalUIManager.init();
+        this.logger.debug('Global UI Manager initialized');
+
         // API clients must be first as other components depend on it.
         this.localClient = new LocalAPIClient(this.logger);
 
@@ -550,7 +560,8 @@ class App {
             this.localClient,
             this.settingsManager, // Now properly initialized
             this.eventBus,
-            null // credentialsManager - not available yet
+            null, // credentialsManager - not available yet
+            this.globalUIManager // Pass global UI manager for notifications
         );
         await this.settingsSubsystem.init();
         this.subsystems.settings = this.settingsSubsystem;
@@ -560,6 +571,17 @@ class App {
         this.tokenManager = new TokenManager(this.logger, this.subsystems.settings.getAllSettings(), this.eventBus);
         this.fileHandler = new FileHandler(this.logger, this.uiManager);
         this.versionManager = new VersionManager();
+        
+        // Update UI with token status after token manager is initialized
+        if (this.tokenManager && this.globalUIManager) {
+            const tokenStatus = this.tokenManager.isTokenValid() ? 'valid' : 'invalid';
+            this.globalUIManager.updateTokenStatus(tokenStatus);
+            
+            // Listen for token status changes
+            this.eventBus.on('token-status-changed', (status) => {
+                this.globalUIManager.updateTokenStatus(status);
+            });
+        }
         try {
             this.pingOneClient = new PingOneClient();
             this.logger.debug('PingOne client created successfully');
@@ -1619,7 +1641,7 @@ class App {
             };
             
             const title = titles[view] || 'PingOne Import Tool';
-            document.title = `${title} - PingOne Import Tool v6.5.1.1`;
+            document.title = `${title} - PingOne Import Tool v6.5.2.4`;
             
             this.logger.debug(`🔧 DIRECT NAV: Updated page title to: ${document.title}`);
             
@@ -2220,7 +2242,7 @@ window.testLoading = {
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await app.init();
-        window.logger?.info('🚀 PingOne Import Tool v6.5.1.2 initialized successfully') || console.log('🚀 PingOne Import Tool v6.5.1.2 initialized successfully');
+        window.logger?.info('🚀 PingOne Import Tool v6.5.2.4 initialized successfully') || console.log('🚀 PingOne Import Tool v6.5.2.4 initialized successfully');
         window.logger?.info('📊 Health Status:', app.getHealthStatus()) || console.log('📊 Health Status:', app.getHealthStatus());
     } catch (error) {
         window.logger?.error('❌ Application initialization failed:', error) || console.error('❌ Application initialization failed:', error);

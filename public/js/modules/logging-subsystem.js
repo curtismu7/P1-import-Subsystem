@@ -14,7 +14,7 @@ export class LoggingSubsystem {
         // Initialize Winston logger
         this.logger = createWinstonLogger({
             service: 'logging-subsystem',
-            environment: process.env.NODE_ENV || 'development'
+            environment: (typeof process !== 'undefined' && process.env ? process.env.NODE_ENV : null) || 'development'
         });
         
         // Log storage for UI display
@@ -177,7 +177,7 @@ export class LoggingSubsystem {
         }
         
         // Console output for development
-        if (process.env.NODE_ENV === 'development') {
+        if ((typeof process !== 'undefined' && process.env ? process.env.NODE_ENV : 'development') === 'development') {
             this.consoleLog(logEntry);
         }
     }

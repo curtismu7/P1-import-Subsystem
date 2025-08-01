@@ -6,6 +6,14 @@
  */
 
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.join(__dirname, '../..');
+
 const router = express.Router();
 
 // In-memory storage for export status (in production, use database)
@@ -260,5 +268,189 @@ router.delete('/reset', (req, res) => {
         });
     }
 });
+
+
+/**
+ * POST /api/export/users
+ * Export users from specified population
+ */
+router.post('/users', async (req, res) => {
+    try {
+        const { populationId, format = 'csv', includeHeaders = true } = req.body;
+        
+        if (!populationId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Population ID is required'
+            });
+        }
+        
+        // Set export status to running
+        exportStatus = {
+            ...exportStatus,
+            isRunning: true,
+            progress: 0,
+            total: 0,
+            processed: 0,
+            errors: 0,
+            warnings: 0,
+            startTime: new Date(),
+            endTime: null,
+            currentPopulation: populationId,
+            sessionId: Date.now().toString(),
+            status: 'running',
+            outputFile: null,
+            downloadUrl: null
+        };
+        
+        // Start export process (simplified for now)
+        setTimeout(async () => {
+            try {
+                // Simulate export process
+                const users = await simulateUserExport(populationId);
+                
+                // Generate export file
+                const exportData = format === 'csv' ? 
+                    generateCSV(users, includeHeaders) : 
+                    JSON.stringify(users, null, 2);
+                
+                // Save export file
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                const filename = `export_${populationId}_${timestamp}.${format}`;
+                const filePath = path.join(rootDir, 'temp', filename);
+                
+                // Ensure temp directory exists
+                const tempDir = path.dirname(filePath);
+                if (!fs.existsSync(tempDir)) {
+                    fs.mkdirSync(tempDir, { recursive: true });
+                }
+                
+                fs.writeFileSync(filePath, exportData, 'utf8');
+                
+                // Update export status
+                exportStatus = {
+                    ...exportStatus,
+                    isRunning: false,
+                    progress: 100,
+                    total: users.length,
+                    processed: users.length,
+                    endTime: new Date(),
+                    status: 'completed',
+                    outputFile: filename,
+                    downloadUrl: `/api/export/download/${filename}`
+                };
+                
+            } catch (error) {
+                console.error('Export error:', error);
+                exportStatus = {
+                    ...exportStatus,
+                    isRunning: false,
+                    status: 'failed',
+                    endTime: new Date()
+                };
+            }
+        }, 1000);
+        
+        res.json({
+            success: true,
+            message: 'Export started successfully',
+            sessionId: exportStatus.sessionId
+        });
+        
+    } catch (error) {
+        console.error('Export API error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to start export operation'
+        });
+    }
+});
+
+/**
+ * GET /api/export/download/:filename
+ * Download exported file
+ */
+router.get('/download/:filename', (req, res) => {
+    try {
+        const filename = req.params.filename;
+        const filePath = path.join(rootDir, 'temp', filename);
+        
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({
+                success: false,
+                error: 'Export file not found'
+            });
+        }
+        
+        res.download(filePath, filename, (err) => {
+            if (err) {
+                console.error('Download error:', err);
+                res.status(500).json({
+                    success: false,
+                    error: 'Failed to download file'
+                });
+            }
+        });
+        
+    } catch (error) {
+        console.error('Download API error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to process download request'
+        });
+    }
+});
+
+/**
+ * Simulate user export (replace with actual PingOne API call)
+ */
+async function simulateUserExport(populationId) {
+    // This is a simulation - replace with actual PingOne API call
+    const users = [];
+    const userCount = populationId === 'ALL' ? 100 : 50;
+    
+    for (let i = 1; i <= userCount; i++) {
+        users.push({
+            id: `user_${i}`,
+            username: `user${i}@example.com`,
+            email: `user${i}@example.com`,
+            firstName: `User`,
+            lastName: `${i}`,
+            population: populationId === 'ALL' ? `pop_${i % 5}` : populationId,
+            status: 'ENABLED',
+            createdAt: new Date().toISOString()
+        });
+    }
+    
+    return users;
+}
+
+/**
+ * Generate CSV from user data
+ */
+function generateCSV(users, includeHeaders = true) {
+    if (users.length === 0) return '';
+    
+    const headers = Object.keys(users[0]);
+    let csv = '';
+    
+    if (includeHeaders) {
+        csv += headers.join(',') + '\n';
+    }
+    
+    users.forEach(user => {
+        const row = headers.map(header => {
+            const value = user[header] || '';
+            // Escape commas and quotes in CSV
+            return typeof value === 'string' && (value.includes(',') || value.includes('"')) 
+                ? `"${value.replace(/"/g, '""')}"`
+                : value;
+        });
+        csv += row.join(',') + '\n';
+    });
+    
+    return csv;
+}
+
 
 export default router;

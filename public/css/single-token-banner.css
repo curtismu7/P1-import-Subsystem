@@ -1,0 +1,120 @@
+
+/* SINGLE TOKEN BANNER SYSTEM - ONLY BANNER STYLES */
+
+/* Hide all other banner systems */
+.token-notification,
+.bulletproof-red-banner,
+.bulletproof-green-banner,
+.primary-red-banner,
+.primary-green-banner,
+[class*="token-notification"] {
+    display: none !important;
+}
+
+.single-banner-container {
+    margin: 8px 0;
+    z-index: 2000;
+}
+
+/* Single Red Banner */
+.single-red-banner {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 3px 6px rgba(220, 53, 69, 0.3);
+    border-left: 4px solid #721c24;
+    font-weight: 500;
+    margin: 8px 0;
+}
+
+.single-red-banner .banner-icon {
+    margin-right: 12px;
+    font-size: 1.2em;
+}
+
+.single-red-banner .banner-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.single-red-banner .banner-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: 16px;
+}
+
+.single-red-banner .banner-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.single-red-banner .banner-btn:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+/* Single Green Banner */
+.single-green-banner {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 10px 16px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 3px 6px rgba(40, 167, 69, 0.3);
+    border-left: 4px solid #1e7e34;
+    font-weight: 500;
+    margin: 8px 0;
+}
+
+.single-green-banner.expiring {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    box-shadow: 0 3px 6px rgba(255, 152, 0, 0.3);
+    border-left-color: #e65100;
+}
+
+.single-green-banner .banner-icon {
+    margin-right: 12px;
+    font-size: 1.1em;
+}
+
+.single-green-banner .banner-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.single-green-banner .banner-info {
+    font-size: 0.8em;
+    background: rgba(255,255,255,0.2);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .single-red-banner,
+    .single-green-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+    
+    .single-red-banner .banner-actions {
+        margin-left: 0;
+        width: 100%;
+    }
+}

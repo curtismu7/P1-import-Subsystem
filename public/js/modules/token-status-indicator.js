@@ -215,7 +215,7 @@ class TokenStatusIndicator {
     async getTokenInfo() {
         try {
             // Check localStorage first
-            const token = localStorage.getItem('pingone_worker_token');
+            const token = localStorage.getItem('pingone_token');
             const expiry = localStorage.getItem('pingone_token_expiry');
 
             if (!token || !expiry) {
@@ -512,7 +512,7 @@ class TokenStatusIndicator {
             
             // Store token in localStorage
             const expiryTime = Date.now() + (data.expires_in * 1000);
-            localStorage.setItem('pingone_worker_token', data.access_token);
+            localStorage.setItem('pingone_token', data.access_token);
             localStorage.setItem('pingone_token_expiry', expiryTime.toString());
 
             // Update status

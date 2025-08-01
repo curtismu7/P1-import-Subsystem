@@ -1,13 +1,13 @@
 {
-  "originalPath": "/Users/cmuir/P1Import-apps/P1-import-Subsystem/public/js/bundle-1753876524.js",
-  "minifiedPath": "/Users/cmuir/P1Import-apps/P1-import-Subsystem/public/js/bundle-1753876524.min.js",
-  "originalSize": 1226884,
-  "minifiedSize": 666774,
-  "reduction": 45.65305277434541,
-  "gzippedOriginal": 241935,
-  "gzippedMinified": 143364,
-  "gzippedReduction": 40.74276148552297,
-  "brotliOriginal": 178059,
-  "brotliMinified": 112088,
-  "brotliReduction": 37.050078906429896
+  "originalPath": "/Users/curtismuir/P1-Import-subsystems/P1-import-Subsystem-1/public/js/bundle-1754045338.js",
+  "minifiedPath": "/Users/curtismuir/P1-Import-subsystems/P1-import-Subsystem-1/public/js/bundle-1754045338.min.js",
+  "originalSize": 1410843,
+  "minifiedSize": 765398,
+  "reduction": 45.748889139330174,
+  "gzippedOriginal": 278873,
+  "gzippedMinified": 165281,
+  "gzippedReduction": 40.73251982085036,
+  "brotliOriginal": 203626,
+  "brotliMinified": 128122,
+  "brotliReduction": 37.079744236983494
 }
