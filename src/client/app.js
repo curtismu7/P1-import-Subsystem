@@ -37,7 +37,6 @@ import { SettingsManager } from '../../public/js/modules/settings-manager.js';
 import { UIManager } from './components/ui-manager.js';
 import LocalApiClient from './utils/local-api-client.js'; // Assuming path
 import SettingsSubsystem from './subsystems/settings-subsystem.js';
-import { EventBus } from './utils/event-bus.js';
 import CredentialManager from './components/credentials-manager.js';
 import SettingsManager from './components/settings-manager.js';
 import PingOneClient from './utils/pingone-client.js'; // Assuming path
@@ -95,7 +94,7 @@ class App {
         
         // Log application start
         this.logger.info('🚀 PingOne Import Tool starting...', {
-            version: '6.5.2.2',
+            version: '6.5.2.4',
             timestamp: new Date().toISOString(),
             userAgent: navigator.userAgent,
             url: window.location.href

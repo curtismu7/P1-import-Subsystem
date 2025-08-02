@@ -721,7 +721,7 @@ app.use(async (err, req, res, next) => {
 import { ensureLogsDirectory } from './scripts/ensure-logs-directory.js';
 
 // Version constant for DRYness
-const APP_VERSION = '6.5.1.4';
+const APP_VERSION = '6.5.2.4';
 
 // Server startup with enhanced logging
 const startServer = async () => {
