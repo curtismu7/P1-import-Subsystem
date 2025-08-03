@@ -5,7 +5,7 @@
  * Manages settings form validation, saving, and UI feedback.
  */
 
-import { STANDARD_KEYS, createBackwardCompatibleConfig } from '../../utils/config-standardization-browser.js';
+import { STANDARD_KEYS } from '../../utils/config-standardization-browser.js';
 
 class SettingsSubsystem {
     constructor(logger, uiManager, localClient, settingsManager, eventBus, credentialsManager) {
@@ -113,9 +113,9 @@ class SettingsSubsystem {
                     const result = await response.json();
                     if (result.success && result.data) {
                         this.logger.info('🔧 SETTINGS: Server settings loaded successfully', {
-                            hasEnvironmentId: !!result.data.environmentId,
-                            hasApiClientId: !!result.data.apiClientId,
-                            region: result.data.region
+                            hasEnvironmentId: !!result.data.pingone_environment_id,
+                            hasApiClientId: !!result.data.pingone_client_id,
+                            region: result.data.pingone_region
                         });
                         
                         // Use the data property from the response
@@ -168,7 +168,7 @@ class SettingsSubsystem {
             this.isSaving = true;
             infoLog('Starting settings save process');
             
-            // Debug: Check all dependencies
+            // Check dependencies
             debugLog('Checking saveSettings dependencies:', {
                 hasUIManager: !!this.uiManager,
                 hasLocalClient: !!this.localClient,
@@ -186,36 +186,23 @@ class SettingsSubsystem {
             }
             
             // Get form data
-            let settings;
-            try {
-                settings = this.getFormData();
-                infoLog('Form data extracted successfully:', settings);
-            } catch (formError) {
-                errorLog('Failed to get form data:', formError);
-                throw new Error(`Form data extraction failed: ${formError.message}`);
-            }
+            const settings = this.getFormData();
             
             // Validate settings
-            try {
-                if (!this.validateSettings(settings)) {
-                    errorLog('Settings validation failed');
-                    return;
-                }
-                debugLog('Settings validation passed');
-            } catch (validationError) {
-                errorLog('Settings validation error:', validationError);
-                throw new Error(`Settings validation error: ${validationError.message}`);
+            if (!this.validateSettings(settings)) {
+                errorLog('Settings validation failed');
+                throw new Error('Settings validation failed');
             }
             
             // Save to credentials manager if available
             if (this.credentialsManager) {
                 try {
                     const credentials = {
-                        environmentId: settings.environmentId || '',
-                        apiClientId: settings.apiClientId || '',
-                        apiSecret: settings.apiSecret || '',
-                        populationId: settings.populationId || '',
-                        region: settings.region || 'NorthAmerica'
+                        environmentId: settings.pingone_environment_id || '',
+                        apiClientId: settings.pingone_client_id || '',
+                        apiSecret: settings.pingone_client_secret || '',
+                        populationId: settings.pingone_population_id || '',
+                        region: settings.pingone_region || 'NA'
                     };
                     
                     const validation = this.credentialsManager.validateCredentials(credentials);
@@ -344,25 +331,15 @@ class SettingsSubsystem {
         const uiRegionValue = formData.get('region') || 'NorthAmerica';
         const standardizedRegion = mapRegionToStandardized(uiRegionValue);
         
-        // Create settings with legacy keys first (for form compatibility)
-        const legacySettings = {
-            environmentId: formData.get('environment-id') || '',
-            apiClientId: formData.get('api-client-id') || '',
-            apiSecret: formData.get('api-secret') || '',
-            region: standardizedRegion,
-            rateLimit: parseInt(formData.get('rate-limit')) || 50,
-            populationId: formData.get('population-id') || ''
+        // Create settings object with standardized keys
+        const settings = {
+            pingone_environment_id: formData.get('pingone_environment_id') || '',
+            pingone_client_id: formData.get('pingone_client_id') || '',
+            pingone_client_secret: formData.get('pingone_client_secret') || '',
+            pingone_population_id: formData.get('pingone_population_id') || '',
+            pingone_region: standardizedRegion,
+            rate_limit: parseInt(formData.get('rate-limit')) || 90
         };
-        
-        // Create backward compatible settings with both standard and legacy keys
-        const settings = createBackwardCompatibleConfig({
-            [STANDARD_KEYS.ENVIRONMENT_ID]: legacySettings.environmentId,
-            [STANDARD_KEYS.CLIENT_ID]: legacySettings.apiClientId,
-            [STANDARD_KEYS.CLIENT_SECRET]: legacySettings.apiSecret,
-            [STANDARD_KEYS.REGION]: legacySettings.region,
-            [STANDARD_KEYS.POPULATION_ID]: legacySettings.populationId,
-            rateLimit: legacySettings.rateLimit
-        });
         
         return settings;
     }
@@ -373,28 +350,18 @@ class SettingsSubsystem {
     validateSettings(settings) {
         const errors = [];
         
-        // Check standardized keys first, fall back to legacy keys
-        const environmentId = settings[STANDARD_KEYS.ENVIRONMENT_ID] || settings.environmentId;
-        const clientId = settings[STANDARD_KEYS.CLIENT_ID] || settings.apiClientId;
-        const clientSecret = settings[STANDARD_KEYS.CLIENT_SECRET] || settings.apiSecret;
-        const region = settings[STANDARD_KEYS.REGION] || settings.region;
-        
-        if (!environmentId?.trim()) {
+        if (!settings.pingone_environment_id?.trim()) {
             errors.push('Environment ID is required');
         }
-        
-        if (!clientId?.trim()) {
+        if (!settings.pingone_client_id?.trim()) {
             errors.push('API Client ID is required');
         }
-        
-        if (!clientSecret?.trim()) {
+        if (!settings.pingone_client_secret?.trim()) {
             errors.push('API Secret is required');
         }
-        
-        if (!region?.trim()) {
+        if (!settings.pingone_region?.trim()) {
             errors.push('Region is required');
         }
-        
         if (errors.length > 0) {
             // Safe logger access with fallbacks
             const errorLog = this.logger?.error || this.logger?.log || console.error;
@@ -426,29 +393,20 @@ class SettingsSubsystem {
                 'EU': 'Europe', 
                 'AP': 'Asia',
                 'CA': 'Canada',
-                'AU': 'Australia',
-                // Legacy mappings
-                'NorthAmerica': 'NorthAmerica',
-                'Europe': 'Europe',
-                'Asia': 'Asia',
-                'Canada': 'Canada',
-                'Australia': 'Australia'
+                'AU': 'Australia'
             };
             return regionMapping[standardizedRegion] || 'NorthAmerica';
         };
         
-        // Get region value and map it for UI
-        const regionValue = settings[STANDARD_KEYS.REGION] || settings.region || 'NA';
-        const uiRegionValue = mapRegionForUI(regionValue);
+        const uiRegionValue = mapRegionForUI(settings.pingone_region || 'NA');
         
-        // Populate form fields - check standardized keys first, fall back to legacy keys
         const fields = {
-            'environment-id': settings[STANDARD_KEYS.ENVIRONMENT_ID] || settings.environmentId || '',
-            'api-client-id': settings[STANDARD_KEYS.CLIENT_ID] || settings.apiClientId || '',
-            'api-secret': settings[STANDARD_KEYS.CLIENT_SECRET] || settings.apiSecret || '',
+            'pingone_environment_id': settings.pingone_environment_id || '',
+            'pingone_client_id': settings.pingone_client_id || '',
+            'pingone_client_secret': settings.pingone_client_secret || '',
+            'pingone_population_id': settings.pingone_population_id || '',
             'region': uiRegionValue,
-            'rate-limit': settings.rateLimit || 50,
-            'population-id': settings[STANDARD_KEYS.POPULATION_ID] || settings.populationId || ''
+            'rate-limit': settings.rate_limit || 90
         };
         
         Object.entries(fields).forEach(([name, value]) => {
@@ -458,7 +416,6 @@ class SettingsSubsystem {
             }
         });
         
-        // Safe logger access with fallbacks
         const infoLog = this.logger?.info || this.logger?.log || console.log;
         infoLog('Settings form populated with current values');
     }
@@ -479,9 +436,9 @@ class SettingsSubsystem {
             }
             
             // Get current form values for the test
-            const environmentId = document.getElementById('environment-id')?.value;
-            const clientId = document.getElementById('api-client-id')?.value;
-            const clientSecret = document.getElementById('api-secret')?.value;
+            const environmentId = document.getElementById('pingone_environment_id')?.value;
+            const clientId = document.getElementById('pingone_client_id')?.value;
+            const clientSecret = document.getElementById('pingone_client_secret')?.value;
             const region = document.getElementById('region')?.value;
             
             // Validate required fields
@@ -623,7 +580,7 @@ class SettingsSubsystem {
      * Toggle API secret visibility
      */
     toggleSecretVisibility() {
-        const secretField = document.getElementById('api-secret');
+        const secretField = document.getElementById('pingone_client_secret');
         const toggleBtn = document.getElementById('toggle-api-secret-visibility');
         const icon = toggleBtn?.querySelector('i');
         

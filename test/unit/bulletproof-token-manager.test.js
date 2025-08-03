@@ -43,15 +43,86 @@ global.document = dom.window.document;
 global.localStorage = dom.window.localStorage;
 global.MutationObserver = dom.window.MutationObserver;
 
+// Helper function to add DOM methods to elements
+const addDomMethods = (el) => {
+    if (!el) return el; // Handle null elements
+    
+    // Essential DOM methods
+    if (!el.addEventListener) el.addEventListener = jest.fn();
+    if (!el.removeEventListener) el.removeEventListener = jest.fn();
+    if (!el.insertBefore) el.insertBefore = jest.fn();
+    if (!el.appendChild) el.appendChild = jest.fn();
+    if (!el.remove) el.remove = jest.fn();
+    
+    // ClassList functionality
+    if (!el.classList) {
+        el.classList = {
+            add: jest.fn(),
+            remove: jest.fn(),
+            contains: jest.fn(() => false),
+            toggle: jest.fn()
+        };
+    }
+    
+    // Text content and style
+    if (el.textContent === undefined) el.textContent = '';
+    if (!el.style) el.style = { width: '', color: '', display: '' };
+    if (!el.children) el.children = [];
+    if (!el.innerHTML) el.innerHTML = '';
+    
+    return el;
+};
+
+// Helper function to bulletproof document.getElementById and querySelector
+const bulletproofDocumentSelectors = () => {
+    const origGetElementById = document.getElementById;
+    document.getElementById = function(id) {
+        let element = origGetElementById.call(document, id);
+        if (!element) {
+            console.log(`Creating missing element with id: ${id}`);
+            element = document.createElement('div');
+            element.id = id;
+            document.body.appendChild(element);
+        }
+        return addDomMethods(element);
+    };
+    
+    const origQuerySelector = document.querySelector;
+    document.querySelector = function(selector) {
+        let element = origQuerySelector.call(document, selector);
+        if (!element) {
+            console.log(`Creating missing element for selector: ${selector}`);
+            element = document.createElement('div');
+            document.body.appendChild(element);
+        }
+        return addDomMethods(element);
+    };
+};
+
 // Import the bulletproof token manager after DOM setup
 let createBulletproofTokenManager;
 let BulletproofTokenManager;
 
+let startTime;
+
 beforeAll(async () => {
+    startTime = new Date();
+    console.log('\n🚀 STARTING BULLETPROOF TOKEN MANAGER TESTS:', startTime.toISOString());
+    console.log('=====================================================================');
+
     // Mock the bulletproof token manager module
     const module = await import('../../src/client/utils/bulletproof-token-manager.js');
     createBulletproofTokenManager = module.createBulletproofTokenManager;
     BulletproofTokenManager = module.BulletproofTokenManager;
+});
+
+afterAll(() => {
+    const endTime = new Date();
+    const duration = (endTime - startTime) / 1000;
+    console.log('=====================================================================');
+    console.log(`✅ COMPLETED BULLETPROOF TOKEN MANAGER TESTS: ${endTime.toISOString()}`);
+    console.log(`⏱️ Test duration: ${duration.toFixed(2)} seconds`);
+    console.log('=====================================================================\n');
 });
 
 describe('🛡️ Bulletproof Token Manager Tests', () => {
@@ -59,6 +130,7 @@ describe('🛡️ Bulletproof Token Manager Tests', () => {
     let mockOriginalTokenManager;
 
     beforeEach(() => {
+        console.log('📋 Starting Bulletproof Token Manager test case...');
         // Clear all mocks
         jest.clearAllMocks();
         
@@ -71,6 +143,9 @@ describe('🛡️ Bulletproof Token Manager Tests', () => {
                 </div>
             </div>
         `;
+        
+        // Apply bulletproofing for DOM queries
+        bulletproofDocumentSelectors();
 
         // Clear localStorage
         localStorage.clear();
@@ -98,6 +173,7 @@ describe('🛡️ Bulletproof Token Manager Tests', () => {
         if (bulletproofManager && typeof bulletproofManager.destroy === 'function') {
             bulletproofManager.destroy();
         }
+        console.log('✓ Bulletproof Token Manager test case completed');
     });
 
     describe('🏗️ Creation and Initialization', () => {

@@ -51,6 +51,21 @@ import { NavigationSubsystem } from './subsystems/navigation-subsystem.js';
 import { RealtimeCommunicationSubsystem } from './subsystems/realtime-communication-subsystem.js';
 import { GlobalTokenManagerSubsystem } from './subsystems/global-token-manager-subsystem.js';
 
+// Shim for FEATURE_FLAGS
+const FEATURE_FLAGS = {
+    USE_CENTRALIZED_LOGGING: true,
+    USE_NAVIGATION_SUBSYSTEM: true,
+    USE_CONNECTION_MANAGER: true,
+    USE_REALTIME_SUBSYSTEM: true,
+    USE_AUTH_MANAGEMENT: true,
+    USE_VIEW_MANAGEMENT: true,
+    USE_OPERATION_MANAGER: true,
+    USE_IMPORT_SUBSYSTEM: true,
+    USE_EXPORT_SUBSYSTEM: true,
+
+    USE_ADVANCED_REALTIME: true
+};
+
 class App {
     constructor() {
         // Initialize centralized logger with safe wrapper to prevent logging errors from breaking the app
@@ -130,8 +145,7 @@ class App {
         
         // Subsystems (new architecture)
         this.subsystems = {};
-        this.analyticsDashboardSubsystem = null;
-        this.analyticsDashboardUI = null;
+
         
         // Application state
         this.isInitialized = false;
@@ -144,7 +158,7 @@ class App {
         this.environment = 'development';
         this.features = {
             bulletproofProgressContainer: true,
-            analyticsDataMethod: true
+
         };
         
         // Performance tracking
@@ -486,7 +500,7 @@ class App {
                 { name: 'history', flag: true, constructor: HistorySubsystem, deps: [this.eventBus, this.subsystems.settings, () => this.subsystems.logging] },
                 { name: 'import', flag: FEATURE_FLAGS.USE_IMPORT_SUBSYSTEM, constructor: ImportSubsystem, deps: [this.logger, this.uiManager, this.localClient, this.subsystems.settings, this.eventBus, () => this.subsystems.population, () => this.subsystems.authManager] },
                 { name: 'export', flag: FEATURE_FLAGS.USE_EXPORT_SUBSYSTEM, constructor: ExportSubsystem, deps: [this.logger, this.uiManager, this.localClient, this.subsystems.settings, this.eventBus, () => this.subsystems.population] },
-                { name: 'analyticsDashboard', flag: FEATURE_FLAGS.USE_ANALYTICS_DASHBOARD, constructor: AnalyticsDashboardSubsystem, deps: [this.logger, this.eventBus, () => this.subsystems.advancedRealtime, this.progressSubsystem, this.sessionSubsystem] },
+
                 { name: 'advancedRealtime', flag: FEATURE_FLAGS.USE_ADVANCED_REALTIME, constructor: AdvancedRealtimeSubsystem, deps: [this.logger, this.eventBus, () => this.subsystems.realtimeManager, this.sessionSubsystem, this.progressSubsystem] },
             ];
 
@@ -559,24 +573,7 @@ class App {
                 this.realtimeCollaborationUI.init();
             }
 
-            // Initialize Analytics Dashboard UI if the subsystem is available
-            if (this.subsystems.analyticsDashboard) {
-                try {
-                    this.logger.debug('Initializing Analytics Dashboard UI...');
-                    this.analyticsDashboardUI = new AnalyticsDashboardUI(
-                        this.eventBus,
-                        this.subsystems.analyticsDashboard
-                    );
-                    await this.analyticsDashboardUI.init();
-                    this.logger.info('Analytics Dashboard UI initialized successfully');
-                } catch (error) {
-                    this.logger.error('Failed to initialize Analytics Dashboard UI', {
-                        error: error.message,
-                        stack: error.stack
-                    });
-                    // Don't rethrow to allow the app to continue without analytics UI
-                }
-            }
+
 
             this.logger.info('Subsystem initialization completed (some may have failed).');
 

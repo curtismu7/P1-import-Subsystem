@@ -9,7 +9,7 @@
  * - Structured error classification
  * - User-friendly error messages
  * - Automatic retry logic for transient errors
- * - Error tracking and analytics
+
  * - Graceful degradation strategies
  */
 
@@ -60,7 +60,7 @@ class ErrorHandler {
         this.config = {
             maxRetries: options.maxRetries || 3,
             retryDelay: options.retryDelay || 1000,
-            enableAnalytics: options.enableAnalytics !== false,
+
             enableUserNotification: options.enableUserNotification !== false,
             ...options
         };
@@ -203,10 +203,7 @@ class ErrorHandler {
             // Log error with full context
             this._logError(errorContext);
             
-            // Track error analytics with enhanced metadata
-            if (this.config.enableAnalytics) {
-                this._trackError(errorContext);
-            }
+
             
             // Determine retry strategy with detailed logging
             const shouldRetry = this._shouldRetry(errorContext);
@@ -459,8 +456,7 @@ class ErrorHandler {
         const currentCount = this.errorCounts.get(errorKey) || 0;
         this.errorCounts.set(errorKey, currentCount + 1);
         
-        // TODO: Send to analytics service
-        // analytics.track('error_occurred', errorContext);
+
     }
     
     /**
