@@ -115,6 +115,11 @@ const { version: appVersion } = require('./package.json');
 import { WebSocketServer } from 'ws';
 import { Server as SocketIOServer } from 'socket.io';
 
+// 🛡️ Hardening & Monitoring Systems
+import { performRouteHealthCheck, startRouteMonitoring, generateRouteHealthReport } from './server/route-health-checker.js';
+import { startMemoryMonitoring, getMemoryStatusReport, forceMemoryCheck } from './server/memory-monitor.js';
+import { runStartupSmokeTests, generateSmokeTestReport } from './server/swagger-smoke-tests.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -608,15 +613,13 @@ app.post('/api/token/refresh', async (req, res) => {
 });
 
 // API routes with enhanced logging
-app.use('/api', apiRouter);
-app.use('/api/pingone', pingoneProxyRouter);
-app.use('/api/settings', settingsRouter);
+app.use('/api', apiRouter); // Main API router includes: logs, auth, export, import, history, pingone, version, settings
+app.use('/api/pingone', pingoneProxyRouter); // Additional pingone proxy routes
+app.use('/api/settings', settingsRouter); // Direct settings routes
 app.use('/api/v1/settings', settingsRouter); // Added to support /api/v1/settings
-app.use('/api/v1/auth', authSubsystemRouter);
-app.use('/api/auth', credentialManagementRouter);
-app.use('/api/test-runner', testRunnerRouter);
-app.use('/api/import', importRouter);
-app.use('/api/logs', logsApiRouter);
+app.use('/api/v1/auth', authSubsystemRouter); // Auth subsystem routes
+app.use('/api/test-runner', testRunnerRouter); // Test runner routes
+// NOTE: /api/auth, /api/logs, /api/import, /api/export are handled by the main apiRouter above
 app.use('/', indexRouter);
 
 // Enhanced error handling middleware (structured, safe, Winston-logged)
@@ -1159,6 +1162,93 @@ const startServer = async () => {
     
     // Run socket tests after a short delay to ensure server is fully started
     setTimeout(testSocketConnections, 1000);
+    
+    // 🛡️ HARDENING & MONITORING SYSTEMS
+    // Run comprehensive monitoring and health checks after startup
+    setTimeout(async () => {
+        try {
+            logger.info('🛡️ Initializing hardening and monitoring systems...');
+            
+            // 1. 🔁 Route Health Check
+            logger.info('🔍 Performing route health check...');
+            const routeHealthResult = performRouteHealthCheck(app);
+            
+            if (!routeHealthResult.success) {
+                console.error('🚨 CRITICAL: Route health check failed!');
+                console.error('Missing routes:', routeHealthResult.validation.missingRoutes);
+                
+                // Write detailed report to logs
+                const routeReport = generateRouteHealthReport(app);
+                logger.error('Route Health Check Report:', routeReport);
+            } else {
+                logger.info('✅ Route health check passed - all critical routes available');
+            }
+            
+            // 2. 🔔 Memory Monitoring
+            logger.info('📊 Starting memory monitoring...');
+            const memoryCleanup = startMemoryMonitoring({
+                checkInterval: 30000,  // Check every 30 seconds
+                alertCooldown: 300000  // 5 minutes between alerts
+            });
+            
+            // Initial memory check
+            const initialMemory = forceMemoryCheck();
+            logger.info('💾 Initial memory status:', {
+                heap: `${initialMemory.percentages.heap}%`,
+                rss: initialMemory.formatted.rss,
+                alertLevel: initialMemory.alertLevel
+            });
+            
+            // 3. 🧪 API Smoke Tests
+            logger.info('🧪 Running API smoke tests...');
+            const smokeTestResults = await runStartupSmokeTests(`http://localhost:${port}`, 3000);
+            
+            if (!smokeTestResults.success) {
+                console.error('🚨 API SMOKE TESTS FAILED!');
+                const smokeReport = generateSmokeTestReport(smokeTestResults);
+                console.error(smokeReport);
+                logger.error('API Smoke Test Report:', smokeReport);
+            } else {
+                logger.info('✅ API smoke tests passed - all endpoints responding correctly');
+                console.log(`✅ API SMOKE TESTS PASSED (${smokeTestResults.endpoints.successRate})`);
+            }
+            
+            // 4. 🔄 Continuous Route Monitoring
+            logger.info('🔄 Starting continuous route monitoring...');
+            const routeMonitoringCleanup = startRouteMonitoring(app, 5 * 60 * 1000); // Every 5 minutes
+            
+            // 5. 📊 System Status Summary
+            const systemStatus = {
+                routes: routeHealthResult.success ? 'healthy' : 'unhealthy',
+                memory: initialMemory.alertLevel,
+                apiEndpoints: smokeTestResults.success ? 'operational' : 'degraded',
+                monitoring: 'active'
+            };
+            
+            logger.info('🛡️ Hardening & Monitoring Systems Initialized', {
+                systemStatus,
+                routeHealth: `${routeHealthResult.validation?.foundCount || 0}/${routeHealthResult.validation?.totalCritical || 0} critical routes`,
+                memoryUsage: `${initialMemory.percentages.heap}%`,
+                apiHealth: smokeTestResults.endpoints?.successRate || 'unknown'
+            });
+            
+            console.log('\n🛡️ HARDENING & MONITORING SYSTEMS ACTIVE');
+            console.log(`   🔍 Route Health: ${systemStatus.routes.toUpperCase()}`);
+            console.log(`   📊 Memory Status: ${systemStatus.memory.toUpperCase()}`);
+            console.log(`   🧪 API Health: ${systemStatus.apiEndpoints.toUpperCase()}`);
+            console.log(`   🔄 Monitoring: ${systemStatus.monitoring.toUpperCase()}`);
+            
+            // Store cleanup functions for graceful shutdown
+            process.monitoringCleanup = {
+                memory: memoryCleanup,
+                routes: routeMonitoringCleanup
+            };
+            
+        } catch (error) {
+            logger.error('💥 Error initializing monitoring systems:', error);
+            console.error('🚨 MONITORING SYSTEM ERROR:', error.message);
+        }
+    }, 2000); // Wait 2 seconds for full server initialization
 
     return server;
 } catch (error) {
@@ -1183,6 +1273,26 @@ const startServer = async () => {
 const gracefulShutdown = (signal) => {
     logger.info(`Received ${signal}, starting graceful shutdown`);
     
+    // 🛡️ Cleanup monitoring systems
+    if (process.monitoringCleanup) {
+        logger.info('🧽 Cleaning up monitoring systems...');
+        
+        try {
+            if (process.monitoringCleanup.memory) {
+                process.monitoringCleanup.memory();
+                logger.info('✅ Memory monitoring stopped');
+            }
+            
+            if (process.monitoringCleanup.routes) {
+                process.monitoringCleanup.routes();
+                logger.info('✅ Route monitoring stopped');
+            }
+        } catch (error) {
+            logger.error('⚠️ Error during monitoring cleanup:', error);
+        }
+    }
+    
+    logger.info('👋 Graceful shutdown completed');
     process.exit(0);
 };
 

@@ -1,5 +1,5 @@
 import { getRegionConfig, logRegionConfig, getRegionFromStorage } from '../../utils/region-config.js';
-import { STANDARD_KEYS, standardizeConfig } from '../../utils/config-standardization.js';
+import { STANDARD_KEYS, standardizeConfigKeys } from '../../utils/config-standardization-browser.js';
 
 /**
  * Global Token Manager Subsystem

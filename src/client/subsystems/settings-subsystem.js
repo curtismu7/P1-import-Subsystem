@@ -5,7 +5,7 @@
  * Manages settings form validation, saving, and UI feedback.
  */
 
-import { STANDARD_KEYS, standardizeConfigKeys, createBackwardCompatibleConfig } from '../../utils/config-standardization.js';
+import { STANDARD_KEYS, createBackwardCompatibleConfig } from '../../utils/config-standardization-browser.js';
 
 class SettingsSubsystem {
     constructor(logger, uiManager, localClient, settingsManager, eventBus, credentialsManager) {
@@ -322,12 +322,34 @@ class SettingsSubsystem {
         
         const formData = new FormData(form);
         
+        // Map UI region values back to standardized values
+        const mapRegionToStandardized = (uiRegion) => {
+            const reverseRegionMapping = {
+                'NorthAmerica': 'NA',
+                'Europe': 'EU',
+                'Asia': 'AP', 
+                'Canada': 'CA',
+                'Australia': 'AU',
+                // Handle standardized values that might be passed through
+                'NA': 'NA',
+                'EU': 'EU',
+                'AP': 'AP',
+                'CA': 'CA',
+                'AU': 'AU'
+            };
+            return reverseRegionMapping[uiRegion] || 'NA';
+        };
+        
+        // Get form region value and convert to standardized
+        const uiRegionValue = formData.get('region') || 'NorthAmerica';
+        const standardizedRegion = mapRegionToStandardized(uiRegionValue);
+        
         // Create settings with legacy keys first (for form compatibility)
         const legacySettings = {
             environmentId: formData.get('environment-id') || '',
             apiClientId: formData.get('api-client-id') || '',
             apiSecret: formData.get('api-secret') || '',
-            region: formData.get('region') || 'NA',
+            region: standardizedRegion,
             rateLimit: parseInt(formData.get('rate-limit')) || 50,
             populationId: formData.get('population-id') || ''
         };
@@ -397,12 +419,34 @@ class SettingsSubsystem {
         const form = document.getElementById('settings-form');
         if (!form) return;
         
+        // Map standardized region values to UI dropdown values
+        const mapRegionForUI = (standardizedRegion) => {
+            const regionMapping = {
+                'NA': 'NorthAmerica',
+                'EU': 'Europe', 
+                'AP': 'Asia',
+                'CA': 'Canada',
+                'AU': 'Australia',
+                // Legacy mappings
+                'NorthAmerica': 'NorthAmerica',
+                'Europe': 'Europe',
+                'Asia': 'Asia',
+                'Canada': 'Canada',
+                'Australia': 'Australia'
+            };
+            return regionMapping[standardizedRegion] || 'NorthAmerica';
+        };
+        
+        // Get region value and map it for UI
+        const regionValue = settings[STANDARD_KEYS.REGION] || settings.region || 'NA';
+        const uiRegionValue = mapRegionForUI(regionValue);
+        
         // Populate form fields - check standardized keys first, fall back to legacy keys
         const fields = {
             'environment-id': settings[STANDARD_KEYS.ENVIRONMENT_ID] || settings.environmentId || '',
             'api-client-id': settings[STANDARD_KEYS.CLIENT_ID] || settings.apiClientId || '',
             'api-secret': settings[STANDARD_KEYS.CLIENT_SECRET] || settings.apiSecret || '',
-            'region': settings[STANDARD_KEYS.REGION] || settings.region || 'NA',
+            'region': uiRegionValue,
             'rate-limit': settings.rateLimit || 50,
             'population-id': settings[STANDARD_KEYS.POPULATION_ID] || settings.populationId || ''
         };
