@@ -77,6 +77,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createWinstonLogger, createRequestLogger, createErrorLogger, createPerformanceLogger, serverLogger, apiLogger } from './server/winston-config.js';
+import { logStartupSuccess, logStartupFailure, runStartupTests } from './src/server/services/startup-diagnostics.js';
 import { createConnectionManager } from './server/connection-manager.js';
 import { router as authSubsystemRouter, pingOneAuth } from './auth-subsystem/server/index.js';
 import EnhancedServerAuth from './auth-subsystem/server/enhanced-server-auth.js';
@@ -748,6 +749,8 @@ const APP_VERSION = '6.5.2.4';
 
 // Server startup with enhanced logging
 const startServer = async () => {
+    const startTime = Date.now(); // Track startup time for diagnostics
+    
     try {
         // Check if port is available
         const port = process.env.PORT || 4000;
@@ -769,10 +772,42 @@ const startServer = async () => {
         // Initialize the server
         server.listen(process.env.PORT || 4000, async () => {
             const serverUrl = `http://localhost:${process.env.PORT || 4000}`;
-            logger.info(`Server is running on ${serverUrl}`);
+            const port = process.env.PORT || 4000;
             
             try {
-                // Test token acquisition on startup with retry logic
+                // Run comprehensive startup diagnostics and logging
+                await logStartupSuccess(logger, {
+                    port,
+                    tokenService,
+                    startTime,
+                    serverUrl
+                });
+                
+                // Run automated startup tests
+                const testResults = await runStartupTests({
+                    port,
+                    tokenService
+                });
+                
+                // Log test results
+                const passedTests = Object.values(testResults).filter(test => test.passed).length;
+                const totalTests = Object.keys(testResults).length;
+                
+                logger.info('🧪 Startup Tests Completed', {
+                    passed: `${passedTests}/${totalTests}`,
+                    results: testResults
+                });
+                
+                console.log(`\n🧪 AUTOMATED STARTUP TESTS: ${passedTests}/${totalTests} PASSED`);
+                for (const [key, test] of Object.entries(testResults)) {
+                    const icon = test.passed ? '✅' : '❌';
+                    console.log(`   ${icon} ${test.name}: ${test.passed ? 'PASSED' : 'FAILED'}`);
+                    if (!test.passed && test.error) {
+                        console.log(`      Error: ${test.error}`);
+                    }
+                }
+                
+                // Test token acquisition on startup with retry logic for WebSocket notifications
                 const maxRetries = 3;
                 let attempt = 0;
                 let success = false;
@@ -802,16 +837,12 @@ const startServer = async () => {
                             }
                         );
                         
-                        logger.info('Successfully acquired PingOne API token');
-                        
                     } catch (error) {
                         lastError = error;
-                        logger.error(`Token acquisition attempt ${attempt} failed:`, error.message);
                         
                         if (attempt < maxRetries) {
                             // Exponential backoff: 2s, 4s, 8s, etc.
                             const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
-                            logger.info(`Retrying in ${delay/1000} seconds...`);
                             
                             // Wait before retrying
                             await new Promise(resolve => setTimeout(resolve, delay));
@@ -820,35 +851,41 @@ const startServer = async () => {
                 }
                 
                 if (!success && lastError) {
-                    logger.error('❌ Failed to acquire PingOne token after maximum retries', {
-                        error: lastError.message,
-                        maxRetries
-                    });
+                    webSocketService.broadcastNotification(
+                        'error', 
+                        'Failed to acquire PingOne token after maximum retries',
+                        { error: lastError.message }
+                    );
                 }
+                
             } catch (error) {
-                logger.error('Failed to initialize token acquisition on startup', {
-                    error: error.message,
-                    stack: error.stack
+                // Log startup failure with comprehensive diagnostics
+                await logStartupFailure(logger, error, {
+                    port,
+                    startTime,
+                    tokenService
                 });
+                throw error; // Re-throw to trigger error handler
             }
         }).on('error', async (error) => {
+            // Log comprehensive startup failure with diagnostics
+            await logStartupFailure(logger, error, {
+                port: PORT,
+                startTime,
+                tokenService
+            });
+            
+            // Handle specific error types
             if (error.code === 'EADDRINUSE') {
                 const processes = await getProcessesUsingPort(PORT);
                 const errorMessage = generatePortConflictMessage(PORT, processes);
+                console.log('\n' + errorMessage);
                 
-                logger.error('Port conflict detected during server startup', {
-                    port: PORT,
-                    error: error.message,
-                    processes: processes.map(p => ({ pid: p.pid, command: p.command }))
-                });
-                
-                console.log(errorMessage);
-            } else {
-                logger.error('Server startup error', {
-                    error: error.message,
-                    code: error.code,
-                    stack: error.stack
-                });
+                // Additional port conflict recommendations
+                console.log('\n💡 PORT CONFLICT RECOMMENDATIONS:');
+                console.log('   🔧 Kill conflicting processes: npm run stop');
+                console.log('   🔄 Use different port: PORT=4001 npm start');
+                console.log('   🔍 Check running processes: lsof -i :4000');
             }
             
             serverState.isInitialized = false;
@@ -1113,11 +1150,14 @@ const startServer = async () => {
 } catch (error) {
     const duration = Date.now() - startTime;
     performanceLogger('server_startup', duration, { status: 'error', error: error.message });
-    logger.error('Server startup failed', {
-        error: error.message,
-        stack: error.stack,
-        duration: `${duration}ms`
+    
+    // Log comprehensive startup failure with diagnostics
+    await logStartupFailure(logger, error, {
+        port: PORT,
+        startTime,
+        tokenService
     });
+    
     serverState.isInitialized = false;
     serverState.isInitializing = false;
     serverState.lastError = error;
@@ -1173,11 +1213,17 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Start the server
 if (import.meta.url === `file://${process.argv[1]}`) {
-    startServer().catch(error => {
-        logger.error('Failed to start server', {
-            error: error.message,
-            stack: error.stack
+    startServer().catch(async error => {
+        // Final comprehensive startup failure logging
+        await logStartupFailure(logger, error, {
+            port: process.env.PORT || 4000,
+            startTime: Date.now(), // Approximate start time
+            tokenService: null // May not be available at this point
         });
+        
+        console.log('\n💥 CRITICAL: Server failed to start. Check the diagnostics above.');
+        console.log('📞 For support, provide the complete log output shown above.\n');
+        
         process.exit(1);
     });
 }
