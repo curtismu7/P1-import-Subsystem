@@ -108,19 +108,21 @@ class SettingsSubsystem {
                 const response = await fetch('/api/settings');
                 
                 if (response.ok) {
-                    const serverSettings = await response.json();
-                    this.logger.info('🔧 SETTINGS: Server settings loaded successfully', {
-                        hasEnvironmentId: !!serverSettings.environmentId,
-                        hasApiClientId: !!serverSettings.apiClientId,
-                        region: serverSettings.region
-                    });
-                    
-                    // Update local settings manager with server settings
-                    if (serverSettings && Object.keys(serverSettings).length > 0) {
-                        this.currentSettings = serverSettings;
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        this.logger.info('🔧 SETTINGS: Server settings loaded successfully', {
+                            hasEnvironmentId: !!result.data.environmentId,
+                            hasApiClientId: !!result.data.apiClientId,
+                            region: result.data.region
+                        });
+                        
+                        // Use the data property from the response
+                        this.currentSettings = result.data;
                         this.populateSettingsForm(this.currentSettings);
                         this.logger.info('🔧 SETTINGS: Form fields populated successfully');
                         return;
+                    } else {
+                        this.logger.warn('🔧 SETTINGS: Invalid server response format:', result);
                     }
                 } else {
                     this.logger.warn('🔧 SETTINGS: Server API returned non-OK status:', response.status);
@@ -398,7 +400,7 @@ class SettingsSubsystem {
     }
     
     /**
-     * Test connection
+     * Test connection and get token
      */
     async testConnection() {
         // Safe logger access with fallbacks
@@ -406,32 +408,105 @@ class SettingsSubsystem {
         const errorLog = this.logger?.error || this.logger?.log || console.error;
         
         try {
-            infoLog('Testing connection...');
+            infoLog('Testing connection and getting token...');
             
             if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
-                this.uiManager.showSettingsActionStatus('Testing connection...', 'info');
+                this.uiManager.showSettingsActionStatus('Testing connection and getting token...', 'info');
             }
             
-            const response = await this.localClient.get('/api/pingone/test-connection');
+            // Get current form values for the test
+            const environmentId = document.getElementById('environment-id')?.value;
+            const clientId = document.getElementById('api-client-id')?.value;
+            const clientSecret = document.getElementById('api-secret')?.value;
+            const region = document.getElementById('region')?.value;
+            
+            // Validate required fields
+            if (!environmentId || !clientId || !clientSecret || !region) {
+                const missingFields = [];
+                if (!environmentId) missingFields.push('Environment ID');
+                if (!clientId) missingFields.push('Client ID');
+                if (!clientSecret) missingFields.push('Client Secret');
+                if (!region) missingFields.push('Region');
+                
+                const errorMessage = `Missing required fields: ${missingFields.join(', ')}`;
+                if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                    this.uiManager.showSettingsActionStatus(errorMessage, 'error');
+                }
+                this.updateConnectionStatus('❌ ' + errorMessage, 'error');
+                return;
+            }
+            
+            // Use POST with credentials in body (not GET)
+            const response = await this.localClient.post('/api/pingone/test-connection', {
+                environmentId,
+                clientId,
+                clientSecret,
+                region
+            });
             
             if (response.success) {
-                let successMessage = response.message || 'Success - Token minted';
-                if (response.token && response.token.timeLeft) {
-                    successMessage += ` - Time left: ${response.token.timeLeft}`;
-                }
-                this.uiManager.showSettingsActionStatus(successMessage, 'success', { autoHideDelay: 5000 });
-                this.updateConnectionStatus('✅ ' + successMessage, 'success');
-            } else {
+                // Connection successful, now get a token
+                infoLog('Connection successful, getting token...');
+                
                 if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
-                    this.uiManager.showSettingsActionStatus('Connection test failed: ' + (response.error || 'Unknown error'), 'error');
+                    this.uiManager.showSettingsActionStatus('Connection successful! Getting token...', 'info');
+                }
+                
+                // Get token using the same credentials
+                const tokenResponse = await this.localClient.post('/token/worker', {
+                    environmentId,
+                    clientId,
+                    clientSecret,
+                    region
+                });
+                
+                if (tokenResponse.success) {
+                    let successMessage = 'Connection successful! Token obtained';
+                    if (tokenResponse.data && tokenResponse.data.expires_in) {
+                        const expiresIn = Math.floor(tokenResponse.data.expires_in / 60);
+                        successMessage += ` (expires in ${expiresIn} minutes)`;
+                    }
+                    
+                    // Show green success status
+                    if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                        this.uiManager.showSettingsActionStatus(successMessage, 'success', { autoHideDelay: 8000 });
+                    }
+                    this.updateConnectionStatus('✅ ' + successMessage, 'success');
+                    
+                    // Emit token obtained event to update global token status
+                    if (this.eventBus && typeof this.eventBus.emit === 'function') {
+                        this.eventBus.emit('tokenObtained', { token: tokenResponse.data });
+                        this.eventBus.emit('token:updated', { token: tokenResponse.data });
+                    }
+                    
+                    // Trigger global token status update
+                    if (window.app && window.app.subsystems && window.app.subsystems.globalTokenManager) {
+                        setTimeout(() => {
+                            window.app.subsystems.globalTokenManager.updateGlobalTokenStatus();
+                        }, 100);
+                    }
+                    
+                } else {
+                    const errorMessage = 'Connection successful but failed to get token: ' + (tokenResponse.error || 'Unknown error');
+                    if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                        this.uiManager.showSettingsActionStatus(errorMessage, 'warning');
+                    }
+                    this.updateConnectionStatus('⚠️ ' + errorMessage, 'warning');
+                }
+                
+            } else {
+                const errorMessage = 'Connection test failed: ' + (response.error || 'Unknown error');
+                if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
+                    this.uiManager.showSettingsActionStatus(errorMessage, 'error');
                 }
                 this.updateConnectionStatus('❌ Connection failed', 'error');
             }
         } catch (error) {
             errorLog('Connection test failed', error);
             
+            const errorMessage = 'Connection test failed: ' + error.message;
             if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
-                this.uiManager.showSettingsActionStatus('Connection test failed: ' + error.message, 'error');
+                this.uiManager.showSettingsActionStatus(errorMessage, 'error');
             }
             this.updateConnectionStatus('❌ Connection failed', 'error');
         }

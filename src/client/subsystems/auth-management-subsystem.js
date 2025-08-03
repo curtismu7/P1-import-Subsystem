@@ -245,13 +245,62 @@ export class AuthManagementSubsystem {
     }
     
     /**
-     * Check initial token status and automatically acquire new token if expired
-     * CRITICAL: This method provides automatic token acquisition at startup
-     * DO NOT REMOVE OR MODIFY without understanding the startup authentication flow
+     * Validate settings with proper error handling
+     */
+    validateSettings(settings) {
+        if (!settings) {
+            this.logger.error('No settings provided for validation');
+            return false;
+        }
+
+        const requiredFields = ['environmentId', 'apiClientId', 'apiSecret', 'region'];
+        const missingFields = requiredFields.filter(field => !settings[field]?.trim());
+
+        if (missingFields.length > 0) {
+            this.logger.warn('Missing required settings fields', { missingFields });
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check initial token status with proper error handling
      */
     async checkInitialTokenStatus() {
         try {
-            this.logger.debug('🔍 [STARTUP] Checking initial token status...');
+            this.logger.info('Checking initial token status');
+            
+            // First, ensure settings are available
+            if (!this.settingsSubsystem || typeof this.settingsSubsystem.loadCurrentSettings !== 'function') {
+                this.logger.warn('Settings subsystem not available for initial token check');
+                return;
+            }
+
+            // Load current settings
+            try {
+                await this.settingsSubsystem.loadCurrentSettings();
+            } catch (error) {
+                this.logger.error('Failed to load settings', error);
+                this.updateTokenStatusUI(false, 'Failed to load settings');
+                return;
+            }
+            
+            const settings = this.settingsSubsystem.currentSettings;
+            
+            // Only attempt token validation if we have the required settings
+            if (!settings || !settings.apiClientId) {
+                this.logger.warn('No API client ID found in settings, skipping initial token check');
+                this.updateTokenStatusUI(false, 'Please configure your API settings');
+                return;
+            }
+            
+            if (!this.validateSettings(settings)) {
+                this.logger.warn('Invalid settings configuration');
+                this.updateTokenStatusUI(false, 'Please check your settings configuration');
+                return;
+            }
+            
             const response = await this.localClient.get('/api/v1/auth/status');
             
             if (response.success && response.isValid) {
@@ -260,11 +309,11 @@ export class AuthManagementSubsystem {
                 this.tokenExpiry = response.expiresIn;
                 this.isAuthenticated = true;
                 this.updateTokenStatusUI(true, `Token is ${response.status}`);
-                this.logger.info('✅ [STARTUP] Valid token found, authentication ready');
+                this.logger.info('Valid token found, authentication ready');
                 
             } else if (response.success && response.hasToken) {
                 // Token exists but is expired - attempt automatic refresh
-                this.logger.warn('⚠️ [STARTUP] Token expired, attempting automatic refresh...');
+                this.logger.warn('Token expired, attempting automatic refresh...');
                 this.tokenStatus = response.status;
                 this.tokenExpiry = response.expiresIn;
                 
@@ -272,30 +321,30 @@ export class AuthManagementSubsystem {
                 const refreshSuccess = await this.attemptAutomaticTokenRefresh();
                 
                 if (refreshSuccess) {
-                    this.logger.info('✅ [STARTUP] Token automatically refreshed, authentication ready');
+                    this.logger.info('Token automatically refreshed, authentication ready');
                 } else {
-                    this.logger.warn('❌ [STARTUP] Automatic token refresh failed, user intervention required');
+                    this.logger.warn('Automatic token refresh failed, user intervention required');
                     this.isAuthenticated = false;
                     this.updateTokenStatusUI(false, 'Token expired - refresh required');
                 }
                 
             } else {
                 // No token available - attempt automatic acquisition if credentials exist
-                this.logger.warn('⚠️ [STARTUP] No token found, attempting automatic acquisition...');
+                this.logger.warn('No token found, attempting automatic acquisition...');
                 
                 const acquisitionSuccess = await this.attemptAutomaticTokenRefresh();
                 
                 if (acquisitionSuccess) {
-                    this.logger.info('✅ [STARTUP] Token automatically acquired, authentication ready');
+                    this.logger.info('Token automatically acquired, authentication ready');
                 } else {
-                    this.logger.warn('❌ [STARTUP] No token available and automatic acquisition failed');
+                    this.logger.warn('No token available and automatic acquisition failed');
                     this.isAuthenticated = false;
                     this.updateTokenStatusUI(false, response.status || 'No valid token');
                 }
             }
             
         } catch (error) {
-            this.logger.error('❌ [STARTUP] Failed to check token status', error);
+            this.logger.error('Failed to check token status', error);
             this.isAuthenticated = false;
             this.updateTokenStatusUI(false, 'Token status unknown');
         }
@@ -308,7 +357,7 @@ export class AuthManagementSubsystem {
      */
     async attemptAutomaticTokenRefresh() {
         try {
-            this.logger.debug('🔄 [STARTUP] Attempting automatic token acquisition...');
+            this.logger.debug('Attempting automatic token acquisition...');
             
             // Load current settings to check if credentials are available
             await this.settingsSubsystem.loadCurrentSettings();
@@ -316,11 +365,11 @@ export class AuthManagementSubsystem {
             
             // Validate that we have the required credentials
             if (!this.validateSettings(settings)) {
-                this.logger.debug('❌ [STARTUP] No valid credentials available for automatic token acquisition');
+                this.logger.debug('No valid credentials available for automatic token acquisition');
                 return false;
             }
             
-            this.logger.debug('✅ [STARTUP] Valid credentials found, attempting token acquisition...');
+            this.logger.debug('Valid credentials found, attempting token acquisition...');
             
             // Request token from server using available credentials
             const response = await this.localClient.post('/api/v1/auth/token', {
@@ -342,16 +391,16 @@ export class AuthManagementSubsystem {
                 // Set up refresh timer for the new token
                 this.setupTokenRefreshTimer();
                 
-                this.logger.info('✅ [STARTUP] Automatic token acquisition successful');
+                this.logger.info('Automatic token acquisition successful');
                 return true;
                 
             } else {
-                this.logger.warn('❌ [STARTUP] Token acquisition failed:', response.error || 'Unknown error');
+                this.logger.warn('Token acquisition failed:', response.error || 'Unknown error');
                 return false;
             }
             
         } catch (error) {
-            this.logger.error('❌ [STARTUP] Error during automatic token acquisition:', error);
+            this.logger.error('Error during automatic token acquisition:', error);
             return false;
         }
     }
@@ -390,22 +439,6 @@ export class AuthManagementSubsystem {
     }
     
     /**
-     * Validate settings object
-     */
-    validateSettings(settings) {
-        const required = ['clientId', 'clientSecret', 'environmentId', 'region'];
-        
-        for (const field of required) {
-            if (!settings[field] || settings[field].trim() === '') {
-                this.logger.error('Missing required setting', { field });
-                return false;
-            }
-        }
-        
-        return true;
-    }
-    
-    /**
      * Clear authentication state
      */
     clearAuthenticationState() {
@@ -422,26 +455,66 @@ export class AuthManagementSubsystem {
     }
     
     /**
-     * Update token status UI
+     * Update token status UI with error handling
+     */
+    /**
+     * Update token status UI with error handling
      */
     updateTokenStatusUI(isValid, message) {
-        // Update global token status
-        const globalTokenStatus = document.getElementById('global-token-status');
-        if (globalTokenStatus) {
-            globalTokenStatus.className = `token-status ${isValid ? 'valid' : 'invalid'}`;
-            globalTokenStatus.textContent = message;
-        }
-        
-        // Update token indicator
-        const tokenIndicator = document.getElementById('token-status-indicator');
-        if (tokenIndicator) {
-            tokenIndicator.className = `token-indicator ${isValid ? 'valid' : 'invalid'}`;
-        }
-        
-        // Update get token button visibility
-        const getTokenBtn = document.getElementById('get-token-btn');
-        if (getTokenBtn) {
-            getTokenBtn.style.display = isValid ? 'none' : 'inline-block';
+        try {
+            // Update global token status
+            const globalTokenStatus = document.getElementById('global-token-status');
+            if (globalTokenStatus) {
+                globalTokenStatus.className = `token-status ${isValid ? 'valid' : 'invalid'}`;
+                globalTokenStatus.textContent = message || (isValid ? 'Authenticated' : 'Not authenticated');
+            }
+            
+            // Update token indicator
+            const tokenIndicator = document.getElementById('token-status-indicator');
+            if (tokenIndicator) {
+                tokenIndicator.className = `token-indicator ${isValid ? 'valid' : 'invalid'}`;
+            }
+            
+            // Update token status elements
+            const tokenStatusEl = document.getElementById('token-status');
+            const tokenExpiryEl = document.getElementById('token-expiry');
+            const getTokenBtn = document.getElementById('get-token-btn');
+            
+            if (tokenStatusEl) {
+                tokenStatusEl.textContent = message || (isValid ? 'Authenticated' : 'Not authenticated');
+                tokenStatusEl.className = `status-badge ${isValid ? 'status-valid' : 'status-invalid'}`;
+            }
+            
+            if (tokenExpiryEl) {
+                if (isValid && this.tokenExpiry) {
+                    try {
+                        const expiryDate = new Date(this.tokenExpiry);
+                        tokenExpiryEl.textContent = `Expires: ${expiryDate.toLocaleString()}`;
+                        
+                        // Add warning if token is about to expire (less than 5 minutes)
+                        const fiveMinutes = 5 * 60 * 1000;
+                        if (expiryDate - Date.now() < fiveMinutes) {
+                            tokenExpiryEl.classList.add('expiry-warning');
+                        } else {
+                            tokenExpiryEl.classList.remove('expiry-warning');
+                        }
+                    } catch (dateError) {
+                        this.logger.error('Error formatting token expiry date', dateError);
+                        tokenExpiryEl.textContent = 'Expiry: Unknown';
+                    }
+                } else {
+                    tokenExpiryEl.textContent = 'Not authenticated';
+                    tokenExpiryEl.classList.remove('expiry-warning');
+                }
+            }
+            
+            // Update get token button visibility
+            if (getTokenBtn) {
+                getTokenBtn.style.display = isValid ? 'none' : 'inline-block';
+            }
+            
+        } catch (error) {
+            this.logger.error('Error updating token status UI', error);
         }
         
         // Update refresh token button visibility

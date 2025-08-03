@@ -332,11 +332,17 @@ class GlobalTokenManagerSubsystem {
             }
             return;
         }
+        
+        // Ensure the status box is visible
+        statusBox.style.display = 'flex';
 
         const countdown = statusBox.querySelector('.global-token-countdown');
         const icon = statusBox.querySelector('.global-token-icon');
         const text = statusBox.querySelector('.global-token-text');
         const getTokenBtn = document.getElementById('global-get-token');
+
+        // Hide any authentication required messages when we have a valid token
+        this.hideAuthenticationMessages();
 
         // If child elements are missing, log debug message but continue with partial updates
         if (!countdown || !icon || !text) {
@@ -376,11 +382,14 @@ class GlobalTokenManagerSubsystem {
                     if (text) text.textContent = `Expires in ${formattedTime}`;
                     if (getTokenBtn) getTokenBtn.style.display = 'none';
                 } else {
-                    // Token valid
+                    // Token valid - show green background and time remaining
                     statusBox.className = 'global-token-status valid';
                     if (icon) icon.textContent = '✅';
-                    if (text) text.textContent = `Expires in ${formattedTime}`;
+                    if (text) text.textContent = `Valid - ${formattedTime} left`;
                     if (getTokenBtn) getTokenBtn.style.display = 'none';
+                    
+                    // Hide any conflicting authentication messages
+                    this.hideAuthenticationMessages();
                 }
             } else {
                 // No token
@@ -591,25 +600,113 @@ async getNewToken() {
             if (text) text.textContent = 'Getting token...';
         }
         
-        // Try to use the app's token refresh functionality
-        if (window.app && typeof window.app.getToken === 'function') {
-            await window.app.getToken();
-            this.logger.info('Token refreshed successfully via app');
-        } else {
-            // Fallback: try to trigger token refresh through API
-            const response = await fetch('/api/auth/refresh-token', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
+        let tokenResult = null;
+        
+        // Try multiple fallback methods for token acquisition
+        try {
+            // Method 1: Use app's getToken functionality
+            if (window.app && typeof window.app.getToken === 'function') {
+                this.logger.debug('Attempting token refresh via window.app.getToken()');
+                tokenResult = await window.app.getToken();
+                if (tokenResult) {
+                    this.logger.info('Token refreshed successfully via app', { hasResult: !!tokenResult });
+                } else {
+                    this.logger.warn('window.app.getToken() returned undefined, trying fallback');
                 }
-            });
-            
-            if (response.ok) {
-                const result = await response.json();
-                this.logger.info('Token refreshed via API', result);
             } else {
-                throw new Error(`API request failed: ${response.statusText}`);
+                this.logger.warn('window.app.getToken not available, trying API fallback');
             }
+        } catch (appError) {
+            this.logger.warn('App token method failed, trying API fallback', { error: appError.message });
+        }
+        
+        // Method 2: Fallback to PingOne token endpoint with credentials
+        if (!tokenResult) {
+            try {
+                this.logger.debug('Attempting token refresh via PingOne API endpoint');
+                
+                // Get complete credentials including secret from secure endpoint
+                const credentialsResponse = await fetch('/api/settings/credentials');
+                let credentials = {};
+                
+                if (credentialsResponse.ok) {
+                    const credentialsData = await credentialsResponse.json();
+                    if (credentialsData.success) {
+                        credentials = credentialsData.credentials;
+                        this.logger.debug('Retrieved complete credentials from secure endpoint', { 
+                            hasEnvironmentId: !!credentials.environmentId,
+                            hasClientId: !!credentials.clientId,
+                            hasClientSecret: !!credentials.clientSecret,
+                            hasRegion: !!credentials.region
+                        });
+                    } else {
+                        throw new Error(`Credentials endpoint failed: ${credentialsData.error}`);
+                    }
+                } else {
+                    const errorText = await credentialsResponse.text();
+                    throw new Error(`Credentials endpoint failed: ${credentialsResponse.status} ${errorText}`);
+                }
+                
+                const response = await fetch('/api/pingone/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        environmentId: credentials.environmentId,
+                        clientId: credentials.clientId,
+                        clientSecret: credentials.clientSecret,
+                        region: credentials.region
+                    })
+                });
+                
+                if (response.ok) {
+                    tokenResult = await response.json();
+                    this.logger.info('Token refreshed via PingOne API', { hasResult: !!tokenResult });
+                    
+                    // Store token in localStorage for future use
+                    if (tokenResult.access_token) {
+                        localStorage.setItem('pingone_worker_token', tokenResult.access_token);
+                        const expiryTime = Date.now() + ((tokenResult.expires_in || 3600) * 1000);
+                        localStorage.setItem('pingone_token_expiry', expiryTime.toString());
+                        this.logger.debug('Token stored in localStorage', { expiresIn: tokenResult.expires_in });
+                    }
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(`PingOne API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+            } catch (apiError) {
+                this.logger.error('PingOne API token refresh failed', { error: apiError.message });
+                // Don't throw here, try next method
+            }
+        }
+        
+        // Method 3: Final fallback - try auth refresh endpoint (might work if server auth is initialized)
+        if (!tokenResult) {
+            try {
+                this.logger.debug('Attempting token refresh via auth refresh endpoint');
+                const response = await fetch('/api/auth/refresh-token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    tokenResult = await response.json();
+                    this.logger.info('Token refreshed via auth refresh endpoint', { hasResult: !!tokenResult });
+                } else {
+                    const errorText = await response.text();
+                    this.logger.warn(`Auth refresh endpoint failed: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+            } catch (authError) {
+                this.logger.warn('Auth refresh endpoint failed', { error: authError.message });
+                // Don't throw here, this is the final attempt
+            }
+        }
+        
+        if (!tokenResult) {
+            throw new Error('All token acquisition methods failed - no token result obtained');
         }
         
         // Update status after token refresh
@@ -617,12 +714,15 @@ async getNewToken() {
         
         // Emit token refresh event
         if (this.eventBus) {
-            this.eventBus.emit('globalTokenManager:tokenRefreshed');
+            this.eventBus.emit('globalTokenManager:tokenRefreshed', { tokenResult });
         }
+        
+        return tokenResult;
         
     } catch (error) {
         this.logger.error('Error getting new token', {
-            error: error.message
+            error: error.message,
+            stack: error.stack
         });
         
         // Show error state
@@ -634,23 +734,46 @@ async getNewToken() {
             if (icon) icon.textContent = '❌';
             if (text) text.textContent = 'Token error';
         }
+        
+        // Emit error event
+        if (this.eventBus) {
+            this.eventBus.emit('globalTokenManager:tokenError', { error: error.message });
+        }
+        
+        throw error;
     }
 }
-    formatTime(seconds) {
-        if (seconds <= 0) return '00:00';
-        
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-        
-        if (hours > 0) {
-            return `${hours}h ${minutes}m ${secs}s`;
-        } else if (minutes > 0) {
-            return `${minutes}m ${secs}s`;
-        } else {
-            return `${secs}s`;
+
+    /**
+     * Hide authentication messages that conflict with valid token status
+     */
+    hideAuthenticationMessages() {
+        try {
+            // Hide various authentication required messages
+            const selectors = [
+                '.auth-required-message',
+                '.token-notification-container',
+                '#token-notification-container',
+                '.global-status-bar.error',
+                '.notification-area .error'
+            ];
+            
+            selectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => {
+                    if (element && element.style) {
+                        element.style.display = 'none';
+                    }
+                });
+            });
+            
+            this.logger.debug('Authentication messages hidden due to valid token');
+        } catch (error) {
+            this.logger.debug('Error hiding authentication messages', error);
         }
     }
+
+
 
     /**
      * Get current token information
@@ -765,71 +888,8 @@ async getNewToken() {
     }
 
     /**
-     * Get new token
+     * Get new token (method implemented above)
      */
-    async getNewToken() {
-        if (this.isDestroyed) {
-            return;
-        }
-
-        try {
-            this.logger.info('Getting new token via global token manager subsystem...');
-            
-            // Show loading state
-            const statusBox = document.getElementById('global-token-status');
-            if (statusBox) {
-                statusBox.className = 'global-token-status loading';
-                const icon = statusBox.querySelector('.global-token-icon');
-                const text = statusBox.querySelector('.global-token-text');
-                if (icon) icon.textContent = '⏳';
-                if (text) text.textContent = 'Getting token...';
-            }
-            
-            // Try to use the app's token refresh functionality
-            if (window.app && typeof window.app.getToken === 'function') {
-                await window.app.getToken();
-                this.logger.info('Token refreshed successfully via app');
-            } else {
-                // Fallback: try to trigger token refresh through API
-                const response = await fetch('/api/auth/refresh-token', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    this.logger.info('Token refreshed via API', result);
-                } else {
-                    throw new Error(`API request failed: ${response.statusText}`);
-                }
-            }
-            
-            // Update status after token refresh
-            this.updateGlobalTokenStatus();
-            
-            // Emit token refresh event
-            if (this.eventBus) {
-                this.eventBus.emit('globalTokenManager:tokenRefreshed');
-            }
-            
-        } catch (error) {
-            this.logger.error('Error getting new token', {
-                error: error.message
-            });
-            
-            // Show error state
-            const statusBox = document.getElementById('global-token-status');
-            if (statusBox) {
-                statusBox.className = 'global-token-status error';
-                const icon = statusBox.querySelector('.global-token-icon');
-                const text = statusBox.querySelector('.global-token-text');
-                if (icon) icon.textContent = '❌';
-                if (text) text.textContent = 'Token error';
-            }
-        }
-    }
 
     /**
      * Get subsystem status for health checks
@@ -847,3 +907,6 @@ async getNewToken() {
 
 export { GlobalTokenManagerSubsystem };
 export default GlobalTokenManagerSubsystem;
+
+// Make GlobalTokenManagerSubsystem available globally for bundle
+window.GlobalTokenManagerSubsystem = GlobalTokenManagerSubsystem;

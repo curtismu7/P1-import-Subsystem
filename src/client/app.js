@@ -38,7 +38,6 @@ import { UIManager } from './components/ui-manager.js';
 import LocalApiClient from './utils/local-api-client.js'; // Assuming path
 import SettingsSubsystem from './subsystems/settings-subsystem.js';
 import CredentialManager from './components/credentials-manager.js';
-import SettingsManager from './components/settings-manager.js';
 import PingOneClient from './utils/pingone-client.js'; // Assuming path
 import { ConnectionManagerSubsystem } from './subsystems/connection-manager-subsystem.js';
 import { AuthManagementSubsystem } from './subsystems/auth-management-subsystem.js';
@@ -50,6 +49,7 @@ import { HistorySubsystem } from './subsystems/history-subsystem.js';
 import { ImportSubsystem } from './subsystems/import-subsystem.js';
 import { NavigationSubsystem } from './subsystems/navigation-subsystem.js';
 import { RealtimeCommunicationSubsystem } from './subsystems/realtime-communication-subsystem.js';
+import { GlobalTokenManagerSubsystem } from './subsystems/global-token-manager-subsystem.js';
 
 class App {
     constructor() {
@@ -437,6 +437,10 @@ class App {
             this.eventBus
         );
         await this.settingsSubsystem.init();
+        
+        // Make settings subsystem available to other subsystems
+        this.subsystems.settings = this.settingsSubsystem;
+        
         this.logger.debug('Settings subsystem initialized as a core component');
 
         this.pingoneClient = new PingOneClient(this.localClient, this.logger.child({ component: 'pingone-client' }));
@@ -542,9 +546,6 @@ class App {
                 } else {
                     console.log(`⏭️ [SUBSYSTEM INIT] Skipping ${sub.name} subsystem (flag disabled)`);
                 }
-            } catch (error) {
-                this.logger.error(`Failed to initialize subsystem: ${config.name}`, { error: error.message, stack: error.stack });
-                throw new Error(`Subsystem initialization failed for ${config.name}`);
             }
 
             // Initialize UI components that depend on subsystems
@@ -588,33 +589,25 @@ class App {
             this.logger.warn('Continuing app initialization despite subsystem errors');
         }
 
-        // 🛡️ BULLETPROOF Global Token Manager Subsystem - CANNOT FAIL
+        // Initialize Global Token Manager Subsystem - Simple approach
         try {
-            this.logger.info('🛡️ Initializing Bulletproof Global Token Manager...');
+            this.logger.info('Initializing Global Token Manager...');
             
-            // Create original token manager
-            const originalTokenManager = new GlobalTokenManagerSubsystem(
+            // Create token manager directly
+            this.subsystems.globalTokenManager = new GlobalTokenManagerSubsystem(
                 this.logger.child({ subsystem: 'globalTokenManager' }),
                 this.eventBus
             );
             
-            // Initialize original token manager
-            await originalTokenManager.init();
+            // Initialize token manager
+            await this.subsystems.globalTokenManager.init();
             
-            // Create bulletproof wrapper
-            this.bulletproofTokenManager = createBulletproofTokenManager(this.logger);
+            // Make it available globally for debugging
+            window.globalTokenManager = this.subsystems.globalTokenManager;
             
-            if (this.bulletproofTokenManager) {
-                // Wrap the original with bulletproof protection
-                this.subsystems.globalTokenManager = await this.bulletproofTokenManager.initialize(originalTokenManager);
-                this.logger.info('🛡️ Bulletproof Global Token Manager initialized successfully');
-            } else {
-                // Fallback to original if bulletproof creation failed
-                this.subsystems.globalTokenManager = originalTokenManager;
-                this.logger.warn('🛡️ Using original token manager (bulletproof creation failed)');
-            }
+            this.logger.info('Global Token Manager initialized successfully');
         } catch (error) {
-            this.logger.error('🛡️ Bulletproof token manager initialization failed', error);
+            this.logger.error('Global token manager initialization failed', error);
             
             // Emergency fallback - create minimal token manager
             this.subsystems.globalTokenManager = {
@@ -624,7 +617,10 @@ class App {
                     try {
                         const statusBox = document.getElementById('global-token-status');
                         if (statusBox) {
-                            statusBox.innerHTML = '<span class="global-token-icon">🛡️</span><span class="global-token-text">Token status protected</span>';
+                            const icon = statusBox.querySelector('.global-token-icon');
+                            const text = statusBox.querySelector('.global-token-text');
+                            if (icon) icon.textContent = '🛡️';
+                            if (text) text.textContent = 'Token status protected';
                         }
                     } catch (e) {
                         console.log('🛡️ Emergency token status active');
@@ -632,6 +628,9 @@ class App {
                 },
                 destroy: () => Promise.resolve(true)
             };
+            
+            // Make emergency manager available globally
+            window.globalTokenManager = this.subsystems.globalTokenManager;
         }
 
         // Initialize Token Notification Subsystem
@@ -693,18 +692,6 @@ class App {
 
         this.logger.debug('Global event listeners set up');
     }
-}
-
-// Initialize the application
-document.addEventListener('DOMContentLoaded', () => {
-    const app = new App();
-    app.init().catch(err => {
-        console.error('FATAL: Application failed to initialize.', err);
-        // Display a fatal error message to the user if UI is available
-        if (app.uiManager) {
-            app.uiManager.showError('A fatal error occurred during startup. The application cannot continue.');
-        }
-    }
 
     /**
      * Handle Test Connection button click
@@ -755,7 +742,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.showSettingsStatus(`Connection test failed: ${result.error}`, 'error');
                 }
             }
-            
         } catch (error) {
             this.logger.error('🔧 SETTINGS: Connection test failed', { error: error.message });
             this.showSettingsStatus(`Connection test failed: ${error.message}`, 'error');
@@ -1499,6 +1485,13 @@ handleFileDrop(event) {
     }
 }
 
+// Export App class for bundle
+export { App };
+export default App;
+
+// Make App available globally for initialization
+window.App = App;
+
 // Initialize and start the application
 const app = new App();
 
@@ -1560,11 +1553,16 @@ window.testLoading = {
             }, 1500);
         }
     }
-};
+}
+
+// Make app globally available
+window.app = null;
 
 // Start the application when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
     try {
+        const app = new App();
+        window.app = app;
         await app.init();
         window.logger?.info('🚀 PingOne Import Tool v6.5.1.2 initialized successfully') || console.log('🚀 PingOne Import Tool v6.5.1.2 initialized successfully');
         window.logger?.info('📊 Health Status:', app.getHealthStatus()) || console.log('📊 Health Status:', app.getHealthStatus());
