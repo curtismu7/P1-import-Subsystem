@@ -5,6 +5,8 @@
  * Manages settings form validation, saving, and UI feedback.
  */
 
+import { STANDARD_KEYS, standardizeConfigKeys, createBackwardCompatibleConfig } from '../../utils/config-standardization.js';
+
 class SettingsSubsystem {
     constructor(logger, uiManager, localClient, settingsManager, eventBus, credentialsManager) {
         this.logger = logger;
@@ -319,14 +321,26 @@ class SettingsSubsystem {
         }
         
         const formData = new FormData(form);
-        const settings = {
+        
+        // Create settings with legacy keys first (for form compatibility)
+        const legacySettings = {
             environmentId: formData.get('environment-id') || '',
             apiClientId: formData.get('api-client-id') || '',
             apiSecret: formData.get('api-secret') || '',
-            region: formData.get('region') || 'NorthAmerica',
+            region: formData.get('region') || 'NA',
             rateLimit: parseInt(formData.get('rate-limit')) || 50,
             populationId: formData.get('population-id') || ''
         };
+        
+        // Create backward compatible settings with both standard and legacy keys
+        const settings = createBackwardCompatibleConfig({
+            [STANDARD_KEYS.ENVIRONMENT_ID]: legacySettings.environmentId,
+            [STANDARD_KEYS.CLIENT_ID]: legacySettings.apiClientId,
+            [STANDARD_KEYS.CLIENT_SECRET]: legacySettings.apiSecret,
+            [STANDARD_KEYS.REGION]: legacySettings.region,
+            rateLimit: legacySettings.rateLimit,
+            populationId: legacySettings.populationId
+        });
         
         return settings;
     }
@@ -337,19 +351,25 @@ class SettingsSubsystem {
     validateSettings(settings) {
         const errors = [];
         
-        if (!settings.environmentId?.trim()) {
+        // Check standardized keys first, fall back to legacy keys
+        const environmentId = settings[STANDARD_KEYS.ENVIRONMENT_ID] || settings.environmentId;
+        const clientId = settings[STANDARD_KEYS.CLIENT_ID] || settings.apiClientId;
+        const clientSecret = settings[STANDARD_KEYS.CLIENT_SECRET] || settings.apiSecret;
+        const region = settings[STANDARD_KEYS.REGION] || settings.region;
+        
+        if (!environmentId?.trim()) {
             errors.push('Environment ID is required');
         }
         
-        if (!settings.apiClientId?.trim()) {
+        if (!clientId?.trim()) {
             errors.push('API Client ID is required');
         }
         
-        if (!settings.apiSecret?.trim()) {
+        if (!clientSecret?.trim()) {
             errors.push('API Secret is required');
         }
         
-        if (!settings.region?.trim()) {
+        if (!region?.trim()) {
             errors.push('Region is required');
         }
         
@@ -377,12 +397,12 @@ class SettingsSubsystem {
         const form = document.getElementById('settings-form');
         if (!form) return;
         
-        // Populate form fields
+        // Populate form fields - check standardized keys first, fall back to legacy keys
         const fields = {
-            'environment-id': settings.environmentId || '',
-            'api-client-id': settings.apiClientId || '',
-            'api-secret': settings.apiSecret || '',
-            'region': settings.region || 'NorthAmerica',
+            'environment-id': settings[STANDARD_KEYS.ENVIRONMENT_ID] || settings.environmentId || '',
+            'api-client-id': settings[STANDARD_KEYS.CLIENT_ID] || settings.apiClientId || '',
+            'api-secret': settings[STANDARD_KEYS.CLIENT_SECRET] || settings.apiSecret || '',
+            'region': settings[STANDARD_KEYS.REGION] || settings.region || 'NA',
             'rate-limit': settings.rateLimit || 50,
             'population-id': settings.populationId || ''
         };

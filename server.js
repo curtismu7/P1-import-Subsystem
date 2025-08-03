@@ -484,6 +484,20 @@ app.get('/api/health', async (req, res) => {
         // PRODUCTION ENHANCEMENT: Include startup optimizer status
         const optimizerHealth = startupOptimizer.getHealthStatus();
         
+        // Get token status
+        let tokenStatus;
+        try {
+            tokenStatus = tokenService.getTokenStatus();
+        } catch (error) {
+            tokenStatus = {
+                hasToken: false,
+                isValid: false,
+                expiresIn: 0,
+                environmentId: 'unknown',
+                region: 'unknown'
+            };
+        }
+        
         const status = {
             status: optimizerHealth.status === 'healthy' ? 'ok' : 'degraded',
             timestamp: new Date().toISOString(),
