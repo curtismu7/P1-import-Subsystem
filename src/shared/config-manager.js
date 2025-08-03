@@ -380,20 +380,29 @@ class ConfigManager extends EventEmitter {
   }
   
   transformLegacyConfig(settings) {
+    // Handle both kebab-case (from settings.json) and camelCase field names
+    const environmentId = settings.environmentId || settings['environment-id'] || '';
+    const clientId = settings.apiClientId || settings['api-client-id'] || '';
+    const clientSecret = settings.apiSecret || settings['api-secret'] || '';
+    const region = settings.region || 'NorthAmerica';
+    const rateLimit = settings.rateLimit || settings['rate-limit'] || 50;
+    const populationId = settings.populationId || settings['population-id'] || '';
+    
     return {
       server: {
         port: settings.port || 4000,
         environment: this.getEnvironment()
       },
       pingone: {
-        environmentId: settings.environmentId,
-        clientId: settings.apiClientId,
-        clientSecret: settings.apiSecret,
-        region: settings.region || 'NorthAmerica'
+        environmentId,
+        clientId,
+        clientSecret,
+        region,
+        populationId
       },
       features: {
         maxFileUploadSize: settings.maxFileSize || 10485760,
-        importBatchSize: settings.importBatchSize || 5
+        importBatchSize: parseInt(rateLimit) || 5
       },
       ...this.getDefaultConfig()
     };

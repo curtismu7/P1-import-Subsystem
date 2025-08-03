@@ -160,9 +160,23 @@ export class TokenNotificationSubsystem {
 
     /**
      * Check current token status and show appropriate notification
+     * Coordinates with Global Token Manager to avoid conflicting messages
      */
     checkTokenStatus() {
         try {
+            // First check if Global Token Manager is handling this
+            if (window.app && window.app.subsystems && window.app.subsystems.globalTokenManager) {
+                const globalTokenInfo = window.app.subsystems.globalTokenManager.getTokenInfoSync();
+                
+                // If global token manager says token is valid, trust it and hide our notifications
+                if (globalTokenInfo && globalTokenInfo.hasToken && globalTokenInfo.timeLeft > 0) {
+                    this.hideNotification();
+                    this.lastTokenCheck = Date.now();
+                    return;
+                }
+            }
+            
+            // Fallback to our own token checking if global manager not available
             const tokenInfo = this.getTokenInfo();
             
             if (!tokenInfo.hasToken) {
@@ -172,6 +186,7 @@ export class TokenNotificationSubsystem {
             } else if (tokenInfo.timeLeft <= 300) { // 5 minutes
                 this.showTokenExpiringNotification(tokenInfo.timeLeft);
             } else {
+                // Token is valid - hide notification
                 this.hideNotification();
             }
             
@@ -181,7 +196,10 @@ export class TokenNotificationSubsystem {
             this.logger.error('Error checking token status', {
                 error: error.message
             });
-            this.showTokenErrorNotification();
+            // Only show error notification if global token manager is not handling it
+            if (!window.app?.subsystems?.globalTokenManager) {
+                this.showTokenErrorNotification();
+            }
         }
     }
 

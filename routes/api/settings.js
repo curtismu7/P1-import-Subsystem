@@ -20,10 +20,11 @@ router.get('/', async (req, res) => {
         const settings = JSON.parse(settingsContent);
         
         // Don't send sensitive data like secrets
+        // Handle both camelCase and kebab-case keys from settings.json
         const publicSettings = {
-            environmentId: settings.environmentId || '',
+            environmentId: settings.environmentId || settings['environment-id'] || '',
             region: settings.region || '',
-            apiClientId: settings.apiClientId || '',
+            apiClientId: settings.apiClientId || settings['api-client-id'] || '',
             // Don't send apiSecret for security
             lastUpdated: settings.lastUpdated || null
         };
@@ -97,6 +98,53 @@ router.post('/', async (req, res) => {
         console.error('Error saving settings:', error);
         res.status(500).json({
             error: 'Failed to save settings',
+            message: error.message
+        });
+    }
+});
+
+/**
+ * Get complete credentials for internal token acquisition
+ * GET /api/settings/credentials
+ * This endpoint includes the API secret and should only be used internally
+ */
+router.get('/credentials', async (req, res) => {
+    try {
+        const settingsContent = await fs.readFile(SETTINGS_FILE, 'utf8');
+        const settings = JSON.parse(settingsContent);
+        
+        // Return complete credentials including secret for internal use
+        // Handle both camelCase and kebab-case keys from settings.json
+        const credentials = {
+            environmentId: settings.environmentId || settings['environment-id'] || '',
+            clientId: settings.apiClientId || settings['api-client-id'] || '',
+            clientSecret: settings.apiSecret || settings['api-secret'] || '',
+            region: settings.region || 'NA'
+        };
+        
+        // Validate that all required credentials are present
+        if (!credentials.environmentId || !credentials.clientId || !credentials.clientSecret) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required credentials',
+                missing: {
+                    environmentId: !credentials.environmentId,
+                    clientId: !credentials.clientId,
+                    clientSecret: !credentials.clientSecret
+                }
+            });
+        }
+        
+        res.json({
+            success: true,
+            credentials: credentials
+        });
+        
+    } catch (error) {
+        console.error('Error reading credentials:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to read credentials',
             message: error.message
         });
     }

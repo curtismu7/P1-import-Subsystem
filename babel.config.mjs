@@ -5,7 +5,7 @@ export default {
       targets: {
         node: 'current',
       },
-      modules: false, // Keep ES modules
+      modules: 'commonjs', // Use CommonJS for browserify
       useBuiltIns: 'usage',
       corejs: 3,
     }],

@@ -25,26 +25,31 @@ import fetch from 'node-fetch';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { router as logsRouter } from './logs.js';
+import debugLogRouter from './debug-log.js';
 import credentialRouter from './credential-management.js';
 import exportRouter from './export.js';
 import importRouter from './import.js';
+import historyRouter from './history.js';
+import pingoneRouter from './pingone.js';
+import versionRouter from './version.js';
+import settingsRouter from './settings.js';
+import { apiLogHelpers } from '../../server/winston-config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = Router();
 
-// Mount logs router
+// Mount all API routers
+router.use('/debug-log', debugLogRouter);
 router.use('/logs', logsRouter);
-
-// Mount credential management router (includes auth endpoints)
 router.use('/auth', credentialRouter);
-
-// Mount export router
 router.use('/export', exportRouter);
-
-// Mount import router
 router.use('/import', importRouter);
+router.use('/history', historyRouter);
+router.use('/pingone', pingoneRouter);
+router.use('/version', versionRouter);
+router.use('/settings', settingsRouter);
 
 // Enable debug logging in development mode
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
@@ -66,18 +71,7 @@ router.use((req, res, next) => {
     next();
 });
 
-// ============================================================================
-// MOUNT SUB-ROUTERS
-// ============================================================================
 
-// Mount routers for specific API endpoints.
-router.use('/debug-log', debugLogRouter);
-router.use('/logs', logsRouter);
-router.use('/export', exportRouter);
-router.use('/history', historyRouter);
-router.use('/pingone', pingoneRouter);
-router.use('/version', versionRouter);
-router.use('/settings', settingsRouter);
 
 // ============================================================================
 // CORE API ENDPOINTS

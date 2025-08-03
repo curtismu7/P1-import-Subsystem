@@ -72,6 +72,7 @@
  */
 
 import express from 'express';
+import http from 'http';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -90,6 +91,11 @@ import {
     checkPortStatus 
 } from './server/port-checker.js';
 import pingoneProxyRouter from './routes/pingone-proxy-fixed.js';
+// Import token management services
+import { tokenService } from './server/services/token-service.js';
+import { webSocketService } from './server/services/websocket-service.js';
+
+// Import routes
 import { runStartupTokenTest } from './server/startup-token-test.js';
 import apiRouter from './routes/api/index.js';
 import settingsRouter from './routes/settings.js';
@@ -253,7 +259,11 @@ const serverState = {
 
 // Create Express app
 const app = express();
+const server = http.createServer(app);
 let PORT = process.env.PORT || 4000;
+
+// Initialize WebSocket service
+webSocketService.initialize(server);
 
 // Attach token manager to app for route access
 app.set('tokenManager', tokenManager);
@@ -497,13 +507,22 @@ app.get('/api/health', async (req, res) => {
                 status: optimizerHealth.status,
                 isInitialized: optimizerHealth.isInitialized,
                 tokenCached: optimizerHealth.tokenValid,
-                populationsCached: optimizerHealth.populationsCached
+                tokenStatus: tokenStatus
+            },
+            token: {
+                hasToken: tokenStatus.hasToken,
+                isValid: tokenStatus.isValid,
+                expiresIn: tokenStatus.expiresIn,
+                environmentId: tokenStatus.environmentId,
+                region: tokenStatus.region
             },
             checks: {
                 pingOneConfigured: hasRequiredPingOneVars ? 'ok' : 'error',
                 pingOneConnected: serverStatus.pingOneInitialized ? 'ok' : 'error',
                 memory: memoryUsagePercent < 90 ? 'ok' : 'warn',
-                startupOptimization: optimizerHealth.status === 'healthy' ? 'ok' : 'warn'
+                startupOptimization: optimizerHealth.status === 'healthy' ? 'ok' : 'warn',
+                tokenAcquisition: tokenStatus.hasToken ? 'ok' : 'error',
+                websocket: webSocketService.io ? 'ok' : 'error'
             }
         };
         
@@ -535,37 +554,39 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
-// PRODUCTION ENDPOINT: Cache refresh endpoint for manual cache management
-app.post('/api/cache/refresh', async (req, res) => {
+// Token management endpoints
+app.get('/api/token/status', (req, res) => {
     try {
-        logger.info('🔄 Manual cache refresh requested', {
-            ip: req.ip,
-            userAgent: req.get('user-agent')
-        });
-        
-        const result = await startupOptimizer.refreshCache();
-        
-        if (result.success) {
-            logger.info('✅ Cache refresh completed successfully');
-            res.json({
-                success: true,
-                message: 'Cache refreshed successfully',
-                timestamp: new Date().toISOString()
-            });
-        } else {
-            logger.error('❌ Cache refresh failed', { error: result.error });
-            res.status(500).json({
-                success: false,
-                error: result.error,
-                timestamp: new Date().toISOString()
-            });
-        }
+        const status = tokenService.getTokenStatus();
+        res.json(status);
     } catch (error) {
-        logger.error('❌ Cache refresh endpoint error', { error: error.message });
         res.status(500).json({
             success: false,
-            error: 'Cache refresh failed',
-            timestamp: new Date().toISOString()
+            error: error.message
+        });
+    }
+});
+
+// Token refresh endpoint
+app.post('/api/token/refresh', async (req, res) => {
+    try {
+        const token = await tokenService.getToken();
+        const status = tokenService.getTokenStatus();
+        
+        // Broadcast the new token status to all clients
+        webSocketService.broadcastTokenStatus();
+        
+        res.json({ 
+            success: true,
+            expiresIn: status.expiresIn,
+            environmentId: status.environmentId,
+            region: status.region
+        });
+    } catch (error) {
+        logger.error('Token refresh failed', { error: error.message });
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
         });
     }
 });
@@ -725,220 +746,88 @@ const APP_VERSION = '6.5.2.4';
 
 // Server startup with enhanced logging
 const startServer = async () => {
-    const startTime = Date.now();
-    
     try {
-        // Ensure logs directory exists and is writable before starting server
-        const logsReady = await ensureLogsDirectory();
-        if (!logsReady) {
-            console.error('⚠️ Warning: Logs directory setup failed. Logging may not work correctly.');
-        }
+        // Check if port is available
+        const port = process.env.PORT || 4000;
+        const isAvailable = await isPortAvailable(port);
         
-        logger.info('Starting server initialization', {
-            port: PORT,
-            env: process.env.NODE_ENV || 'development',
-            pid: process.pid
-        });
-        
-        // Also log to server.log
-        serverLogger.info('Server initialization started', {
-            port: PORT,
-            env: process.env.NODE_ENV || 'development',
-            pid: process.pid
-        });
-        
-        if (serverState.isInitializing) {
-            throw new Error('Server initialization already in progress');
-        }
-        
-        if (serverState.isInitialized) {
-            throw new Error('Server is already initialized');
-        }
-        
-        serverState.isInitializing = true;
-        serverState.lastError = null;
-        
-        // Load settings from file at startup
-        await loadSettingsFromFile();
-        
-        // PRODUCTION OPTIMIZATION: Initialize startup optimizer
-        logger.info('🚀 Initializing startup optimizations...');
-        const optimizationResult = await startupOptimizer.initialize();
-        
-        if (optimizationResult.success) {
-            logger.info('✅ Startup optimization completed', {
-                duration: optimizationResult.duration,
-                tokenCached: optimizationResult.tokenCached,
-                populationsCached: optimizationResult.populationsCached
-            });
-        } else {
-            logger.warn('⚠️ Startup optimization failed', {
-                reason: optimizationResult.reason || optimizationResult.error,
-                duration: optimizationResult.duration
-            });
-        }
-        
-        // Initialize Enhanced Server Authentication System
-        logger.info('🚀 Initializing Enhanced Server Authentication System...');
-        try {
-            const authResult = await enhancedAuth.initializeOnStartup();
+        if (!isAvailable) {
+            logger.warn(`Port ${port} is in use. Attempting to find an available port...`);
+            const availablePort = await findAvailablePort(port, port + 10);
             
-            if (authResult.success) {
-                serverState.pingOneInitialized = true;
-                logger.info('✅ Enhanced authentication initialized successfully', {
-                    credentialSource: authResult.credentialSource,
-                    environmentId: authResult.environmentId,
-                    tokenExpiresAt: authResult.expiresAt
-                });
-                
-                // Also initialize the legacy token manager for backward compatibility
-                try {
-                    await tokenManager.getAccessToken();
-                    logger.info('Legacy token manager initialized successfully');
-                } catch (legacyError) {
-                    logger.warn('Legacy token manager initialization failed, but enhanced auth is working', {
-                        error: legacyError.message
-                    });
-                }
-                
-                // Perform startup token validation test
-                logger.info('🔍 Performing startup token validation test...');
-                try {
-                    const tokenInfo = tokenManager.getTokenInfo();
-                    if (tokenInfo && tokenInfo.isValid) {
-                        const timeUntilExpiry = Math.floor((tokenInfo.expiresAt - Date.now()) / 1000 / 60);
-                        logger.info('✅ Startup token validation passed', {
-                            tokenType: tokenInfo.tokenType,
-                            expiresInMinutes: timeUntilExpiry,
-                            isValid: tokenInfo.isValid
-                        });
-                        console.log(`✅ Token validation: PASSED (expires in ${timeUntilExpiry} minutes)`);
-                    } else {
-                        logger.warn('⚠️ Startup token validation: No valid token found');
-                        console.log('⚠️ Token validation: No valid token available');
-                    }
-                } catch (tokenValidationError) {
-                    logger.warn('⚠️ Startup token validation failed', {
-                        error: tokenValidationError.message
-                    });
-                    console.log('⚠️ Token validation: FAILED -', tokenValidationError.message);
-                }
+            if (availablePort) {
+                logger.info(`Found available port: ${availablePort}`);
+                process.env.PORT = availablePort;
             } else {
-                serverState.pingOneInitialized = false;
-                logger.error('❌ Enhanced authentication initialization failed', {
-                    error: authResult.error,
-                    recommendations: authResult.recommendations
-                });
-                
-                // Log setup recommendations for the user
-                if (authResult.recommendations) {
-                    logger.info('📋 Setup Recommendations:');
-                    authResult.recommendations.forEach((rec, index) => {
-                        logger.info(`   ${index + 1}. ${rec}`);
-                    });
-                }
+                logger.error('No available ports found. Please free up some ports and try again.');
+                process.exit(1);
             }
-        } catch (error) {
-            logger.error('Failed to initialize Enhanced Server Authentication', {
-                error: error.message,
-                code: error.code,
-                stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
-            });
-            serverState.pingOneInitialized = false;
         }
         
-        // Check port availability before starting server
-        logger.info('Checking port availability', { port: PORT });
-        
-        const portStatus = await checkPortStatus(PORT);
-        if (!portStatus.isAvailable) {
-            logger.error('Port conflict detected during startup', {
-                port: PORT,
-                processes: portStatus.processes
-            });
+        // Initialize the server
+        server.listen(process.env.PORT || 4000, async () => {
+            const serverUrl = `http://localhost:${process.env.PORT || 4000}`;
+            logger.info(`Server is running on ${serverUrl}`);
             
-            console.log(portStatus.message);
-            
-            // Try to resolve port conflict automatically
             try {
-                const resolvedPort = await resolvePortConflict(PORT, {
-                    autoKill: process.env.AUTO_KILL_PORT === 'true',
-                    findAlternative: true,
-                    maxAttempts: 5
-                });
+                // Test token acquisition on startup with retry logic
+                const maxRetries = 3;
+                let attempt = 0;
+                let success = false;
+                let lastError = null;
                 
-                if (resolvedPort !== PORT) {
-                    logger.info('Using alternative port', { 
-                        originalPort: PORT, 
-                        newPort: resolvedPort 
+                while (attempt < maxRetries && !success) {
+                    attempt++;
+                    
+                    try {
+                        // Notify clients of token acquisition attempt
+                        webSocketService.broadcastNotification(
+                            'info', 
+                            `Acquiring PingOne API token (attempt ${attempt}/${maxRetries})...`
+                        );
+                        
+                        // Attempt to get a token
+                        const token = await tokenService.getToken();
+                        success = true;
+                        
+                        webSocketService.broadcastNotification(
+                            'success', 
+                            'Successfully acquired PingOne API token',
+                            { 
+                                environmentId: tokenService.tokenCache.environmentId,
+                                region: tokenService.tokenCache.region,
+                                expiresIn: tokenService.getTokenStatus().expiresIn
+                            }
+                        );
+                        
+                        logger.info('Successfully acquired PingOne API token');
+                        
+                    } catch (error) {
+                        lastError = error;
+                        logger.error(`Token acquisition attempt ${attempt} failed:`, error.message);
+                        
+                        if (attempt < maxRetries) {
+                            // Exponential backoff: 2s, 4s, 8s, etc.
+                            const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+                            logger.info(`Retrying in ${delay/1000} seconds...`);
+                            
+                            // Wait before retrying
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        }
+                    }
+                }
+                
+                if (!success && lastError) {
+                    logger.error('❌ Failed to acquire PingOne token after maximum retries', {
+                        error: lastError.message,
+                        maxRetries
                     });
-                    console.log(`\n🔄 Using alternative port: ${resolvedPort}`);
-                    PORT = resolvedPort;
                 }
             } catch (error) {
-                logger.error('Failed to resolve port conflict', {
+                logger.error('Failed to initialize token acquisition on startup', {
                     error: error.message,
-                    port: PORT
+                    stack: error.stack
                 });
-                
-                serverState.isInitialized = false;
-                serverState.isInitializing = false;
-                serverState.lastError = error;
-                
-                if (process.env.NODE_ENV === 'production') {
-                    process.exit(1);
-                } else {
-                    throw error;
-                }
-            }
-        }
-        
-        // Start server with enhanced port conflict handling
-        const server = app.listen(PORT, '127.0.0.1', () => {
-            const duration = Date.now() - startTime;
-            const url = `http://127.0.0.1:${PORT}`;
-            
-            serverState.isInitialized = true;
-            serverState.isInitializing = false;
-            
-            performanceLogger('server_startup', duration, { url });
-            
-            logger.info('Server started successfully', {
-                url,
-                port: PORT,
-                pid: process.pid,
-                node: process.version,
-                platform: process.platform,
-                env: process.env.NODE_ENV || 'development',
-                appVersion: APP_VERSION,
-                pingOneInitialized: serverState.pingOneInitialized,
-                duration: `${duration}ms`,
-                critical: true
-            });
-            
-            // Console output for development
-            if (process.env.NODE_ENV !== 'production') {
-                console.log('\n🚀 Server started successfully!');
-                console.log('='.repeat(60));
-                console.log(`   URL: ${url}`);
-                console.log(`   PID: ${process.pid}`);
-                console.log(`   Node: ${process.version}`);
-                console.log(`   Platform: ${process.platform}`);
-                console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-                console.log(`   Version: ${APP_VERSION}`);
-                console.log(`   PingOne: ${serverState.pingOneInitialized ? '✅ Connected' : '⚠️  Not connected'}`);
-                console.log(`   📚 Swagger UI: ${url}/swagger.html`);
-                console.log(`   📄 Swagger JSON: ${url}/swagger.json`);
-                console.log('='.repeat(60) + '\n');
-                
-                // Test PingOne token acquisition at startup
-                setTimeout(async () => {
-                    try {
-                        await runStartupTokenTest(logger);
-                    } catch (error) {
-                        logger.error('Startup token test failed:', error);
-                    }
-                }, 1000); // Wait 1 second for server to fully initialize
             }
         }).on('error', async (error) => {
             if (error.code === 'EADDRINUSE') {

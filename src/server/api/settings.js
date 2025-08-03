@@ -520,13 +520,24 @@ router.get("/", async (req, res) => {
         // Get the plain text secret from the config manager, which handles decryption
         const plainSecret = configManager.get('pingone.clientSecret');
 
-        // The configManager already provides settings in a clean, camelCased format.
-        // We just need to structure the response correctly.
+        // Flatten the nested structure for client-side compatibility
+        // The client expects flat camelCase field names
         const responseData = {
-            ...settings,
-            apiSecret: plainSecret, // Ensure apiSecret is included for client-side compatibility
-            debugMode: settings.debug?.enableDebugMode || false // Expose debugMode
+            environmentId: settings.pingone?.environmentId || '',
+            apiClientId: settings.pingone?.clientId || '',
+            apiSecret: plainSecret || '',
+            region: settings.pingone?.region || 'NorthAmerica',
+            rateLimit: settings.features?.importBatchSize || 50,
+            populationId: settings.pingone?.populationId || '',
+            debugMode: settings.debug?.enableDebugMode || false
         };
+        
+        logger.info('Settings retrieved for client', {
+            hasEnvironmentId: !!responseData.environmentId,
+            hasApiClientId: !!responseData.apiClientId,
+            hasApiSecret: !!responseData.apiSecret,
+            region: responseData.region
+        });
         
         res.json({ success: true, data: responseData });
         
