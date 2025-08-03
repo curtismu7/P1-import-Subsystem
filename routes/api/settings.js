@@ -30,11 +30,13 @@ router.get('/', async (req, res) => {
             [STANDARD_KEYS.ENVIRONMENT_ID]: standardizedSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
             [STANDARD_KEYS.REGION]: standardizedSettings[STANDARD_KEYS.REGION] || '',
             [STANDARD_KEYS.CLIENT_ID]: standardizedSettings[STANDARD_KEYS.CLIENT_ID] || '',
+            [STANDARD_KEYS.POPULATION_ID]: standardizedSettings[STANDARD_KEYS.POPULATION_ID] || '',
             
             // Legacy keys for backward compatibility
             environmentId: standardizedSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
             region: standardizedSettings[STANDARD_KEYS.REGION] || '',
             apiClientId: standardizedSettings[STANDARD_KEYS.CLIENT_ID] || '',
+            populationId: standardizedSettings[STANDARD_KEYS.POPULATION_ID] || '',
             
             // Don't send apiSecret for security
             lastUpdated: rawSettings.lastUpdated || null
@@ -86,6 +88,7 @@ router.post('/', async (req, res) => {
             [STANDARD_KEYS.REGION]: standardizedNewSettings[STANDARD_KEYS.REGION],
             [STANDARD_KEYS.CLIENT_ID]: standardizedNewSettings[STANDARD_KEYS.CLIENT_ID],
             [STANDARD_KEYS.CLIENT_SECRET]: standardizedNewSettings[STANDARD_KEYS.CLIENT_SECRET],
+            [STANDARD_KEYS.POPULATION_ID]: standardizedNewSettings[STANDARD_KEYS.POPULATION_ID],
             lastUpdated: new Date().toISOString()
         });
         
@@ -107,11 +110,13 @@ router.post('/', async (req, res) => {
             [STANDARD_KEYS.ENVIRONMENT_ID]: updatedSettings[STANDARD_KEYS.ENVIRONMENT_ID],
             [STANDARD_KEYS.REGION]: updatedSettings[STANDARD_KEYS.REGION],
             [STANDARD_KEYS.CLIENT_ID]: updatedSettings[STANDARD_KEYS.CLIENT_ID],
+            [STANDARD_KEYS.POPULATION_ID]: updatedSettings[STANDARD_KEYS.POPULATION_ID],
             
             // Legacy keys for backward compatibility
             environmentId: updatedSettings[STANDARD_KEYS.ENVIRONMENT_ID],
             region: updatedSettings[STANDARD_KEYS.REGION],
             apiClientId: updatedSettings[STANDARD_KEYS.CLIENT_ID],
+            populationId: updatedSettings[STANDARD_KEYS.POPULATION_ID],
             
             lastUpdated: updatedSettings.lastUpdated
         });
