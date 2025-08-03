@@ -1,11 +1,12 @@
-import { Router } from 'express';
-import { promises as fs } from 'fs';
+import express from 'express';
+import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getRegionConfig, normalizeRegion, validateRegion, DEFAULT_REGION } from '../../src/utils/region-config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const router = Router();
+const router = express.Router();
 
 // Path to settings file
 const SETTINGS_FILE = path.join(__dirname, '../../data/settings.json');
@@ -115,12 +116,32 @@ router.get('/credentials', async (req, res) => {
         
         // Return complete credentials including secret for internal use
         // Handle both camelCase and kebab-case keys from settings.json
-        const credentials = {
+        const rawCredentials = {
             environmentId: settings.environmentId || settings['environment-id'] || '',
             clientId: settings.apiClientId || settings['api-client-id'] || '',
             clientSecret: settings.apiSecret || settings['api-secret'] || '',
-            region: settings.region || 'NA'
+            region: settings.region || DEFAULT_REGION
         };
+        
+        // Apply region configuration with precedence hierarchy
+        const regionConfig = getRegionConfig({
+            settings: rawCredentials,
+            envRegion: process.env.PINGONE_REGION,
+            storageRegion: null // localStorage not available server-side
+        });
+        
+        // Use validated and normalized region
+        const credentials = {
+            ...rawCredentials,
+            region: regionConfig.region
+        };
+        
+        console.log('🌍 Region configuration applied:', {
+            originalRegion: rawCredentials.region,
+            finalRegion: credentials.region,
+            source: regionConfig.source,
+            precedence: regionConfig.precedence
+        });
         
         // Validate that all required credentials are present
         if (!credentials.environmentId || !credentials.clientId || !credentials.clientSecret) {

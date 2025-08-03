@@ -24,7 +24,7 @@ import { v4 as uuidv4 } from 'uuid';
 import fetch from 'node-fetch';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { router as logsRouter } from './logs.js';
+import logsRouter from './logs.js';
 import debugLogRouter from './debug-log.js';
 import credentialRouter from './credential-management.js';
 import exportRouter from './export.js';
@@ -2300,7 +2300,7 @@ router.post('/pingone/get-token', async (req, res, next) => {
 router.get('/version', (req, res) => {
     // You can import VersionManager or use a static version string
     // For now, use a static version
-    res.json({ version: '6.3.0' });
+    res.json({ version: '7.0.1.0' });
 });
 
 // --- DELETE USERS ENDPOINT ---

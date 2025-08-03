@@ -327,7 +327,7 @@ class StartupOptimizer {
                 hasEnvironmentId: !!settings.environmentId,
                 hasClientId: !!settings.apiClientId,
                 hasSecret: !!settings.apiSecret,
-                region: settings.region || 'NorthAmerica'
+                region: settings.region || 'NA'
             });
             
             return settings;

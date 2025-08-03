@@ -101,6 +101,7 @@ import apiRouter from './routes/api/index.js';
 import settingsRouter from './routes/settings.js';
 import debugLogRouter from './routes/api/debug-log.js';
 import logsRouter from './routes/logs.js';
+import logsApiRouter from './routes/api/logs.js';
 import indexRouter from './routes/index.js';
 import testRunnerRouter from './routes/test-runner.js';
 import importRouter from './routes/api/import.js';
@@ -600,6 +601,7 @@ app.use('/api/v1/auth', authSubsystemRouter);
 app.use('/api/auth', credentialManagementRouter);
 app.use('/api/test-runner', testRunnerRouter);
 app.use('/api/import', importRouter);
+app.use('/api/logs', logsApiRouter);
 app.use('/', indexRouter);
 
 // Enhanced error handling middleware (structured, safe, Winston-logged)

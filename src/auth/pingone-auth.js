@@ -13,7 +13,7 @@ class PingOneAuth {
    * @param {string} config.environmentId - PingOne Environment ID
    * @param {string} config.clientId - PingOne Client ID
    * @param {string} config.clientSecret - PingOne Client Secret
-   * @param {string} [config.region='NorthAmerica'] - PingOne region
+   * @param {string} [config.region='NA'] - PingOne region
    * @param {Object} [options] - Additional options
    * @param {boolean} [options.autoRefresh=true] - Whether to automatically refresh tokens
    * @param {number} [options.refreshThreshold=300] - Seconds before expiry to refresh token
@@ -22,7 +22,7 @@ class PingOneAuth {
     environmentId,
     clientId,
     clientSecret,
-    region = 'NorthAmerica',
+    region = 'NA',
   }, {
     autoRefresh = true,
     refreshThreshold = 300, // 5 minutes

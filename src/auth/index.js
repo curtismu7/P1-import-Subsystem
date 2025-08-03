@@ -9,7 +9,7 @@ let authInstance = null;
  * @param {string} config.environmentId - PingOne Environment ID
  * @param {string} config.clientId - PingOne Client ID
  * @param {string} config.clientSecret - PingOne Client Secret
- * @param {string} [config.region='NorthAmerica'] - PingOne region
+ * @param {string} [config.region='NA'] - PingOne region
  * @param {Object} [options] - Additional options
  * @returns {PingOneAuth} Initialized auth instance
  */

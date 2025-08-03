@@ -1,6 +1,12 @@
 import { Router } from 'express';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import loggerUtil from '../../server/combined-logger.js';
 const { writeClientLog } = loggerUtil;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = Router();
 const logger = {
@@ -63,5 +69,137 @@ router.post('/', (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/logs/ui:
+ *   get:
+ *     summary: Retrieve logs for UI display
+ *     tags: [Logs]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 100
+ *         description: Maximum number of log entries to return
+ *       - in: query
+ *         name: level
+ *         schema:
+ *           type: string
+ *           enum: [error, warn, info, debug]
+ *         description: Filter logs by level
+ *     responses:
+ *       200:
+ *         description: Logs retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 logs:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       timestamp:
+ *                         type: string
+ *                       level:
+ *                         type: string
+ *                       message:
+ *                         type: string
+ *                       meta:
+ *                         type: object
+ *       500:
+ *         description: Failed to retrieve logs
+ */
+router.get('/ui', async (req, res) => {
+    try {
+        const { limit = 100, level } = req.query;
+        const logLimit = Math.min(parseInt(limit) || 100, 1000); // Cap at 1000
+        
+        // Define log file paths
+        const logDir = path.join(__dirname, '../../logs');
+        const logFiles = [
+            path.join(logDir, 'combined.log'),
+            path.join(logDir, 'application.log'),
+            path.join(logDir, 'error.log')
+        ];
+        
+        let allLogs = [];
+        
+        // Read logs from each file
+        for (const logFile of logFiles) {
+            try {
+                const exists = await fs.access(logFile).then(() => true).catch(() => false);
+                if (!exists) continue;
+                
+                const content = await fs.readFile(logFile, 'utf8');
+                const lines = content.split('\n').filter(line => line.trim());
+                
+                // Parse log lines (assuming JSON format)
+                for (const line of lines) {
+                    try {
+                        const logEntry = JSON.parse(line);
+                        
+                        // Filter by level if specified
+                        if (level && logEntry.level !== level) {
+                            continue;
+                        }
+                        
+                        allLogs.push({
+                            timestamp: logEntry.timestamp || new Date().toISOString(),
+                            level: logEntry.level || 'info',
+                            message: logEntry.message || '',
+                            meta: logEntry.meta || {},
+                            source: path.basename(logFile)
+                        });
+                    } catch (parseError) {
+                        // If not JSON, treat as plain text log
+                        if (line.includes('[') && (line.includes('ERROR') || line.includes('WARN') || line.includes('INFO'))) {
+                            const timestamp = new Date().toISOString();
+                            const logLevel = line.includes('ERROR') ? 'error' : 
+                                           line.includes('WARN') ? 'warn' : 'info';
+                            
+                            if (!level || logLevel === level) {
+                                allLogs.push({
+                                    timestamp,
+                                    level: logLevel,
+                                    message: line,
+                                    meta: {},
+                                    source: path.basename(logFile)
+                                });
+                            }
+                        }
+                    }
+                }
+            } catch (fileError) {
+                logger.warn(`Could not read log file ${logFile}`, { error: fileError.message });
+            }
+        }
+        
+        // Sort by timestamp (newest first) and limit
+        allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const limitedLogs = allLogs.slice(0, logLimit);
+        
+        res.json({
+            success: true,
+            logs: limitedLogs,
+            total: allLogs.length,
+            limit: logLimit,
+            filtered: !!level
+        });
+        
+    } catch (error) {
+        logger.error('Error retrieving logs for UI', { error: error.message });
+        res.status(500).json({ 
+            success: false,
+            error: 'Failed to retrieve logs',
+            message: error.message 
+        });
+    }
+});
+
 // Export the router for use in other modules
-export { router };
+export default router;

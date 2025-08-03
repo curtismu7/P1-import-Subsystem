@@ -53,7 +53,7 @@ router.get('/', async (req, res) => {
         const health = {
             status: 'healthy',
             timestamp: new Date().toISOString(),
-            version: process.env.APP_VERSION || '6.3.0',
+            version: process.env.APP_VERSION || '7.0.1.0',
             uptime: process.uptime(),
             environment: process.env.NODE_ENV || 'development',
             nodeVersion: process.version,
@@ -295,7 +295,7 @@ async function getDetailedHealthStatus() {
             pid: process.pid
         },
         application: {
-            version: '6.3.0',
+            version: '7.0.1.0',
             environment: process.env.NODE_ENV || 'development',
             featureFlags: getFeatureFlagStatus()
         },

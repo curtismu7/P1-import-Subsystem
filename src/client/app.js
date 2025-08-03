@@ -57,14 +57,14 @@ class App {
         try {
             this.logger = new Logger({
                 context: 'app',
-                version: '6.5.2.4',
+                version: '7.0.1.0',
                 enableConsole: true,
                 enableStorage: false
             });
             
             // Test the logger
             this.logger.info('Centralized Logger initialized successfully', {
-                version: '6.5.2.4',
+                version: '7.0.1.0',
                 featureFlags: FEATURE_FLAGS,
                 userAgent: navigator.userAgent
             });
@@ -139,7 +139,7 @@ class App {
         this.socket = null;
         
         // Application version
-        this.version = '6.5.2.4';
+        this.version = '7.0.1.0';
         this.buildTimestamp = new Date().toISOString();
         this.environment = 'development';
         this.features = {
