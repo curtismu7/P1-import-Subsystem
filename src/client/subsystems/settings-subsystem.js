@@ -338,8 +338,8 @@ class SettingsSubsystem {
             [STANDARD_KEYS.CLIENT_ID]: legacySettings.apiClientId,
             [STANDARD_KEYS.CLIENT_SECRET]: legacySettings.apiSecret,
             [STANDARD_KEYS.REGION]: legacySettings.region,
-            rateLimit: legacySettings.rateLimit,
-            populationId: legacySettings.populationId
+            [STANDARD_KEYS.POPULATION_ID]: legacySettings.populationId,
+            rateLimit: legacySettings.rateLimit
         });
         
         return settings;
@@ -404,7 +404,7 @@ class SettingsSubsystem {
             'api-secret': settings[STANDARD_KEYS.CLIENT_SECRET] || settings.apiSecret || '',
             'region': settings[STANDARD_KEYS.REGION] || settings.region || 'NA',
             'rate-limit': settings.rateLimit || 50,
-            'population-id': settings.populationId || ''
+            'population-id': settings[STANDARD_KEYS.POPULATION_ID] || settings.populationId || ''
         };
         
         Object.entries(fields).forEach(([name, value]) => {

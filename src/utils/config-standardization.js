@@ -15,7 +15,8 @@ export const STANDARD_KEYS = {
     ENVIRONMENT_ID: 'pingone_environment_id',
     CLIENT_ID: 'pingone_client_id', 
     CLIENT_SECRET: 'pingone_client_secret',
-    REGION: 'pingone_region'
+    REGION: 'pingone_region',
+    POPULATION_ID: 'pingone_population_id'
 };
 
 /**
@@ -51,7 +52,15 @@ export const LEGACY_KEY_MAPPINGS = {
     'region': STANDARD_KEYS.REGION,
     'pingone-region': STANDARD_KEYS.REGION,
     'pingone.region': STANDARD_KEYS.REGION,
-    'ping_one_region': STANDARD_KEYS.REGION
+    'ping_one_region': STANDARD_KEYS.REGION,
+    
+    // Population ID variations
+    'population-id': STANDARD_KEYS.POPULATION_ID,
+    'populationId': STANDARD_KEYS.POPULATION_ID,
+    'population_id': STANDARD_KEYS.POPULATION_ID,
+    'popId': STANDARD_KEYS.POPULATION_ID,
+    'pop-id': STANDARD_KEYS.POPULATION_ID,
+    'pop_id': STANDARD_KEYS.POPULATION_ID
 };
 
 /**

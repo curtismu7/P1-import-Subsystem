@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { promises as fs } from 'fs';
 import winston from 'winston';
 import configManager from '../../shared/config-manager.js';
+import { STANDARD_KEYS, standardizeConfigKeys } from '../../utils/config-standardization.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -653,7 +654,7 @@ router.post("/", express.json(), async (req, res) => {
             'environment-id': newSettings.environmentId || newSettings['environment-id'] || '',
             'api-client-id': newSettings.apiClientId || newSettings['api-client-id'] || '',
             'api-secret': newSettings.apiSecret || newSettings['api-secret'] || '',
-            'population-id': newSettings.populationId || newSettings['population-id'] || '',
+            'population-id': newSettings[STANDARD_KEYS.POPULATION_ID] || newSettings.populationId || newSettings['population-id'] || '',
             region: newSettings.region || 'NorthAmerica',
             'rate-limit': (newSettings.rateLimit || newSettings['rate-limit'] || 100).toString()
         };

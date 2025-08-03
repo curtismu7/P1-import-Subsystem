@@ -16,6 +16,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { debugLog, DEBUG_CATEGORIES } from './debug-utils.js';
+import { STANDARD_KEYS, standardizeConfigKeys } from '../utils/config-standardization.js';
 
 // Configuration schema for validation
 const CONFIG_SCHEMA = {
@@ -386,7 +387,7 @@ class ConfigManager extends EventEmitter {
     const clientSecret = settings.apiSecret || settings['api-secret'] || '';
     const region = settings.region || 'NorthAmerica';
     const rateLimit = settings.rateLimit || settings['rate-limit'] || 50;
-    const populationId = settings.populationId || settings['population-id'] || '';
+    const populationId = settings[STANDARD_KEYS.POPULATION_ID] || settings.populationId || settings['population-id'] || '';
     
     return {
       server: {
