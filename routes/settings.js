@@ -43,7 +43,7 @@ const __dirname = dirname(__filename);
  *                 apiClientId: "26e7f07c-11a4-402a-b064-07b55aee189e"
  *                 apiSecret: "enc:9p3hLItWFzw5BxKjH3.~TIGVPP~uj4os6fY93170dMvXadn1GEsWTP2lHSTAoevq"
  *                 populationId: "3840c98d-202d-4f6a-8871-f3bc66cb3fa8"
- *                 region: "NorthAmerica"
+ *                 region: "NA"
  *                 rateLimit: 90
  *       500:
  *         description: Failed to retrieve settings
@@ -69,7 +69,7 @@ const __dirname = dirname(__filename);
  *       
  *       ## Optional Fields
  *       - **populationId**: Default population for operations
- *       - **region**: PingOne service region (defaults to NorthAmerica)
+ *       - **region**: PingOne service region (defaults to NA)
  *       - **rateLimit**: API rate limiting (defaults to 90)
  *       
  *       ## Security
@@ -88,7 +88,7 @@ const __dirname = dirname(__filename);
  *             apiClientId: "26e7f07c-11a4-402a-b064-07b55aee189e"
  *             apiSecret: "your-client-secret"
  *             populationId: "3840c98d-202d-4f6a-8871-f3bc66cb3fa8"
- *             region: "NorthAmerica"
+ *             region: "NA"
  *             rateLimit: 90
  *     responses:
  *       200:
@@ -104,7 +104,7 @@ const __dirname = dirname(__filename);
  *                 apiClientId: "26e7f07c-11a4-402a-b064-07b55aee189e"
  *                 apiSecret: "enc:9p3hLItWFzw5BxKjH3.~TIGVPP~uj4os6fY93170dMvXadn1GEsWTP2lHSTAoevq"
  *                 populationId: "3840c98d-202d-4f6a-8871-f3bc66cb3fa8"
- *                 region: "NorthAmerica"
+ *                 region: "NA"
  *                 rateLimit: 90
  *       400:
  *         description: Invalid settings data
@@ -157,7 +157,7 @@ const __dirname = dirname(__filename);
  *             apiClientId: "26e7f07c-11a4-402a-b064-07b55aee189e"
  *             apiSecret: "your-client-secret"
  *             populationId: "3840c98d-202d-4f6a-8871-f3bc66cb3fa8"
- *             region: "NorthAmerica"
+ *             region: "NA"
  *             rateLimit: 90
  *     responses:
  *       200:
@@ -173,7 +173,7 @@ const __dirname = dirname(__filename);
  *                 apiClientId: "26e7f07c-11a4-402a-b064-07b55aee189e"
  *                 apiSecret: "enc:9p3hLItWFzw5BxKjH3.~TIGVPP~uj4os6fY93170dMvXadn1GEsWTP2lHSTAoevq"
  *                 populationId: "3840c98d-202d-4f6a-8871-f3bc66cb3fa8"
- *                 region: "NorthAmerica"
+ *                 region: "NA"
  *                 rateLimit: 90
  *       400:
  *         description: Invalid settings data
@@ -327,7 +327,7 @@ async function readSettings() {
         apiClientId: process.env.PINGONE_CLIENT_ID || "",
         apiSecret: process.env.PINGONE_CLIENT_SECRET ? `enc:${Buffer.from(process.env.PINGONE_CLIENT_SECRET).toString('base64')}` : "",
         populationId: process.env.PINGONE_POPULATION_ID || "not set",
-        region: process.env.PINGONE_REGION || "NorthAmerica",
+        region: process.env.PINGONE_REGION || "NA",
         rateLimit: parseInt(process.env.RATE_LIMIT) || 90
     };
 
@@ -356,7 +356,7 @@ async function readSettings() {
                 settings.environmentId,
                 settings.apiClientId,
                 process.env.PINGONE_CLIENT_SECRET,
-                settings.region || 'NorthAmerica'
+                settings.region || 'NA'
             );
             
             if (defaultPopulationId) {
@@ -388,7 +388,7 @@ async function readSettings() {
 }
 
 // Helper function to fetch default population
-async function fetchDefaultPopulation(environmentId, clientId, clientSecret, region = 'NorthAmerica') {
+async function fetchDefaultPopulation(environmentId, clientId, clientSecret, region = 'NA') {
     try {
         const https = await import('https');
         
@@ -524,7 +524,7 @@ async function fetchDefaultPopulation(environmentId, clientId, clientSecret, reg
  *       - **API Client ID**: PingOne client ID for authentication
  *       - **API Secret**: Plain text PingOne client secret
  *       - **Population ID**: Default population for operations
- *       - **Region**: PingOne region (NorthAmerica, Europe, AsiaPacific)
+ *       - **Region**: PingOne region (NA, EU, AP)
  *       - **Rate Limit**: API rate limiting configuration
  *       
  *       ## Security Note
@@ -550,7 +550,7 @@ async function fetchDefaultPopulation(environmentId, clientId, clientSecret, reg
  *                 apiClientId: "26e7f07c-11a4-402a-b064-07b55aee189e",
  *                 apiSecret: "plain-text-secret-here",
  *                 populationId: "3840c98d-202d-4f6a-8871-f3bc66cb3fa8",
- *                 region: "NorthAmerica",
+ *                 region: "NA",
  *                 rateLimit: 90
  *               }
  *       500:
@@ -593,7 +593,7 @@ router.get("/", async (req, res) => {
             apiClientId: settings['api-client-id'] || settings.apiClientId || '',
             apiSecret: plainSecret, // Return the decrypted secret
             populationId: settings['population-id'] || settings.populationId || '',
-            region: settings.region || 'NorthAmerica',
+            region: settings.region || 'NA',
             rateLimit: parseInt(settings['rate-limit'] || settings.rateLimit || '100')
         };
         
@@ -631,7 +631,7 @@ router.get("/", async (req, res) => {
  *       
  *       ## Optional Fields
  *       - **populationId**: Default population for operations
- *       - **region**: PingOne region (defaults to NorthAmerica)
+ *       - **region**: PingOne region (defaults to NA)
  *       - **rateLimit**: API rate limiting (defaults to 100)
  *       
  *       ## Security Features
@@ -655,7 +655,7 @@ router.get("/", async (req, res) => {
  *             apiClientId: "26e7f07c-11a4-402a-b064-07b55aee189e"
  *             apiSecret: "your-client-secret"
  *             populationId: "3840c98d-202d-4f6a-8871-f3bc66cb3fa8"
- *             region: "NorthAmerica"
+ *             region: "NA"
  *             rateLimit: 90
  *     responses:
  *       200:
@@ -688,7 +688,7 @@ router.get("/", async (req, res) => {
  *                       example: "***3fa8"
  *                     region:
  *                       type: string
- *                       example: "NorthAmerica"
+ *                       example: "NA"
  *       400:
  *         description: Validation error
  *         content:
@@ -715,7 +715,7 @@ router.post("/", express.json(), async (req, res) => {
             'api-client-id': newSettings.apiClientId || newSettings['api-client-id'] || '',
             'api-secret': newSettings.apiSecret || newSettings['api-secret'] || '',
             'population-id': newSettings.populationId || newSettings['population-id'] || '',
-            region: newSettings.region || 'NorthAmerica',
+            region: newSettings.region || 'NA',
             'rate-limit': (newSettings.rateLimit || newSettings['rate-limit'] || 100).toString()
         };
         
@@ -862,7 +862,7 @@ router.put("/", express.json(), async (req, res) => {
         
         // Ensure region has a default value if not provided
         if (!newSettings.region) {
-            newSettings.region = "NorthAmerica";
+            newSettings.region = "NA";
         }
 
         // Read existing settings to preserve the API secret if not provided in the update

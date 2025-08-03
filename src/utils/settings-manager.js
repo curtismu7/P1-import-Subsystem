@@ -165,7 +165,7 @@ class SettingsManager {
       environmentId: '',
       apiClientId: '',
       apiSecret: '',
-      region: 'NorthAmerica',
+      region: 'NA',
       rateLimit: 90,
       lastUpdated: new Date().toISOString(),
       version: '1.0.0'

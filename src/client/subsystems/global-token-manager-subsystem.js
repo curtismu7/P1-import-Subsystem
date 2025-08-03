@@ -1,3 +1,5 @@
+import { getRegionConfig, logRegionConfig, getRegionFromStorage } from '../../utils/region-config.js';
+
 /**
  * Global Token Manager Subsystem
  * 
@@ -638,6 +640,25 @@ async getNewToken() {
                             hasClientId: !!credentials.clientId,
                             hasClientSecret: !!credentials.clientSecret,
                             hasRegion: !!credentials.region
+                        });
+                        
+                        // Apply region configuration with precedence hierarchy
+                        const regionConfig = getRegionConfig({
+                            settings: credentials,
+                            envRegion: null, // Will be handled server-side
+                            storageRegion: getRegionFromStorage()
+                        });
+                        
+                        // Log region configuration for debugging
+                        logRegionConfig(regionConfig);
+                        
+                        // Use validated region from configuration
+                        credentials.region = regionConfig.region;
+                        
+                        this.logger.debug('Applied region configuration', {
+                            finalRegion: credentials.region,
+                            source: regionConfig.source,
+                            authDomain: regionConfig.authDomain
                         });
                     } else {
                         throw new Error(`Credentials endpoint failed: ${credentialsData.error}`);
