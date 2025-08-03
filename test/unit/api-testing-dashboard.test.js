@@ -8,7 +8,15 @@
  * - ES module patterns
  */
 
-const { JSDOM } = require('jsdom');
+import winston from 'winston';
+import { JSDOM } from 'jsdom';
+import { jest } from '@jest/globals';
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.simple(),
+  transports: [new winston.transports.Console()]
+});
 
 describe('API Testing Dashboard with Subsystem Integration', () => {
   let dom;

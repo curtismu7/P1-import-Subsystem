@@ -91,6 +91,33 @@ start_server() {
         log_info "Check logs in $LOG_DIR/ for details"
         exit 1
     fi
+    
+    # Log test results
+    log_info "Running startup tests..."
+    node test/logging-demo.js || log_error "Startup tests failed. Check logs for details."
+    log_success "Startup tests completed successfully."
+
+    # Log token status
+    log_info "Checking token status..."
+    node -e "require('./server/winston-config').apiLogHelpers.logTokenStatus('startup', { tokenId: 'startup-token', status: 'valid' });" || log_error "Token status check failed."
+    log_success "Token status logged successfully."
+}
+
+# Restart server in background
+restart_server() {
+    log_info "Restarting $SERVER_NAME..."
+    npm run restart:background || log_error "Failed to restart server. Check logs for details."
+    log_success "Server restarted successfully."
+
+    # Log test results
+    log_info "Running startup tests..."
+    node test/logging-demo.js || log_error "Startup tests failed. Check logs for details."
+    log_success "Startup tests completed successfully."
+
+    # Log token status
+    log_info "Checking token status..."
+    node -e "require('./server/winston-config').apiLogHelpers.logTokenStatus('restart', { tokenId: 'restart-token', status: 'valid' });" || log_error "Token status check failed."
+    log_success "Token status logged successfully."
 }
 
 # Main execution

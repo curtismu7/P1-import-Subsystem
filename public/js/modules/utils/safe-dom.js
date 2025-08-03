@@ -208,15 +208,6 @@ class SafeDOM {
 }
 
 // Create global instance
-if (typeof window !== 'undefined') {
-    window.SafeDOM = SafeDOM;
-    window.safeDOM = new SafeDOM(window.logger || console);
-}
-
-// Export for module systems
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = SafeDOM;
-}
-
-// Export for ES modules (moved to top level)
+// Export for ES modules only
+export { SafeDOM };
 export default SafeDOM;

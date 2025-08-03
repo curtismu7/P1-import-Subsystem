@@ -377,7 +377,7 @@ describe('Comprehensive Debug Test Suite', () => {
             logger.info('Starting error handler classification test');
             
             const errorHandler = getErrorHandler({
-                enableAnalytics: true,
+
                 enableUserNotification: false
             });
             

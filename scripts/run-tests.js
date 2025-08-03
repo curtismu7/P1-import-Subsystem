@@ -103,7 +103,7 @@ async function runTestSuite(suiteName, config) {
 
     // Build Jest command
     const args = [
-      '--config', 'jest.config.js',
+      '--config', 'jest.config.mjs',
       '--testMatch', `"${config.pattern}"`,
       '--testPathIgnorePatterns', ...config.ignorePatterns,
       '--testTimeout', config.timeout,

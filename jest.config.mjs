@@ -6,7 +6,7 @@
 /** @type {import('jest').Config} */
 export default {
   // Test environment
-  testEnvironment: 'node',
+  testEnvironment: 'jsdom',
   
   // Test file patterns
   testMatch: [
@@ -22,14 +22,11 @@ export default {
   // File extensions to test
   moduleFileExtensions: ['js', 'mjs', 'jsx', 'json', 'node'],
   
-  // Transform settings
-  transform: {
-    '^.+\\.m?jsx?$': ['babel-jest', { configFile: './babel.config.mjs' }]
-  },
-  
+  // Transform settings for ESM
+  transform: {},
   // Transform ignore patterns
   transformIgnorePatterns: [
-    'node_modules/(?!(node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill)/)' 
+    'node_modules/(?!(node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill)/)'
   ],
   
   // Module name mapper for handling imports
@@ -41,7 +38,7 @@ export default {
   },
   
   // Setup files
-  setupFilesAfterEnv: ['<rootDir>/test/setup-tests.mjs'],
+  setupFilesAfterEnv: ['<rootDir>/test/setup-tests.cjs'],
   
   // Test environment options
   testEnvironmentOptions: {

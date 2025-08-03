@@ -71,6 +71,11 @@
  * DEBUG: Monitor memory usage during large file operations
  */
 
+// Load environment variables from .env before anything else
+import dotenv from 'dotenv';
+dotenv.config();
+
+import Joi from 'joi';
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
@@ -180,18 +185,33 @@ const __dirname = path.dirname(__filename);
  * VERIFY: File permissions are correctly set in production
  * DEBUG: Monitor settings loading performance
  */
+// Joi schema for settings and environment validation
+const settingsSchema = Joi.object({
+    environmentId: Joi.string().guid({ version: ['uuidv4', 'uuidv1'] }).required(),
+    apiClientId: Joi.string().guid({ version: ['uuidv4', 'uuidv1'] }).required(),
+    apiSecret: Joi.string().min(8).required(),
+    region: Joi.string().valid('NorthAmerica', 'Europe', 'AsiaPacific', 'Canada').required()
+});
+
 async function loadSettingsFromFile() {
     try {
         const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
         logger.info('Loading settings from:', settingsPath);
-        
-        const data = await fs.readFile(settingsPath, 'utf8');
-        const settings = JSON.parse(data);
-        
-        logger.info('Settings loaded:', Object.keys(settings));
-        
-        // Set environment variables from settings file
-        // Only set if not already defined in environment (env vars take precedence)
+        let settings = {};
+        try {
+            const data = await fs.readFile(settingsPath, 'utf8');
+            settings = JSON.parse(data);
+            logger.info('Settings loaded:', Object.keys(settings));
+        } catch (err) {
+            if (err.code === 'ENOENT') {
+                logger.info('Settings file not found, using environment variables only');
+            } else if (err instanceof SyntaxError) {
+                logger.error('Invalid JSON in settings file:', err.message);
+            } else {
+                logger.warn('Failed to load settings from file:', err.message);
+            }
+        }
+        // Set environment variables from settings file if not already defined
         if (settings.environmentId && !process.env.PINGONE_ENVIRONMENT_ID) {
             process.env.PINGONE_ENVIRONMENT_ID = settings.environmentId;
             logger.info('Set PINGONE_ENVIRONMENT_ID:', settings.environmentId.substring(0, 8) + '...');
@@ -208,18 +228,22 @@ async function loadSettingsFromFile() {
             process.env.PINGONE_REGION = settings.region;
             logger.info('Set PINGONE_REGION:', settings.region);
         }
-        
-        logger.info('Settings loaded from file and environment variables set');
+        // Validate final config (env vars take precedence)
+        const configToValidate = {
+            environmentId: process.env.PINGONE_ENVIRONMENT_ID,
+            apiClientId: process.env.PINGONE_CLIENT_ID,
+            apiSecret: process.env.PINGONE_CLIENT_SECRET,
+            region: process.env.PINGONE_REGION
+        };
+        const { error } = settingsSchema.validate(configToValidate);
+        if (error) {
+            logger.error('❌ Invalid PingOne configuration:', error.message);
+            throw new Error('Invalid PingOne configuration: ' + error.message);
+        }
+        logger.info('✅ PingOne configuration validated successfully');
         return true;
     } catch (error) {
-        // Handle specific error types for better debugging
-        if (error.code === 'ENOENT') {
-            logger.info('Settings file not found, using environment variables only');
-        } else if (error instanceof SyntaxError) {
-            logger.error('Invalid JSON in settings file:', error.message);
-        } else {
-            logger.warn('Failed to load settings from file:', error.message);
-        }
+        logger.error('Failed to load/validate settings:', error.message);
         return false;
     }
 }
@@ -242,7 +266,7 @@ import { getErrorHandler } from './src/shared/error-handler.js';
 
 // Initialize centralized error handling
 const errorHandler = getErrorHandler({
-    enableAnalytics: true,
+
     enableUserNotification: false // Server-side, no user notifications
 });
 
@@ -449,6 +473,55 @@ console.log('📄 Swagger JSON available at http://localhost:4000/swagger.json')
 // Endpoint to get the application version
 app.get('/api/version', (req, res) => {
     res.json({ version: appVersion });
+});
+
+// Startup diagnostics endpoint for boot-time health and readiness
+app.get('/startup-report', (req, res) => {
+    // Gather subsystem statuses (expand as needed)
+    const subsystems = {
+        logging: { status: 'ok' },
+        auth: { status: typeof app.get('tokenManager') !== 'undefined' ? 'ok' : 'error' },
+        token: { status: typeof app.get('tokenManager') !== 'undefined' && app.get('tokenManager').tokenCache ? 'ok' : 'error' },
+        routes: { status: 'ok', registered: app._router.stack
+            .filter(r => r.route)
+            .map(r => r.route.path)
+        },
+        websocket: { status: typeof global.io !== 'undefined' ? 'ok' : 'error' }
+    };
+
+    // Collect startup metrics
+    const startupDuration = process.uptime() * 1000; // ms
+    const memoryUsage = process.memoryUsage();
+    const memoryMB = (memoryUsage.rss / 1024 / 1024).toFixed(2);
+
+    // Collect errors if any
+    const errors = [];
+    if (typeof global.startupErrors !== 'undefined' && Array.isArray(global.startupErrors)) {
+        errors.push(...global.startupErrors);
+    }
+    if (typeof serverState !== 'undefined' && serverState.lastError) {
+        errors.push(serverState.lastError.message || String(serverState.lastError));
+    }
+
+    // Diagnostics (expand as needed)
+    const diagnostics = {
+        environment: process.env.NODE_ENV,
+        version: appVersion,
+        memory: memoryMB + ' MB',
+        startupDuration: startupDuration + ' ms',
+        registeredRoutes: subsystems.routes.registered,
+        errors
+    };
+
+    res.json({
+        version: appVersion,
+        environment: process.env.NODE_ENV,
+        startupDuration: startupDuration + ' ms',
+        memoryUsage: memoryMB + ' MB',
+        subsystems,
+        errors,
+        diagnostics
+    });
 });
 
 // Endpoint to get the latest bundle filename for cache-busting

@@ -254,47 +254,80 @@ export async function logStartupSuccess(logger, options = {}) {
     
     // Log structured data
     logger.info('🚀 SERVER STARTUP SUCCESS', startupReport);
-    
-    // Log human-readable console output
-    console.log('\n' + '='.repeat(80));
-    console.log('🚀 PINGONE IMPORT TOOL - SERVER STARTUP SUCCESS');
-    console.log('='.repeat(80));
-    console.log(`📅 Timestamp: ${timestamp}`);
-    console.log(`🏷️  Version: ${version}`);
-    console.log(`⏱️  Startup Duration: ${duration}ms`);
-    console.log(`🌐 Server URL: ${serverUrl}`);
-    console.log(`🔌 Port: ${port}`);
-    console.log(`🌍 Environment: ${environmentConfig.NODE_ENV}`);
-    
-    console.log('\n🔑 TOKEN STATUS:');
-    if (tokenStatus.valid) {
-        console.log(`   ✅ Status: VALID`);
-        console.log(`   🏢 Environment ID: ${tokenStatus.environmentId}`);
-        console.log(`   🗺️  Region: ${tokenStatus.region}`);
-        console.log(`   ⏰ Expires: ${tokenStatus.expiresAt}`);
-        console.log(`   ⏳ Expires In: ${tokenStatus.expiresIn}`);
-    } else {
-        console.log(`   ❌ Status: INVALID`);
-        console.log(`   🚨 Error: ${tokenStatus.error}`);
+
+    // Colorized output using chalk
+    let chalk;
+    try {
+        chalk = (await import('chalk')).default;
+    } catch (e) {
+        chalk = null;
     }
-    
-    console.log('\n📡 API ENDPOINTS STATUS:');
-    console.log(`   📊 Responsive: ${responsiveEndpoints}/${totalEndpoints}`);
+
+    const color = (type, text) => {
+        if (!chalk) return text;
+        switch (type) {
+            case 'success': return chalk.green(text);
+            case 'error': return chalk.red(text);
+            case 'warn': return chalk.yellow(text);
+            case 'info': return chalk.cyan(text);
+            case 'title': return chalk.bold.blue(text);
+            default: return text;
+        }
+    };
+
+    // Human-readable console output
+    console.log('\n' + color('title', '='.repeat(80)));
+    console.log(color('title', '🚀 PINGONE IMPORT TOOL - SERVER STARTUP SUCCESS'));
+    console.log(color('title', '='.repeat(80)));
+    console.log(color('info', `📅 Timestamp: ${timestamp}`));
+    console.log(color('info', `🏷️  Version: ${version}`));
+    console.log(color('info', `⏱️  Startup Duration: ${duration}ms`));
+    console.log(color('info', `🌐 Server URL: ${serverUrl}`));
+    console.log(color('info', `🔌 Port: ${port}`));
+    console.log(color('info', `🌍 Environment: ${environmentConfig.NODE_ENV}`));
+
+    // Token status
+    console.log('\n' + color('title', '🔑 TOKEN STATUS:'));
+    if (tokenStatus.valid) {
+        console.log(color('success', `   ✅ Status: VALID`));
+        console.log(color('info', `   🏢 Environment ID: ${tokenStatus.environmentId}`));
+        console.log(color('info', `   🗺️  Region: ${tokenStatus.region}`));
+        console.log(color('info', `   ⏰ Expires: ${tokenStatus.expiresAt}`));
+        console.log(color('info', `   ⏳ Expires In: ${tokenStatus.expiresIn}`));
+    } else {
+        console.log(color('error', `   ❌ Status: INVALID`));
+        console.log(color('error', `   🚨 Error: ${tokenStatus.error}`));
+    }
+
+    // API endpoints status
+    console.log('\n' + color('title', '📡 API ENDPOINTS STATUS:'));
+    console.log(color('info', `   📊 Responsive: ${responsiveEndpoints}/${totalEndpoints}`));
     for (const [name, status] of Object.entries(apiStatus)) {
-        const icon = status.responsive ? '✅' : '❌';
-        const statusText = status.responsive ? `${status.status} ${status.statusText}` : status.error;
+        const icon = status.responsive ? color('success', '✅') : color('error', '❌');
+        const statusText = status.responsive ? color('success', `${status.status} ${status.statusText}`) : color('error', status.error);
         console.log(`   ${icon} ${name}: ${statusText}`);
     }
-    
-    console.log('\n🔧 ENVIRONMENT CONFIGURATION:');
+
+    // Environment configuration
+    console.log('\n' + color('title', '🔧 ENVIRONMENT CONFIGURATION:'));
     for (const [key, value] of Object.entries(environmentConfig)) {
-        const icon = value === '[NOT_SET]' ? '⚠️ ' : '✅';
-        console.log(`   ${icon} ${key}: ${value}`);
+        const icon = value === '[NOT_SET]' ? color('warn', '⚠️ ') : color('success', '✅');
+        const val = value === '[NOT_SET]' ? color('warn', value) : color('info', value);
+        console.log(`   ${icon} ${key}: ${val}`);
     }
-    
-    console.log('\n' + '='.repeat(80));
-    console.log('🎉 SERVER READY - All systems operational!');
-    console.log('='.repeat(80) + '\n');
+
+    // Startup Recommendations
+    const recommendations = generateStartupRecommendations(environmentConfig, tokenStatus);
+    if (recommendations.length > 0) {
+        console.log('\n' + color('title', '📝 STARTUP RECOMMENDATIONS:'));
+        recommendations.forEach(rec => {
+            console.log(color('warn', `   ${rec}`));
+        });
+    }
+
+    console.log('\n' + color('title', '='.repeat(80)));
+    console.log(color('success', '🎉 SERVER READY - All systems operational!'));
+    console.log(color('title', '='.repeat(80)) + '\n');
 }
 
 /**

@@ -254,7 +254,7 @@ function logError(error, req, correlationId, type, severity) {
       debugLog.error(`UNKNOWN SEVERITY ERROR: ${error.message}`, logData, DEBUG_CATEGORIES.API);
   }
   
-  // Track error for analytics
+
   errorTracker.track(error.message, logData, DEBUG_CATEGORIES.API);
 }
 
