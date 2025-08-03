@@ -12,6 +12,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fetch from 'node-fetch';
+import { STANDARD_KEYS, standardizeConfigKeys, createBackwardCompatibleConfig } from '../../utils/config-standardization.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -129,10 +130,19 @@ function getEnvironmentConfig() {
     return {
         NODE_ENV: process.env.NODE_ENV || 'development',
         PORT: process.env.PORT || '4000',
+        
+        // Standardized PingOne Configuration Keys
+        [STANDARD_KEYS.CLIENT_ID]: obfuscateSecret(process.env.PINGONE_CLIENT_ID, 6),
+        [STANDARD_KEYS.CLIENT_SECRET]: obfuscateSecret(process.env.PINGONE_CLIENT_SECRET, 4),
+        [STANDARD_KEYS.ENVIRONMENT_ID]: obfuscateSecret(process.env.PINGONE_ENVIRONMENT_ID, 6),
+        [STANDARD_KEYS.REGION]: process.env.PINGONE_REGION || '[NOT_SET]',
+        
+        // Legacy Environment Variables (for reference)
         PINGONE_CLIENT_ID: obfuscateSecret(process.env.PINGONE_CLIENT_ID, 6),
         PINGONE_CLIENT_SECRET: obfuscateSecret(process.env.PINGONE_CLIENT_SECRET, 4),
         PINGONE_ENVIRONMENT_ID: obfuscateSecret(process.env.PINGONE_ENVIRONMENT_ID, 6),
         PINGONE_REGION: process.env.PINGONE_REGION || '[NOT_SET]',
+        
         AUTH_SUBSYSTEM_ENCRYPTION_KEY: obfuscateSecret(process.env.AUTH_SUBSYSTEM_ENCRYPTION_KEY, 4)
     };
 }
@@ -146,21 +156,25 @@ function getEnvironmentConfig() {
 function generateStartupRecommendations(config, tokenStatus) {
     const recommendations = [];
     
-    // Check for missing environment variables
-    if (config.PINGONE_CLIENT_ID === '[NOT_SET]') {
+    // Check for missing standardized environment variables
+    if (config[STANDARD_KEYS.CLIENT_ID] === '[NOT_SET]') {
         recommendations.push('⚠️  Set PINGONE_CLIENT_ID in .env file');
+        recommendations.push('📝 Use standardized key: ' + STANDARD_KEYS.CLIENT_ID);
     }
     
-    if (config.PINGONE_CLIENT_SECRET === '[NOT_SET]') {
+    if (config[STANDARD_KEYS.CLIENT_SECRET] === '[NOT_SET]') {
         recommendations.push('⚠️  Set PINGONE_CLIENT_SECRET in .env file');
+        recommendations.push('📝 Use standardized key: ' + STANDARD_KEYS.CLIENT_SECRET);
     }
     
-    if (config.PINGONE_ENVIRONMENT_ID === '[NOT_SET]') {
+    if (config[STANDARD_KEYS.ENVIRONMENT_ID] === '[NOT_SET]') {
         recommendations.push('⚠️  Set PINGONE_ENVIRONMENT_ID in .env file');
+        recommendations.push('📝 Use standardized key: ' + STANDARD_KEYS.ENVIRONMENT_ID);
     }
     
-    if (config.PINGONE_REGION === '[NOT_SET]') {
+    if (config[STANDARD_KEYS.REGION] === '[NOT_SET]') {
         recommendations.push('⚠️  Set PINGONE_REGION in .env file (recommended: NA, EU, or AP)');
+        recommendations.push('📝 Use standardized key: ' + STANDARD_KEYS.REGION);
     }
     
     // Check token status

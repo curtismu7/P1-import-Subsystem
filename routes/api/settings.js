@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getRegionConfig, normalizeRegion, validateRegion, DEFAULT_REGION } from '../../src/utils/region-config.js';
+import { STANDARD_KEYS, standardizeConfigKeys, createBackwardCompatibleConfig } from '../../src/utils/config-standardization.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,16 +19,25 @@ const SETTINGS_FILE = path.join(__dirname, '../../data/settings.json');
 router.get('/', async (req, res) => {
     try {
         const settingsContent = await fs.readFile(SETTINGS_FILE, 'utf8');
-        const settings = JSON.parse(settingsContent);
+        const rawSettings = JSON.parse(settingsContent);
+        
+        // Standardize configuration keys
+        const standardizedSettings = standardizeConfigKeys(rawSettings);
         
         // Don't send sensitive data like secrets
-        // Handle both camelCase and kebab-case keys from settings.json
         const publicSettings = {
-            environmentId: settings.environmentId || settings['environment-id'] || '',
-            region: settings.region || '',
-            apiClientId: settings.apiClientId || settings['api-client-id'] || '',
+            // Standardized keys (primary)
+            [STANDARD_KEYS.ENVIRONMENT_ID]: standardizedSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
+            [STANDARD_KEYS.REGION]: standardizedSettings[STANDARD_KEYS.REGION] || '',
+            [STANDARD_KEYS.CLIENT_ID]: standardizedSettings[STANDARD_KEYS.CLIENT_ID] || '',
+            
+            // Legacy keys for backward compatibility
+            environmentId: standardizedSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
+            region: standardizedSettings[STANDARD_KEYS.REGION] || '',
+            apiClientId: standardizedSettings[STANDARD_KEYS.CLIENT_ID] || '',
+            
             // Don't send apiSecret for security
-            lastUpdated: settings.lastUpdated || null
+            lastUpdated: rawSettings.lastUpdated || null
         };
         
         res.json(publicSettings);
@@ -66,15 +76,18 @@ router.post('/', async (req, res) => {
             console.log('Creating new settings file');
         }
         
-        // Merge settings
-        const updatedSettings = {
+        // Standardize incoming settings
+        const standardizedNewSettings = standardizeConfigKeys(newSettings);
+        
+        // Create backward compatible settings (includes both standard and legacy keys)
+        const updatedSettings = createBackwardCompatibleConfig({
             ...existingSettings,
-            environmentId: newSettings.environmentId,
-            region: newSettings.region,
-            apiClientId: newSettings.apiClientId,
-            apiSecret: newSettings.apiSecret,
+            [STANDARD_KEYS.ENVIRONMENT_ID]: standardizedNewSettings[STANDARD_KEYS.ENVIRONMENT_ID],
+            [STANDARD_KEYS.REGION]: standardizedNewSettings[STANDARD_KEYS.REGION],
+            [STANDARD_KEYS.CLIENT_ID]: standardizedNewSettings[STANDARD_KEYS.CLIENT_ID],
+            [STANDARD_KEYS.CLIENT_SECRET]: standardizedNewSettings[STANDARD_KEYS.CLIENT_SECRET],
             lastUpdated: new Date().toISOString()
-        };
+        });
         
         // Ensure data directory exists
         const dataDir = path.dirname(SETTINGS_FILE);
@@ -89,9 +102,17 @@ router.post('/', async (req, res) => {
         res.json({
             success: true,
             message: 'Settings saved successfully',
-            environmentId: updatedSettings.environmentId,
-            region: updatedSettings.region,
-            apiClientId: updatedSettings.apiClientId,
+            
+            // Standardized keys (primary)
+            [STANDARD_KEYS.ENVIRONMENT_ID]: updatedSettings[STANDARD_KEYS.ENVIRONMENT_ID],
+            [STANDARD_KEYS.REGION]: updatedSettings[STANDARD_KEYS.REGION],
+            [STANDARD_KEYS.CLIENT_ID]: updatedSettings[STANDARD_KEYS.CLIENT_ID],
+            
+            // Legacy keys for backward compatibility
+            environmentId: updatedSettings[STANDARD_KEYS.ENVIRONMENT_ID],
+            region: updatedSettings[STANDARD_KEYS.REGION],
+            apiClientId: updatedSettings[STANDARD_KEYS.CLIENT_ID],
+            
             lastUpdated: updatedSettings.lastUpdated
         });
         
@@ -112,15 +133,17 @@ router.post('/', async (req, res) => {
 router.get('/credentials', async (req, res) => {
     try {
         const settingsContent = await fs.readFile(SETTINGS_FILE, 'utf8');
-        const settings = JSON.parse(settingsContent);
+        const rawSettings = JSON.parse(settingsContent);
+        
+        // Standardize configuration keys
+        const standardizedSettings = standardizeConfigKeys(rawSettings);
         
         // Return complete credentials including secret for internal use
-        // Handle both camelCase and kebab-case keys from settings.json
         const rawCredentials = {
-            environmentId: settings.environmentId || settings['environment-id'] || '',
-            clientId: settings.apiClientId || settings['api-client-id'] || '',
-            clientSecret: settings.apiSecret || settings['api-secret'] || '',
-            region: settings.region || DEFAULT_REGION
+            environmentId: standardizedSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
+            clientId: standardizedSettings[STANDARD_KEYS.CLIENT_ID] || '',
+            clientSecret: standardizedSettings[STANDARD_KEYS.CLIENT_SECRET] || '',
+            region: standardizedSettings[STANDARD_KEYS.REGION] || DEFAULT_REGION
         };
         
         // Apply region configuration with precedence hierarchy

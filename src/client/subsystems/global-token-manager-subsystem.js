@@ -1,4 +1,5 @@
 import { getRegionConfig, logRegionConfig, getRegionFromStorage } from '../../utils/region-config.js';
+import { STANDARD_KEYS, standardizeConfig } from '../../utils/config-standardization.js';
 
 /**
  * Global Token Manager Subsystem
@@ -634,12 +635,16 @@ async getNewToken() {
                 if (credentialsResponse.ok) {
                     const credentialsData = await credentialsResponse.json();
                     if (credentialsData.success) {
-                        credentials = credentialsData.credentials;
-                        this.logger.debug('Retrieved complete credentials from secure endpoint', { 
-                            hasEnvironmentId: !!credentials.environmentId,
-                            hasClientId: !!credentials.clientId,
-                            hasClientSecret: !!credentials.clientSecret,
-                            hasRegion: !!credentials.region
+                        // Standardize the credentials keys
+                        const rawCredentials = credentialsData.credentials;
+                        credentials = standardizeConfigKeys(rawCredentials);
+                        
+                        this.logger.debug('Retrieved and standardized credentials from secure endpoint', { 
+                            hasEnvironmentId: !!credentials[STANDARD_KEYS.ENVIRONMENT_ID],
+                            hasClientId: !!credentials[STANDARD_KEYS.CLIENT_ID],
+                            hasClientSecret: !!credentials[STANDARD_KEYS.CLIENT_SECRET],
+                            hasRegion: !!credentials[STANDARD_KEYS.REGION],
+                            standardizedKeys: Object.keys(credentials).filter(key => key.startsWith('pingone_'))
                         });
                         
                         // Apply region configuration with precedence hierarchy
@@ -653,10 +658,10 @@ async getNewToken() {
                         logRegionConfig(regionConfig);
                         
                         // Use validated region from configuration
-                        credentials.region = regionConfig.region;
+                        credentials[STANDARD_KEYS.REGION] = regionConfig.region;
                         
                         this.logger.debug('Applied region configuration', {
-                            finalRegion: credentials.region,
+                            finalRegion: credentials[STANDARD_KEYS.REGION],
                             source: regionConfig.source,
                             authDomain: regionConfig.authDomain
                         });
@@ -674,10 +679,11 @@ async getNewToken() {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        environmentId: credentials.environmentId,
-                        clientId: credentials.clientId,
-                        clientSecret: credentials.clientSecret,
-                        region: credentials.region
+                        // Use standardized keys for API call
+                        environmentId: credentials[STANDARD_KEYS.ENVIRONMENT_ID],
+                        clientId: credentials[STANDARD_KEYS.CLIENT_ID],
+                        clientSecret: credentials[STANDARD_KEYS.CLIENT_SECRET],
+                        region: credentials[STANDARD_KEYS.REGION]
                     })
                 });
                 
