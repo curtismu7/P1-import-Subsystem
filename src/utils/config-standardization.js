@@ -253,6 +253,11 @@ export function createBackwardCompatibleConfig(standardConfig) {
  * @param {Object} options - Migration options
  */
 export async function migrateConfigurationFile(filePath, options = {}) {
+    // Check if we're in a Node.js environment
+    if (typeof window !== 'undefined') {
+        throw new Error('migrateConfigurationFile is only available in Node.js environment');
+    }
+    
     const {
         createBackup = true,
         preserveLegacyKeys = false,

@@ -44,7 +44,36 @@ class SimpleNavigation {
             });
         });
         
+        // Handle initial navigation based on current URL
+        this.handleInitialNavigation();
+        
         console.log('🔧 Simple Navigation: Navigation setup complete');
+    }
+    
+    handleInitialNavigation() {
+        console.log('🔧 Simple Navigation: Handling initial navigation...');
+        const currentPath = window.location.pathname;
+        console.log(`🔧 Simple Navigation: Current path: ${currentPath}`);
+        
+        // Map URL paths to view names
+        const pathToView = {
+            '/': 'home',
+            '/home': 'home',
+            '/settings': 'settings',
+            '/import': 'import',
+            '/export': 'export',
+            '/modify': 'modify',
+            '/delete': 'delete-csv',
+            '/history': 'history',
+            '/logs': 'logs',
+            '/analytics': 'analytics'
+        };
+        
+        const targetView = pathToView[currentPath] || 'home';
+        console.log(`🔧 Simple Navigation: Initial view: ${targetView}`);
+        
+        // Show the appropriate view
+        this.showView(targetView);
     }
     
     showView(view) {
@@ -71,10 +100,74 @@ class SimpleNavigation {
         // Update navigation state
         this.updateNavigationState(view);
         
+        // Handle view-specific initialization
+        this.handleViewSpecificInit(view);
+        
         // Update current view
         this.currentView = view;
         
         console.log(`🔧 Simple Navigation: Navigation to ${view} completed`);
+    }
+    
+    handleViewSpecificInit(view) {
+        console.log(`🔧 Simple Navigation: Handling view-specific init for ${view}`);
+        
+        if (view === 'settings') {
+            // Initialize settings form
+            this.initializeSettingsForm();
+        }
+    }
+    
+    initializeSettingsForm() {
+        console.log('🔧 Simple Navigation: Initializing settings form...');
+        
+        // Load and populate settings
+        fetch('/api/settings')
+            .then(response => response.json())
+            .then(data => {
+                console.log('🔧 Settings API response:', data);
+                this.populateSettingsForm(data);
+            })
+            .catch(error => {
+                console.error('🔧 Error loading settings:', error);
+            });
+    }
+    
+    populateSettingsForm(data) {
+        console.log('🔧 Simple Navigation: Populating settings form...');
+        
+        // Map region values from standardized to UI format
+        const mapRegionForUI = (standardizedRegion) => {
+            const regionMapping = {
+                'NA': 'North America',
+                'EU': 'European Union',
+                'AP': 'Asia-Pacific',
+                'CA': 'Canada',
+                'AU': 'Australia'
+            };
+            return regionMapping[standardizedRegion] || 'North America';
+        };
+        
+        // Populate form fields with priority: standardized keys first, then legacy
+        const fields = {
+            'environment-id': data.pingone_environment_id || data.environmentId || data['environment-id'] || '',
+            'api-client-id': data.pingone_client_id || data.apiClientId || data['api-client-id'] || '',
+            'api-secret': data.pingone_client_secret || data.apiSecret || data['api-secret'] || '',
+            'region': mapRegionForUI(data.pingone_region || data.region),
+            'rate-limit': data.rate_limit || data.rateLimit || data['rate-limit'] || '90',
+            'population-id': data.pingone_population_id || data.populationId || data['population-id'] || ''
+        };
+        
+        // Set form field values
+        Object.entries(fields).forEach(([fieldId, value]) => {
+            const field = document.getElementById(fieldId);
+            if (field && value !== undefined && value !== null) {
+                field.value = value;
+                console.log(`🔧 Set ${fieldId}:`, value);
+            }
+        });
+        
+        console.log('🔧 Simple Navigation: Settings form populated successfully');
     }
     
     // Test function to manually trigger navigation
