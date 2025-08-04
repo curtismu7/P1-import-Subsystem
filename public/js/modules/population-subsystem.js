@@ -92,16 +92,16 @@ export class PopulationSubsystem {
      */
     async loadPopulations(options = {}) {
         const { force = false, useCache = true } = options;
-        
+        if (this.loggingSubsystem) {
+            this.loggingSubsystem.info(`[Startup] 🌐 Attempting to load populations...`, { force, useCache }, 'system');
+        }
         try {
             // Check cache first if not forcing refresh
             if (!force && useCache && this.isCacheValid()) {
                 const cached = this.getCachedPopulations();
                 if (cached && cached.length > 0) {
                     if (this.loggingSubsystem) {
-                        this.loggingSubsystem.debug('Returning cached populations', {
-                            count: cached.length
-                        }, 'system');
+                        this.loggingSubsystem.info(`[Startup] 🌐 Populations loaded from cache: ${cached.length} entries`, {}, 'system');
                     }
                     return cached;
                 }
@@ -109,6 +109,9 @@ export class PopulationSubsystem {
             
             // Prevent multiple simultaneous loads
             if (this.isLoading && this.loadingPromise) {
+                if (this.loggingSubsystem) {
+                    this.loggingSubsystem.info(`[Startup] 🌐 Population loading already in progress...`, {}, 'system');
+                }
                 return await this.loadingPromise;
             }
             
@@ -116,6 +119,9 @@ export class PopulationSubsystem {
             this.loadingPromise = this.performPopulationLoad();
             
             const populations = await this.loadingPromise;
+            if (this.loggingSubsystem) {
+                this.loggingSubsystem.info(`[Startup] 🌐 Populations loaded: ${populations.length} entries`, {}, 'system');
+            }
             
             // Cache the results
             this.cachePopulations(populations);
@@ -229,9 +235,9 @@ export class PopulationSubsystem {
     async populateDropdown(dropdownId, config = {}) {
         try {
             if (this.loggingSubsystem) {
-                this.loggingSubsystem.debug(`Starting population dropdown population for: ${dropdownId}`, config, 'system');
+                this.loggingSubsystem.debug(`[DIAG] Starting population dropdown population for: ${dropdownId}`, config, 'system');
             }
-            
+            this.hideDropdownError(dropdownId);
             const {
                 includeEmpty = true,
                 emptyText = 'Select a population',
@@ -266,7 +272,9 @@ export class PopulationSubsystem {
             
             // Load populations
             const populations = await this.loadPopulations();
-            
+            if (this.loggingSubsystem) {
+                this.loggingSubsystem.info(`[DIAG] Populations data for dropdown ${dropdownId}:`, { populations }, 'system');
+            }
             // Filter populations if needed
             let filteredPopulations = populations;
             if (filter && typeof filter === 'function') {
@@ -318,24 +326,10 @@ export class PopulationSubsystem {
             return true;
             
         } catch (error) {
-            if (this.loggingSubsystem) {
-                this.loggingSubsystem.error('Failed to populate dropdown', {
-                    dropdownId,
-                    error: error.message
-                }, 'system');
-            }
-            
-            // Show error state in dropdown
             this.showDropdownError(dropdownId, error.message);
-            
-            // Emit error event
-            if (this.eventBus) {
-                this.eventBus.emit('dropdownPopulationFailed', {
-                    dropdownId,
-                    error: error.message
-                });
+            if (this.loggingSubsystem) {
+                this.loggingSubsystem.error(`[DIAG] Failed to populate dropdown: ${dropdownId} - ${error.message}`, {}, 'system');
             }
-            
             return false;
         }
     }
@@ -428,31 +422,77 @@ export class PopulationSubsystem {
      * Show loading state for dropdown
      */
     showDropdownLoading(dropdown) {
-        dropdown.innerHTML = '<option value="">Loading populations...</option>';
+        let spinner = dropdown.parentElement.querySelector('.dropdown-spinner');
+        if (!spinner) {
+            spinner = document.createElement('div');
+            spinner.className = 'dropdown-spinner';
+            spinner.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...';
+            dropdown.parentElement.insertBefore(spinner, dropdown);
+            if (this.loggingSubsystem) {
+                this.loggingSubsystem.debug(`[DIAG] Spinner created for dropdown: ${dropdown.id}`, {}, 'system');
+            }
+        } else {
+            if (this.loggingSubsystem) {
+                this.loggingSubsystem.debug(`[DIAG] Spinner already exists for dropdown: ${dropdown.id}`, {}, 'system');
+            }
+        }
+        spinner.style.display = 'inline-block';
         dropdown.disabled = true;
-        dropdown.classList.add('loading');
+        if (this.loggingSubsystem) {
+            this.loggingSubsystem.debug(`[DIAG] Spinner shown for dropdown: ${dropdown.id}`, {}, 'system');
+        }
     }
-    
+
     /**
      * Hide loading state for dropdown
      */
     hideDropdownLoading(dropdown) {
+        const spinner = dropdown.parentElement.querySelector('.dropdown-spinner');
+        if (spinner) {
+            spinner.style.display = 'none';
+            if (this.loggingSubsystem) {
+                this.loggingSubsystem.debug(`[DIAG] Spinner hidden for dropdown: ${dropdown.id}`, {}, 'system');
+            }
+        }
         dropdown.disabled = false;
-        dropdown.classList.remove('loading');
     }
-    
+
     /**
      * Show error state for dropdown
      */
-    showDropdownError(dropdownId, errorMessage) {
+    showDropdownError(dropdownId, errorMsg) {
         const dropdown = document.getElementById(dropdownId);
-        if (dropdown) {
-            dropdown.innerHTML = `<option value="">Error: ${errorMessage}</option>`;
-            dropdown.disabled = false;
-            dropdown.classList.add('error');
+        if (!dropdown) {
+            if (this.loggingSubsystem) {
+                this.loggingSubsystem.error(`[DIAG] Dropdown not found for error banner: ${dropdownId}`, {}, 'system');
+            }
+            return;
+        }
+        let errorBanner = dropdown.parentElement.querySelector('.dropdown-error-banner');
+        if (errorBanner) errorBanner.remove();
+        errorBanner = document.createElement('div');
+        errorBanner.className = 'dropdown-error-banner alert alert-danger';
+        errorBanner.textContent = `Population load failed: ${errorMsg}`;
+        dropdown.parentElement.insertBefore(errorBanner, dropdown);
+        dropdown.disabled = true;
+        if (this.loggingSubsystem) {
+            this.loggingSubsystem.error(`[DIAG] Error banner shown for dropdown: ${dropdownId} - ${errorMsg}`, {}, 'system');
         }
     }
-    
+
+    hideDropdownError(dropdownId) {
+        const dropdown = document.getElementById(dropdownId);
+        if (!dropdown) return;
+        let errorBanner = dropdown.parentElement.querySelector('.dropdown-error-banner');
+        if (errorBanner) {
+            errorBanner.remove();
+            if (this.loggingSubsystem) {
+                this.loggingSubsystem.debug(`[DIAG] Error banner removed for dropdown: ${dropdownId}`, {}, 'system');
+            }
+        }
+        dropdown.disabled = false;
+    }
+
     /**
      * Cache populations with timestamp
      */

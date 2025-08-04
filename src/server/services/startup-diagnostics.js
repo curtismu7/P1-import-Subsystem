@@ -5,7 +5,7 @@
  * for debugging and monitoring server initialization.
  * 
  * @fileoverview Startup diagnostics and logging utilities
- * @version 7.0.1.0
+ * @version 7.0.0.2
  */
 
 import fs from 'fs/promises';
@@ -37,9 +37,9 @@ async function getApplicationVersion() {
     try {
         const packageJsonPath = path.resolve(__dirname, '../../../package.json');
         const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
-        return packageJson.version || '7.0.1.0';
+        return packageJson.version || '7.0.0.2';
     } catch (error) {
-        return '7.0.1.0'; // Fallback version
+        return '7.0.0.2'; // Fallback version
     }
 }
 
@@ -98,7 +98,7 @@ async function getAPIStatus(port) {
             
             const response = await fetch(`${baseUrl}${endpoint.path}`, {
                 signal: controller.signal,
-                headers: { 'User-Agent': 'StartupDiagnostics/7.0.1.0' }
+                headers: { 'User-Agent': 'StartupDiagnostics/7.0.0.2' }
             });
             
             clearTimeout(timeoutId);

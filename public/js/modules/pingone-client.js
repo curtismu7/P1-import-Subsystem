@@ -37,15 +37,12 @@ function handleClientError(error) {
  * Manages PingOne API authentication and requests with Winston logging.
  */
 class PingOneClient {
-    constructor() {
-        // Initialize browser-compatible logger
-        this.logger = {
-            info: (msg, data) => console.log(`[PingOneClient] ${msg}`, data || ''),
-            debug: (msg, data) => console.debug(`[PingOneClient] ${msg}`, data || ''),
-            warn: (msg, data) => console.warn(`[PingOneClient] ${msg}`, data || ''),
-            error: (msg, data) => console.error(`[PingOneClient] ${msg}`, data || '')
-        };
-        
+    constructor(logger, localClient) {
+        if (!logger || !localClient) {
+            throw new Error('PingOneClient: localClient and logger are required.');
+        }
+        this.logger = logger;
+        this.localClient = localClient;
         this.accessToken = null;
         this.tokenExpiry = null;
         this.baseUrl = '/api/pingone';
@@ -694,8 +691,5 @@ class PingOneClient {
     }
 }
 
-// Create and export default instance
-const pingOneClient = new PingOneClient();
-
-// Export the class and instance
-export { PingOneClient, pingOneClient };
+// Export the class
+export { PingOneClient };

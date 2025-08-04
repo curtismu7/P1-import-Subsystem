@@ -5687,9 +5687,63 @@ function setupImportDropZone() {
 document.addEventListener('DOMContentLoaded', () => {
     setupImportDropZone();
 });
-// ... existing code ...
+// ... existing code...
 
-// ... existing code ...
+function showEnvironmentBanner(settings) {
+    let banner = document.getElementById('environment-info-banner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'environment-info-banner';
+        banner.style.background = '#d4f8e8';
+        banner.style.color = '#222';
+        banner.style.padding = '10px';
+        banner.style.margin = '10px 0';
+        banner.style.borderRadius = '6px';
+        banner.style.fontWeight = 'bold';
+        banner.style.boxShadow = '0 2px 6px rgba(0,0,0,0.05)';
+        banner.style.textAlign = 'center';
+        document.body.prepend(banner);
+    }
+    banner.innerHTML = `Environment: <b>${settings.environmentId || 'N/A'}</b> | Region: <b>${settings.region || 'N/A'}</b> | API Client ID: <b>${settings.apiClientId || 'N/A'}</b>`;
+    banner.style.display = 'block';
+}
+
+function showStartupErrorBanner(errorMsg) {
+    let banner = document.getElementById('startup-error-banner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'startup-error-banner';
+        banner.style.background = '#ffe4e4';
+        banner.style.color = '#a00';
+        banner.style.padding = '12px';
+        banner.style.margin = '10px 0';
+        banner.style.borderRadius = '6px';
+        banner.style.fontWeight = 'bold';
+        banner.style.boxShadow = '0 2px 6px rgba(0,0,0,0.08)';
+        banner.style.textAlign = 'center';
+        document.body.prepend(banner);
+    }
+    banner.innerHTML = `Startup Error: <b>${errorMsg}</b>`;
+    banner.style.display = 'block';
+    // Hide spinner if present
+    const spinner = document.getElementById('startup-wait-screen');
+    if (spinner) spinner.style.display = 'none';
+}
+
+// Example usage in startup logic:
+async function initializeApp() {
+    try {
+        // ...existing startup logic...
+        // Assume settingsSubsystem is loaded and valid
+        const settings = window.app?.settingsSubsystem?.getSettings?.() || {};
+        showEnvironmentBanner(settings);
+        // ...continue startup...
+    } catch (err) {
+        showStartupErrorBanner(err.message || 'Unknown error');
+        if (window.logger) window.logger.error('Startup error', { error: err });
+    }
+}
+// ...existing code...
 // After fileHandler and UIManager are initialized and modify view is set up:
 function setupModifyDropZone() {
     const dropZone = document.getElementById('modify-drop-zone');

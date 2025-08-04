@@ -695,6 +695,17 @@ app.use('/api/test-runner', testRunnerRouter); // Test runner routes
 // NOTE: /api/auth, /api/logs, /api/import, /api/export are handled by the main apiRouter above
 app.use('/', indexRouter);
 
+// Add missing endpoints for UI logging and error reporting
+app.post('/api/logs/ui', (req, res) => {
+  // Accept UI logs, optionally persist or forward
+  res.status(200).json({ status: 'UI log received' });
+});
+
+app.post('/api/errors', (req, res) => {
+  // Accept error reports, optionally persist or forward
+  res.status(200).json({ status: 'Error report received' });
+});
+
 // Enhanced error handling middleware (structured, safe, Winston-logged)
 app.use((err, req, res, next) => {
     // Log full error details with Winston
@@ -865,6 +876,32 @@ const startServer = async () => {
             const port = process.env.PORT || 4000;
             
             try {
+                // Initialize Enhanced Server Authentication
+                logger.info('🔐 Initializing Enhanced Server Authentication...');
+                const enhancedAuth = new EnhancedServerAuth(logger);
+                
+                try {
+                    const authResult = await enhancedAuth.initializeOnStartup();
+                    logger.info('✅ Enhanced Server Authentication initialized successfully', {
+                        hasToken: authResult.hasToken,
+                        environmentId: authResult.environmentId,
+                        region: authResult.region
+                    });
+                    
+                    // Initialize credential routes with the auth instance
+                    initializeCredentialRoutes(enhancedAuth);
+                    logger.info('✅ Credential management routes initialized');
+                    
+                } catch (authError) {
+                    logger.warn('⚠️ Enhanced Server Authentication initialization failed', {
+                        error: authError.message,
+                        details: 'Server will continue but authentication features may be limited'
+                    });
+                    
+                    // Still initialize credential routes with a basic instance for status endpoints
+                    initializeCredentialRoutes(enhancedAuth);
+                }
+                
                 // Run comprehensive startup diagnostics and logging
                 await logStartupSuccess(logger, {
                     port,

@@ -149,7 +149,7 @@ export function createWinstonLogger(options = {}) {
             service,
             env,
             pid: process.pid,
-            version: process.env.APP_VERSION || '7.0.1.0'
+            version: process.env.APP_VERSION || '7.0.0.2'
         },
         transports: [
             // Console transport for all environments

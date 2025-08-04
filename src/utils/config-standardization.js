@@ -5,7 +5,7 @@
  * Ensures consistent naming conventions for PingOne configuration variables.
  * 
  * @fileoverview Configuration key standardization and migration utilities
- * @version 7.0.1.0
+ * @version 7.0.0.2
  */
 
 /**

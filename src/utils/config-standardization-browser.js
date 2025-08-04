@@ -5,7 +5,7 @@
  * Does not include Node.js file system operations.
  * 
  * @fileoverview Configuration key standardization utilities for browser
- * @version 7.0.2.2
+ * @version 7.0.0.2
  */
 
 /**

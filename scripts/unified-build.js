@@ -39,8 +39,8 @@ async function unifiedBuild() {
       execSync('npm run build:bundle', { stdio: 'inherit' });
     }
     
-    // Step 2: Minify the bundle (if not skipped and not production)
-    if (!skipMinify && !isProduction) {
+    // Step 2: Minify the bundle (only in production)
+    if (!skipMinify && isProduction) {
       console.log('🔧 Minifying bundle...');
       execSync('npm run minify:bundle', { stdio: 'inherit' });
     }
