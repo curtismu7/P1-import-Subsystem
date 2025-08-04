@@ -385,24 +385,79 @@ app.use(['/swagger.html', '/swagger', '/swagger.json'], ensureAuthenticated);
 // Setup Swagger documentation
 setupSwagger(app);
 
+// Check for Import Maps mode
+console.log('🔍 DEBUG: process.argv =', process.argv);
+const useImportMaps = process.argv.includes('--import-maps');
+console.log('🔍 DEBUG: useImportMaps =', useImportMaps);
+if (useImportMaps) {
+    console.log('🗺️  Import Maps mode enabled - serving ES modules directly');
+} else {
+    console.log('📦 Bundle mode - serving traditional bundled application');
+}
+
+// Import Maps route must be registered BEFORE static file serving
+if (useImportMaps) {
+    // Default route for Import Maps version - MUST come before static middleware
+    app.get('/', (req, res) => {
+        res.sendFile(path.join(__dirname, 'public', 'index-import-maps.html'));
+    });
+    
+    console.log('🗺️  Import Maps route registered for /');
+}
+
 // Static file serving with caching headers
 app.use(express.static(path.join(__dirname, 'public'), {
     etag: true,
     lastModified: true,
+    // Exclude index.html when in Import Maps mode to prevent conflicts with route handler
+    index: useImportMaps ? false : ['index.html'],
     setHeaders: (res, filePath) => {
         const fileExt = path.extname(filePath);
         if (fileExt === '.html' || filePath.includes('bundle-')) {
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');
+        } else if (fileExt === '.js' && useImportMaps) {
+            // For Import Maps, serve JS modules with proper MIME type and no caching during development
+            res.setHeader('Content-Type', 'application/javascript');
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         } else {
             res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache other assets for 1 day
         }
     }
 }));
 
+// Serve source files for Import Maps
+if (useImportMaps) {
+    app.use('/src', express.static(path.join(__dirname, 'src'), {
+        etag: true,
+        lastModified: true,
+        setHeaders: (res, filePath) => {
+            const fileExt = path.extname(filePath);
+            if (fileExt === '.js') {
+                res.setHeader('Content-Type', 'application/javascript');
+                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            }
+        }
+    }));
+    
+    console.log('📦 Source files served at /src for Import Maps');
+    console.log('🗺️  Import Maps version available at http://localhost:4000/');
+}
+
+// Debug route to check Import Maps status
+app.get('/api/debug/import-maps', (req, res) => {
+    res.json({
+        useImportMaps: useImportMaps,
+        processArgv: process.argv,
+        hasImportMapsFlag: process.argv.includes('--import-maps'),
+        timestamp: new Date().toISOString()
+    });
+});
+
 console.log('📚 Swagger UI available at http://localhost:4000/swagger.html');
 console.log('📄 Swagger JSON available at http://localhost:4000/swagger.json');
+console.log('🔍 Debug endpoint available at http://localhost:4000/api/debug/import-maps');
 
 /**
  * @swagger

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PingOne User Import v7.0.0.9</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
+    
+    <!-- App Loader Script -->
+    <script src="/js/app-loader.js"></script>
+    
+    <style>
+        /* Loading screen styles */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        .loading-content {
+            text-align: center;
+            color: white;
+            max-width: 400px;
+        }
+        
+        .ping-logo {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .loading-progress {
+            width: 300px;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 1rem auto;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: white;
+            width: 0%;
+            animation: loading 2s ease-in-out infinite;
+        }
+        
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+        
+        .loading-details {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="ping-logo">
+                <svg width="80" height="80" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M96 0C43 0 0 43 0 96C0 149 43 192 96 192C149 192 192 149 192 96C192 43 149 0 96 0ZM96 175C52.3 175 17 139.7 17 96C17 52.3 52.3 17 96 17C139.7 17 175 52.3 175 96C175 139.7 139.7 175 96 175Z" fill="white"/>
+                    <path d="M96 44C67.3 44 44 67.3 44 96C44 124.7 67.3 148 96 148C124.7 148 148 124.7 148 96C148 67.3 124.7 44 96 44ZM96 131C76.7 131 61 115.3 61 96C61 76.7 76.7 61 96 61C115.3 61 131 76.7 131 96C131 115.3 115.3 131 96 131Z" fill="white"/>
+                    <path d="M96 79C88.3 79 82 85.3 82 93C82 100.7 88.3 107 96 107C103.7 107 110 100.7 110 93C110 85.3 103.7 79 96 79Z" fill="white"/>
+                </svg>
+            </div>
+            <h2>PingOne Import Tool</h2>
+            <p>Loading the optimal version for your browser...</p>
+            <div class="loading-progress">
+                <div class="progress-bar"></div>
+            </div>
+            <div class="loading-details">
+                <p>Version 7.0.0.9</p>
+                <p id="loading-status">Detecting browser capabilities...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // This script will run after the app-loader.js has initialized
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadingStatus = document.getElementById('loading-status');
+            
+            // Update the loading status with browser compatibility info
+            if (window.AppLoader) {
+                const supportsImportMaps = window.AppLoader.supportsImportMaps();
+                const supportsESModules = window.AppLoader.supportsESModules();
+                
+                loadingStatus.textContent = supportsImportMaps && supportsESModules
+                    ? 'Loading Import Maps version...'
+                    : 'Loading Bundle version...';
+                    
+                // The app-loader.js will handle the redirect
+            } else {
+                loadingStatus.textContent = 'Error loading application. Please try again.';
+            }
+        });
+    </script>
+</body>
+</html>

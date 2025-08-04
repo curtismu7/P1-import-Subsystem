@@ -1001,20 +1001,22 @@
                         <div id="current-token-info" class="token-info-card">
                             <div class="token-status-grid">
                                 <div class="status-item">
-                                    <label>Status:</label>
-                                    <span id="token-status-indicator" class="status-badge">Loading...</span>
+                                    <div class="status-title">Date</div>
+                                    <div class="status-value" id="token-date">Not Available</div>
                                 </div>
                                 <div class="status-item">
-                                    <label>Expires In:</label>
-                                    <span id="token-expires-in">Loading...</span>
+                                    <div class="status-title">Status</div>
+                                    <div class="status-value">
+                                        <span id="token-status-indicator" class="status-badge">Loading...</span>
+                                    </div>
                                 </div>
                                 <div class="status-item">
-                                    <label>Environment ID:</label>
-                                    <span id="token-environment-id">Loading...</span>
+                                    <div class="status-title">Environment ID</div>
+                                    <div class="status-value" id="token-environment-id" title="Click to copy">Loading...</div>
                                 </div>
                                 <div class="status-item">
-                                    <label>Region:</label>
-                                    <span id="token-region">Loading...</span>
+                                    <div class="status-title">Environment Name</div>
+                                    <div class="status-value" id="token-environment-name" title="Click to copy">Not Available</div>
                                 </div>
                             </div>
                         </div>
@@ -1040,7 +1042,11 @@
                         <div class="token-display-container">
                             <div class="form-group">
                                 <label for="raw-token-display">Raw Access Token:</label>
-                                <textarea id="raw-token-display" class="form-control token-textarea" rows="4" readonly placeholder="Click 'Get Current Token' to display the raw JWT token here..."></textarea>
+                                <textarea id="raw-token-display" class="form-control token-textarea enhanced-token-display" 
+                                         rows="8" 
+                                         readonly 
+                                         placeholder="Click 'Get Current Token' to display the raw JWT token here..."
+                                         style="min-height: 200px; resize: vertical; word-wrap: break-word; white-space: pre-wrap;"></textarea>
                             </div>
                             
                             <div id="decoded-token-container" class="decoded-token-container" style="display: none;">
@@ -1352,7 +1358,7 @@
     <!-- This loads the latest bundle directly without complex API calls -->
     <!-- Last fixed: 2025-07-22 - Replaced broken dynamic loading system -->
         <script src="/js/bug-fix-loader.js"></script>
-    <script src="/js/bundle-1754318234.js"></script>
+    <script src="/js/bundle-1754325606.js"></script>
     
     <!-- Fallback error handling for bundle loading -->
     <script>
@@ -1385,6 +1391,6 @@
 
     
     <!-- Version Display Component -->
-    <div id="version-display" class="version-widget">v7.0.0.6</div>
+    <div id="version-display" class="version-widget">v7.0.0.11</div>
 </body>
 </html>

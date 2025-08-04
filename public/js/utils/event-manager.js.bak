@@ -1,9 +1,4 @@
 /**
- * @module
- * @description ES Module (converted from CommonJS)
- */
-
-/**
  * Event Management Utility for PingOne Import Tool
  * 
  * Centralizes event handling with:
@@ -262,8 +257,7 @@ if (typeof window !== 'undefined') {
 
 // Export for modules
 if (typeof module !== 'undefined' && module.exports) {
-    export { EventManager };
-export { eventManager };;
+    module.exports = { EventManager, eventManager };
 }
 
 // Make available globally

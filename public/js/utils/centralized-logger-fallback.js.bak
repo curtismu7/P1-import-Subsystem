@@ -72,6 +72,28 @@ class FallbackLogger {
         const component = context?.component || this.component;
         return new FallbackLogger(component);
     }
+    
+    // Performance timing methods
+    startTimer(label) {
+        if (console.time) {
+            console.time(label);
+        }
+        return {
+            label,
+            startTime: performance ? performance.now() : Date.now()
+        };
+    }
+    
+    endTimer(timer) {
+        if (console.timeEnd && timer && timer.label) {
+            console.timeEnd(timer.label);
+        } else if (timer && timer.startTime) {
+            const endTime = performance ? performance.now() : Date.now();
+            const duration = endTime - timer.startTime;
+            this.info(`Timer '${timer.label || 'unnamed'}' completed in ${duration.toFixed(2)}ms`);
+        }
+        return timer;
+    }
 }
 
 // Create a safe global logger that won't break the app
@@ -92,5 +114,9 @@ function createSafeGlobalLogger() {
 // Set up the global logger with fallback
 window.logger = createSafeGlobalLogger();
 
-// Export for ES modules
-export const logger = window.logger;
+// Export for ES modules (only if in module context)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { logger: window.logger, FallbackLogger };
+} else if (typeof window !== 'undefined') {
+    // Already set window.logger above
+}

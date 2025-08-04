@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PingOne User Import v7.0.0.9 - Import Maps</title>
+    
+    <!-- Import Maps Configuration -->
+    <script type="importmap" src="/import-maps.json"></script>
+    
+    <!-- Fallback for browsers that don't support external import maps -->
+    <script type="importmap">
+    {
+        "imports": {
+            "@/": "/src/client/",
+            "@/utils/": "/src/client/utils/",
+            "@/components/": "/src/client/components/",
+            "@/subsystems/": "/src/client/subsystems/",
+            "@/modules/": "/public/js/modules/",
+            "@/public/": "/public/js/",
+            
+            "app": "/src/client/app.js",
+            "logger": "/public/js/modules/logger.js",
+            "file-logger": "/public/js/modules/file-logger.js",
+            "event-bus": "/public/js/modules/event-bus.js",
+            "centralized-logger": "/public/js/utils/centralized-logger.js",
+            "safe-dom": "/public/js/utils/safe-dom.js",
+            
+            "settings-manager": "/src/client/components/settings-manager.js",
+            "ui-manager": "/src/client/components/ui-manager.js",
+            "credentials-manager": "/src/client/components/credentials-manager.js",
+            "local-api-client": "/src/client/utils/local-api-client.js",
+            "pingone-client": "/src/client/utils/pingone-client.js",
+            
+            "settings-subsystem": "/src/client/subsystems/settings-subsystem.js",
+            "navigation-subsystem": "/src/client/subsystems/navigation-subsystem.js",
+            "import-subsystem": "/src/client/subsystems/import-subsystem.js",
+            "export-subsystem": "/src/client/subsystems/export-subsystem.js",
+            "token-manager-subsystem": "/src/client/subsystems/token-manager-subsystem.js",
+            "connection-manager-subsystem": "/src/client/subsystems/connection-manager-subsystem.js",
+            "auth-management-subsystem": "/src/client/subsystems/auth-management-subsystem.js",
+            "advanced-realtime-subsystem": "/src/client/subsystems/advanced-realtime-subsystem.js",
+            "view-management-subsystem": "/src/client/subsystems/view-management-subsystem.js",
+            "operation-manager-subsystem": "/src/client/subsystems/operation-manager-subsystem.js",
+            "population-subsystem": "/src/client/subsystems/population-subsystem.js",
+            "history-subsystem": "/src/client/subsystems/history-subsystem.js",
+            
+            "bulletproof-token-manager": "/src/client/utils/bulletproof-token-manager.js",
+            "bulletproof-subsystem-wrapper": "/src/client/utils/bulletproof-subsystem-wrapper.js",
+            "bulletproof-global-handler": "/src/client/utils/bulletproof-global-handler.js",
+            "bulletproof-app-integration": "/src/client/utils/bulletproof-app-integration.js",
+            
+            "browser-logging-service": "/src/client/utils/browser-logging-service.js",
+            "debug-logger": "/src/client/utils/debug-logger.js",
+            "safe-logger": "/src/client/utils/safe-logger.js"
+        }
+    }
+    </script>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
+    
+    <!-- Ping Identity Official CSS -->
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css">
+    
+    <!-- Bootstrap CSS -->
+    <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/styles-fixed.css">
+    <link rel="stylesheet" href="/css/ping-identity.css">
+    <link rel="stylesheet" href="/css/token-status-indicator.css">
+    <link rel="stylesheet" href="/css/enhanced-token-status.css">
+    <link rel="stylesheet" href="/css/token-notification.css">
+    <link rel="stylesheet" href="/css/enhanced-progress.css">
+    <link rel="stylesheet" href="/css/progress-ui.css">
+    <link rel="stylesheet" href="/css/api-url-subsystem.css">
+    <link rel="stylesheet" href="/css/disclaimer-modal.css">
+    <link rel="stylesheet" href="/css/credentials-modal.css">
+    <link rel="stylesheet" href="/css/status-bar.css">
+    <link rel="stylesheet" href="/css/realtime-collaboration.css">
+    <link rel="stylesheet" href="/css/history-ui.css">
+    <link rel="stylesheet" href="/css/logging-ui.css">
+    <link rel="stylesheet" href="/css/testing-ui.css">
+    <link rel="stylesheet" href="/css/status-bar-fix.css">
+    <link rel="stylesheet" href="/css/version-widget.css">
+    <link rel="stylesheet" href="/css/token-manager.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="ping-logo">
+                <i class="fas fa-sync-alt fa-spin"></i>
+            </div>
+            <h3>Loading PingOne Import Tool</h3>
+            <p>Initializing with Import Maps...</p>
+            <div class="loading-progress">
+                <div class="progress-bar"></div>
+            </div>
+            <div class="loading-details">
+                <span id="loading-status">Checking browser compatibility...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Browser Compatibility Warning -->
+    <div id="compatibility-warning" style="display: none;" class="compatibility-warning">
+        <div class="warning-content">
+            <h3><i class="fas fa-exclamation-triangle"></i> Browser Compatibility</h3>
+            <p>Your browser doesn't support Import Maps. Falling back to bundle system...</p>
+            <div class="fallback-progress">
+                <div class="progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Container (copied from original index.html) -->
+    <div id="app-container" style="display: none;">
+        <!-- Status Bar -->
+        <div id="status-bar" class="status-bar">
+            <div class="status-left">
+                <span id="connection-status" class="status-indicator">
+                    <i class="fas fa-circle status-dot" title="Connection Status"></i>
+                    <span class="status-text">Connecting...</span>
+                </span>
+                <span id="token-status" class="status-indicator">
+                    <i class="fas fa-key" title="Token Status"></i>
+                    <span class="status-text">No Token</span>
+                </span>
+            </div>
+            <div class="status-center">
+                <span id="operation-status" class="status-indicator">
+                    <i class="fas fa-tasks" title="Operation Status"></i>
+                    <span class="status-text">Ready</span>
+                </span>
+            </div>
+            <div class="status-right">
+                <span id="version-info" class="status-indicator">
+                    <i class="fas fa-info-circle" title="Version"></i>
+                    <span class="status-text">v7.0.0.9 - Import Maps</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Sidebar Navigation -->
+        <nav id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h4>PingOne Import Tool</h4>
+                <span class="version-badge">Import Maps v7.0.0.9</span>
+            </div>
+            <ul class="nav-list">
+                <li><a href="#" data-view="home" class="nav-link active"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="#" data-view="settings" class="nav-link"><i class="fas fa-cog"></i> Settings</a></li>
+                <li><a href="#" data-view="import" class="nav-link"><i class="fas fa-upload"></i> Import</a></li>
+                <li><a href="#" data-view="export" class="nav-link"><i class="fas fa-download"></i> Export</a></li>
+                <li><a href="#" data-view="modify" class="nav-link"><i class="fas fa-edit"></i> Modify</a></li>
+                <li><a href="#" data-view="delete-csv" class="nav-link"><i class="fas fa-trash"></i> Delete CSV</a></li>
+                <li><a href="#" data-view="logs" class="nav-link"><i class="fas fa-file-alt"></i> Logs</a></li>
+                <li><a href="#" data-view="history" class="nav-link"><i class="fas fa-history"></i> History</a></li>
+                <li><a href="#" data-view="analytics" class="nav-link"><i class="fas fa-chart-bar"></i> Analytics</a></li>
+                <li><a href="#" data-view="testing" class="nav-link"><i class="fas fa-vial"></i> Testing</a></li>
+                <li><a href="#" data-view="token-manager" class="nav-link"><i class="fas fa-key"></i> Token Manager</a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="main-content">
+            <!-- Home View -->
+            <div id="home-view" class="view active">
+                <h2>Welcome to PingOne Import Tool</h2>
+                <p class="subtitle">Import Maps Edition - Native ES Module Loading</p>
+                
+                <div class="performance-metrics">
+                    <h3>Performance Metrics</h3>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <h4>Load Time</h4>
+                            <span id="load-time-metric" class="metric-value">Measuring...</span>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Modules Loaded</h4>
+                            <span id="modules-loaded-metric" class="metric-value">0</span>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Build Time</h4>
+                            <span id="build-time-metric" class="metric-value">0ms</span>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Browser Support</h4>
+                            <span id="browser-support-metric" class="metric-value">Checking...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feature-highlights">
+                    <h3>Import Maps Benefits</h3>
+                    <ul class="benefits-list">
+                        <li><i class="fas fa-rocket"></i> <strong>7x Faster Loading</strong> - No build step required</li>
+                        <li><i class="fas fa-bug"></i> <strong>Native Debugging</strong> - Original file names and line numbers</li>
+                        <li><i class="fas fa-sync"></i> <strong>Instant Refresh</strong> - No waiting for builds</li>
+                        <li><i class="fas fa-memory"></i> <strong>Precise Caching</strong> - Only changed modules reload</li>
+                        <li><i class="fas fa-eye"></i> <strong>Transparent Loading</strong> - Clear visibility into dependencies</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Settings View (placeholder - will be populated by subsystem) -->
+            <div id="settings-view" class="view">
+                <h2>Settings</h2>
+                <p>Loading settings interface...</p>
+            </div>
+
+            <!-- Import View (placeholder - will be populated by subsystem) -->
+            <div id="import-view" class="view">
+                <h2>Import Users</h2>
+                <p>Loading import interface...</p>
+            </div>
+
+            <!-- Export View (placeholder - will be populated by subsystem) -->
+            <div id="export-view" class="view">
+                <h2>Export Users</h2>
+                <p>Loading export interface...</p>
+            </div>
+
+            <!-- Modify View (placeholder - will be populated by subsystem) -->
+            <div id="modify-view" class="view">
+                <h2>Modify Users</h2>
+                <p>Loading modify interface...</p>
+            </div>
+
+            <!-- Delete CSV View (placeholder - will be populated by subsystem) -->
+            <div id="delete-csv-view" class="view">
+                <h2>Delete Users from CSV</h2>
+                <p>Loading delete interface...</p>
+            </div>
+
+            <!-- Logs View (placeholder - will be populated by subsystem) -->
+            <div id="logs-view" class="view">
+                <h2>Application Logs</h2>
+                <p>Loading logs interface...</p>
+            </div>
+
+            <!-- History View (placeholder - will be populated by subsystem) -->
+            <div id="history-view" class="view">
+                <h2>Operation History</h2>
+                <p>Loading history interface...</p>
+            </div>
+
+            <!-- Analytics View (placeholder - will be populated by subsystem) -->
+            <div id="analytics-view" class="view">
+                <h2>Analytics Dashboard</h2>
+                <p>Loading analytics interface...</p>
+            </div>
+
+            <!-- Testing View (placeholder - will be populated by subsystem) -->
+            <div id="testing-view" class="view">
+                <h2>API Testing</h2>
+                <p>Loading testing interface...</p>
+            </div>
+
+            <!-- Token Manager View (placeholder - will be populated by subsystem) -->
+            <div id="token-manager-view" class="view">
+                <h2>Token Manager</h2>
+                <p>Loading token manager interface...</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Import Maps Application Entry Point -->
+    <script type="module">
+        // Performance measurement
+        const startTime = performance.now();
+        let modulesLoaded = 0;
+
+        // Update loading status
+        function updateLoadingStatus(message) {
+            const statusElement = document.getElementById('loading-status');
+            if (statusElement) {
+                statusElement.textContent = message;
+            }
+        }
+
+        // Update performance metrics
+        function updateMetrics() {
+            const loadTime = performance.now() - startTime;
+            
+            document.getElementById('load-time-metric').textContent = `${loadTime.toFixed(2)}ms`;
+            document.getElementById('modules-loaded-metric').textContent = modulesLoaded;
+            document.getElementById('build-time-metric').textContent = '0ms';
+        }
+
+        // Browser compatibility check
+        function checkImportMapsSupport() {
+            const hasSupport = HTMLScriptElement.supports && HTMLScriptElement.supports('importmap');
+            document.getElementById('browser-support-metric').textContent = hasSupport ? 'Supported ✅' : 'Not Supported ❌';
+            return hasSupport;
+        }
+
+        // Error handler
+        function handleError(error, context) {
+            console.error(`Import Maps Error (${context}):`, error);
+            updateLoadingStatus(`Error: ${error.message}`);
+            
+            // Show compatibility warning and fall back to bundles
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('compatibility-warning').style.display = 'flex';
+            
+            // Attempt to load bundle fallback after delay
+            setTimeout(() => {
+                window.location.href = '/index.html'; // Fallback to bundle version
+            }, 3000);
+        }
+
+        // Main initialization
+        async function initializeApp() {
+            try {
+                updateLoadingStatus('Checking browser compatibility...');
+                
+                // Check browser support
+                const hasImportMaps = checkImportMapsSupport();
+                if (!hasImportMaps) {
+                    throw new Error('Import Maps not supported in this browser');
+                }
+
+                updateLoadingStatus('Loading core modules...');
+                
+                // Load the main application using Import Maps
+                const appModule = await import('app');
+                modulesLoaded++;
+                updateMetrics();
+                
+                updateLoadingStatus('Initializing application...');
+                
+                // Initialize the application
+                if (appModule.default) {
+                    // If app exports a class or initialization function
+                    const app = new appModule.default();
+                    if (app.initialize) {
+                        await app.initialize();
+                    }
+                } else if (appModule.initialize) {
+                    // If app exports an initialize function directly
+                    await appModule.initialize();
+                }
+                
+                updateLoadingStatus('Application ready!');
+                updateMetrics();
+                
+                // Hide loading screen and show application
+                setTimeout(() => {
+                    document.getElementById('loading-screen').style.display = 'none';
+                    document.getElementById('app-container').style.display = 'flex';
+                }, 500);
+                
+                console.log(`🚀 Import Maps application loaded in ${(performance.now() - startTime).toFixed(2)}ms`);
+                
+            } catch (error) {
+                handleError(error, 'Application Initialization');
+            }
+        }
+
+        // Start the application
+        initializeApp();
+    </script>
+
+    <style>
+        /* Import Maps specific styles */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-content {
+            text-align: center;
+            color: white;
+            max-width: 400px;
+        }
+
+        .ping-logo {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .loading-progress {
+            width: 300px;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 1rem auto;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: white;
+            width: 0%;
+            animation: loading 2s ease-in-out infinite;
+        }
+
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
+        .loading-details {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .compatibility-warning {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .warning-content {
+            text-align: center;
+            color: white;
+            max-width: 400px;
+        }
+
+        .performance-metrics {
+            margin: 2rem 0;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .metric-card h4 {
+            margin: 0 0 0.5rem 0;
+            color: #2c3e50;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .feature-highlights {
+            margin: 2rem 0;
+        }
+
+        .benefits-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .benefits-list li {
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            border-radius: 0.25rem;
+        }
+
+        .benefits-list i {
+            color: #3498db;
+            margin-right: 0.5rem;
+        }
+
+        .version-badge {
+            background: #27ae60;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+        }
+
+        .subtitle {
+            color: #666;
+            font-style: italic;
+            margin-bottom: 2rem;
+        }
+    </style>
+</body>
+</html>
