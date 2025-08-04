@@ -186,7 +186,46 @@ class CredentialsManager {
             return { success: false, errors: ['Invalid JSON format'] };
         }
     }
+
+    /**
+     * Display credentials modal
+     */
+    displayCredentialsModal() {
+        const modal = document.getElementById('credentials-modal');
+        if (!modal) {
+            (window.logger?.error || console.error)('Credentials modal element not found');
+            return;
+        }
+
+        // Populate modal content
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.innerHTML = `
+                <h3>API Credentials</h3>
+                <p><strong>Environment ID:</strong> ${this.credentials.environmentId}</p>
+                <p><strong>API Client ID:</strong> ${this.credentials.apiClientId}</p>
+                <p><strong>API Secret:</strong> ${this.credentials.apiSecret}</p>
+                <p><strong>Region:</strong> ${this.credentials.region}</p>
+                <p><strong>Population ID:</strong> ${this.credentials.populationId}</p>
+            `;
+        }
+
+        // Show modal
+        modal.style.display = 'block';
+        (window.logger?.info || console.log)('Credentials modal displayed');
+    }
+
+    /**
+     * Hide credentials modal
+     */
+    hideCredentialsModal() {
+        const modal = document.getElementById('credentials-modal');
+        if (modal) {
+            modal.style.display = 'none';
+            (window.logger?.info || console.log)('Credentials modal hidden');
+        }
+    }
 }
 
 // Export for use in other modules
-window.CredentialsManager = CredentialsManager; 
+window.CredentialsManager = CredentialsManager;

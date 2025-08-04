@@ -164,62 +164,76 @@ class SettingsManager {
     }
 
     /**
-     * Load settings from storage
+     * Normalize all settings to PINGONE_*_* pattern
+     * @param {Object} settings - Raw settings object
+     * @returns {Object} Normalized settings
+     */
+    static normalizeToPingOnePattern(settings) {
+        if (!settings || typeof settings !== 'object') return settings;
+        const normalized = { ...settings };
+        // Map frontend keys to PINGONE_*_* keys
+        if (normalized.environmentId) normalized.PINGONE_ENVIRONMENT_ID = normalized.environmentId;
+        if (normalized.apiClientId) normalized.PINGONE_CLIENT_ID = normalized.apiClientId;
+        if (normalized.apiSecret) normalized.PINGONE_CLIENT_SECRET = normalized.apiSecret;
+        if (normalized.region) normalized.PINGONE_REGION = normalized.region;
+        // Remove old keys
+        delete normalized.environmentId;
+        delete normalized.apiClientId;
+        delete normalized.apiSecret;
+        delete normalized.region;
+        return normalized;
+    }
+
+    /**
+     * Map PINGONE_*_* fields to frontend keys (for legacy compatibility)
+     * @param {Object} settings - Raw settings object
+     * @returns {Object} Mapped settings
+     */
+    static mapPingOnePatternToFrontend(settings) {
+        if (!settings || typeof settings !== 'object') return settings;
+        const mapped = { ...settings };
+        if (mapped.PINGONE_ENVIRONMENT_ID) mapped.environmentId = mapped.PINGONE_ENVIRONMENT_ID;
+        if (mapped.PINGONE_CLIENT_ID) mapped.apiClientId = mapped.PINGONE_CLIENT_ID;
+        if (mapped.PINGONE_CLIENT_SECRET) mapped.apiSecret = mapped.PINGONE_CLIENT_SECRET;
+        if (mapped.PINGONE_REGION) mapped.region = mapped.PINGONE_REGION;
+        return mapped;
+    }
+
+    /**
+     * Load settings from storage and .env/settings.json
      * @returns {Promise<Object>} Loaded settings
      */
     async loadSettings() {
         try {
             const storedData = localStorage.getItem(this.storageKey);
-            if (!storedData) {
-                this.logger.info('No stored settings found, using defaults');
-                return this.settings;
+            let rawSettings = storedData ? JSON.parse(storedData) : {};
+            // Also try to load from window.env or window.settingsJson if present
+            if (window.env) {
+                rawSettings = { ...rawSettings, ...window.env };
             }
-            
-            // Try to parse as JSON first (unencrypted)
-            try {
-                const rawSettings = JSON.parse(storedData);
-                const normalizedSettings = this.normalizeSettingsFields(rawSettings);
-                this.settings = { ...this.getDefaultSettings(), ...normalizedSettings };
-                
-                this.logger.info('Settings loaded successfully (unencrypted)', {
-                    hasEnvironmentId: !!this.settings.environmentId,
-                    hasApiClientId: !!this.settings.apiClientId,
-                    region: this.settings.region
+            if (window.settingsJson) {
+                rawSettings = { ...rawSettings, ...window.settingsJson };
+            }
+            // Normalize to PINGONE_*_* pattern
+            const pingoneSettings = SettingsManager.normalizeToPingOnePattern(rawSettings);
+            // Map to frontend keys for compatibility
+            const mappedSettings = SettingsManager.mapPingOnePatternToFrontend(pingoneSettings);
+            const normalizedSettings = this.normalizeSettingsFields(mappedSettings);
+            this.settings = { ...this.getDefaultSettings(), ...normalizedSettings };
+            this.logger.info('Settings loaded and normalized:', this.settings);
+            // Diagnostics: warn if required fields are missing
+            if (!this.settings.PINGONE_ENVIRONMENT_ID || !this.settings.PINGONE_CLIENT_ID || !this.settings.PINGONE_CLIENT_SECRET) {
+                this.logger.warn('Missing required PingOne settings:', {
+                    PINGONE_ENVIRONMENT_ID: this.settings.PINGONE_ENVIRONMENT_ID,
+                    PINGONE_CLIENT_ID: this.settings.PINGONE_CLIENT_ID,
+                    PINGONE_CLIENT_SECRET: !!this.settings.PINGONE_CLIENT_SECRET,
+                    PINGONE_REGION: this.settings.PINGONE_REGION
                 });
-                
-                return this.settings;
-            } catch (jsonError) {
-                // If JSON parsing fails, try decryption
-                if (!this.encryptionInitialized) {
-                    this.logger.warn('Encryption not initialized and JSON parsing failed, using defaults');
-                    return this.settings;
-                }
-                
-                try {
-                    const decryptedData = await CryptoUtils.decrypt(storedData, this.encryptionKey);
-                    const rawSettings = JSON.parse(decryptedData);
-                    const normalizedSettings = this.normalizeSettingsFields(rawSettings);
-                    
-                    // Merge with defaults to ensure all properties exist
-                    this.settings = { ...this.getDefaultSettings(), ...normalizedSettings };
-                    
-                    this.logger.info('Settings loaded successfully (encrypted)', {
-                        hasEnvironmentId: !!this.settings.environmentId,
-                        hasApiClientId: !!this.settings.apiClientId,
-                        region: this.settings.region
-                    });
-                    
-                    return this.settings;
-                } catch (decryptionError) {
-                    this.logger.error('Failed to decrypt settings', { error: decryptionError.message });
-                    // Return default settings on decryption error
-                    return this.settings;
-                }
             }
-        } catch (error) {
-            this.logger.error('Failed to load settings', { error: error.message });
-            // Return default settings on error
             return this.settings;
+        } catch (error) {
+            this.logger.error('Failed to load settings:', error.message);
+            return this.getDefaultSettings();
         }
     }
     

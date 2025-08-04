@@ -118,7 +118,7 @@ class App {
         // Core components
         this.eventBus = new EventBus();
         this.settingsManager = null;
-        this.uiManager = null;
+        this.uiManager = new UIManager({ logger: this.logger });
         this.tokenManager = null;
         this.fileHandler = null;
         this.versionManager = null;
@@ -199,22 +199,22 @@ class App {
             console.log('🔧 [APP INIT] Logger available:', !!this.logger);
             this.logger.info('Starting application initialization');
             console.log('🔧 [APP INIT] About to initialize core components...');
-            this.updateStartupMessage('Initializing core components...');
+            this.uiManager.updateStartupMessage('Initializing core components...');
             
             await this.initializeCoreComponents();
             await this.initializeSubsystems();
-            this.updateStartupMessage('Loading legacy components...');
+            this.uiManager.updateStartupMessage('Loading legacy components...');
             
             // Initialize legacy components (gradually being replaced)
             await this.initializeLegacyComponents();
-            this.updateStartupMessage('Setting up event listeners...');
+            this.uiManager.updateStartupMessage('Setting up event listeners...');
             
             // Set up event listeners
             this.setupEventListeners();
             
             // Set up modal completion listeners
             this.setupModalCompletionListeners();
-            this.updateStartupMessage('Finalizing user interface...');
+            this.uiManager.updateStartupMessage('Finalizing user interface...');
             
             // Initialize UI
             await this.initializeUI();

@@ -197,17 +197,43 @@ class TokenService {
      * Get the current token status
      */
     getTokenStatus() {
-        const now = Date.now();
-        const expiresIn = Math.max(0, (this.tokenCache.expiresAt - now) / 1000);
-        
-        return {
-            hasToken: !!this.tokenCache.accessToken,
-            isValid: now < this.tokenCache.expiresAt,
-            expiresIn: Math.floor(expiresIn),
-            environmentId: this.tokenCache.environmentId,
-            region: this.tokenCache.region,
-            lastUpdated: this.tokenCache.expiresAt ? new Date(this.tokenCache.expiresAt - (this.tokenCache.expiresIn * 1000)).toISOString() : null
-        };
+        try {
+            const now = Date.now();
+            const expiresAt = this.tokenCache.expiresAt || 0;
+            const expiresIn = Math.max(0, (expiresAt - now) / 1000);
+            
+            // Safe date handling
+            let lastUpdated = null;
+            if (this.tokenCache.lastUpdated) {
+                try {
+                    const date = new Date(this.tokenCache.lastUpdated);
+                    if (!isNaN(date.getTime())) {
+                        lastUpdated = date.toISOString();
+                    }
+                } catch (dateError) {
+                    // Ignore date conversion errors
+                }
+            }
+            
+            return {
+                hasToken: !!this.tokenCache.accessToken,
+                isValid: now < expiresAt,
+                expiresIn: Math.floor(expiresIn),
+                environmentId: this.tokenCache.environmentId || null,
+                region: this.tokenCache.region || null,
+                lastUpdated
+            };
+        } catch (error) {
+            // Return safe defaults if anything goes wrong
+            return {
+                hasToken: false,
+                isValid: false,
+                expiresIn: 0,
+                environmentId: null,
+                region: null,
+                lastUpdated: null
+            };
+        }
     }
 }
 
