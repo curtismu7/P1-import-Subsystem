@@ -987,6 +987,14 @@ const startServer = async () => {
                         const token = await tokenService.getToken();
                         success = true;
                         
+                        // ✅ Mark PingOne as initialized after successful token acquisition
+                        serverState.pingOneInitialized = true;
+                        logger.info('✅ PingOne connection established successfully', {
+                            environmentId: tokenService.tokenCache.environmentId,
+                            region: tokenService.tokenCache.region,
+                            expiresIn: tokenService.getTokenStatus().expiresIn
+                        });
+                        
                         webSocketService.broadcastNotification(
                             'success', 
                             'Successfully acquired PingOne API token',
@@ -1327,10 +1335,18 @@ const startServer = async () => {
                 logger.info('✅ Route health check passed - all critical routes available');
             }
             
-            // 2. 🔔 Memory Monitoring
-            logger.info('📊 Starting memory monitoring...');
+            // 2. 🔔 Memory Monitoring & Optimization
+            logger.info('📊 Starting memory monitoring with optimization...');
+            
+            // Force garbage collection if available
+            if (global.gc) {
+                logger.info('🗑️ Running garbage collection...');
+                global.gc();
+                logger.info('✅ Garbage collection completed');
+            }
+            
             const memoryCleanup = startMemoryMonitoring({
-                checkInterval: 30000,  // Check every 30 seconds
+                checkInterval: 60000,  // Check every 60 seconds (reduced frequency)
                 alertCooldown: 300000  // 5 minutes between alerts
             });
             
