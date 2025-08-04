@@ -54,6 +54,7 @@ import TokenManagerSubsystem from './subsystems/token-manager-subsystem.js';
 import TokenNotificationSubsystem from './subsystems/token-notification-subsystem.js';
 import EnhancedProgressSubsystem from './subsystems/enhanced-progress-subsystem.js';
 import EnhancedTokenStatusSubsystem from './subsystems/enhanced-token-status-subsystem.js';
+import { LoadingSpinner } from './utils/loading-spinner.js';
 
 // Shim for FEATURE_FLAGS
 const FEATURE_FLAGS = {
@@ -79,14 +80,14 @@ class App {
         try {
             this.logger = new Logger({
                 context: 'app',
-                version: '7.0.0.17',
+                version: '7.0.0.18',
                 enableConsole: true,
                 enableStorage: false
             });
             
             // Test the logger
             this.logger.info('Centralized Logger initialized successfully', {
-                version: '7.0.0.17',
+                version: '7.0.0.18',
                 featureFlags: FEATURE_FLAGS,
                 userAgent: navigator.userAgent
             });
@@ -116,7 +117,7 @@ class App {
         
         // Log application start
         this.logger.info('🚀 PingOne Import Tool starting...', {
-            version: '7.0.0.17',
+            version: '7.0.0.18',
             timestamp: new Date().toISOString(),
             userAgent: navigator.userAgent,
             url: window.location.href
@@ -135,6 +136,7 @@ class App {
         
         // UI Components
         this.globalTokenManager = null;
+        this.loadingSpinner = null; // Global loading spinner
         
         // Modern subsystems (replacing legacy managers)
         this.progressSubsystem = null;
@@ -160,7 +162,7 @@ class App {
         this.socket = null;
         
         // Application version
-        this.version = '7.0.0.17';
+        this.version = '7.0.0.18';
         this.buildTimestamp = new Date().toISOString();
         this.environment = 'development';
         this.features = {
@@ -445,6 +447,24 @@ class App {
     async initializeCoreComponents() {
         this.logger.debug('Initializing core components');
         this.uiManager.setupUI();
+
+        // Initialize global loading spinner
+        try {
+            this.loadingSpinner = new LoadingSpinner({
+                logger: this.logger.child({ component: 'loading-spinner' }),
+                minDisplayTime: 300, // Minimum time to show spinner (ms)
+                showDelay: 200,      // Delay before showing spinner (ms)
+                defaultMessage: 'Loading...',
+                containerSelector: 'body'
+            });
+            this.logger.debug('Global loading spinner initialized');
+            
+            // Make the spinner available globally for other components
+            window.app = window.app || {};
+            window.app.loadingSpinner = this.loadingSpinner;
+        } catch (error) {
+            this.logger.error('Failed to initialize loading spinner', { error: error.message });
+        }
 
         this.settingsManager = new SettingsManager(this.logger.child({ component: 'settings-manager' }));
         await this.settingsManager.init();
