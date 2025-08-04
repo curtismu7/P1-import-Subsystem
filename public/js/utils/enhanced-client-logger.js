@@ -1,10 +1,7 @@
 /**
- * @module
- * @description ES Module (converted from CommonJS)
- */
-
-/**
- * @module
- * @description ES Module (converted from CommonJS)
+ * Enhanced Client Logger
+ * 
+ * Provides advanced client-side logging capabilities with formatting,
+ * filtering, and integration with the centralized logging system.
  */
 

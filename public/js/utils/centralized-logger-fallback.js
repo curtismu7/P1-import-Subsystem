@@ -1,6 +1,7 @@
 /**
- * @module
- * @description ES Module (converted from CommonJS)
+ * Centralized Logger Fallback
+ * 
+ * Regular script version - not an ES module
  */
 
 /**

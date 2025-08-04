@@ -4,7 +4,5 @@
   "pingone_client_secret": "***REMOVED-PINGONE-API-SECRET***",
   "pingone_population_id": "",
   "pingone_region": "NorthAmerica",
-  "rateLimit": 100,
-  "region": "NA",
-  "apiSecret": "enc:OXAzaExJdFdGenc1QnhLakgzLn5USUdWUFB+dWo0b3M2Zlk5MzE3MGRNdlhhZG4xR0VzV1RQMmxIU1RBb2V2cQ=="
+  "rateLimit": 100
 }
