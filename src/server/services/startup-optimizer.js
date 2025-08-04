@@ -317,20 +317,50 @@ class StartupOptimizer {
             const data = await fs.readFile(settingsPath, 'utf8');
             const settings = JSON.parse(data);
             
-            // Validate required settings
-            if (!settings.environmentId || !settings.apiClientId || !settings.apiSecret) {
-                this.logger.warn('⚠️ Incomplete settings - missing required PingOne credentials');
+            // Validate required settings - support both legacy and standardized keys
+            const environmentId = settings.pingone_environment_id || settings.environmentId;
+            const clientId = settings.pingone_client_id || settings.apiClientId;
+            const clientSecret = settings.pingone_client_secret || settings.apiSecret;
+            const region = settings.pingone_region || settings.region || 'NorthAmerica';
+            
+            if (!environmentId || !clientId || !clientSecret) {
+                this.logger.warn('⚠️ Incomplete settings - missing required PingOne credentials', {
+                    hasEnvironmentId: !!environmentId,
+                    hasClientId: !!clientId,
+                    hasClientSecret: !!clientSecret,
+                    standardizedKeys: {
+                        pingone_environment_id: !!settings.pingone_environment_id,
+                        pingone_client_id: !!settings.pingone_client_id,
+                        pingone_client_secret: !!settings.pingone_client_secret
+                    },
+                    legacyKeys: {
+                        environmentId: !!settings.environmentId,
+                        apiClientId: !!settings.apiClientId,
+                        apiSecret: !!settings.apiSecret
+                    }
+                });
                 return null;
             }
             
-            this.logger.info('📋 Settings loaded successfully', {
-                hasEnvironmentId: !!settings.environmentId,
-                hasClientId: !!settings.apiClientId,
-                hasSecret: !!settings.apiSecret,
-                region: settings.region || 'NA'
+            // Return normalized settings object
+            const normalizedSettings = {
+                environmentId,
+                apiClientId: clientId,
+                apiSecret: clientSecret,
+                region,
+                // Keep original settings for backward compatibility
+                ...settings
+            };
+            
+            this.logger.info('📋 Settings loaded and normalized successfully', {
+                hasEnvironmentId: !!normalizedSettings.environmentId,
+                hasClientId: !!normalizedSettings.apiClientId,
+                hasSecret: !!normalizedSettings.apiSecret,
+                region: normalizedSettings.region,
+                usingStandardizedKeys: !!(settings.pingone_environment_id && settings.pingone_client_id && settings.pingone_client_secret)
             });
             
-            return settings;
+            return normalizedSettings;
             
         } catch (error) {
             this.logger.warn('⚠️ Could not load settings file', { error: error.message });
