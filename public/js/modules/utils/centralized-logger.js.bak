@@ -1,8 +1,3 @@
-/**
- * @module
- * @description ES Module (converted from CommonJS)
- */
-
 class CentralizedLogger {
     constructor(componentName) {
         this.componentName = componentName || 'general';
@@ -49,5 +44,5 @@ class CentralizedLogger {
 
 // Export for use in other modules if using a module system.
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-    export default CentralizedLogger;;
+    module.exports = CentralizedLogger;
 }

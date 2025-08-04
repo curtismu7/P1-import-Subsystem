@@ -1,9 +1,4 @@
-/**
- * @module
- * @description ES Module (converted from CommonJS)
- */
-
-import { CryptoUtils } from './crypto-utils';;
+const { CryptoUtils } = require('./crypto-utils');
 
 class SettingsManager {
     constructor(logger) {
@@ -375,5 +370,7 @@ class SettingsManager {
 // Export a singleton instance
 const settingsManager = new SettingsManager();
 
-export { SettingsManager };
-export { settingsManager };;
+module.exports = {
+    SettingsManager,
+    settingsManager
+};

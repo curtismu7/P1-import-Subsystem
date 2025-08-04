@@ -1,9 +1,4 @@
 /**
- * @module
- * @description ES Module (converted from CommonJS)
- */
-
-/**
  * Global Status Manager
  * Manages the global status bar at the top of the screen
  */

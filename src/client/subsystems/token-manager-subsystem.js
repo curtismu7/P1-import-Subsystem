@@ -1,4 +1,9 @@
 /**
+ * @module
+ * @description ES Module (converted from CommonJS)
+ */
+
+/**
  * Token Manager Subsystem - Enhanced and Hardened Version
  * Manages PingOne access tokens with comprehensive error handling,
  * retry mechanisms, auto-refresh, and robust status updates
@@ -1166,8 +1171,9 @@ class TokenManagerSubsystem {
 }
 
 // Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = TokenManagerSubsystem;
-} else if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined') {
     window.TokenManagerSubsystem = TokenManagerSubsystem;
 }
+
+// ES Module export
+export default TokenManagerSubsystem;

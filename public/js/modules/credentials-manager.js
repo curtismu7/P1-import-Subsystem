@@ -1,4 +1,9 @@
 /**
+ * @module
+ * @description ES Module (converted from CommonJS)
+ */
+
+/**
  * Credentials Manager
  * Manages API credentials with localStorage persistence and .env fallback
  */

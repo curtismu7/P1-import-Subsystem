@@ -1,9 +1,4 @@
 /**
- * @module
- * @description ES Module (converted from CommonJS)
- */
-
-/**
  * Version Display Component
  * 
  * Displays the application version in the UI footer with additional

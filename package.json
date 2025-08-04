@@ -1,6 +1,6 @@
 {
   "name": "pingone-import-cursor",
-  "version": "7.0.0.11",
+  "version": "7.0.0.13",
   "description": "A modern web application for importing users into PingOne using the PingOne Admin API.",
   "main": "server.js",
   "type": "module",
@@ -50,6 +50,7 @@
     "build:prod": "node --experimental-modules --experimental-json-modules scripts/unified-build.js --production",
     "build:optimized": "npm run build:bundle && npm run minify:bundle",
     "build:bundle": "TIMESTAMP=$(date +%s) && npx browserify src/client/app.js -t [ babelify --configFile ./babel.config.mjs ] -o public/js/bundle-${TIMESTAMP}.js && echo '{\"bundleFile\": \"bundle-'${TIMESTAMP}'.js\"}' > public/js/bundle-manifest.json && node scripts/update-bundle-reference.js",
+    "build:bundle:import-maps": "node scripts/hybrid-bundle-manager.js bundle && node scripts/update-bundle-reference.js",
     "minify:bundle": "node --experimental-modules --experimental-json-modules scripts/minify-bundle.js",
     "analyze:bundle": "node --experimental-modules --experimental-json-modules scripts/analyze-bundle.js",
     "verify:build": "node --experimental-modules --experimental-json-modules scripts/verify-build.js",
@@ -76,6 +77,7 @@
     "import-maps:convert": "node scripts/hybrid-bundle-manager.js convert",
     "import-maps:update": "node scripts/hybrid-bundle-manager.js update-maps",
     "import-maps:summary": "node scripts/hybrid-bundle-manager.js summary",
+    "import-maps:status": "node scripts/hybrid-bundle-manager.js status",
     "module:convert": "node scripts/module-converter.js"
   },
   "keywords": [
