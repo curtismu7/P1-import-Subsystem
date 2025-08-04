@@ -940,6 +940,33 @@ const startServer = async () => {
                     }
                 }
                 
+                // 🚀 INITIALIZE STARTUP OPTIMIZER
+                try {
+                    logger.info('🚀 Initializing startup optimizer...');
+                    const optimizerResult = await startupOptimizer.initialize();
+                    
+                    if (optimizerResult.success) {
+                        logger.info('✅ Startup optimizer initialized successfully', {
+                            duration: optimizerResult.duration,
+                            tokenCached: optimizerResult.tokenCached,
+                            populationsCached: optimizerResult.populationsCached
+                        });
+                        console.log('✅ Startup optimization: COMPLETE');
+                    } else {
+                        logger.warn('⚠️ Startup optimizer initialization had issues', {
+                            reason: optimizerResult.reason,
+                            duration: optimizerResult.duration
+                        });
+                        console.log('⚠️ Startup optimization: PARTIAL');
+                    }
+                } catch (optimizerError) {
+                    logger.error('❌ Startup optimizer initialization failed', {
+                        error: optimizerError.message,
+                        stack: optimizerError.stack
+                    });
+                    console.log('❌ Startup optimization: FAILED');
+                }
+                
                 // Test token acquisition on startup with retry logic for WebSocket notifications
                 const maxRetries = 3;
                 let attempt = 0;
