@@ -4,7 +4,7 @@
  * This script ensures all API calls use standardized region codes (NA, EU, CA, AP)
  * instead of legacy region names (NorthAmerica, Europe, etc.)
  * 
- * Version: 7.0.0.12
+ * Version: 7.0.0.13
  */
 (function() {
   console.log('🔧 Region Code Fix: Initializing...');
@@ -12,24 +12,47 @@
   // Store the original fetch function
   const originalFetch = window.fetch;
   
+  // Function to standardize region code in a URL string
+  function standardizeRegionInUrl(urlString) {
+    if (urlString.includes('/api/pingone/') && urlString.includes('region=')) {
+      // Replace legacy region names with standardized codes
+      const standardized = urlString.replace('region=NorthAmerica', 'region=NA')
+               .replace('region=Europe', 'region=EU')
+               .replace('region=Canada', 'region=CA')
+               .replace('region=AsiaPacific', 'region=AP');
+               
+      if (standardized !== urlString) {
+        console.log('🔧 Region Code Fix: Standardized region code in URL:', standardized);
+      }
+      return standardized;
+    }
+    return urlString;
+  }
+  
   // Override the fetch function to intercept API calls
-  window.fetch = function(url, options) {
-    // Only process string URLs
-    if (typeof url === 'string') {
-      // Check if this is a call to an API endpoint with a region parameter
-      if (url.includes('/api/pingone/') && url.includes('region=')) {
-        // Replace legacy region names with standardized codes
-        url = url.replace('region=NorthAmerica', 'region=NA')
-                 .replace('region=Europe', 'region=EU')
-                 .replace('region=Canada', 'region=CA')
-                 .replace('region=AsiaPacific', 'region=AP');
-                 
-        console.log('🔧 Region Code Fix: Standardized region code in URL:', url);
+  window.fetch = function(resource, options) {
+    // Handle string URLs
+    if (typeof resource === 'string') {
+      resource = standardizeRegionInUrl(resource);
+    }
+    // Handle Request objects
+    else if (resource instanceof Request) {
+      const url = new URL(resource.url);
+      if (url.searchParams.has('region')) {
+        const region = url.searchParams.get('region');
+        if (region === 'NorthAmerica') url.searchParams.set('region', 'NA');
+        if (region === 'Europe') url.searchParams.set('region', 'EU');
+        if (region === 'Canada') url.searchParams.set('region', 'CA');
+        if (region === 'AsiaPacific') url.searchParams.set('region', 'AP');
+        
+        // Create a new request with the modified URL
+        resource = new Request(url.toString(), resource);
+        console.log('🔧 Region Code Fix: Standardized region code in Request object:', url.toString());
       }
     }
     
-    // Call the original fetch with possibly modified URL
-    return originalFetch.apply(this, arguments);
+    // Call the original fetch with possibly modified resource
+    return originalFetch.call(this, resource, options);
   };
   
   // Also fix any global region variables
