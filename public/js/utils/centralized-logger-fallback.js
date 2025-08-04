@@ -121,8 +121,8 @@ window.logger = createSafeGlobalLogger();
 
 // Export for ES modules (only if in module context)
 if (typeof module !== 'undefined' && module.exports) {
-    export const logger = window.logger;
-export { FallbackLogger };;
+    module.exports.logger = window.logger;
+    module.exports.FallbackLogger = FallbackLogger;
 } else if (typeof window !== 'undefined') {
     // Already set window.logger above
 }
