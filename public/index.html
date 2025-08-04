@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PingOne User Import v7.0.0.2</title>
+    <title>PingOne User Import v7.0.0.6</title>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
@@ -45,6 +45,8 @@
     <!-- Status Bar Fix CSS -->
     <link rel="stylesheet" href="/css/status-bar-fix.css">
     <link rel="stylesheet" href="/css/version-widget.css">
+    <!-- Token Manager CSS -->
+    <link rel="stylesheet" href="/css/token-manager.css">
     <!-- Note: Individual ES module scripts removed - all functionality now bundled in bundle.js -->
     <!-- ES modules are properly bundled and transpiled via Browserify + Babel -->
     <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
@@ -97,6 +99,10 @@
                     <li class="nav-item" data-view="settings">
                         <i class="fas fa-cog"></i>
                         <span>Settings</span>
+                    </li>
+                    <li class="nav-item" data-view="token-manager">
+                        <i class="fas fa-key"></i>
+                        <span>Token Manager</span>
                     </li>
                     <li class="nav-item" data-view="import">
                         <i class="fas fa-upload"></i>
@@ -976,6 +982,154 @@
                 </div>
             </div>
 
+            <!-- Token Manager View -->
+            <div id="token-manager-view" class="view">
+                <div class="token-manager-header">
+                    <h1><i class="fas fa-key"></i> Token Manager</h1>
+                    <p class="token-manager-description">View, decode, refresh, and manage your PingOne access tokens</p>
+                </div>
+                
+                <div class="token-manager-content">
+                    <!-- Current Token Status -->
+                    <div class="token-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-info-circle"></i> Current Token Status</h2>
+                            <button id="refresh-token-status" class="btn btn-secondary btn-sm">
+                                <i class="fas fa-sync-alt"></i> Refresh Status
+                            </button>
+                        </div>
+                        <div id="current-token-info" class="token-info-card">
+                            <div class="token-status-grid">
+                                <div class="status-item">
+                                    <label>Status:</label>
+                                    <span id="token-status-indicator" class="status-badge">Loading...</span>
+                                </div>
+                                <div class="status-item">
+                                    <label>Expires In:</label>
+                                    <span id="token-expires-in">Loading...</span>
+                                </div>
+                                <div class="status-item">
+                                    <label>Environment ID:</label>
+                                    <span id="token-environment-id">Loading...</span>
+                                </div>
+                                <div class="status-item">
+                                    <label>Region:</label>
+                                    <span id="token-region">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Token Display & Decode -->
+                    <div class="token-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-eye"></i> Token Display & Decode</h2>
+                            <div class="section-actions">
+                                <button id="get-current-token" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-download"></i> Get Current Token
+                                </button>
+                                <button id="decode-token" class="btn btn-info btn-sm">
+                                    <i class="fas fa-code"></i> Decode JWT
+                                </button>
+                                <button id="copy-token" class="btn btn-secondary btn-sm" style="display: none;">
+                                    <i class="fas fa-copy"></i> Copy Token
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="token-display-container">
+                            <div class="form-group">
+                                <label for="raw-token-display">Raw Access Token:</label>
+                                <textarea id="raw-token-display" class="form-control token-textarea" rows="4" readonly placeholder="Click 'Get Current Token' to display the raw JWT token here..."></textarea>
+                            </div>
+                            
+                            <div id="decoded-token-container" class="decoded-token-container" style="display: none;">
+                                <h4><i class="fas fa-unlock"></i> Decoded JWT Token</h4>
+                                <div class="jwt-sections">
+                                    <div class="jwt-section">
+                                        <h5>Header</h5>
+                                        <pre id="jwt-header" class="jwt-content"></pre>
+                                    </div>
+                                    <div class="jwt-section">
+                                        <h5>Payload</h5>
+                                        <pre id="jwt-payload" class="jwt-content"></pre>
+                                    </div>
+                                    <div class="jwt-section">
+                                        <h5>Signature</h5>
+                                        <pre id="jwt-signature" class="jwt-content"></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Token Management Actions -->
+                    <div class="token-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-cogs"></i> Token Management</h2>
+                        </div>
+                        
+                        <div class="token-actions-grid">
+                            <div class="action-card">
+                                <div class="action-icon">
+                                    <i class="fas fa-sync-alt"></i>
+                                </div>
+                                <div class="action-content">
+                                    <h4>Refresh Token</h4>
+                                    <p>Get a new access token using stored credentials</p>
+                                    <button id="refresh-access-token" class="btn btn-success">
+                                        <i class="fas fa-sync-alt"></i> Refresh Token
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="action-card">
+                                <div class="action-icon">
+                                    <i class="fas fa-trash"></i>
+                                </div>
+                                <div class="action-content">
+                                    <h4>Clear Token</h4>
+                                    <p>Remove the current token from memory</p>
+                                    <button id="clear-token" class="btn btn-warning">
+                                        <i class="fas fa-trash"></i> Clear Token
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="action-card">
+                                <div class="action-icon">
+                                    <i class="fas fa-vial"></i>
+                                </div>
+                                <div class="action-content">
+                                    <h4>Test Token</h4>
+                                    <p>Validate token by making a test API call</p>
+                                    <button id="test-token" class="btn btn-info">
+                                        <i class="fas fa-vial"></i> Test Token
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Token History -->
+                    <div class="token-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-history"></i> Token History</h2>
+                            <button id="clear-token-history" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-trash"></i> Clear History
+                            </button>
+                        </div>
+                        
+                        <div id="token-history-container" class="token-history-container">
+                            <div class="no-history-message">
+                                <i class="fas fa-info-circle"></i>
+                                <p>No token history available. Token operations will appear here.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Logs View -->
             <div id="logs-view" class="view">
                 <div class="logs-header">
@@ -1170,7 +1324,7 @@
                         <span class="ping-trademark">PingIdentity<span class="trademark-symbol">™</span></span>
                     </div>
                     <span class="footer-copyright">
-                        &copy; 2025 PingOne Import Tool <span class="version-display" style="display: inline-block; font-size: 0.9em; margin-left: 10px; vertical-align: middle;">v7.0.0.2</span>
+                        &copy; 2025 PingOne Import Tool <span class="version-display" style="display: inline-block; font-size: 0.9em; margin-left: 10px; vertical-align: middle;">v7.0.0.6</span>
                     </span>
                 </div>
                 <div class="footer-right">
@@ -1198,7 +1352,7 @@
     <!-- This loads the latest bundle directly without complex API calls -->
     <!-- Last fixed: 2025-07-22 - Replaced broken dynamic loading system -->
         <script src="/js/bug-fix-loader.js"></script>
-    <script src="/js/bundle-1754303952.js"></script>
+    <script src="/js/bundle-1754317479.js"></script>
     
     <!-- Fallback error handling for bundle loading -->
     <script>
@@ -1231,6 +1385,6 @@
 
     
     <!-- Version Display Component -->
-    <div id="version-display" class="version-widget">v7.0.0.2</div>
+    <div id="version-display" class="version-widget">v7.0.0.6</div>
 </body>
 </html>
