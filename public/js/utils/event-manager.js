@@ -262,8 +262,8 @@ if (typeof window !== 'undefined') {
 
 // Export for modules
 if (typeof module !== 'undefined' && module.exports) {
-    export { EventManager };
-export { eventManager };;
+    module.exports.EventManager = EventManager;
+    module.exports.eventManager = eventManager;
 }
 
 // Make available globally

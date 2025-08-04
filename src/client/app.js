@@ -76,14 +76,14 @@ class App {
         try {
             this.logger = new Logger({
                 context: 'app',
-                version: '7.0.0.14',
+                version: '7.0.0.15',
                 enableConsole: true,
                 enableStorage: false
             });
             
             // Test the logger
             this.logger.info('Centralized Logger initialized successfully', {
-                version: '7.0.0.14',
+                version: '7.0.0.15',
                 featureFlags: FEATURE_FLAGS,
                 userAgent: navigator.userAgent
             });
@@ -113,7 +113,7 @@ class App {
         
         // Log application start
         this.logger.info('🚀 PingOne Import Tool starting...', {
-            version: '7.0.0.14',
+            version: '7.0.0.15',
             timestamp: new Date().toISOString(),
             userAgent: navigator.userAgent,
             url: window.location.href
@@ -157,7 +157,7 @@ class App {
         this.socket = null;
         
         // Application version
-        this.version = '7.0.0.14';
+        this.version = '7.0.0.15';
         this.buildTimestamp = new Date().toISOString();
         this.environment = 'development';
         this.features = {

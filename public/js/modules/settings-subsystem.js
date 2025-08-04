@@ -165,12 +165,19 @@ export class SettingsSubsystem {
             // Save to credentials manager if available
             if (this.credentialsManager) {
                 const credentials = {
-                    environmentId: settings.environmentId || '',
-                    apiClientId: settings.apiClientId || '',
-                    apiSecret: settings.apiSecret || '',
-                    populationId: settings.populationId || '',
-                    region: settings.region || 'NorthAmerica'
+                    environmentId: settings.pingone_environment_id || '',
+                    apiClientId: settings.pingone_client_id || '',
+                    apiSecret: settings.pingone_client_secret || '',
+                    populationId: settings.pingone_population_id || '',
+                    region: settings.pingone_region || settings.region || 'NorthAmerica'
                 };
+                
+                // Also include the PingOne-prefixed keys for consistency
+                credentials.pingone_environment_id = credentials.environmentId;
+                credentials.pingone_client_id = credentials.apiClientId;
+                credentials.pingone_client_secret = credentials.apiSecret;
+                credentials.pingone_population_id = credentials.populationId;
+                credentials.pingone_region = credentials.region;
                 
                 const validation = this.credentialsManager.validateCredentials(credentials);
                 if (!validation.isValid) {
@@ -178,7 +185,10 @@ export class SettingsSubsystem {
                 }
                 
                 this.credentialsManager.saveCredentials(credentials);
-                this.logger.info('Credentials saved to localStorage');
+                this.logger.info('Credentials saved to localStorage using PingOne-prefixed keys', {
+                    timestamp: new Date().toISOString(),
+                    keysUsed: 'pingone_prefixed'
+                });
             }
             
             // Save to server
@@ -232,13 +242,26 @@ export class SettingsSubsystem {
         
         const formData = new FormData(form);
         const settings = {
-            environmentId: document.getElementById('environment-id')?.value || '',
-            apiClientId: document.getElementById('api-client-id')?.value || '',
-            apiSecret: document.getElementById('api-secret')?.value || '',
-            region: document.getElementById('region')?.value || 'NorthAmerica',
+            pingone_environment_id: document.getElementById('pingone_environment_id_settings')?.value || '',
+            pingone_client_id: document.getElementById('pingone_client_id_settings')?.value || '',
+            pingone_client_secret: document.getElementById('pingone_client_secret_settings')?.value || '',
+            pingone_region: document.getElementById('pingone_region_settings')?.value || 'NorthAmerica',
             rateLimit: parseInt(document.getElementById('rate-limit')?.value) || 50,
-            populationId: document.getElementById('population-id')?.value || ''
+            pingone_population_id: document.getElementById('population-id')?.value || ''
         };
+        
+        // For backwards compatibility, also set the legacy keys
+        settings.environmentId = settings.pingone_environment_id;
+        settings.apiClientId = settings.pingone_client_id;
+        settings.apiSecret = settings.pingone_client_secret;
+        settings.region = settings.pingone_region;
+        settings.populationId = settings.pingone_population_id;
+        
+        // Log migration of keys
+        this.logger.info('Settings keys migrated to PingOne-prefixed format', {
+            timestamp: new Date().toISOString(),
+            migrationResult: 'success'
+        });
         
         return settings;
     }
@@ -249,20 +272,20 @@ export class SettingsSubsystem {
     validateSettings(settings) {
         const errors = [];
         
-        if (!settings.environmentId?.trim()) {
-            errors.push('Environment ID is required');
+        if (!settings.pingone_environment_id?.trim()) {
+            errors.push('PingOne Environment ID is required');
         }
         
-        if (!settings.apiClientId?.trim()) {
-            errors.push('API Client ID is required');
+        if (!settings.pingone_client_id?.trim()) {
+            errors.push('PingOne Client ID is required');
         }
         
-        if (!settings.apiSecret?.trim()) {
-            errors.push('API Secret is required');
+        if (!settings.pingone_client_secret?.trim()) {
+            errors.push('PingOne Client Secret is required');
         }
         
-        if (!settings.region?.trim()) {
-            errors.push('Region is required');
+        if (!settings.pingone_region?.trim()) {
+            errors.push('PingOne Region is required');
         }
         
         if (settings.rateLimit && (settings.rateLimit < 1 || settings.rateLimit > 1000)) {
@@ -285,13 +308,16 @@ export class SettingsSubsystem {
     populateSettingsForm(settings) {
         if (!settings) return;
         
+        // First, migrate any legacy keys to PingOne-prefixed keys if needed
+        this.migrateSettingsKeys(settings);
+        
         const fields = {
-            'environment-id': settings.environmentId,
-            'api-client-id': settings.apiClientId,
-            'api-secret': settings.apiSecret,
-            'region': settings.region,
+            'pingone_environment_id_settings': settings.pingone_environment_id || settings.environmentId,
+            'pingone_client_id_settings': settings.pingone_client_id || settings.apiClientId,
+            'pingone_client_secret_settings': settings.pingone_client_secret || settings.apiSecret,
+            'pingone_region_settings': settings.pingone_region || settings.region,
             'rate-limit': settings.rateLimit,
-            'population-id': settings.populationId
+            'population-id': settings.pingone_population_id || settings.populationId
         };
         
         Object.entries(fields).forEach(([fieldId, value]) => {
@@ -302,6 +328,47 @@ export class SettingsSubsystem {
         });
         
         this.logger.info('Settings form populated with current values');
+    }
+    
+    /**
+     * Migrate legacy settings keys to PingOne-prefixed keys
+     * @param {Object} settings - Settings object to migrate
+     * @returns {Object} - Migrated settings object
+     */
+    migrateSettingsKeys(settings) {
+        if (!settings) return settings;
+        
+        const migrations = [
+            { from: 'environmentId', to: 'pingone_environment_id' },
+            { from: 'apiClientId', to: 'pingone_client_id' },
+            { from: 'apiSecret', to: 'pingone_client_secret' },
+            { from: 'region', to: 'pingone_region' },
+            { from: 'populationId', to: 'pingone_population_id' }
+        ];
+        
+        let migrationsPerformed = false;
+        
+        migrations.forEach(({ from, to }) => {
+            // Only migrate if source exists and destination doesn't
+            if (settings[from] !== undefined && settings[from] !== null && 
+                (settings[to] === undefined || settings[to] === null || settings[to] === '')) {
+                settings[to] = settings[from];
+                migrationsPerformed = true;
+                
+                this.logger.info(`Migrated setting from ${from} to ${to}`, {
+                    timestamp: new Date().toISOString(),
+                    field: from,
+                    migrationResult: 'success'
+                });
+            }
+        });
+        
+        if (migrationsPerformed) {
+            // Update settings in the settings manager if migrations were performed
+            this.settingsManager.updateSettings(settings);
+        }
+        
+        return settings;
     }
     
     /**

@@ -286,4 +286,4 @@ if (typeof module !== 'undefined' && module.exports) {
     window.ErrorHandler = ErrorHandler;
 }
 
-export default ErrorHandler;
+// ES module export removed to prevent syntax errors when loaded as a regular script

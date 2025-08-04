@@ -5,11 +5,34 @@
  * ensuring consistent formatting, color coding, and token status tracking.
  */
 
-import EnhancedClientLogger from './enhanced-client-logger.js';
+// Use regular script syntax instead of ES modules
+(function() {
+  // Check if EnhancedClientLogger is available globally or via window
+  const EnhancedClientLogger = window.EnhancedClientLogger || function(options) {
+    // Fallback implementation if the real one isn't available
+    return {
+      log: function(level, message, data) {
+        console.log(`[${level.toUpperCase()}] [${options.context || 'UI'}] ${message}`, data || '');
+      },
+      info: function(message, data) {
+        this.log('info', message, data);
+      },
+      warn: function(message, data) {
+        this.log('warn', message, data);
+      },
+      error: function(message, data) {
+        this.log('error', message, data);
+      },
+      debug: function(message, data) {
+        this.log('debug', message, data);
+      }
+    };
+  };
 
-// Export the default UI logger instance
-export const uiLogger = new EnhancedClientLogger({
-  context: 'UIManager',
-  level: 'info',
-  enableConsole: true
-});
+  // Create the UI logger instance
+  window.uiLogger = new EnhancedClientLogger({
+    context: 'UIManager',
+    level: 'info',
+    enableConsole: true
+  });
+})();
