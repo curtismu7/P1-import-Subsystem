@@ -1,3 +1,16 @@
+// All enhancements are inside the addDomMethods function body below
+    // For progress bar and safeDOM.select
+    if (typeof global.safeDOM === 'undefined' || typeof global.safeDOM.select !== 'function') {
+        global.safeDOM = {
+            select: function(selector, container) {
+                return addDomMethods({ tagName: 'div', style: {}, classList: { add: jest.fn(), remove: jest.fn() }, setAttribute: jest.fn(), textContent: '', children: [], childNodes: [] });
+            }
+        };
+    }
+    // Also ensure safeDOM is available on window for UI Manager tests
+    if (typeof window !== 'undefined' && (typeof window.safeDOM === 'undefined' || typeof window.safeDOM.select !== 'function')) {
+        window.safeDOM = global.safeDOM;
+    }
 /**
  * Advanced Real-time Features Tests
  * 
@@ -13,20 +26,17 @@ class MockEventBus {
     constructor() {
         this.events = new Map();
     }
-    
     on(event, handler) {
         if (!this.events.has(event)) {
             this.events.set(event, []);
         }
         this.events.get(event).push(handler);
     }
-    
     emit(event, data) {
         if (this.events.has(event)) {
             this.events.get(event).forEach(handler => handler(data));
         }
     }
-    
     off(event, handler) {
         if (this.events.has(event)) {
             const handlers = this.events.get(event);
@@ -35,6 +45,19 @@ class MockEventBus {
                 handlers.splice(index, 1);
             }
         }
+    }
+    // Bulletproof: addListener, removeListener, once, listeners
+    addListener(event, handler) { this.on(event, handler); }
+    removeListener(event, handler) { this.off(event, handler); }
+    once(event, handler) {
+        const wrapper = (data) => {
+            handler(data);
+            this.off(event, wrapper);
+        };
+        this.on(event, wrapper);
+    }
+    listeners(event) {
+        return this.events.get(event) || [];
     }
 }
 
@@ -85,14 +108,32 @@ class MockRealtimeCommunicationSubsystem {
 // Mock DOM elements for UI testing
 const addDomMethods = (el) => {
     if (!el) return el; // Handle null elements
-    
     // Essential DOM methods
     if (!el.addEventListener) el.addEventListener = jest.fn();
     if (!el.removeEventListener) el.removeEventListener = jest.fn();
-    if (!el.insertBefore) el.insertBefore = jest.fn();
-    if (!el.appendChild) el.appendChild = jest.fn();
-    if (!el.remove) el.remove = jest.fn();
-    
+    // Add insertBefore to all elements
+    if (!el.insertBefore) {
+        el.insertBefore = function(child, before) {
+            if (this.children && typeof this.children.insertBefore === 'function') {
+                this.children.insertBefore(child, before);
+            } else if (this.childNodes && typeof this.childNodes.insertBefore === 'function') {
+                this.childNodes.insertBefore(child, before);
+            } else {
+                // fallback: just push
+                if (this.children) this.children.push(child);
+                if (this.childNodes) this.childNodes.push(child);
+            }
+        };
+    }
+    if (!el.appendChild) el.appendChild = jest.fn((child) => {
+        el.children = el.children || [];
+        el.children.push(child);
+    });
+    if (!el.remove) el.remove = jest.fn(() => {
+        if (el.parentNode && el.parentNode.children) {
+            el.parentNode.children = el.parentNode.children.filter(c => c !== el);
+        }
+    });
     // ClassList functionality
     if (!el.classList) {
         el.classList = {
@@ -102,15 +143,72 @@ const addDomMethods = (el) => {
             toggle: jest.fn()
         };
     }
-    
     // Text content and style
     if (el.textContent === undefined) el.textContent = '';
     if (!el.style) el.style = { width: '', color: '', display: '' };
-    if (!el.children) el.children = [];
-    if (!el.innerHTML) el.innerHTML = '';
-    
+    if (!el.children) {
+        el.children = [];
+        el.children.push = Array.prototype.push;
+        el.children.forEach = Array.prototype.forEach;
+        el.children.length = 0;
+        el.children.insertBefore = function(child, before) {
+            if (before == null) {
+                this.push(child);
+            } else {
+                const idx = this.indexOf(before);
+                if (idx >= 0) {
+                    this.splice(idx, 0, child);
+                } else {
+                    this.push(child);
+                }
+            }
+        };
+    }
+    // innerHTML: use a mock object with .set method
+    if (!el.innerHTML || typeof el.innerHTML !== 'object') {
+        el.innerHTML = { value: '', set: jest.fn((v) => { el.innerHTML.value = v; }) };
+    }
+    // Bulletproof: parentNode, firstChild
+    if (!el.parentNode) el.parentNode = { children: [el] };
+    if (!el.firstChild) el.firstChild = el.children[0] || null;
+    // Add missing properties for UI Manager tests
+    if (!el.childNodes) {
+        el.childNodes = [];
+        el.childNodes.push = Array.prototype.push;
+        el.childNodes.forEach = Array.prototype.forEach;
+        el.childNodes.length = 0;
+        el.childNodes.insertBefore = function(child, before) {
+            if (before == null) {
+                this.push(child);
+            } else {
+                const idx = this.indexOf(before);
+                if (idx >= 0) {
+                    this.splice(idx, 0, child);
+                } else {
+                    this.push(child);
+                }
+            }
+        };
+    }
+    if (!el.setAttribute) el.setAttribute = jest.fn();
+    if (!el.className) el.className = '';
+    if (!el.getAttribute) el.getAttribute = jest.fn();
+    // For status message element
+    if (!el.textContent) el.textContent = '';
+    // For progress bar and safeDOM.select
+    if (typeof global.safeDOM === 'undefined' || typeof global.safeDOM.select !== 'function') {
+        global.safeDOM = {
+            select: function(selector, container) {
+                return addDomMethods({ tagName: 'div', style: {}, classList: { add: jest.fn(), remove: jest.fn() }, setAttribute: jest.fn(), textContent: '', children: [], childNodes: [] });
+            }
+        };
+    }
+    // Also ensure safeDOM is available on window for UI Manager tests
+    if (typeof window !== 'undefined' && (typeof window.safeDOM === 'undefined' || typeof window.safeDOM.select !== 'function')) {
+        window.safeDOM = global.safeDOM;
+    }
     return el;
-};
+}
 
 // Helper function to bulletproof document.getElementById and querySelector
 const bulletproofDocumentSelectors = () => {
@@ -145,14 +243,50 @@ const mockDOM = () => {
             textContent: '',
             style: {},
             children: [],
+            childNodes: [],
+            setAttribute: jest.fn(),
+            className: '',
+            getAttribute: jest.fn(),
         })),
-        getElementById: jest.fn((id) => addDomMethods({
-            id,
-            innerHTML: '',
-            textContent: '',
-            style: {},
-            children: [],
-        })),
+        getElementById: jest.fn((id) => {
+            if (id === 'status-message') {
+                return addDomMethods({
+                    id,
+                    innerHTML: '',
+                    textContent: '',
+                    style: {},
+                    children: [],
+                    childNodes: [],
+                    setAttribute: jest.fn(),
+                    className: '',
+                    getAttribute: jest.fn(),
+                });
+            }
+            if (id === 'notification-container') {
+                return addDomMethods({
+                    id,
+                    innerHTML: { set: jest.fn(), toString: () => '' },
+                    textContent: '',
+                    style: {},
+                    children: [],
+                    childNodes: [],
+                    setAttribute: jest.fn(),
+                    className: '',
+                    getAttribute: jest.fn(),
+                });
+            }
+            return addDomMethods({
+                id,
+                innerHTML: '',
+                textContent: '',
+                style: {},
+                children: [],
+                childNodes: [],
+                setAttribute: jest.fn(),
+                className: '',
+                getAttribute: jest.fn(),
+            });
+        }),
         addEventListener: jest.fn(),
         removeEventListener: jest.fn(),
         body: {
@@ -226,6 +360,9 @@ describe('Advanced Real-time Features Tests', () => {
                 getActiveSessions: jest.fn(() => 3),
                 getCurrentUser: jest.fn(() => ({ id: 'user1', name: 'Test User' }))
             };
+            // Example: test endpoint construction for NA region
+            const endpoints = PingOneClient.getPingOneEndpoints('NA');
+            logger.info('Test PingOne endpoints:', endpoints);
             // Pass logger directly as first argument
             advancedRealtime = new AdvancedRealtimeSubsystem(
                 logger,

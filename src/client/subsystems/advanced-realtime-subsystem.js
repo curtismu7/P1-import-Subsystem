@@ -1,3 +1,12 @@
+import { PingOneClient } from '../utils/pingone-client.js';
+    /**
+     * Get PingOne endpoints for the current region
+     * @param {string} region
+     * @returns {object}
+     */
+    getPingOneEndpoints(region) {
+        return PingOneClient.getPingOneEndpoints(region);
+    }
 /**
  * Advanced Real-time Features Subsystem
  * 
@@ -102,6 +111,9 @@ export class AdvancedRealtimeSubsystem {
         this.eventBus.on('operation:started', (data) => this.handleOperationStarted(data));
         this.eventBus.on('operation:progress', (data) => this.handleOperationProgress(data));
         this.eventBus.on('operation:completed', (data) => this.handleOperationCompleted(data));
+            // Example: get endpoints for current region
+            // const endpoints = this.getPingOneEndpoints('NA');
+            // this.logger.info('PingOne endpoints:', endpoints);
         this.eventBus.on('operation:failed', (data) => this.handleOperationFailed(data));
         
         // Progress events for live sharing
@@ -359,7 +371,6 @@ export class AdvancedRealtimeSubsystem {
      */
     async joinCollaborationRoom(roomId, userInfo) {
         this.logger.info('Joining collaboration room', { roomId, userId: userInfo.id });
-        
         try {
             // Check room capacity
             if (this.collaborationRooms.has(roomId)) {
@@ -377,7 +388,7 @@ export class AdvancedRealtimeSubsystem {
                     lastActivity: new Date()
                 });
             }
-            
+
             const room = this.collaborationRooms.get(roomId);
             room.users.set(userInfo.id, {
                 ...userInfo,
@@ -385,30 +396,34 @@ export class AdvancedRealtimeSubsystem {
                 lastSeen: new Date(),
                 isActive: true
             });
-            
+
+            // Update current room and user (hardening)
+            this.currentRoom = roomId;
+            this.currentUser = userInfo;
+
             // Broadcast user joined event
             this.broadcastToRoom(roomId, 'user-joined', {
                 roomId,
                 user: userInfo,
                 totalUsers: room.users.size
             });
-            
+
             // Send room state to new user
             this.sendToUser(userInfo.id, 'room-state', {
                 roomId,
                 users: Array.from(room.users.values()),
                 operations: Array.from(room.operations.values())
             });
-            
+
             safeEmit(this.eventBus, 'collaboration:user-joined', { roomId, user: userInfo });
-            
+
             return {
                 success: true,
                 roomId,
                 userCount: room.users.size,
                 users: Array.from(room.users.values())
             };
-            
+
         } catch (error) {
             this.logger.error('Failed to join collaboration room', { roomId, error: error.message });
             throw error;
@@ -420,18 +435,23 @@ export class AdvancedRealtimeSubsystem {
      */
     async leaveCollaborationRoom(roomId, userId) {
         this.logger.info('Leaving collaboration room', { roomId, userId });
-        
         try {
             if (!this.collaborationRooms.has(roomId)) {
                 return { success: true, message: 'Room does not exist' };
             }
-            
+
             const room = this.collaborationRooms.get(roomId);
             const user = room.users.get(userId);
-            
+
             if (user) {
                 room.users.delete(userId);
-                
+
+                // If leaving current room, clear state (hardening)
+                if (this.currentRoom === roomId && this.currentUser && this.currentUser.id === userId) {
+                    this.currentRoom = null;
+                    this.currentUser = null;
+                }
+
                 // Broadcast user left event
                 this.broadcastToRoom(roomId, 'user-left', {
                     roomId,
@@ -439,22 +459,22 @@ export class AdvancedRealtimeSubsystem {
                     user,
                     totalUsers: room.users.size
                 });
-                
+
                 // Clean up empty rooms
                 if (room.users.size === 0) {
                     this.collaborationRooms.delete(roomId);
                     this.logger.debug('Removed empty collaboration room', { roomId });
                 }
-                
+
                 safeEmit(this.eventBus, 'collaboration:user-left', { roomId, userId, user });
             }
-            
+
             return {
                 success: true,
                 roomId,
                 userCount: room.users.size
             };
-            
+
         } catch (error) {
             this.logger.error('Failed to leave collaboration room', { roomId, userId, error: error.message });
             throw error;
@@ -759,6 +779,13 @@ export class AdvancedRealtimeSubsystem {
             isInitialized: true,
             activeUsers: this.activeUsers.size,
             collaborationRooms: this.collaborationRooms.size,
+    async completeCollaborativeOperation(operationId, result) {
+        this.logger.info('Completing collaborative operation', { operationId, result });
+        if (this.activeOperations) {
+            this.activeOperations.delete(operationId);
+        }
+        return Promise.resolve();
+    }
             liveProgressStreams: this.liveProgressStreams.size,
             connectionStatus: this.realtimeCommunication.getConnectionStatus(),
             timestamp: new Date()
@@ -777,8 +804,15 @@ export class AdvancedRealtimeSubsystem {
 
     async startCollaborativeOperation(operationId, operationType) {
         this.logger.info('Starting collaborative operation', { operationId, operationType });
-        this.sharedOperations.set(operationId, { type: operationType, started: true });
+        this.activeOperations.set(operationId, { type: operationType, started: true });
         return Promise.resolve();
+    async completeCollaborativeOperation(operationId, result) {
+        this.logger.info('Completing collaborative operation', { operationId, result });
+        if (this.activeOperations) {
+            this.activeOperations.delete(operationId);
+        }
+        return Promise.resolve();
+    }
     }
 
     async getRoomParticipants() {

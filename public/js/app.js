@@ -83,8 +83,8 @@ class SecretFieldToggle {
         }
 
         // Get references to the required DOM elements
-        this.inputElement = document.getElementById('api-secret');
-        this.eyeButton = document.getElementById('toggle-api-secret-visibility');
+        this.inputElement = document.getElementById('pingone_client_secret');
+        this.eyeButton = document.getElementById('toggle-pingone-client-secret-visibility');
 
         // Validate that both elements exist before proceeding
         if (!this.inputElement || !this.eyeButton) {
@@ -281,6 +281,42 @@ class SecretFieldToggle {
  * - Manage settings and population selection
  */
 class App {
+    /**
+     * Show controlled loader spinner for long-running operations
+     */
+    showLoader(origin = 'startup', message = 'Loading...') {
+        let loader = document.getElementById('global-loader');
+        if (!loader) {
+            loader = document.createElement('div');
+            loader.id = 'global-loader';
+            loader.className = 'global-loader';
+            loader.innerHTML = `<div class="spinner"></div><div class="loader-message">${message}</div>`;
+            document.body.appendChild(loader);
+        }
+        loader.style.display = 'flex';
+        loader.querySelector('.loader-message').textContent = message;
+        console.log(`[${new Date().toISOString()}] 🌀 Spinner shown [${origin}]`);
+        // Auto-hide after 10s fallback
+        if (this.loaderTimeout) clearTimeout(this.loaderTimeout);
+        this.loaderTimeout = setTimeout(() => {
+            this.hideLoader('timeout');
+        }, 10000);
+    }
+
+    /**
+     * Hide controlled loader spinner
+     */
+    hideLoader(origin = 'manual') {
+        const loader = document.getElementById('global-loader');
+        if (loader) {
+            loader.style.display = 'none';
+            console.log(`[${new Date().toISOString()}] 🌀 Spinner hidden [${origin}]`);
+        }
+        if (this.loaderTimeout) {
+            clearTimeout(this.loaderTimeout);
+            this.loaderTimeout = null;
+        }
+    }
     constructor() {
         // Production environment detection
         this.isProduction = window.location.hostname !== 'localhost' && 
@@ -734,33 +770,6 @@ class App {
             // Hide startup screen after error
             setTimeout(() => {
                 this.completeStartup();
-            }, 2000);
-        }
-    }
-
-    async initAPIFactory() {
-        try {
-            await initAPIFactory(this.logger, this.settingsSubsystem);
-            console.log('✅ API Factory initialized successfully');
-        } catch (error) {
-            console.error('❌ Failed to initialize API Factory:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Generic population loader for any dropdown by ID using PopulationService
-     */
-    async loadPopulationsForDropdown(dropdownId) {
-        console.log(`🔄 [Population] Starting load for dropdown: ${dropdownId}`);
-        
-        // Hide retry button initially
-        this.hidePopulationRetryButton(dropdownId);
-        
-        try {
-            // Check if PopulationService is available
-            if (!this.populationService) {
-                throw new Error('PopulationService not initialized');
             }
             
             console.log(`🔄 [Population] Using PopulationService to load populations for dropdown: ${dropdownId}`);
@@ -1075,9 +1084,9 @@ class App {
                 let populationId = response.data['population-id'] || '';
                 if (populationId === 'not set') populationId = '';
                 const settings = {
-                    environmentId: response.data['environment-id'] || '',
-                    apiClientId: response.data['api-client-id'] || '',
-                    apiSecret: response.data['api-secret'] || '',
+                    pingone_environment_id: response.data.pingone_environment_id || '',
+                    pingone_client_id: response.data.pingone_client_id || '',
+                    pingone_client_secret: response.data.pingone_client_secret || '',
                     populationId,
                     region: response.data['region'] || 'NorthAmerica',
                     rateLimit: response.data['rate-limit'] || 90
@@ -1183,9 +1192,9 @@ class App {
                 e.preventDefault();
                 const formData = new FormData(settingsForm);
                 const settings = {
-                    environmentId: formData.get('environment-id'),
-                    apiClientId: formData.get('api-client-id'),
-                    apiSecret: formData.get('api-secret'),
+                    pingone_environment_id: formData.get('pingone_environment_id'),
+                    pingone_client_id: formData.get('pingone_client_id'),
+                    pingone_client_secret: formData.get('pingone_client_secret'),
                     populationId: formData.get('population-id'),
                     region: formData.get('region'),
                     rateLimit: parseInt(formData.get('rate-limit')) || 50
@@ -2006,9 +2015,9 @@ class App {
         }
         
         const fields = {
-            'environment-id': settings.environmentId || '',
-            'api-client-id': settings.apiClientId || '',
-            'api-secret': settings.apiSecret || '',
+            pingone_environment_id: settings.pingone_environment_id || '',
+            pingone_client_id: settings.pingone_client_id || '',
+            pingone_client_secret: settings.pingone_client_secret || '',
             'population-id': settings.populationId || '',
             'region': settings.region || 'NorthAmerica',
             'rate-limit': settings.rateLimit || 90
@@ -2025,7 +2034,7 @@ class App {
                 }
                 
                 // Handle API secret using SecretFieldManager
-                if (id === 'api-secret') {
+                if (id === 'pingone_client_secret') {
                     this.secretFieldToggle.setValue(value);
                 } else {
                     element.value = value;
@@ -4848,7 +4857,7 @@ class App {
 
         if (populationId && populationName) {
             // Get the current environment settings to construct the API URL
-            const environmentId = document.getElementById('environment-id')?.value;
+            const environmentId = document.getElementById('pingone_environment_id')?.value;
             const region = this.getSelectedRegionInfo();
             
             console.log('[Population] Environment check:', {

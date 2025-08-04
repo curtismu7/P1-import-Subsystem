@@ -5,7 +5,7 @@
  * color-coding, emojis, visual markers, and token status tracking.
  */
 
-import { createWinstonLogger, apiLogHelpers, EMOJIS } from '../../server/winston-config.js';
+import { createWinstonLogger, apiLogHelpers, EMOJIS } from '../server/winston-config.js';
 
 // Create a test logger instance
 const testLogger = createWinstonLogger({

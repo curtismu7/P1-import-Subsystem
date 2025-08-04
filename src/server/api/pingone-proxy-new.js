@@ -31,28 +31,58 @@ router.options('*', (req, res) => {
 // PingOne API base URLs by region
 const PINGONE_API_BASE_URLS = {
     'NorthAmerica': 'https://api.pingone.com/v1',
+    'NA': 'https://api.pingone.com/v1',
     'Europe': 'https://api.eu.pingone.com/v1',
-    'Canada': 'https://api.ca.pingone.com/v1',
-    'Asia': 'https://api.apsoutheast.pingone.com/v1',
-    'Australia': 'https://api.aus.pingone.com/v1',
-    'US': 'https://api.pingone.com/v1',
     'EU': 'https://api.eu.pingone.com/v1',
+    'Canada': 'https://api.ca.pingone.com/v1',
+    'CA': 'https://api.ca.pingone.com/v1',
+    'Asia': 'https://api.apsoutheast.pingone.com/v1',
     'AP': 'https://api.apsoutheast.pingone.com/v1',
+    'Australia': 'https://api.aus.pingone.com/v1',
+    'AUS': 'https://api.aus.pingone.com/v1',
+    'US': 'https://api.pingone.com/v1',
     'default': 'https://auth.pingone.com'
 };
 
 // Middleware to validate required settings
 const validateSettings = (req, res, next) => {
     const { environmentId, region } = req.settings;
-    
+    // Debug log incoming region
+    console.log('[DEBUG] Incoming region:', region);
     if (!environmentId) {
         return res.status(400).json({ error: 'Environment ID is required' });
     }
-    
-    if (!region || !PINGONE_API_BASE_URLS[region]) {
+    // Accept 'NA' as valid and map to 'NorthAmerica' for backend use
+    // Normalize region to PingOne API codes (NA, EU, AP, CA, AUS)
+    const regionCodes = {
+        'na': 'NA',
+        'northamerica': 'NA',
+        'us': 'NA',
+        'eu': 'EU',
+        'europe': 'EU',
+        'ap': 'AP',
+        'asia': 'AP',
+        'ca': 'CA',
+        'canada': 'CA',
+        'aus': 'AUS',
+        'australia': 'AUS'
+    };
+    let normalizedRegion = region ? regionCodes[region.trim().toLowerCase()] : undefined;
+    if (!normalizedRegion && region) {
+        // Try direct match
+        normalizedRegion = regionCodes[region.trim()] || regionCodes[region.trim().toUpperCase()] || regionCodes[region.trim().toLowerCase()];
+    }
+    // Fallback to NA if not recognized
+    if (!normalizedRegion) {
+        normalizedRegion = 'NA';
+        console.warn('[BULLETPROOF] Region not recognized, defaulting to NA. Input:', region);
+    }
+    console.log('[BULLETPROOF] Final normalized region for backend:', normalizedRegion);
+    if (!PINGONE_API_BASE_URLS[normalizedRegion]) {
+        console.log('[BULLETPROOF] Region not valid:', normalizedRegion, Object.keys(PINGONE_API_BASE_URLS));
         return res.status(400).json({ error: 'Valid region is required' });
     }
-    
+    req.settings.region = normalizedRegion;
     next();
 };
 
@@ -65,9 +95,53 @@ const extractEnvironmentId = (path) => {
 // Middleware to inject settings
 const injectSettings = (req, res, next) => {
     try {
+        // Bulletproof region loading
+        let region = process.env.PINGONE_REGION || process.env.pingone_region || '';
+        let regionSources = [region];
+        try {
+            const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
+            const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+            if (settings.pingone_region) regionSources.push(settings.pingone_region);
+            if (settings.region) regionSources.push(settings.region);
+        } catch (e) {}
+        // Fallback default
+        regionSources.push('NorthAmerica');
+        // Use first non-empty value
+        region = regionSources.find(r => r && r.length > 0);
+        // Normalize region (case-insensitive, trimmed)
+        const regionMap = {
+            'northamerica': 'NorthAmerica',
+            'na': 'NorthAmerica',
+            'us': 'NorthAmerica',
+            'europe': 'Europe',
+            'eu': 'Europe',
+            'canada': 'Canada',
+            'ca': 'Canada',
+            'asia': 'Asia',
+            'ap': 'Asia',
+            'australia': 'Australia',
+            'aus': 'Australia'
+        };
+        let normalizedRegion = region ? regionMap[region.trim().toLowerCase()] : undefined;
+        if (!normalizedRegion) {
+            // Try all sources
+            for (const r of regionSources) {
+                if (r && regionMap[r.trim().toLowerCase()]) {
+                    normalizedRegion = regionMap[r.trim().toLowerCase()];
+                    break;
+                }
+            }
+        }
+        if (!normalizedRegion) {
+            normalizedRegion = 'NorthAmerica';
+            console.warn('[BULLETPROOF] Region not recognized, falling back to NorthAmerica. Sources:', regionSources);
+        }
+        console.log('[BULLETPROOF] Region sources:', regionSources);
+        console.log('[BULLETPROOF] Selected region:', region);
+        console.log('[BULLETPROOF] Normalized region:', normalizedRegion);
         req.settings = {
             environmentId: process.env.PINGONE_ENVIRONMENT_ID || '',
-            region: process.env.PINGONE_REGION || 'NorthAmerica',
+            region: normalizedRegion,
             apiClientId: process.env.PINGONE_CLIENT_ID || '',
             apiSecret: process.env.PINGONE_CLIENT_SECRET || ''
         };
@@ -82,8 +156,11 @@ const injectSettings = (req, res, next) => {
 const proxyRequest = async (req, res) => {
     try {
         const { environmentId, region } = req.settings;
-        const baseUrl = PINGONE_API_BASE_URLS[region] || PINGONE_API_BASE_URLS['default'];
-        
+        // Bulletproof debug logging for region
+        console.log('[BULLETPROOF] proxyRequest: region from req.settings:', region);
+        console.log('[BULLETPROOF] proxyRequest: available region keys:', Object.keys(PINGONE_API_BASE_URLS));
+        const baseUrl = PINGONE_API_BASE_URLS[region] || PINGONE_API_BASE_URLS['NA'] || PINGONE_API_BASE_URLS['default'];
+        console.log('[BULLETPROOF] proxyRequest: baseUrl selected:', baseUrl);
         // Construct the target URL - remove the /api/proxy prefix and ensure we don't duplicate /v1
         let targetPath = req.path.replace(/^\/api\/proxy/, '');
         

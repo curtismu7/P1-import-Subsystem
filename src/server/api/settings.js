@@ -281,11 +281,11 @@ async function updateEnvironmentVariables(settings) {
 async function readSettings() {
     // First, check environment variables
     const envSettings = {
-        environmentId: process.env.PINGONE_ENVIRONMENT_ID || "",
-        apiClientId: process.env.PINGONE_CLIENT_ID || "",
-        apiSecret: process.env.PINGONE_CLIENT_SECRET ? `enc:${Buffer.from(process.env.PINGONE_CLIENT_SECRET).toString('base64')}` : "",
-        populationId: process.env.PINGONE_POPULATION_ID || "not set",
-        region: process.env.PINGONE_REGION || "NorthAmerica",
+        pingone_environment_id: process.env.PINGONE_ENVIRONMENT_ID || "",
+        pingone_client_id: process.env.PINGONE_CLIENT_ID || "",
+        pingone_client_secret: process.env.PINGONE_CLIENT_SECRET ? `enc:${Buffer.from(process.env.PINGONE_CLIENT_SECRET).toString('base64')}` : "",
+        pingone_population_id: process.env.PINGONE_POPULATION_ID || "",
+        pingone_region: process.env.PINGONE_REGION || "NA",
         rateLimit: parseInt(process.env.RATE_LIMIT) || 90
     };
 
@@ -298,27 +298,24 @@ async function readSettings() {
         
         // Only auto-detect population ID if it's specifically set to "not set" (initial setup)
         // Empty string ("") means intentionally blank, so we respect that choice
-        if (settings.populationId === "not set" && settings.environmentId && settings.apiClientId && process.env.PINGONE_CLIENT_SECRET) {
+        if (settings.pingone_population_id === "not set" && settings.pingone_environment_id && settings.pingone_client_id && settings.pingone_client_secret) {
             const defaultPopulationId = await fetchDefaultPopulation(
-                settings.environmentId,
-                settings.apiClientId,
-                process.env.PINGONE_CLIENT_SECRET,
-                settings.region || process.env.PINGONE_REGION || 'NorthAmerica'
+                settings.pingone_environment_id,
+                settings.pingone_client_id,
+                settings.pingone_client_secret,
+                settings.pingone_region || 'NA'
             );
-            
-            if (defaultPopulationId) {
-                settings.populationId = defaultPopulationId;
-                
-                // Update the settings file with the new population ID
-                try {
-                    await fs.writeFile(SETTINGS_PATH, JSON.stringify(settings, null, 2), "utf8");
-                    logger.info('Updated settings file with auto-detected population ID');
-                } catch (error) {
-                    logger.warn('Failed to update settings file with population ID', { error: error.message });
-                }
-                
-                // Update environment variable
-                process.env.PINGONE_POPULATION_ID = defaultPopulationId;
+            process.env.PINGONE_CLIENT_ID = settings.pingone_client_id;
+            process.env.PINGONE_CLIENT_SECRET = settings.pingone_client_secret;
+            process.env.PINGONE_POPULATION_ID = defaultPopulationId;
+            process.env.PINGONE_REGION = settings.pingone_region;
+            // Update the settings file with the new population ID
+            try {
+                settings.pingone_population_id = defaultPopulationId;
+                await fs.writeFile(SETTINGS_PATH, JSON.stringify(settings, null, 2), "utf8");
+                logger.info('Updated settings file with auto-detected population ID');
+            } catch (error) {
+                logger.warn('Failed to update settings file with population ID', { error: error.message });
             }
         }
         
@@ -649,24 +646,24 @@ router.post("/", express.json(), async (req, res) => {
     try {
         const newSettings = { ...req.body };
         
-        // Convert camelCase to kebab-case for file storage
+        // Store only standardized PingOne keys
         const fileSettings = {
-            'environment-id': newSettings.environmentId || newSettings['environment-id'] || '',
-            'api-client-id': newSettings.apiClientId || newSettings['api-client-id'] || '',
-            'api-secret': newSettings.apiSecret || newSettings['api-secret'] || '',
-            'population-id': newSettings[STANDARD_KEYS.POPULATION_ID] || newSettings.populationId || newSettings['population-id'] || '',
-            region: newSettings.region || 'NorthAmerica',
-            'rate-limit': (newSettings.rateLimit || newSettings['rate-limit'] || 100).toString()
+            pingone_environment_id: newSettings.pingone_environment_id || '',
+            pingone_client_id: newSettings.pingone_client_id || '',
+            pingone_client_secret: newSettings.pingone_client_secret || '',
+            pingone_population_id: newSettings.pingone_population_id || '',
+            pingone_region: newSettings.pingone_region || 'NA',
+            "rate-limit": (newSettings["rate-limit"] || newSettings.rateLimit || 100).toString(),
+            lastUpdated: new Date().toISOString()
         };
         
-        // Clean up environment ID - remove any surrounding quotes or backticks
-        if (fileSettings['environment-id']) {
-            fileSettings['environment-id'] = fileSettings['environment-id']
-                .replace(/^[`'"]+/, '')  // Remove leading quotes/backticks
-                .replace(/[`'"]+$/, ''); // Remove trailing quotes/backticks
-            
-            logger.info('Processing environment ID for save', { 
-                environmentId: fileSettings['environment-id'] ? '***' + fileSettings['environment-id'].slice(-4) : 'not set' 
+        // Clean up PingOne Environment ID - remove any surrounding quotes or backticks
+        if (fileSettings.pingone_environment_id) {
+            fileSettings.pingone_environment_id = fileSettings.pingone_environment_id
+                .replace(/^[`'"']+/, '')
+                .replace(/[`'"']+$/, '');
+            logger.info('Processing PingOne Environment ID for save', {
+                pingone_environment_id: fileSettings.pingone_environment_id ? '***' + fileSettings.pingone_environment_id.slice(-4) : 'not set'
             });
         }
         

@@ -81,6 +81,7 @@ describe('PopulationService Integration', () => {
             } catch (error) {
                 if (error.message.includes('401') || error.message.includes('403')) {
                     this.skip(); // Skip if unauthorized (no valid token)
+import populationManager from '../../public/js/modules/population-manager.js';
                 } else {
                     throw error;
                 }
@@ -179,7 +180,7 @@ describe('PopulationService Integration', () => {
         before(() => {
             // Import the PopulationManager
             try {
-                populationManager = require('../../public/js/modules/population-manager.js').default;
+                import populationManager from '../../public/js/modules/population-manager.js';
             } catch (error) {
                 console.log('PopulationManager not available, skipping integration tests');
                 populationManager = null;

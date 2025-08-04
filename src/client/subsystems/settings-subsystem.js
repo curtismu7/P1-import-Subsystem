@@ -6,6 +6,7 @@
  */
 
 import { STANDARD_KEYS } from '../../utils/config-standardization-browser.js';
+import PingOneClient from '../../utils/pingone-client.js';
 
 class SettingsSubsystem {
     constructor(logger, uiManager, localClient, settingsManager, eventBus, credentialsManager) {
@@ -457,56 +458,49 @@ class SettingsSubsystem {
                 return;
             }
             
-            // Use POST with credentials in body (not GET)
+            // Use PingOneClient to construct endpoints and normalized region
+            const endpoints = PingOneClient.getPingOneEndpoints(region);
+            infoLog('Testing PingOne API connection with endpoints:', endpoints);
+            // Use endpoints.api for demonstration, can be extended for other endpoints
             const response = await this.localClient.post('/api/pingone/test-connection', {
                 environmentId,
                 clientId,
                 clientSecret,
-                region
+                region: endpoints.tld,
+                apiUrl: endpoints.api
             });
-            
+
             if (response.success) {
-                // Connection successful, now get a token
                 infoLog('Connection successful, getting token...');
-                
                 if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
                     this.uiManager.showSettingsActionStatus('Connection successful! Getting token...', 'info');
                 }
-                
-                // Get token using the same credentials
+                // Get token using the same credentials and region
                 const tokenResponse = await this.localClient.post('/token/worker', {
                     environmentId,
                     clientId,
                     clientSecret,
-                    region
+                    region: endpoints.tld
                 });
-                
                 if (tokenResponse.success) {
                     let successMessage = 'Connection successful! Token obtained';
                     if (tokenResponse.data && tokenResponse.data.expires_in) {
                         const expiresIn = Math.floor(tokenResponse.data.expires_in / 60);
                         successMessage += ` (expires in ${expiresIn} minutes)`;
                     }
-                    
-                    // Show green success status
                     if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
                         this.uiManager.showSettingsActionStatus(successMessage, 'success', { autoHideDelay: 8000 });
                     }
                     this.updateConnectionStatus('✅ ' + successMessage, 'success');
-                    
-                    // Emit token obtained event to update global token status
                     if (this.eventBus && typeof this.eventBus.emit === 'function') {
                         this.eventBus.emit('tokenObtained', { token: tokenResponse.data });
                         this.eventBus.emit('token:updated', { token: tokenResponse.data });
                     }
-                    
-                    // Trigger global token status update
                     if (window.app && window.app.subsystems && window.app.subsystems.globalTokenManager) {
                         setTimeout(() => {
                             window.app.subsystems.globalTokenManager.updateGlobalTokenStatus();
                         }, 100);
                     }
-                    
                 } else {
                     const errorMessage = 'Connection successful but failed to get token: ' + (tokenResponse.error || 'Unknown error');
                     if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
@@ -514,7 +508,6 @@ class SettingsSubsystem {
                     }
                     this.updateConnectionStatus('⚠️ ' + errorMessage, 'warning');
                 }
-                
             } else {
                 const errorMessage = 'Connection test failed: ' + (response.error || 'Unknown error');
                 if (this.uiManager && typeof this.uiManager.showSettingsActionStatus === 'function') {
