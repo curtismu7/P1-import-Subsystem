@@ -662,10 +662,6 @@ if (typeof window !== 'undefined') {
     window.SecurityUtils = SecurityUtils;
 }
 
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = SecurityUtils;
-}
-
 // 📤 ES MODULE EXPORT
 export default SecurityUtils;
 export { SecurityUtils };

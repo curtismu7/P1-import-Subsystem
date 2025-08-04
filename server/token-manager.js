@@ -18,6 +18,10 @@ import fetch from 'node-fetch';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import regionMapper from '../src/utils/region-mapper.js';
+
+// Extract utility functions from the region mapper
+const { toApiCode, toDisplayName } = regionMapper;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -101,12 +105,15 @@ class TokenManager {
             }
             return undefined;
         };
+        
+        // Track if we're using legacy region format
+        let usingLegacyRegion = false;
 
         // First try environment variables (preferred source)
         let clientId = process.env.PINGONE_CLIENT_ID;
         let clientSecret = process.env.PINGONE_CLIENT_SECRET;
         let environmentId = process.env.PINGONE_ENVIRONMENT_ID;
-        let region = process.env.PINGONE_REGION || 'NorthAmerica';
+        let region = process.env.PINGONE_REGION || 'NA';
 
         // Check if environment variables are actually set (not just empty strings)
         const hasEnvVars = clientId && clientSecret && environmentId;
@@ -124,14 +131,26 @@ class TokenManager {
                     'environment-id': settings['environment-id'],
                     'api-secret': settings['api-secret'],
                     'apiClientId': settings.apiClientId,
-                    'environmentId': settings.environmentId,
-                    'apiSecret': settings.apiSecret
                 });
+                
+                // Get region from environment or settings
+                const rawRegion = process.env.PINGONE_REGION || 
+                                  getSetting(settings, 'pingone_region', 'region') || 
+                                  'NA';
+                
+                // Convert to standardized region code
+                const region = toApiCode(rawRegion);
+                
+                // Check if we converted from legacy format
+                if (rawRegion !== region) {
+                    usingLegacyRegion = true;
+                    this.logger.debug(` Converting legacy region format in credentials: ${rawRegion} → ${region}`);
+                }
                 
                 // Accept both camelCase and kebab-case
                 clientId = clientId || getSetting(settings, 'apiClientId', 'api-client-id');
                 environmentId = environmentId || getSetting(settings, 'environmentId', 'environment-id');
-                region = region || getSetting(settings, 'region') || 'NorthAmerica';
+                region = region || getSetting(settings, 'region') || 'NA';
 
                 // Prefer plain api-secret if both exist
                 let apiSecret = getSetting(settings, 'api-secret', 'apiSecret');
@@ -499,40 +518,55 @@ class TokenManager {
 
     /**
      * Get the auth domain for a given region
+     * @param {string} region - Region in any format (code, name, legacy name)
+     * @returns {string} - Authentication domain for the region
      * @private
      */
     getRegionDomain(region) {
+        // Convert any region format to standardized API code
+        const standardRegion = toApiCode(region);
+        
         const domainMap = {
-            'NorthAmerica': 'auth.pingone.com',
-            'Europe': 'auth.eu.pingone.com',
-            'Canada': 'auth.ca.pingone.com',
-            'Asia': 'auth.apsoutheast.pingone.com',
-            'Australia': 'auth.aus.pingone.com',
-            'US': 'auth.pingone.com',
+            // Standard region codes (preferred)
+            'NA': 'auth.pingone.com',
             'EU': 'auth.eu.pingone.com',
+            'CA': 'auth.ca.pingone.com',
             'AP': 'auth.apsoutheast.pingone.com'
         };
-        return domainMap[region] || 'auth.pingone.com';
+        
+        // Log if we're converting from a legacy format
+        if (region && standardRegion !== region) {
+            this.logger.debug(` Converting legacy region format: ${region} → ${standardRegion}`);
+        }
+        
+        return domainMap[standardRegion] || 'auth.pingone.com';
     }
 
     /**
      * Get the API base URL for a given region
-     * @param {string} region - The region name
+     * @param {string} region - Region in any format (code, name, legacy name)
      * @returns {string} The API base URL
      */
     getApiBaseUrl(region = null) {
-        const regionToUse = region || this.currentRegion || 'NorthAmerica';
+        // Use provided region, or fall back to current region, or default to NA
+        const regionInput = region || this.currentRegion || 'NA';
+        
+        // Convert any region format to standardized API code
+        const standardRegion = toApiCode(regionInput);
+        
         const domainMap = {
-            'NorthAmerica': 'https://api.pingone.com/v1',
-            'Europe': 'https://api.eu.pingone.com/v1',
-            'Canada': 'https://api.ca.pingone.com/v1',
-            'Asia': 'https://api.apsoutheast.pingone.com/v1',
-            'Australia': 'https://api.aus.pingone.com/v1',
-            'US': 'https://api.pingone.com/v1',
+            'NA': 'https://api.pingone.com/v1',
             'EU': 'https://api.eu.pingone.com/v1',
+            'CA': 'https://api.ca.pingone.com/v1',
             'AP': 'https://api.apsoutheast.pingone.com/v1'
         };
-        return domainMap[regionToUse] || 'https://api.pingone.com/v1';
+        
+        // Log if we're converting from a legacy format
+        if (regionInput && standardRegion !== regionInput) {
+            this.logger.debug(` Converting legacy region format for API URL: ${regionInput} → ${standardRegion}`);
+        }
+        
+        return domainMap[standardRegion] || 'https://api.pingone.com/v1';
     }
 
     /**
@@ -558,8 +592,9 @@ class TokenManager {
             throw error;
         }
 
-        // Prepare request
-        const authDomain = this.getRegionDomain(region);
+        // Prepare request - always use standardized region code
+        const standardRegion = toApiCode(region);
+        const authDomain = this.getRegionDomain(standardRegion);
         const tokenUrl = `https://${authDomain}/${environmentId}/as/token`;
         const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
         

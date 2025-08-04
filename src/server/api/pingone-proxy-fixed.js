@@ -13,15 +13,18 @@ const router = Router();
 
 // PingOne API base URLs by region
 const PINGONE_API_BASE_URLS = {
+    'NA': 'https://api.pingone.com',
+    'EU': 'https://api.eu.pingone.com',
+    'CA': 'https://api.ca.pingone.com',
+    'AP': 'https://api.apsoutheast.pingone.com',
+    // Legacy mappings for backward compatibility
     'NorthAmerica': 'https://api.pingone.com',
     'Europe': 'https://api.eu.pingone.com',
     'Canada': 'https://api.ca.pingone.com',
     'Asia': 'https://api.apsoutheast.pingone.com',
     'Australia': 'https://api.aus.pingone.com',
     'US': 'https://api.pingone.com',
-    'EU': 'https://api.eu.pingone.com',
-    'AP': 'https://api.apsoutheast.pingone.com',
-    'default': 'https://auth.pingone.com'
+    'default': 'https://api.pingone.com'
 };
 
 // Middleware to validate required settings
@@ -43,21 +46,21 @@ const injectSettings = (req, res, next) => {
     try {
         // Use environment variables for settings
         // Normalize region code for internal lookup
-        const regionRaw = process.env.PINGONE_REGION || 'NorthAmerica';
+        const regionRaw = process.env.PINGONE_REGION || 'NA';
         const regionMap = {
-            'NA': 'NorthAmerica',
-            'EU': 'Europe',
-            'AP': 'Asia',
-            'CA': 'Canada',
-            'AUS': 'Australia',
-            'NorthAmerica': 'NorthAmerica',
-            'Europe': 'Europe',
-            'Asia': 'Asia',
-            'Canada': 'Canada',
-            'Australia': 'Australia',
-            'US': 'NorthAmerica',
+            'NA': 'NA',
+            'EU': 'EU',
+            'AP': 'AP',
+            'CA': 'CA',
+            'AUS': 'AP',
+            'NorthAmerica': 'NA',
+            'Europe': 'EU',
+            'Asia': 'AP',
+            'Canada': 'CA',
+            'Australia': 'AP',
+            'US': 'NA',
         };
-        const normalizedRegion = regionMap[regionRaw] || 'NorthAmerica';
+        const normalizedRegion = regionMap[regionRaw] || 'NA';
         req.settings = {
             environmentId: process.env.PINGONE_ENVIRONMENT_ID || '',
             region: normalizedRegion,
@@ -478,7 +481,7 @@ const getUsers = async (req, res) => {
             return res.status(400).json({ error: 'Environment ID is required' });
         }
         
-        const baseUrl = PINGONE_API_BASE_URLS[region || 'NorthAmerica'];
+        const baseUrl = PINGONE_API_BASE_URLS[region || 'NA'];
         const { filter, limit = 100, offset = 0 } = req.query;
         
         let url = `${baseUrl}/v1/environments/${environmentId}/users?limit=${limit}&offset=${offset}`;
@@ -503,7 +506,7 @@ const getPopulations = async (req, res) => {
             return res.status(400).json({ error: 'Environment ID is required' });
         }
         
-        const baseUrl = PINGONE_API_BASE_URLS[region || 'NorthAmerica'];
+        const baseUrl = PINGONE_API_BASE_URLS[region || 'NA'];
         const { limit = 100, offset = 0 } = req.query;
         
         const url = `${baseUrl}/v1/environments/${environmentId}/populations?limit=${limit}&offset=${offset}`;

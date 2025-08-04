@@ -1,9 +1,4 @@
 /**
- * @module
- * @description ES Module (converted from CommonJS)
- */
-
-/**
  * Token Manager Subsystem - Enhanced and Hardened Version
  * Manages PingOne access tokens with comprehensive error handling,
  * retry mechanisms, auto-refresh, and robust status updates
@@ -29,21 +24,31 @@ class TokenManagerSubsystem {
     }
 
     /**
+     * Initialize the Token Manager subsystem (alias for compatibility)
+     */
+    async init() {
+        return await this.initialize();
+    }
+
+    /**
      * Initialize the Token Manager subsystem
      */
     async initialize() {
         try {
-            this.logTokenManager('info', 'Initializing Token Manager UI...');
+            this.logTokenManager('info', '🚀 Initializing Token Manager UI...');
             
             this.setupEventListeners();
-            this.loadStoredToken();
+            await this.autoLoadCurrentToken();
             this.setupAutoRefresh();
             this.isInitialized = true;
             
-            this.logTokenManager('success', 'Token Manager initialized successfully');
+            // Run startup test
+            await this.runStartupTest();
+            
+            this.logTokenManager('success', '✅ Token Manager initialized successfully');
             return { success: true };
         } catch (error) {
-            this.logTokenManager('error', 'Failed to initialize Token Manager', { error: error.message });
+            this.logTokenManager('error', '❌ Failed to initialize Token Manager', { error: error.message });
             return { success: false, error: error.message };
         }
     }
@@ -99,6 +104,98 @@ class TokenManagerSubsystem {
     }
 
     /**
+     * Auto-load current token on page load with comprehensive fallback
+     */
+    async autoLoadCurrentToken() {
+        this.logTokenManager('info', '🔄 Auto-loading current token...');
+        
+        try {
+            // Step 1: Try to load from localStorage first
+            const storedToken = this.loadStoredToken();
+            if (storedToken) {
+                this.logTokenManager('success', '✅ Token loaded from localStorage');
+                return storedToken;
+            }
+            
+            // Step 2: Try to fetch current token from server
+            this.logTokenManager('info', '🌐 Attempting to fetch current token from server...');
+            try {
+                const response = await this.retryFetch('/api/v1/auth/token');
+                const data = await response.json();
+                
+                if (data.success && data.token) {
+                    this.logTokenManager('success', '✅ Current token fetched from server');
+                    
+                    // Store and display the token
+                    const tokenTextarea = document.getElementById('raw-token-display');
+                    if (tokenTextarea) {
+                        tokenTextarea.value = data.token;
+                    }
+                    
+                    // Store token with metadata
+                    const tokenInfo = this.storeToken({
+                        token: data.token,
+                        expiresAt: data.tokenInfo?.expiresAt,
+                        environmentId: data.tokenInfo?.environmentId,
+                        environmentName: data.tokenInfo?.environmentName,
+                        region: data.tokenInfo?.region
+                    });
+                    
+                    // Update status display
+                    this.updateTokenStatusDisplay({
+                        valid: true,
+                        date: new Date().toLocaleString(),
+                        expiresIn: tokenInfo?.expiresAt ? `Expires ${new Date(tokenInfo.expiresAt).toLocaleString()}` : 'Not Available',
+                        environmentId: tokenInfo?.environmentId || 'Not Available',
+                        environmentName: tokenInfo?.environmentName || 'Not Available',
+                        region: tokenInfo?.region || 'Not Available'
+                    });
+                    
+                    return tokenInfo;
+                }
+            } catch (serverError) {
+                this.logTokenManager('warning', '⚠️ Server token fetch failed', { error: serverError.message });
+            }
+            
+            // Step 3: No token available - show "No token found" state
+            this.logTokenManager('info', '📭 No token found - showing empty state');
+            this.showNoTokenState();
+            return null;
+            
+        } catch (error) {
+            this.logTokenManager('error', '❌ Auto-load token failed', { error: error.message });
+            this.showNoTokenState();
+            return null;
+        }
+    }
+    
+    /**
+     * Show "No token found" state
+     */
+    showNoTokenState() {
+        this.logTokenManager('info', '📭 Displaying no token state');
+        
+        // Clear token display
+        const tokenTextarea = document.getElementById('raw-token-display');
+        if (tokenTextarea) {
+            tokenTextarea.value = 'No token found. Click "Get Current Token" to retrieve a token.';
+        }
+        
+        // Update status display
+        this.updateTokenStatusDisplay({
+            valid: false,
+            date: new Date().toLocaleString(),
+            expiresIn: 'No token found',
+            environmentId: 'No token found',
+            environmentName: 'No token found',
+            region: 'No token found'
+        });
+        
+        // Show user-friendly message in UI
+        this.showTemporaryFeedback('No token found. Please retrieve a token to continue.', 'info');
+    }
+    
+    /**
      * Load token from localStorage on page load
      */
     loadStoredToken() {
@@ -119,8 +216,10 @@ class TokenManagerSubsystem {
                     // Update status
                     this.updateTokenStatusDisplay({
                         valid: true,
+                        date: new Date().toLocaleString(),
                         expiresIn: `Expires ${new Date(tokenInfo.expiresAt).toLocaleString()}`,
                         environmentId: tokenInfo.environmentId,
+                        environmentName: tokenInfo.environmentName || 'Not Available',
                         region: tokenInfo.region
                     });
                     
@@ -217,46 +316,65 @@ class TokenManagerSubsystem {
      * Enhanced status update function with fail-safe DOM checking
      */
     updateTokenStatusDisplay(statusData) {
-        this.logTokenManager('info', 'Updating token status display', statusData);
+        this.logTokenManager('info', '🔄 Updating token status display', statusData);
         
         try {
+            // Validate data before rendering
+            const validatedData = this.validateStatusData(statusData);
+            
+            // Date
+            const dateElement = document.getElementById('token-date');
+            if (dateElement) {
+                const currentDate = new Date().toLocaleString();
+                dateElement.textContent = validatedData.date || currentDate;
+                dateElement.title = `Last updated: ${currentDate}`;
+            } else {
+                this.logTokenManager('warning', '⚠️ Date element not found');
+            }
+            
             // Status indicator
             const statusElement = document.getElementById('token-status-indicator');
             if (statusElement) {
-                const status = statusData.valid ? 'VALID' : statusData.error ? 'ERROR' : 'UNKNOWN';
-                const color = statusData.valid ? 'green' : statusData.error ? 'red' : 'orange';
-                statusElement.innerHTML = `<span style="color: ${color}; font-weight: bold;">${status}</span>`;
+                const status = validatedData.valid ? 'VALID' : validatedData.error ? 'ERROR' : 'UNKNOWN';
+                const color = validatedData.valid ? '#28a745' : validatedData.error ? '#dc3545' : '#ffc107';
+                const bgColor = validatedData.valid ? '#d4edda' : validatedData.error ? '#f8d7da' : '#fff3cd';
+                
+                statusElement.innerHTML = `<span style="color: ${color}; background: ${bgColor}; padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: bold; font-size: 0.8rem;">${status}</span>`;
                 statusElement.setAttribute('data-status', status.toLowerCase());
             } else {
-                this.logTokenManager('warning', 'Status indicator element not found');
-            }
-            
-            // Expires in
-            const expiresElement = document.getElementById('token-expires-in');
-            if (expiresElement) {
-                if (statusData.expiresIn) {
-                    expiresElement.textContent = statusData.expiresIn;
-                    expiresElement.style.color = statusData.expiresIn.includes('expired') ? 'red' : 'black';
-                } else {
-                    expiresElement.textContent = 'Unknown';
-                }
+                this.logTokenManager('warning', '⚠️ Status indicator element not found');
             }
             
             // Environment ID
             const envElement = document.getElementById('token-environment-id');
             if (envElement) {
-                envElement.textContent = statusData.environmentId || 'Unknown';
+                const envId = validatedData.environmentId || 'Not Available';
+                envElement.textContent = envId;
+                envElement.title = envId.length > 20 ? envId : 'Click to copy Environment ID';
+                
+                // Add click to copy functionality
+                envElement.onclick = () => this.copyToClipboard(envId, 'Environment ID');
             }
             
-            // Region
-            const regionElement = document.getElementById('token-region');
-            if (regionElement) {
-                regionElement.textContent = statusData.region || 'Unknown';
+            // Environment Name
+            const envNameElement = document.getElementById('token-environment-name');
+            if (envNameElement) {
+                const envName = validatedData.environmentName || 'Not Available';
+                envNameElement.textContent = envName;
+                envNameElement.title = envName.length > 20 ? envName : 'Click to copy Environment Name';
+                
+                // Add click to copy functionality
+                envNameElement.onclick = () => this.copyToClipboard(envName, 'Environment Name');
             }
             
-            this.logTokenManager('success', 'Token status updated successfully');
+            this.logTokenManager('success', '✅ Token status updated successfully', {
+                date: validatedData.date,
+                status: validatedData.valid ? 'VALID' : validatedData.error ? 'ERROR' : 'UNKNOWN',
+                environmentId: validatedData.environmentId,
+                environmentName: validatedData.environmentName
+            });
         } catch (error) {
-            this.logTokenManager('error', 'Failed to update token status', { error: error.message });
+            this.logTokenManager('error', '❌ Failed to update token status', { error: error.message });
         }
     }
 
@@ -269,9 +387,11 @@ class TokenManagerSubsystem {
         try {
             // Show loading state
             this.updateTokenStatusDisplay({ 
-                valid: false, 
+                valid: false,
+                date: new Date().toLocaleString(),
                 expiresIn: 'Checking...', 
                 environmentId: 'Loading...', 
+                environmentName: 'Loading...',
                 region: 'Loading...' 
             });
             
@@ -283,9 +403,11 @@ class TokenManagerSubsystem {
             // Update status based on health data
             this.updateTokenStatusDisplay({
                 valid: healthData.status === 'healthy',
-                expiresIn: healthData.tokenExpiry || 'Unknown',
-                environmentId: healthData.environmentId || 'Unknown',
-                region: healthData.region || 'Unknown'
+                date: new Date().toLocaleString(),
+                expiresIn: healthData.tokenExpiry || 'Not Available',
+                environmentId: healthData.environmentId || 'Not Available',
+                environmentName: healthData.environmentName || 'Not Available',
+                region: healthData.region || 'Not Available'
             });
             
         } catch (error) {
@@ -293,8 +415,10 @@ class TokenManagerSubsystem {
             this.updateTokenStatusDisplay({ 
                 valid: false, 
                 error: true,
+                date: new Date().toLocaleString(),
                 expiresIn: 'Error', 
-                environmentId: 'Error', 
+                environmentId: 'Error',
+                environmentName: 'Error', 
                 region: 'Error' 
             });
         }
@@ -327,9 +451,11 @@ class TokenManagerSubsystem {
                     // Update status
                     this.updateTokenStatusDisplay({
                         valid: true,
+                        date: new Date().toLocaleString(),
                         expiresIn: tokenInfo?.expiresAt ? `Expires ${new Date(tokenInfo.expiresAt).toLocaleString()}` : 'Unknown',
-                        environmentId: tokenInfo?.environmentId || 'Unknown',
-                        region: tokenInfo?.region || 'Unknown'
+                        environmentId: tokenInfo?.environmentId || 'Not Available',
+                        environmentName: tokenInfo?.environmentName || 'Not Available',
+                        region: tokenInfo?.region || 'Not Available'
                     });
                 }
             } else {
@@ -350,17 +476,24 @@ class TokenManagerSubsystem {
      * Decode JWT with enhanced error handling
      */
     decodeJWT() {
-        this.logTokenManager('info', 'Decode JWT button clicked');
+        this.logTokenManager('info', '🔍 Decode JWT button clicked');
         
+        // Step 1: Validate token exists
         const tokenTextarea = document.getElementById('raw-token-display');
         if (!tokenTextarea || !tokenTextarea.value.trim()) {
-            this.logTokenManager('warning', 'No token available to decode');
-            alert('Please get a token first before decoding');
+            this.logTokenManager('warning', '⚠️ No token available to decode');
+            this.showTemporaryFeedback('Please get a token first before decoding', 'warning');
             return;
         }
         
         try {
             const token = tokenTextarea.value.trim();
+            
+            // Step 2: Validate JWT format
+            if (!this.validateJWTFormat(token)) {
+                throw new Error('Invalid JWT format');
+            }
+            
             const parts = token.split('.');
             
             if (parts.length !== 3) {
@@ -388,9 +521,11 @@ class TokenManagerSubsystem {
             // Update status with decoded info
             this.updateTokenStatusDisplay({
                 valid: true,
+                date: new Date().toLocaleString(),
                 expiresIn: payload.exp ? `Expires ${new Date(payload.exp * 1000).toLocaleString()}` : 'Unknown',
-                environmentId: payload.env || payload.environment_id || 'Unknown',
-                region: payload.region || 'Unknown'
+                environmentId: payload.env || payload.environment_id || payload.aud || 'Not Available',
+                environmentName: payload.environment_name || payload.env_name || this.extractEnvironmentName(payload) || 'Not Available',
+                region: payload.region || 'Not Available'
             });
             
         } catch (error) {
@@ -513,8 +648,10 @@ class TokenManagerSubsystem {
             // Reset status
             this.updateTokenStatusDisplay({
                 valid: false,
+                date: new Date().toLocaleString(),
                 expiresIn: 'No token',
                 environmentId: 'No token',
+                environmentName: 'No token',
                 region: 'No token'
             });
             
@@ -712,6 +849,311 @@ class TokenManagerSubsystem {
     }
 
     /**
+     * Validate status data before rendering
+     */
+    validateStatusData(statusData) {
+        const validated = {
+            valid: Boolean(statusData?.valid),
+            error: Boolean(statusData?.error),
+            date: statusData?.date || new Date().toLocaleString(),
+            environmentId: this.sanitizeValue(statusData?.environmentId),
+            environmentName: this.sanitizeValue(statusData?.environmentName),
+            expiresIn: this.sanitizeValue(statusData?.expiresIn),
+            region: this.sanitizeValue(statusData?.region)
+        };
+        
+        this.logTokenManager('info', '🔍 Data validation completed', validated);
+        return validated;
+    }
+    
+    /**
+     * Sanitize values to prevent XSS and handle empty values
+     */
+    sanitizeValue(value) {
+        if (!value || value === 'undefined' || value === 'null') {
+            return 'Not Available';
+        }
+        
+        // Basic XSS prevention
+        if (typeof value === 'string') {
+            return value.replace(/[<>"'&]/g, (match) => {
+                const entities = {
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;',
+                    '&': '&amp;'
+                };
+                return entities[match];
+            });
+        }
+        
+        return String(value);
+    }
+    
+    /**
+     * Copy text to clipboard with user feedback
+     */
+    async copyToClipboard(text, label) {
+        if (!text || text === 'Not Available') {
+            this.logTokenManager('warning', `⚠️ Cannot copy ${label}: No data available`);
+            return;
+        }
+        
+        try {
+            await navigator.clipboard.writeText(text);
+            this.logTokenManager('success', `📋 ${label} copied to clipboard`, { text: text.substring(0, 50) + '...' });
+            
+            // Show temporary feedback
+            this.showTemporaryFeedback(`${label} copied!`, 'success');
+            
+        } catch (error) {
+            this.logTokenManager('error', `❌ Failed to copy ${label}`, { error: error.message });
+            
+            // Fallback: select text for manual copy
+            this.selectText(text);
+            this.showTemporaryFeedback(`Select and copy ${label} manually`, 'warning');
+        }
+    }
+    
+    /**
+     * Select text for manual copying
+     */
+    selectText(text) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+    }
+    
+    /**
+     * Validate JWT format before decoding
+     */
+    validateJWTFormat(token) {
+        try {
+            // Basic format check
+            if (!token || typeof token !== 'string') {
+                this.logTokenManager('error', '❌ Token validation failed: Not a string');
+                return false;
+            }
+            
+            // Check for JWT pattern (3 parts separated by dots)
+            const parts = token.split('.');
+            if (parts.length !== 3) {
+                this.logTokenManager('error', '❌ Token validation failed: Invalid JWT structure', { parts: parts.length });
+                return false;
+            }
+            
+            // Validate each part is base64 encoded
+            for (let i = 0; i < 2; i++) { // Only validate header and payload, not signature
+                try {
+                    atob(parts[i]);
+                } catch (e) {
+                    this.logTokenManager('error', `❌ Token validation failed: Part ${i + 1} not valid base64`);
+                    return false;
+                }
+            }
+            
+            // Try to parse header and payload
+            try {
+                const header = JSON.parse(atob(parts[0]));
+                const payload = JSON.parse(atob(parts[1]));
+                
+                // Basic JWT structure validation
+                if (!header.alg || !header.typ) {
+                    this.logTokenManager('error', '❌ Token validation failed: Invalid header structure');
+                    return false;
+                }
+                
+                if (!payload.iss && !payload.sub && !payload.aud) {
+                    this.logTokenManager('warning', '⚠️ Token validation warning: Missing standard JWT claims');
+                }
+                
+                this.logTokenManager('success', '✅ JWT format validation passed');
+                return true;
+                
+            } catch (parseError) {
+                this.logTokenManager('error', '❌ Token validation failed: JSON parse error', { error: parseError.message });
+                return false;
+            }
+            
+        } catch (error) {
+            this.logTokenManager('error', '❌ Token validation failed: Unexpected error', { error: error.message });
+            return false;
+        }
+    }
+    
+    /**
+     * Extract environment name from JWT payload
+     */
+    extractEnvironmentName(payload) {
+        // Try various common fields that might contain environment name
+        const possibleFields = [
+            'environment_name',
+            'env_name', 
+            'environmentName',
+            'envName',
+            'name',
+            'environment'
+        ];
+        
+        for (const field of possibleFields) {
+            if (payload[field] && typeof payload[field] === 'string') {
+                return payload[field];
+            }
+        }
+        
+        // Try to extract from issuer URL
+        if (payload.iss && typeof payload.iss === 'string') {
+            const match = payload.iss.match(/\/([a-f0-9-]{36})\//i);
+            if (match) {
+                return `Environment (${match[1].substring(0, 8)}...)`;
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Run startup test to verify token loading and UI state
+     */
+    async runStartupTest() {
+        this.logTokenManager('info', '🧪 Running startup test...');
+        
+        try {
+            const testResults = {
+                tokenLoaded: false,
+                statusBoxesFilled: false,
+                uiResponsive: false,
+                noErrors: true
+            };
+            
+            // Test 1: Check if token was loaded
+            const tokenTextarea = document.getElementById('raw-token-display');
+            if (tokenTextarea && tokenTextarea.value && tokenTextarea.value.trim() !== '') {
+                testResults.tokenLoaded = true;
+                this.logTokenManager('success', '✅ Startup test: Token loaded successfully');
+            } else {
+                this.logTokenManager('info', '📭 Startup test: No token loaded (expected if no token available)');
+            }
+            
+            // Test 2: Check if status boxes are filled
+            const statusElements = [
+                'token-date',
+                'token-status', 
+                'token-environment-id',
+                'token-environment-name'
+            ];
+            
+            let filledBoxes = 0;
+            statusElements.forEach(elementId => {
+                const element = document.getElementById(elementId);
+                if (element && element.textContent && element.textContent.trim() !== '') {
+                    filledBoxes++;
+                }
+            });
+            
+            if (filledBoxes === statusElements.length) {
+                testResults.statusBoxesFilled = true;
+                this.logTokenManager('success', '✅ Startup test: All status boxes filled');
+            } else {
+                this.logTokenManager('info', `📊 Startup test: ${filledBoxes}/${statusElements.length} status boxes filled`);
+            }
+            
+            // Test 3: Check UI responsiveness
+            const criticalElements = [
+                'get-current-token',
+                'decode-token',
+                'clear-token',
+                'raw-token-display'
+            ];
+            
+            let responsiveElements = 0;
+            criticalElements.forEach(elementId => {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    responsiveElements++;
+                }
+            });
+            
+            if (responsiveElements === criticalElements.length) {
+                testResults.uiResponsive = true;
+                this.logTokenManager('success', '✅ Startup test: UI elements responsive');
+            } else {
+                this.logTokenManager('warning', `⚠️ Startup test: ${responsiveElements}/${criticalElements.length} UI elements found`);
+                testResults.noErrors = false;
+            }
+            
+            // Test 4: Validate no stale data
+            const currentTime = new Date().toLocaleString();
+            const dateElement = document.getElementById('token-date');
+            if (dateElement && dateElement.textContent) {
+                const displayedTime = dateElement.textContent;
+                // Check if time is recent (within last 5 minutes)
+                const timeDiff = Math.abs(new Date() - new Date(displayedTime));
+                if (timeDiff < 5 * 60 * 1000) { // 5 minutes
+                    this.logTokenManager('success', '✅ Startup test: No stale data detected');
+                } else {
+                    this.logTokenManager('warning', '⚠️ Startup test: Potentially stale timestamp detected');
+                }
+            }
+            
+            // Summary
+            const passedTests = Object.values(testResults).filter(result => result === true).length;
+            const totalTests = Object.keys(testResults).length;
+            
+            this.logTokenManager('info', `📊 Startup test completed: ${passedTests}/${totalTests} tests passed`, testResults);
+            
+            if (testResults.noErrors) {
+                this.logTokenManager('success', '✅ Startup test: All critical tests passed');
+            } else {
+                this.logTokenManager('warning', '⚠️ Startup test: Some issues detected but not critical');
+            }
+            
+            return testResults;
+            
+        } catch (error) {
+            this.logTokenManager('error', '❌ Startup test failed', { error: error.message });
+            return { error: error.message };
+        }
+    }
+    
+    /**
+     * Show temporary feedback message
+     */
+    showTemporaryFeedback(message, type = 'info') {
+        const feedback = document.createElement('div');
+        feedback.textContent = message;
+        feedback.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+            background: ${type === 'success' ? '#28a745' : type === 'warning' ? '#ffc107' : '#007bff'};
+        `;
+        
+        document.body.appendChild(feedback);
+        
+        setTimeout(() => {
+            feedback.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                if (feedback.parentNode) {
+                    feedback.parentNode.removeChild(feedback);
+                }
+            }, 300);
+        }, 3000);
+    }
+
+    /**
      * Cleanup method
      */
     cleanup() {
@@ -725,7 +1167,7 @@ class TokenManagerSubsystem {
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-    export default TokenManagerSubsystem;;
+    module.exports = TokenManagerSubsystem;
 } else if (typeof window !== 'undefined') {
     window.TokenManagerSubsystem = TokenManagerSubsystem;
 }

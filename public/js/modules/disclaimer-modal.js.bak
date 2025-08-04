@@ -1,9 +1,4 @@
 /**
- * @module
- * @description ES Module (converted from CommonJS)
- */
-
-/**
  * Disclaimer Modal Module
  * Enforces user acknowledgment before allowing access to the application
  */

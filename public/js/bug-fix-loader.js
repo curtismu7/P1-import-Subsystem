@@ -13,9 +13,9 @@
     
     // Load order is critical - security and error handling first
     // Only load files that don't contain ES module exports to avoid syntax errors
+    // IMPORTANT: security-utils.js removed - now loaded only via bundle to avoid ES module conflicts
     const modules = [
         'error-fix.js',
-        'modules/security-utils.js',
         'modules/global-error-handler.js',
         'modules/resource-manager.js',
         'modules/safe-api.js'

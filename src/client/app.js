@@ -76,14 +76,14 @@ class App {
         try {
             this.logger = new Logger({
                 context: 'app',
-                version: '7.0.0.11',
+                version: '7.0.0.13',
                 enableConsole: true,
                 enableStorage: false
             });
             
             // Test the logger
             this.logger.info('Centralized Logger initialized successfully', {
-                version: '7.0.0.11',
+                version: '7.0.0.13',
                 featureFlags: FEATURE_FLAGS,
                 userAgent: navigator.userAgent
             });
@@ -113,7 +113,7 @@ class App {
         
         // Log application start
         this.logger.info('🚀 PingOne Import Tool starting...', {
-            version: '7.0.0.11',
+            version: '7.0.0.13',
             timestamp: new Date().toISOString(),
             userAgent: navigator.userAgent,
             url: window.location.href
@@ -157,7 +157,7 @@ class App {
         this.socket = null;
         
         // Application version
-        this.version = '7.0.0.11';
+        this.version = '7.0.0.13';
         this.buildTimestamp = new Date().toISOString();
         this.environment = 'development';
         this.features = {
@@ -670,6 +670,40 @@ class App {
             subsystemCount: Object.keys(this.subsystems).length,
             enabledSubsystems: Object.keys(this.subsystems)
         });
+    }
+
+    /**
+     * Initialize legacy components that are required for backward compatibility
+     * @returns {Promise<void>}
+     */
+    async initializeLegacyComponents() {
+        this.logger.debug('Initializing legacy components...');
+        try {
+            // Initialize any legacy components or subsystems here
+            // This is a placeholder for backward compatibility
+            
+            // Legacy token manager initialization
+            if (this.subsystems.tokenManager) {
+                this.logger.debug('Legacy token manager already initialized');
+            } else {
+                this.logger.debug('Initializing legacy token manager');
+                this.subsystems.tokenManager = new TokenManagerSubsystem(
+                    this.logger.child({ subsystem: 'token-manager' }),
+                    this.uiManager,
+                    this.localClient
+                );
+                await this.subsystems.tokenManager.init();
+                this.logger.debug('Legacy token manager initialized');
+            }
+            
+            this.logger.debug('Legacy components initialized successfully');
+        } catch (error) {
+            this.logger.error('Failed to initialize legacy components', {
+                error: error.message,
+                stack: error.stack
+            });
+            // Don't throw the error to allow initialization to continue
+        }
     }
 
     setupEventListeners() {
