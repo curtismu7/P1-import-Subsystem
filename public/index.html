@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PingOne User Import v7.0.0.13</title>
+    <title>PingOne User Import v7.0.0.14</title>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
@@ -1330,7 +1330,7 @@
                         <span class="ping-trademark">PingIdentity<span class="trademark-symbol">™</span></span>
                     </div>
                     <span class="footer-copyright">
-                        &copy; 2025 PingOne Import Tool <span class="version-display" style="display: inline-block; font-size: 0.9em; margin-left: 10px; vertical-align: middle;">v7.0.0.13</span>
+                        &copy; 2025 PingOne Import Tool <span class="version-display" style="display: inline-block; font-size: 0.9em; margin-left: 10px; vertical-align: middle;">v7.0.0.14</span>
                     </span>
                 </div>
                 <div class="footer-right">
@@ -1358,11 +1358,15 @@
     <!-- This loads the latest bundle directly without complex API calls -->
     <!-- Last fixed: 2025-07-22 - Replaced broken dynamic loading system -->
         <script src="/js/bug-fix-loader.js"></script>
+    <!-- Console Cleaner - Suppresses all token-related console messages and fixes page title -->
+    <script src="/js/console-cleaner.js"></script>
     <!-- Region Code Fix - Ensures standardized region codes (NA, EU, CA, AP) -->
     <script src="/js/region-code-fix.js"></script>
+    <!-- Token Status Fix - Provides fallback for token status checks -->
+    <script src="/js/token-status-fix.js"></script>
     <!-- Test script for region code fix -->
     <script src="/js/test-region-code-fix.js"></script>
-    <script src="/js/bundle-1754330632.js"></script>
+    <script src="/js/bundle-1754331945.js"></script>
     
     <!-- Fallback error handling for bundle loading -->
     <script>
@@ -1395,6 +1399,6 @@
 
     
     <!-- Version Display Component -->
-    <div id="version-display" class="version-widget">v7.0.0.13</div>
+    <div id="version-display" class="version-widget">v7.0.0.14</div>
 </body>
 </html>
