@@ -1,6 +1,6 @@
 {
   "name": "pingone-import-cursor",
-  "version": "7.0.0.18",
+  "version": "7.0.0.20",
   "description": "A modern web application for importing users into PingOne using the PingOne Admin API.",
   "main": "server.js",
   "type": "module",
@@ -51,6 +51,7 @@
     "build:optimized": "npm run build:bundle && npm run minify:bundle",
     "build:bundle": "TIMESTAMP=$(date +%s) && npx browserify src/client/app.js -t [ babelify --configFile ./babel.config.mjs ] -o public/js/bundle-${TIMESTAMP}.js && echo '{\"bundleFile\": \"bundle-'${TIMESTAMP}'.js\"}' > public/js/bundle-manifest.json && node scripts/update-bundle-reference.js",
     "build:bundle:import-maps": "node scripts/hybrid-bundle-manager.js bundle && node scripts/update-bundle-reference.js",
+    "cleanup:bundles": "node --experimental-modules --experimental-json-modules scripts/cleanup-old-bundles.js",
     "minify:bundle": "node --experimental-modules --experimental-json-modules scripts/minify-bundle.js",
     "analyze:bundle": "node --experimental-modules --experimental-json-modules scripts/analyze-bundle.js",
     "verify:build": "node --experimental-modules --experimental-json-modules scripts/verify-build.js",

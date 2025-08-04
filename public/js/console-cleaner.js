@@ -4,13 +4,13 @@
  * This script suppresses console warnings and errors related to token status
  * and fixes the page title and version display.
  * 
- * Version: 7.0.0.14
+ * Version: 7.0.0.20
  */
 (function() {
   console.log('🧹 Console Cleaner: Initializing...');
   
   // Current version
-  const CURRENT_VERSION = 'v7.0.0.14';
+  const CURRENT_VERSION = 'v7.0.0.20';
   
   // Fix page title immediately
   updatePageTitle();
@@ -19,7 +19,7 @@
   const titleObserver = new MutationObserver(mutations => {
     mutations.forEach(mutation => {
       if (mutation.type === 'childList' && 
-          (document.title.includes('v6.1') || document.title.includes('v7.0.0.13'))) {
+          (document.title.includes('v6.1') || document.title.includes('v7.0.0.13') || document.title.includes('v7.0.0.14'))) {
         updatePageTitle();
       }
     });
@@ -35,7 +35,7 @@
   }
   
   function updatePageTitle() {
-    if (document.title.includes('v6.1') || document.title.includes('v7.0.0.13')) {
+    if (document.title.includes('v6.1') || document.title.includes('v7.0.0.13') || document.title.includes('v7.0.0.14')) {
       document.title = document.title.replace(/v[0-9.]+/g, CURRENT_VERSION);
     }
   }

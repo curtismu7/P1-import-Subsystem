@@ -26,25 +26,31 @@ npm run import-maps:update
 npm run build:bundle:import-maps || npm run build:bundle
 ```
 
-4. Show the current bundle information
+4. Clean up old bundles
+// turbo
+```bash
+npm run cleanup:bundles
+```
+
+5. Show the current bundle information
 // turbo
 ```bash
 cat public/js/bundle-manifest.json
 ```
 
-5. Restart the server
+6. Restart the server
 // turbo
 ```bash
 npm run restart
 ```
 
-6. Check server status
+7. Check server status
 // turbo
 ```bash
 curl -s http://localhost:4000/api/health | jq || echo "Server not responding yet"
 ```
 
-7. Display current version
+8. Display current version
 // turbo
 ```bash
 node -e "console.log('🚀 PingOne Import Tool v' + require('./package.json').version + ' is running')"

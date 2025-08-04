@@ -6115,41 +6115,22 @@ exports.Logger = void 0;
 var _winstonLogger = require("./winston-logger.js");
 var _messageFormatter = _interopRequireDefault(require("./message-formatter.js"));
 var _uiManager = require("./ui-manager.js");
-function _interopRequireWildcard(e, t) {
-  if ("function" == typeof WeakMap) var r = new WeakMap(),
-    n = new WeakMap();
-  return (_interopRequireWildcard = function (e, t) {
-    if (!t && e && e.__esModule) return e;
-    var o,
-      i,
-      f = {
-        __proto__: null,
-        default: e
-      };
-    if (null === e || "object" != typeof e && "function" != typeof e) return f;
-    if (o = t ? n : r) {
-      if (o.has(e)) return o.get(e);
-      o.set(e, f);
-    }
-    for (const t in e) "default" !== t && {}.hasOwnProperty.call(e, t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, t)) && (i.get || i.set) ? o(f, t, i) : f[t] = e[t]);
-    return f;
-  })(e, t);
-} /**
-  * @fileoverview Winston-compatible logger for frontend environment
-  * 
-  * This module provides a Winston-like logging interface for the frontend
-  * that maintains consistency with server-side Winston logging while
-  * working within browser constraints.
-  * 
-  * Features:
-  * - Winston-compatible API (info, warn, error, debug)
-  * - Structured logging with metadata
-  * - Timestamp formatting
-  * - Log level filtering
-  * - Console and server transport support
-  * - Error stack trace handling
-  * - Environment-aware configuration
-  */
+function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function (e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, default: e }; if (null === e || "object" != typeof e && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (const t in e) "default" !== t && {}.hasOwnProperty.call(e, t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, t)) && (i.get || i.set) ? o(f, t, i) : f[t] = e[t]); return f; })(e, t); } /**
+ * @fileoverview Winston-compatible logger for frontend environment
+ * 
+ * This module provides a Winston-like logging interface for the frontend
+ * that maintains consistency with server-side Winston logging while
+ * working within browser constraints.
+ * 
+ * Features:
+ * - Winston-compatible API (info, warn, error, debug)
+ * - Structured logging with metadata
+ * - Timestamp formatting
+ * - Log level filtering
+ * - Console and server transport support
+ * - Error stack trace handling
+ * - Environment-aware configuration
+ */
 const ui = window.app && window.app.uiManager;
 
 /**
@@ -9261,7 +9242,7 @@ class UIManager {
 exports.UIManager = UIManager;
 
 }).call(this)}).call(this,require('_process'))
-},{"../../../src/client/utils/safe-logger.js":84,"./element-registry.js":40,"_process":25}],49:[function(require,module,exports){
+},{"../../../src/client/utils/safe-logger.js":88,"./element-registry.js":40,"_process":25}],49:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10246,10 +10227,6 @@ if (typeof window !== 'undefined') {
 },{}],53:[function(require,module,exports){
 "use strict";
 
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
 /**
  * Standardized Error Handling Utility
  * 
@@ -10553,7 +10530,8 @@ if (typeof module !== 'undefined' && module.exports) {
 } else if (typeof window !== 'undefined') {
   window.ErrorHandler = ErrorHandler;
 }
-var _default = exports.default = ErrorHandler;
+
+// ES module export removed to prevent syntax errors when loaded as a regular script
 
 },{}],54:[function(require,module,exports){
 "use strict";
@@ -11252,6 +11230,10 @@ var _navigationSubsystem = require("./subsystems/navigation-subsystem.js");
 var _realtimeCommunicationSubsystem = require("./subsystems/realtime-communication-subsystem.js");
 var _globalTokenManagerSubsystem = require("./subsystems/global-token-manager-subsystem.js");
 var _tokenManagerSubsystem = _interopRequireDefault(require("./subsystems/token-manager-subsystem.js"));
+var _tokenNotificationSubsystem = _interopRequireDefault(require("./subsystems/token-notification-subsystem.js"));
+var _enhancedProgressSubsystem = _interopRequireDefault(require("./subsystems/enhanced-progress-subsystem.js"));
+var _enhancedTokenStatusSubsystem = _interopRequireDefault(require("./subsystems/enhanced-token-status-subsystem.js"));
+var _loadingSpinner = require("./utils/loading-spinner.js");
 // File: app.js
 // Description: Main application entry point for PingOne user import tool
 // 
@@ -11297,18 +11279,21 @@ const FEATURE_FLAGS = {
 };
 class App {
   constructor() {
+    // Expose app instance globally for subsystems that rely on window.app
+    window.app = this;
+
     // Initialize centralized logger with safe wrapper to prevent logging errors from breaking the app
     try {
       this.logger = new _logger.Logger({
         context: 'app',
-        version: '7.0.0.6',
+        version: '7.0.0.19',
         enableConsole: true,
         enableStorage: false
       });
 
       // Test the logger
       this.logger.info('Centralized Logger initialized successfully', {
-        version: '7.0.0.6',
+        version: '7.0.0.19',
         featureFlags: FEATURE_FLAGS,
         userAgent: navigator.userAgent
       });
@@ -11339,7 +11324,7 @@ class App {
 
     // Log application start
     this.logger.info('🚀 PingOne Import Tool starting...', {
-      version: '7.0.0.6',
+      version: '7.0.0.18',
       timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,
       url: window.location.href
@@ -11362,6 +11347,7 @@ class App {
 
     // UI Components
     this.globalTokenManager = null;
+    this.loadingSpinner = null; // Global loading spinner
 
     // Modern subsystems (replacing legacy managers)
     this.progressSubsystem = null;
@@ -11386,7 +11372,7 @@ class App {
     this.socket = null;
 
     // Application version
-    this.version = '7.0.0.6';
+    this.version = '7.0.0.19';
     this.buildTimestamp = new Date().toISOString();
     this.environment = 'development';
     this.features = {
@@ -11660,6 +11646,30 @@ class App {
   async initializeCoreComponents() {
     this.logger.debug('Initializing core components');
     this.uiManager.setupUI();
+
+    // Initialize global loading spinner
+    try {
+      this.loadingSpinner = new _loadingSpinner.LoadingSpinner({
+        logger: this.logger.child({
+          component: 'loading-spinner'
+        }),
+        minDisplayTime: 300,
+        // Minimum time to show spinner (ms)
+        showDelay: 200,
+        // Delay before showing spinner (ms)
+        defaultMessage: 'Loading...',
+        containerSelector: 'body'
+      });
+      this.logger.debug('Global loading spinner initialized');
+
+      // Make the spinner available globally for other components
+      window.app = window.app || {};
+      window.app.loadingSpinner = this.loadingSpinner;
+    } catch (error) {
+      this.logger.error('Failed to initialize loading spinner', {
+        error: error.message
+      });
+    }
     this.settingsManager = new _settingsManager.default(this.logger.child({
       component: 'settings-manager'
     }));
@@ -11925,7 +11935,7 @@ class App {
     }
 
     // Initialize Token Notification Subsystem
-    this.subsystems.tokenNotification = new TokenNotificationSubsystem(this.logger.child({
+    this.subsystems.tokenNotification = new _tokenNotificationSubsystem.default(this.logger.child({
       subsystem: 'token-notification'
     }), this.eventBus, this.subsystems.navigation);
     await this.subsystems.tokenNotification.init();
@@ -11933,7 +11943,7 @@ class App {
 
     // Initialize Enhanced Progress Subsystem
     // Fixed progress subsystem initialization
-    this.enhancedProgressSubsystem = new EnhancedProgressSubsystem(this.logger.child({
+    this.enhancedProgressSubsystem = new _enhancedProgressSubsystem.default(this.logger.child({
       subsystem: 'enhanced-progress'
     }), this.uiManager, this.eventBus, this.subsystems.realtimeManager);
     await this.enhancedProgressSubsystem.init();
@@ -11941,7 +11951,7 @@ class App {
     this.logger.debug('Enhanced Progress subsystem initialized');
 
     // Initialize Enhanced Token Status Subsystem
-    this.enhancedTokenStatusSubsystem = new EnhancedTokenStatusSubsystem(this.logger.child({
+    this.enhancedTokenStatusSubsystem = new _enhancedTokenStatusSubsystem.default(this.logger.child({
       subsystem: 'enhanced-token-status'
     }), this.eventBus, this.uiManager);
     await this.enhancedTokenStatusSubsystem.init();
@@ -11951,6 +11961,37 @@ class App {
       subsystemCount: Object.keys(this.subsystems).length,
       enabledSubsystems: Object.keys(this.subsystems)
     });
+  }
+
+  /**
+   * Initialize legacy components that are required for backward compatibility
+   * @returns {Promise<void>}
+   */
+  async initializeLegacyComponents() {
+    this.logger.debug('Initializing legacy components...');
+    try {
+      // Initialize any legacy components or subsystems here
+      // This is a placeholder for backward compatibility
+
+      // Legacy token manager initialization
+      if (this.subsystems.tokenManager) {
+        this.logger.debug('Legacy token manager already initialized');
+      } else {
+        this.logger.debug('Initializing legacy token manager');
+        this.subsystems.tokenManager = new _tokenManagerSubsystem.default(this.logger.child({
+          subsystem: 'token-manager'
+        }), this.uiManager, this.localClient);
+        await this.subsystems.tokenManager.init();
+        this.logger.debug('Legacy token manager initialized');
+      }
+      this.logger.debug('Legacy components initialized successfully');
+    } catch (error) {
+      this.logger.error('Failed to initialize legacy components', {
+        error: error.message,
+        stack: error.stack
+      });
+      // Don't throw the error to allow initialization to continue
+    }
   }
   setupEventListeners() {
     this.logger.debug('Setting up global event listeners');
@@ -12860,8 +12901,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 }).call(this)}).call(this,require('_process'))
-},{"../../public/js/modules/event-bus.js":42,"../../public/js/modules/file-logger.js":43,"../../public/js/modules/logger.js":44,"../../public/js/utils/centralized-logger.js":51,"../../public/js/utils/utility-loader.js":55,"./components/credentials-manager.js":57,"./components/settings-manager.js":58,"./components/ui-manager.js":59,"./subsystems/advanced-realtime-subsystem.js":60,"./subsystems/auth-management-subsystem.js":61,"./subsystems/connection-manager-subsystem.js":62,"./subsystems/global-token-manager-subsystem.js":63,"./subsystems/history-subsystem.js":64,"./subsystems/import-subsystem.js":65,"./subsystems/navigation-subsystem.js":66,"./subsystems/operation-manager-subsystem.js":67,"./subsystems/population-subsystem.js":68,"./subsystems/realtime-communication-subsystem.js":69,"./subsystems/settings-subsystem.js":70,"./subsystems/token-manager-subsystem.js":71,"./subsystems/view-management-subsystem.js":72,"./utils/browser-logging-service.js":73,"./utils/bulletproof-app-integration.js":74,"./utils/bulletproof-global-handler.js":75,"./utils/bulletproof-subsystem-wrapper.js":77,"./utils/bulletproof-token-manager.js":78,"./utils/debug-logger.js":80,"./utils/local-api-client.js":81,"./utils/pingone-client.js":82,"./utils/safe-logger.js":84,"@babel/runtime/helpers/interopRequireDefault":1,"_process":25}],57:[function(require,module,exports){
+},{"../../public/js/modules/event-bus.js":42,"../../public/js/modules/file-logger.js":43,"../../public/js/modules/logger.js":44,"../../public/js/utils/centralized-logger.js":51,"../../public/js/utils/utility-loader.js":55,"./components/credentials-manager.js":57,"./components/settings-manager.js":58,"./components/ui-manager.js":59,"./subsystems/advanced-realtime-subsystem.js":60,"./subsystems/auth-management-subsystem.js":61,"./subsystems/connection-manager-subsystem.js":62,"./subsystems/enhanced-progress-subsystem.js":63,"./subsystems/enhanced-token-status-subsystem.js":64,"./subsystems/global-token-manager-subsystem.js":65,"./subsystems/history-subsystem.js":66,"./subsystems/import-subsystem.js":67,"./subsystems/navigation-subsystem.js":68,"./subsystems/operation-manager-subsystem.js":69,"./subsystems/population-subsystem.js":70,"./subsystems/realtime-communication-subsystem.js":71,"./subsystems/settings-subsystem.js":72,"./subsystems/token-manager-subsystem.js":73,"./subsystems/token-notification-subsystem.js":74,"./subsystems/view-management-subsystem.js":75,"./utils/browser-logging-service.js":76,"./utils/bulletproof-app-integration.js":77,"./utils/bulletproof-global-handler.js":78,"./utils/bulletproof-subsystem-wrapper.js":80,"./utils/bulletproof-token-manager.js":81,"./utils/debug-logger.js":83,"./utils/loading-spinner.js":84,"./utils/local-api-client.js":85,"./utils/pingone-client.js":86,"./utils/safe-logger.js":88,"@babel/runtime/helpers/interopRequireDefault":1,"_process":25}],57:[function(require,module,exports){
 "use strict";
+
+/**
+ * @module
+ * @description ES Module (converted from CommonJS)
+ */
 
 /**
  * Credentials Manager
@@ -13679,7 +13725,7 @@ class SettingsManager {
 var _default = exports.default = SettingsManager;
 
 }).call(this)}).call(this,require('_process'))
-},{"../utils/crypto-utils.js":79,"../utils/winston-logger.js":85,"_process":25}],59:[function(require,module,exports){
+},{"../utils/crypto-utils.js":82,"../utils/winston-logger.js":89,"_process":25}],59:[function(require,module,exports){
 (function (process){(function (){
 "use strict";
 
@@ -16644,7 +16690,7 @@ class AdvancedRealtimeSubsystem {
 }
 exports.AdvancedRealtimeSubsystem = AdvancedRealtimeSubsystem;
 
-},{"../utils/pingone-client.js":82}],61:[function(require,module,exports){
+},{"../utils/pingone-client.js":86}],61:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -17858,7 +17904,1318 @@ class ConnectionManagerSubsystem {
 }
 exports.ConnectionManagerSubsystem = ConnectionManagerSubsystem;
 
-},{"../utils/browser-logging-service.js":73}],63:[function(require,module,exports){
+},{"../utils/browser-logging-service.js":76}],63:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = exports.EnhancedProgressSubsystem = void 0;
+var _browserLoggingService = require("../utils/browser-logging-service.js");
+/**
+ * Enhanced Progress Subsystem
+ * 
+ * Modern progress tracking subsystem that handles all types of operations
+ * (import, export, delete, modify) with real-time updates and better UI
+ */
+
+class EnhancedProgressSubsystem {
+  constructor(logger, uiManager, eventBus, realtimeComm) {
+    this.logger = logger || (0, _browserLoggingService.createLogger)({
+      serviceName: 'enhanced-progress-subsystem',
+      enableServer: true
+    });
+    this.uiManager = uiManager;
+    this.eventBus = eventBus;
+    this.realtimeComm = realtimeComm;
+
+    // Progress state
+    this.currentOperation = null;
+    this.isActive = false;
+    this.startTime = null;
+    this.stats = {
+      processed: 0,
+      successful: 0,
+      failed: 0,
+      skipped: 0,
+      total: 0,
+      errors: []
+    };
+
+    // UI elements
+    this.progressContainer = null;
+    this.progressElements = {};
+
+    // Operation types
+    this.OPERATION_TYPES = {
+      IMPORT: 'import',
+      EXPORT: 'export',
+      DELETE: 'delete',
+      MODIFY: 'modify'
+    };
+    this.logger.info('Enhanced Progress Subsystem initialized');
+  }
+
+  /**
+   * Initialize the subsystem
+   */
+  async init() {
+    try {
+      this.logger.debug('Initializing Enhanced Progress Subsystem...');
+
+      // Set up event listeners
+      this.setupEventListeners();
+
+      // Set up real-time listeners
+      this.setupRealtimeListeners();
+
+      // Initialize progress UI for each operation type
+      this.initializeProgressUI();
+      this.logger.info('Enhanced Progress Subsystem initialized successfully');
+    } catch (error) {
+      this.logger.error('Failed to initialize Enhanced Progress Subsystem', {
+        error: error.message,
+        stack: error.stack
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Set up event listeners
+   */
+  setupEventListeners() {
+    // Listen for operation events
+    this.eventBus.on('operation:started', data => {
+      this.startOperation(data.type, data.options);
+    });
+    this.eventBus.on('operation:progress', data => {
+      this.updateProgress(data);
+    });
+    this.eventBus.on('operation:completed', data => {
+      this.completeOperation(data);
+    });
+    this.eventBus.on('operation:error', data => {
+      this.handleError(data);
+    });
+    this.eventBus.on('operation:cancelled', data => {
+      this.cancelOperation(data);
+    });
+    this.logger.debug('Enhanced Progress event listeners set up');
+  }
+
+  /**
+   * Set up real-time listeners
+   */
+  setupRealtimeListeners() {
+    if (this.realtimeComm) {
+      this.realtimeComm.on('progress', data => {
+        this.updateProgress(data);
+      });
+      this.realtimeComm.on('operation-complete', data => {
+        this.completeOperation(data);
+      });
+      this.realtimeComm.on('operation-error', data => {
+        this.handleError(data);
+      });
+      this.logger.debug('Enhanced Progress real-time listeners set up');
+    }
+  }
+
+  /**
+   * Initialize progress UI for all operation types
+   */
+  initializeProgressUI() {
+    // Find existing progress containers or create them
+    Object.values(this.OPERATION_TYPES).forEach(operationType => {
+      const containerId = `${operationType}-progress-container`;
+      let container = document.getElementById(containerId);
+      if (!container) {
+        container = this.createProgressContainer(operationType);
+      }
+      this.progressElements[operationType] = {
+        container: container,
+        progressBar: container.querySelector('.progress-bar-fill'),
+        percentage: container.querySelector('.progress-percentage'),
+        statusMessage: container.querySelector('.status-message'),
+        progressText: container.querySelector('.progress-text'),
+        statusDetails: container.querySelector('.status-details'),
+        stats: {
+          total: container.querySelector('.stat-value.total'),
+          processed: container.querySelector('.stat-value.processed'),
+          success: container.querySelector('.stat-value.success'),
+          failed: container.querySelector('.stat-value.failed'),
+          skipped: container.querySelector('.stat-value.skipped')
+        },
+        timing: {
+          elapsed: container.querySelector('.elapsed-value'),
+          eta: container.querySelector('.eta-value')
+        },
+        cancelButton: container.querySelector('.cancel-import-btn, .cancel-export-btn, .cancel-delete-btn, .cancel-modify-btn')
+      };
+    });
+    this.logger.debug('Enhanced Progress UI initialized for all operation types');
+  }
+
+  /**
+   * Create progress container for an operation type
+   */
+  createProgressContainer(operationType) {
+    const container = document.createElement('div');
+    container.id = `${operationType}-progress-container`;
+    container.className = 'progress-container enhanced-progress';
+    container.style.display = 'none';
+    const operationTitle = operationType.charAt(0).toUpperCase() + operationType.slice(1);
+    container.innerHTML = `
+            <div class="progress-section">
+                <div class="progress-header">
+                    <h3><i class="fas fa-cog fa-spin"></i> ${operationTitle} Progress</h3>
+                    <button class="close-progress-btn" type="button" aria-label="Close progress">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="progress-content">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill"></div>
+                        </div>
+                        <div class="progress-percentage">0%</div>
+                    </div>
+                    
+                    <div class="progress-status">
+                        <div class="status-message">Preparing ${operationType}...</div>
+                        <div class="progress-text"></div>
+                        <div class="status-details"></div>
+                    </div>
+                    
+                    <div class="progress-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Total:</span>
+                            <span class="stat-value total">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Processed:</span>
+                            <span class="stat-value processed">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Success:</span>
+                            <span class="stat-value success">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Failed:</span>
+                            <span class="stat-value failed">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Skipped:</span>
+                            <span class="stat-value skipped">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="progress-timing">
+                        <div class="time-elapsed">
+                            <i class="fas fa-clock"></i>
+                            <span>Elapsed: <span class="elapsed-value">00:00</span></span>
+                        </div>
+                        <div class="time-remaining">
+                            <i class="fas fa-hourglass-half"></i>
+                            <span>ETA: <span class="eta-value">Calculating...</span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="progress-actions">
+                        <button class="btn btn-secondary cancel-${operationType}-btn" type="button">
+                            <i class="fas fa-stop"></i> Cancel ${operationTitle}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+    // Find the appropriate view to append to
+    const viewContainer = document.getElementById(`${operationType}-view`);
+    if (viewContainer) {
+      viewContainer.appendChild(container);
+    } else {
+      // Fallback to body
+      document.body.appendChild(container);
+    }
+
+    // Set up close button
+    const closeBtn = container.querySelector('.close-progress-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => this.hideProgress(operationType));
+    }
+
+    // Set up cancel button
+    const cancelBtn = container.querySelector(`.cancel-${operationType}-btn`);
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => this.requestCancel(operationType));
+    }
+    return container;
+  }
+
+  /**
+   * Start a new operation
+   */
+  startOperation(operationType) {
+    let options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+    this.currentOperation = operationType;
+    this.isActive = true;
+    this.startTime = Date.now();
+
+    // Reset stats
+    this.stats = {
+      processed: 0,
+      successful: 0,
+      failed: 0,
+      skipped: 0,
+      total: options.total || 0,
+      errors: []
+    };
+
+    // Show progress UI
+    this.showProgress(operationType);
+
+    // Update UI with initial state
+    this.updateProgressUI(operationType, {
+      message: `Starting ${operationType} operation...`,
+      percentage: 0
+    });
+    this.logger.info('🔧 PROGRESS: Operation started', {
+      type: operationType,
+      total: this.stats.total,
+      options
+    });
+    this.eventBus.emit('progress:operation-started', {
+      type: operationType,
+      stats: this.stats,
+      options
+    });
+  }
+
+  /**
+   * Update progress
+   */
+  updateProgress(data) {
+    if (!this.isActive || !this.currentOperation) return;
+
+    // Update stats
+    if (data.processed !== undefined) this.stats.processed = data.processed;
+    if (data.successful !== undefined) this.stats.successful = data.successful;
+    if (data.failed !== undefined) this.stats.failed = data.failed;
+    if (data.skipped !== undefined) this.stats.skipped = data.skipped;
+    if (data.total !== undefined) this.stats.total = data.total;
+    if (data.error) this.stats.errors.push(data.error);
+
+    // Calculate progress percentage
+    const percentage = this.stats.total > 0 ? Math.round(this.stats.processed / this.stats.total * 100) : 0;
+
+    // Calculate timing
+    const elapsed = Date.now() - this.startTime;
+    const rate = this.stats.processed / (elapsed / 1000); // items per second
+    const remaining = this.stats.total - this.stats.processed;
+    const eta = rate > 0 ? remaining / rate : 0;
+
+    // Update UI
+    this.updateProgressUI(this.currentOperation, {
+      percentage,
+      message: data.message || `Processing ${this.currentOperation}...`,
+      progressText: `${this.stats.processed} of ${this.stats.total} processed`,
+      elapsed: this.formatTime(elapsed / 1000),
+      eta: eta > 0 ? this.formatTime(eta) : 'Calculating...'
+    });
+    this.logger.debug('🔧 PROGRESS: Progress updated', {
+      type: this.currentOperation,
+      percentage,
+      stats: this.stats
+    });
+    this.eventBus.emit('progress:updated', {
+      type: this.currentOperation,
+      percentage,
+      stats: this.stats,
+      data
+    });
+  }
+
+  /**
+   * Complete operation
+   */
+  completeOperation(data) {
+    if (!this.isActive || !this.currentOperation) return;
+    const operationType = this.currentOperation;
+    const success = this.stats.failed === 0;
+    const elapsed = Date.now() - this.startTime;
+
+    // Update final stats
+    if (data.stats) {
+      Object.assign(this.stats, data.stats);
+    }
+
+    // Update UI with completion state
+    this.updateProgressUI(operationType, {
+      percentage: 100,
+      message: success ? `${operationType.charAt(0).toUpperCase() + operationType.slice(1)} completed successfully!` : `${operationType.charAt(0).toUpperCase() + operationType.slice(1)} completed with ${this.stats.failed} errors`,
+      progressText: `Completed ${this.stats.processed} items in ${this.formatTime(elapsed / 1000)}`,
+      elapsed: this.formatTime(elapsed / 1000),
+      eta: 'Complete'
+    });
+
+    // Auto-hide after delay for successful operations
+    if (success) {
+      setTimeout(() => this.hideProgress(operationType), 5000);
+    }
+    this.isActive = false;
+    this.logger.info('🔧 PROGRESS: Operation completed', {
+      type: operationType,
+      success,
+      stats: this.stats,
+      duration: elapsed
+    });
+    this.eventBus.emit('progress:operation-completed', {
+      type: operationType,
+      success,
+      stats: this.stats,
+      duration: elapsed,
+      data
+    });
+  }
+
+  /**
+   * Handle operation error
+   */
+  handleError(error) {
+    if (!this.isActive || !this.currentOperation) return;
+    this.stats.errors.push(error);
+    this.stats.failed++;
+    this.updateProgressUI(this.currentOperation, {
+      message: `Error: ${error.message || error.toString()}`,
+      statusDetails: `${this.stats.errors.length} error(s) occurred`
+    });
+    this.logger.error('🔧 PROGRESS: Operation error', {
+      type: this.currentOperation,
+      error: error.message,
+      stats: this.stats
+    });
+    this.eventBus.emit('progress:error', {
+      type: this.currentOperation,
+      error,
+      stats: this.stats
+    });
+  }
+
+  /**
+   * Cancel operation
+   */
+  cancelOperation(data) {
+    if (!this.isActive || !this.currentOperation) return;
+    const operationType = this.currentOperation;
+    this.updateProgressUI(operationType, {
+      message: `${operationType.charAt(0).toUpperCase() + operationType.slice(1)} operation cancelled`,
+      statusDetails: 'Operation was cancelled by user'
+    });
+    this.isActive = false;
+    this.logger.info('🔧 PROGRESS: Operation cancelled', {
+      type: operationType,
+      stats: this.stats
+    });
+    this.eventBus.emit('progress:operation-cancelled', {
+      type: operationType,
+      stats: this.stats,
+      data
+    });
+
+    // Hide progress after a short delay
+    setTimeout(() => this.hideProgress(operationType), 2000);
+  }
+
+  /**
+   * Request operation cancellation
+   */
+  requestCancel(operationType) {
+    this.logger.info('🔧 PROGRESS: Cancel requested', {
+      type: operationType
+    });
+
+    // Emit cancel request event
+    this.eventBus.emit('operation:cancel-requested', {
+      type: operationType
+    });
+
+    // Update UI to show cancelling state
+    this.updateProgressUI(operationType, {
+      message: 'Cancelling operation...',
+      statusDetails: 'Please wait while the operation is cancelled'
+    });
+  }
+
+  /**
+   * Update progress UI elements
+   */
+  updateProgressUI(operationType, updates) {
+    const elements = this.progressElements[operationType];
+    if (!elements) return;
+
+    // Update progress bar
+    if (updates.percentage !== undefined && elements.progressBar) {
+      elements.progressBar.style.width = `${updates.percentage}%`;
+    }
+
+    // Update percentage text
+    if (updates.percentage !== undefined && elements.percentage) {
+      elements.percentage.textContent = `${updates.percentage}%`;
+    }
+
+    // Update status message
+    if (updates.message && elements.statusMessage) {
+      elements.statusMessage.textContent = updates.message;
+    }
+
+    // Update progress text
+    if (updates.progressText && elements.progressText) {
+      elements.progressText.textContent = updates.progressText;
+    }
+
+    // Update status details
+    if (updates.statusDetails && elements.statusDetails) {
+      elements.statusDetails.textContent = updates.statusDetails;
+    }
+
+    // Update stats
+    if (elements.stats) {
+      Object.keys(elements.stats).forEach(key => {
+        if (elements.stats[key] && this.stats[key] !== undefined) {
+          elements.stats[key].textContent = this.stats[key];
+        }
+      });
+    }
+
+    // Update timing
+    if (elements.timing) {
+      if (updates.elapsed && elements.timing.elapsed) {
+        elements.timing.elapsed.textContent = updates.elapsed;
+      }
+      if (updates.eta && elements.timing.eta) {
+        elements.timing.eta.textContent = updates.eta;
+      }
+    }
+  }
+
+  /**
+   * Show progress UI
+   */
+  showProgress(operationType) {
+    const elements = this.progressElements[operationType];
+    if (elements && elements.container) {
+      elements.container.style.display = 'block';
+      elements.container.classList.add('active');
+    }
+    this.logger.debug('🔧 PROGRESS: Progress UI shown', {
+      type: operationType
+    });
+  }
+
+  /**
+   * Hide progress UI
+   */
+  hideProgress(operationType) {
+    const elements = this.progressElements[operationType];
+    if (elements && elements.container) {
+      elements.container.style.display = 'none';
+      elements.container.classList.remove('active');
+    }
+    this.logger.debug('🔧 PROGRESS: Progress UI hidden', {
+      type: operationType
+    });
+  }
+
+  /**
+   * Format time in seconds to human readable format
+   */
+  formatTime(seconds) {
+    if (seconds < 60) {
+      return `${Math.round(seconds)}s`;
+    } else if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = Math.round(seconds % 60);
+      return `${minutes}m ${remainingSeconds}s`;
+    } else {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor(seconds % 3600 / 60);
+      return `${hours}h ${minutes}m`;
+    }
+  }
+
+  /**
+   * Get current progress state
+   */
+  getState() {
+    return {
+      currentOperation: this.currentOperation,
+      isActive: this.isActive,
+      startTime: this.startTime,
+      stats: {
+        ...this.stats
+      }
+    };
+  }
+
+  /**
+   * Reset progress state
+   */
+  reset() {
+    let operationType = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
+    if (operationType) {
+      this.hideProgress(operationType);
+    } else {
+      // Reset all
+      Object.keys(this.progressElements).forEach(type => {
+        this.hideProgress(type);
+      });
+    }
+    if (!operationType || operationType === this.currentOperation) {
+      this.currentOperation = null;
+      this.isActive = false;
+      this.startTime = null;
+      this.stats = {
+        processed: 0,
+        successful: 0,
+        failed: 0,
+        skipped: 0,
+        total: 0,
+        errors: []
+      };
+    }
+    this.logger.info('🔧 PROGRESS: Progress reset', {
+      type: operationType || 'all'
+    });
+  }
+
+  /**
+   * Destroy the subsystem
+   */
+  destroy() {
+    // Hide all progress UIs
+    Object.keys(this.progressElements).forEach(type => {
+      this.hideProgress(type);
+    });
+
+    // Clean up
+    this.isActive = false;
+    this.currentOperation = null;
+    this.progressElements = {};
+    this.logger.info('Enhanced Progress Subsystem destroyed');
+  }
+}
+exports.EnhancedProgressSubsystem = EnhancedProgressSubsystem;
+var _default = exports.default = EnhancedProgressSubsystem;
+
+},{"../utils/browser-logging-service.js":76}],64:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = exports.EnhancedTokenStatusSubsystem = void 0;
+var _browserLoggingService = require("../utils/browser-logging-service.js");
+/**
+ * Enhanced Token Status Subsystem
+ * 
+ * Modern token status management with better UI updates and styling
+ */
+
+class EnhancedTokenStatusSubsystem {
+  constructor(logger, eventBus, uiManager) {
+    this.logger = logger || (0, _browserLoggingService.createLogger)({
+      serviceName: 'enhanced-token-status-subsystem',
+      enableServer: true
+    });
+    this.eventBus = eventBus;
+    this.uiManager = uiManager;
+
+    // Token state
+    this.tokenInfo = {
+      isValid: false,
+      expiresAt: null,
+      expiresIn: 0,
+      tokenType: 'Bearer',
+      lastChecked: null
+    };
+
+    // UI elements
+    this.statusElements = {};
+
+    // Update intervals
+    this.statusCheckInterval = null;
+    this.uiUpdateInterval = null;
+
+    // Configuration
+    this.CHECK_INTERVAL = 30000; // 30 seconds
+    this.UI_UPDATE_INTERVAL = 1000; // 1 second for countdown
+
+    this.logger.info('🔑 Enhanced Token Status Subsystem initialized');
+  }
+
+  /**
+   * Initialize the subsystem
+   */
+  async init() {
+    try {
+      this.logger.debug('🔑 Initializing Enhanced Token Status Subsystem...');
+
+      // Find and cache UI elements
+      this.cacheUIElements();
+
+      // Set up event listeners
+      this.setupEventListeners();
+
+      // Start monitoring
+      this.startMonitoring();
+
+      // Initial token check
+      await this.checkTokenStatus();
+      this.logger.info('🔑 Enhanced Token Status Subsystem initialized successfully');
+    } catch (error) {
+      this.logger.error('🔑 Failed to initialize Enhanced Token Status Subsystem', {
+        error: error.message,
+        stack: error.stack
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Cache UI elements for faster updates
+   */
+  cacheUIElements() {
+    // Global token status in sidebar
+    const globalTokenStatus = document.getElementById('global-token-status');
+    if (globalTokenStatus) {
+      this.statusElements.global = {
+        container: globalTokenStatus,
+        icon: globalTokenStatus.querySelector('.global-token-icon'),
+        text: globalTokenStatus.querySelector('.global-token-text'),
+        countdown: globalTokenStatus.querySelector('.global-token-countdown'),
+        indicator: document.getElementById('token-status-indicator'),
+        refreshButton: document.getElementById('global-refresh-token'),
+        getTokenButton: document.getElementById('global-get-token')
+      };
+    }
+
+    // Token status indicators in other locations
+    const indicators = document.querySelectorAll('.token-status-indicator');
+    indicators.forEach((indicator, index) => {
+      this.statusElements[`indicator_${index}`] = {
+        container: indicator,
+        icon: indicator.querySelector('.token-status-icon'),
+        text: indicator.querySelector('.token-status-text'),
+        time: indicator.querySelector('.token-status-time'),
+        actions: indicator.querySelector('.token-status-actions')
+      };
+    });
+    this.logger.debug('🔑 UI elements cached', {
+      globalStatus: !!this.statusElements.global,
+      indicators: Object.keys(this.statusElements).filter(k => k.startsWith('indicator_')).length
+    });
+  }
+
+  /**
+   * Set up event listeners
+   */
+  setupEventListeners() {
+    // Listen for token events
+    this.eventBus.on('token:refreshed', data => {
+      this.logger.info('🔑 TOKEN: Token refreshed event received', data);
+      this.handleTokenRefreshed(data);
+    });
+    this.eventBus.on('token:expired', data => {
+      this.logger.warn('🔑 TOKEN: Token expired event received', data);
+      this.handleTokenExpired(data);
+    });
+    this.eventBus.on('token:error', data => {
+      this.logger.error('🔑 TOKEN: Token error event received', data);
+      this.handleTokenError(data);
+    });
+    this.eventBus.on('token:obtained', data => {
+      this.logger.info('🔑 TOKEN: Token obtained event received', data);
+      this.handleTokenObtained(data);
+    });
+
+    // Listen for settings changes
+    this.eventBus.on('settings:updated', () => {
+      this.logger.debug('🔑 Settings updated, checking token status');
+      this.checkTokenStatus();
+    });
+
+    // Set up button event listeners
+    this.setupButtonListeners();
+    this.logger.debug('🔑 Event listeners set up');
+  }
+
+  /**
+   * Set up button event listeners
+   */
+  setupButtonListeners() {
+    // Global refresh button
+    if (this.statusElements.global?.refreshButton) {
+      this.statusElements.global.refreshButton.addEventListener('click', () => {
+        this.logger.info('🔑 TOKEN: Refresh button clicked');
+        this.refreshToken();
+      });
+    }
+
+    // Global get token button
+    if (this.statusElements.global?.getTokenButton) {
+      this.statusElements.global.getTokenButton.addEventListener('click', () => {
+        this.logger.info('🔑 TOKEN: Get token button clicked');
+        this.getNewToken();
+      });
+    }
+    this.logger.debug('🔑 Button listeners set up');
+  }
+
+  /**
+   * Start monitoring token status
+   */
+  startMonitoring() {
+    // Clear any existing intervals first to prevent duplicates
+    this.stopMonitoring();
+
+    // Initial check before starting intervals
+    this.checkTokenStatus();
+
+    // Check status periodically (less frequently to prevent blinking)
+    this.statusCheckInterval = setInterval(() => {
+      this.checkTokenStatus();
+    }, this.CHECK_INTERVAL);
+
+    // Update UI more frequently for countdown
+    this.uiUpdateInterval = setInterval(() => {
+      this.updateCountdown();
+    }, this.UI_UPDATE_INTERVAL);
+    this.logger.debug('🔑 Token status monitoring started');
+  }
+
+  /**
+   * Stop monitoring
+   */
+  stopMonitoring() {
+    if (this.statusCheckInterval) {
+      clearInterval(this.statusCheckInterval);
+      this.statusCheckInterval = null;
+    }
+    if (this.uiUpdateInterval) {
+      clearInterval(this.uiUpdateInterval);
+      this.uiUpdateInterval = null;
+    }
+    this.logger.debug('🔑 Token monitoring stopped');
+  }
+
+  /**
+   * Check current token status
+   */
+  async checkTokenStatus() {
+    try {
+      this.logger.debug('🔑 Checking token status...');
+
+      // Try to get token info from various sources
+      const tokenInfo = await this.getTokenInfo();
+
+      // Only update if token validity changed or significant time difference
+      const shouldUpdate = this.tokenInfo.isValid !== tokenInfo.isValid || Math.abs(this.tokenInfo.expiresIn - tokenInfo.expiresIn) > 5;
+      if (shouldUpdate) {
+        // Update internal state
+        this.tokenInfo = {
+          ...this.tokenInfo,
+          ...tokenInfo,
+          lastChecked: Date.now()
+        };
+
+        // Update UI
+        this.updateUI();
+
+        // Log token status
+        this.logTokenStatus();
+
+        // Emit event
+        this.eventBus.emit('token-status:updated', this.tokenInfo);
+      } else {
+        // Just update the expiration time without triggering UI updates
+        this.tokenInfo.expiresIn = tokenInfo.expiresIn;
+        this.tokenInfo.lastChecked = Date.now();
+      }
+    } catch (error) {
+      this.logger.error('🔑 Error checking token status', {
+        error: error.message
+      });
+
+      // Set error state only if not already in error state
+      if (this.tokenInfo.isValid !== false || !this.tokenInfo.error) {
+        this.tokenInfo = {
+          ...this.tokenInfo,
+          isValid: false,
+          error: error.message,
+          lastChecked: Date.now()
+        };
+        this.updateUI();
+      }
+    }
+  }
+
+  /**
+   * Get token information from various sources
+   */
+  async getTokenInfo() {
+    // Try to get from global token manager first
+    if (window.app?.subsystems?.globalTokenManager) {
+      try {
+        const status = window.app.subsystems.globalTokenManager.getTokenStatus();
+        if (status) {
+          return {
+            isValid: status.isValid,
+            expiresAt: status.expiresAt,
+            expiresIn: status.expiresIn,
+            tokenType: status.tokenType || 'Bearer'
+          };
+        }
+      } catch (error) {
+        this.logger.debug('🔑 Could not get status from global token manager', error);
+      }
+    }
+
+    // Try to get from token manager
+    if (window.app?.tokenManager) {
+      try {
+        const status = window.app.tokenManager.getTokenStatus();
+        if (status) {
+          return {
+            isValid: status.isValid,
+            expiresAt: status.expiresAt,
+            expiresIn: status.expiresIn,
+            tokenType: status.tokenType || 'Bearer'
+          };
+        }
+      } catch (error) {
+        this.logger.debug('🔑 Could not get status from token manager', error);
+      }
+    }
+
+    // Try to get from localStorage
+    try {
+      const token = localStorage.getItem('pingone_worker_token');
+      const expiry = localStorage.getItem('pingone_token_expiry');
+      if (token && expiry) {
+        const expiryTime = parseInt(expiry, 10);
+        const currentTime = Date.now();
+
+        // Handle both milliseconds and seconds format
+        let expiryMs, expiresInSeconds;
+        if (expiryTime > 9999999999) {
+          // Value is in milliseconds
+          expiryMs = expiryTime;
+          expiresInSeconds = Math.max(0, Math.floor((expiryMs - currentTime) / 1000));
+        } else {
+          // Value is in seconds
+          expiryMs = expiryTime * 1000;
+          expiresInSeconds = Math.max(0, expiryTime - Math.floor(currentTime / 1000));
+        }
+        return {
+          isValid: expiresInSeconds > 0,
+          expiresAt: new Date(expiryMs).toISOString(),
+          expiresIn: expiresInSeconds,
+          tokenType: 'Bearer'
+        };
+      }
+    } catch (error) {
+      this.logger.debug('🔑 Could not get token from localStorage', error);
+    }
+
+    // Default to no token
+    return {
+      isValid: false,
+      expiresAt: null,
+      expiresIn: 0,
+      tokenType: 'Bearer'
+    };
+  }
+
+  /**
+   * Update UI elements
+   */
+  updateUI() {
+    // Determine status type and styling
+    const status = this.determineStatus();
+
+    // Update global status in sidebar
+    if (this.statusElements.global) {
+      this.updateGlobalStatus(status);
+    }
+
+    // Update all indicators
+    Object.keys(this.statusElements).forEach(key => {
+      if (key.startsWith('indicator_')) {
+        this.updateIndicator(this.statusElements[key], status);
+      }
+    });
+
+    // Update countdown immediately
+    this.updateCountdown();
+
+    // Log status
+    this.logTokenStatus();
+  }
+
+  /**
+   * Determine current status type and styling
+   */
+  determineStatus() {
+    if (this.tokenInfo.error) {
+      return {
+        type: 'error',
+        icon: '❌',
+        text: 'Token Error',
+        className: 'error',
+        color: '#dc3545'
+      };
+    }
+    if (!this.tokenInfo.isValid || this.tokenInfo.expiresIn <= 0) {
+      return {
+        type: 'expired',
+        icon: '🔒',
+        text: 'Token Expired',
+        className: 'expired',
+        color: '#dc3545'
+      };
+    }
+    if (this.tokenInfo.expiresIn <= 300) {
+      // 5 minutes
+      return {
+        type: 'expiring',
+        icon: '⚠️',
+        text: 'Token Expiring',
+        className: 'expiring',
+        color: '#ffc107'
+      };
+    }
+    return {
+      type: 'valid',
+      icon: '✅',
+      text: 'Token Valid',
+      className: 'valid',
+      color: '#28a745'
+    };
+  }
+
+  /**
+   * Update global token status in sidebar
+   */
+  updateGlobalStatus(status) {
+    const elements = this.statusElements.global;
+    if (!elements) return;
+
+    // Update container class - Add comprehensive class for valid tokens
+    if (elements.container) {
+      const className = status.className === 'valid' ? 'valid comprehensive' : status.className;
+      elements.container.className = `global-token-status ${className}`;
+    }
+
+    // Update icon
+    if (elements.icon) {
+      elements.icon.textContent = status.icon;
+    }
+
+    // Update text with comprehensive information for valid tokens
+    if (elements.text) {
+      if (status.className === 'valid' && this.tokenInfo.isValid) {
+        // Show comprehensive green banner with all requested info
+        const timeLeft = this.formatTimeRemaining();
+        const buildNumber = 'bundle-1753964322';
+        const version = '6.5.2.3';
+        const lastChange = 'Comprehensive token status banner with build info and version display';
+        elements.text.textContent = `🟢 TOKEN OBTAINED | Time Left: ${timeLeft} | Build: ${buildNumber} | Version: ${version} | Last Change: ${lastChange}`;
+      } else {
+        elements.text.textContent = status.text;
+      }
+    }
+
+    // Update countdown
+    if (elements.countdown) {
+      if (this.tokenInfo.isValid && this.tokenInfo.expiresIn > 0) {
+        const minutes = Math.floor(this.tokenInfo.expiresIn / 60);
+        elements.countdown.textContent = `${minutes}m`;
+      } else {
+        elements.countdown.textContent = '';
+      }
+    }
+
+    // Update indicator dot
+    if (elements.indicator) {
+      elements.indicator.className = `token-status-indicator ${status.className}`;
+      elements.indicator.style.color = status.color;
+      elements.indicator.textContent = '●';
+      elements.indicator.title = `${status.text} - ${this.formatTimeRemaining()}`;
+    }
+
+    // Show/hide buttons based on status
+    if (elements.refreshButton) {
+      elements.refreshButton.style.display = this.tokenInfo.isValid ? 'inline-block' : 'none';
+    }
+    if (elements.getTokenButton) {
+      elements.getTokenButton.style.display = !this.tokenInfo.isValid ? 'inline-block' : 'none';
+    }
+  }
+
+  /**
+   * Update indicator element
+   */
+  updateIndicator(elements, status) {
+    if (!elements || !elements.container) return;
+
+    // Update container class
+    elements.container.className = `token-status-indicator ${status.className}`;
+
+    // Update icon
+    if (elements.icon) {
+      elements.icon.textContent = status.icon;
+    }
+
+    // Update text
+    if (elements.text) {
+      elements.text.textContent = status.text;
+    }
+
+    // Update time
+    if (elements.time) {
+      elements.time.textContent = this.formatTimeRemaining();
+    }
+  }
+
+  /**
+   * Update countdown display
+   */
+  updateCountdown() {
+    // Recalculate time remaining even if token is invalid
+    if (this.tokenInfo.expiresAt) {
+      const expiryTime = new Date(this.tokenInfo.expiresAt).getTime();
+      const currentTime = Date.now();
+      const expiresIn = Math.max(0, Math.floor((expiryTime - currentTime) / 1000));
+
+      // Only update the expiresIn value if it's changed significantly (more than 1 second)
+      // This prevents unnecessary UI updates that could cause flickering
+      if (Math.abs(this.tokenInfo.expiresIn - expiresIn) >= 1) {
+        this.tokenInfo.expiresIn = expiresIn;
+
+        // Update countdown in global status
+        if (this.statusElements.global?.countdown) {
+          const minutes = Math.floor(expiresIn / 60);
+          const seconds = expiresIn % 60;
+          this.statusElements.global.countdown.textContent = expiresIn > 0 ? `${minutes}:${seconds.toString().padStart(2, '0')}` : '';
+        }
+
+        // Update time in indicators
+        Object.keys(this.statusElements).forEach(key => {
+          if (key.startsWith('indicator_') && this.statusElements[key].time) {
+            this.statusElements[key].time.textContent = this.formatTimeRemaining();
+          }
+        });
+
+        // Check if token expired
+        if (expiresIn <= 0 && this.tokenInfo.isValid) {
+          this.handleTokenExpired();
+        }
+      }
+    }
+  }
+
+  /**
+   * Format time remaining for display
+   */
+  formatTimeRemaining() {
+    if (!this.tokenInfo.isValid || this.tokenInfo.expiresIn <= 0) {
+      return 'Expired';
+    }
+    const minutes = Math.floor(this.tokenInfo.expiresIn / 60);
+    const seconds = this.tokenInfo.expiresIn % 60;
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  }
+
+  /**
+   * Log current token status
+   */
+  logTokenStatus() {
+    const logData = {
+      isValid: this.tokenInfo.isValid,
+      expiresIn: this.tokenInfo.expiresIn,
+      expiresInMinutes: Math.floor(this.tokenInfo.expiresIn / 60),
+      expiresAt: this.tokenInfo.expiresAt,
+      tokenType: this.tokenInfo.tokenType,
+      lastChecked: new Date(this.tokenInfo.lastChecked).toISOString()
+    };
+    if (this.tokenInfo.isValid) {
+      this.logger.info('🔑 TOKEN: Token status check - Valid', logData);
+    } else {
+      this.logger.warn('🔑 TOKEN: Token status check - Invalid', logData);
+    }
+  }
+
+  /**
+   * Handle token refreshed event
+   */
+  handleTokenRefreshed(data) {
+    this.tokenInfo = {
+      ...this.tokenInfo,
+      isValid: true,
+      expiresIn: data.expiresIn || 3600,
+      expiresAt: data.expiresAt || new Date(Date.now() + (data.expiresIn || 3600) * 1000).toISOString(),
+      tokenType: data.tokenType || 'Bearer',
+      error: null,
+      lastChecked: Date.now()
+    };
+    this.updateUI();
+    this.logger.info('🔑 TOKEN: Token refreshed successfully', {
+      expiresIn: this.tokenInfo.expiresIn,
+      expiresInMinutes: Math.floor(this.tokenInfo.expiresIn / 60)
+    });
+  }
+
+  /**
+   * Handle token expired event
+   */
+  handleTokenExpired(data) {
+    this.tokenInfo = {
+      ...this.tokenInfo,
+      isValid: false,
+      expiresIn: 0,
+      error: 'Token expired',
+      lastChecked: Date.now()
+    };
+    this.updateUI();
+    this.logger.warn('🔑 TOKEN: Token expired', data);
+  }
+
+  /**
+   * Handle token error event
+   */
+  handleTokenError(data) {
+    this.tokenInfo = {
+      ...this.tokenInfo,
+      isValid: false,
+      error: data.error || 'Token error',
+      lastChecked: Date.now()
+    };
+    this.updateUI();
+    this.logger.error('🔑 TOKEN: Token error', data);
+  }
+
+  /**
+   * Handle token obtained event
+   */
+  handleTokenObtained(data) {
+    this.tokenInfo = {
+      ...this.tokenInfo,
+      isValid: true,
+      expiresIn: data.expiresIn || 3600,
+      expiresAt: data.expiresAt || new Date(Date.now() + (data.expiresIn || 3600) * 1000).toISOString(),
+      tokenType: data.tokenType || 'Bearer',
+      error: null,
+      lastChecked: Date.now()
+    };
+    this.updateUI();
+    this.logger.info('🔑 TOKEN: New token obtained', {
+      expiresIn: this.tokenInfo.expiresIn,
+      expiresInMinutes: Math.floor(this.tokenInfo.expiresIn / 60)
+    });
+  }
+
+  /**
+   * Refresh token
+   */
+  async refreshToken() {
+    try {
+      this.logger.info('🔑 TOKEN: Refreshing token...');
+
+      // Try global token manager first
+      if (window.app?.subsystems?.globalTokenManager?.refreshToken) {
+        await window.app.subsystems.globalTokenManager.refreshToken();
+        return;
+      }
+
+      // Try token manager
+      if (window.app?.tokenManager?.refreshToken) {
+        await window.app.tokenManager.refreshToken();
+        return;
+      }
+
+      // Fallback to API call
+      const response = await fetch('/api/pingone/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        this.handleTokenRefreshed(data);
+      } else {
+        throw new Error(`Token refresh failed: ${response.status}`);
+      }
+    } catch (error) {
+      this.logger.error('🔑 TOKEN: Failed to refresh token', {
+        error: error.message
+      });
+      this.handleTokenError({
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get new token
+   */
+  async getNewToken() {
+    try {
+      this.logger.info('🔑 TOKEN: Getting new token...');
+
+      // Navigate to settings or show credentials modal
+      if (window.app?.subsystems?.navigation) {
+        window.app.subsystems.navigation.navigateToView('settings');
+      } else {
+        // Fallback
+        window.location.hash = 'settings';
+      }
+    } catch (error) {
+      this.logger.error('🔑 TOKEN: Failed to get new token', {
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get current token status
+   */
+  getStatus() {
+    return {
+      ...this.tokenInfo
+    };
+  }
+
+  /**
+   * Destroy the subsystem
+   */
+  destroy() {
+    this.stopMonitoring();
+    this.statusElements = {};
+    this.logger.info('🔑 Enhanced Token Status Subsystem destroyed');
+  }
+}
+exports.EnhancedTokenStatusSubsystem = EnhancedTokenStatusSubsystem;
+var _default = exports.default = EnhancedTokenStatusSubsystem;
+
+},{"../utils/browser-logging-service.js":76}],65:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -18776,7 +20133,7 @@ exports.GlobalTokenManagerSubsystem = GlobalTokenManagerSubsystem;
 var _default = exports.default = GlobalTokenManagerSubsystem; // Make GlobalTokenManagerSubsystem available globally for bundle
 window.GlobalTokenManagerSubsystem = GlobalTokenManagerSubsystem;
 
-},{"../../utils/config-standardization-browser.js":86,"../../utils/region-config.js":87}],64:[function(require,module,exports){
+},{"../../utils/config-standardization-browser.js":90,"../../utils/region-config.js":91}],66:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -18861,7 +20218,7 @@ class HistorySubsystem {
 }
 var _default = exports.default = HistorySubsystem;
 
-},{}],65:[function(require,module,exports){
+},{}],67:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -19994,7 +21351,7 @@ class ImportSubsystem {
 }
 exports.ImportSubsystem = ImportSubsystem;
 
-},{"../utils/safe-logger.js":84}],66:[function(require,module,exports){
+},{"../utils/safe-logger.js":88}],68:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -20126,8 +21483,77 @@ class NavigationSubsystem {
         return false;
       }
 
+      // Skip if already on this view
+      if (this.currentView === view) {
+        this.logger.debug('Already on requested view', {
+          view
+        });
+        return true;
+      }
+
+      // Store previous view
+      this.previousView = this.currentView;
+
+      // Emit view changing event
+      if (window.EventBus) {
+        window.EventBus.publish('view:changing', {
+          from: this.previousView,
+          to: view
+        });
+      }
+
+      // Show loading spinner
+      try {
+        // Create a more descriptive loading message based on the view
+        let loadingMessage = 'Loading...';
+        switch (view) {
+          case 'token-manager':
+            loadingMessage = 'Loading Token Manager...';
+            break;
+          case 'import':
+            loadingMessage = 'Loading Import Tool...';
+            break;
+          case 'export':
+            loadingMessage = 'Loading Export Tool...';
+            break;
+          case 'settings':
+            loadingMessage = 'Loading Settings...';
+            break;
+          default:
+            loadingMessage = `Loading ${view.charAt(0).toUpperCase() + view.slice(1)}...`;
+        }
+
+        // Show spinner if available
+        if (window.app?.loadingSpinner?.show) {
+          window.app.loadingSpinner.show(loadingMessage);
+        }
+      } catch (error) {
+        this.logger.warn('Failed to show loading spinner', {
+          error: error.message
+        });
+      }
+
       // Show the view
       const success = await this.showView(view, options.pushToHistory !== false);
+
+      // Hide spinner after view is fully loaded
+      try {
+        if (window.app?.loadingSpinner?.hide) {
+          window.app.loadingSpinner.hide();
+        }
+      } catch (error) {
+        this.logger.warn('Failed to hide loading spinner', {
+          error: error.message
+        });
+      }
+
+      // Emit view changed event
+      if (window.EventBus) {
+        window.EventBus.publish('view:changed', {
+          from: this.previousView,
+          to: view
+        });
+      }
       if (success) {
         this.logger.info('Navigation completed successfully', {
           view
@@ -20139,8 +21565,164 @@ class NavigationSubsystem {
         view,
         error: error.message
       });
+
+      // Hide spinner on error
+      try {
+        if (window.app?.loadingSpinner?.hide) {
+          window.app.loadingSpinner.hide(true); // Force hide immediately
+        }
+      } catch (spinnerError) {
+        this.logger.warn('Failed to hide spinner on error', {
+          error: spinnerError.message
+        });
+      }
       return false;
     }
+
+    // The code below is unreachable due to the try-catch block above
+    if (this.currentView === view) {
+      this.logger.debug('Already on requested view', {
+        view
+      });
+      return true;
+    }
+    this.logger.debug('Navigating to view', {
+      view,
+      from: this.currentView
+    });
+
+    // Store previous view
+    this.previousView = this.currentView;
+
+    // Emit view changing event
+    if (window.EventBus) {
+      window.EventBus.publish('view:changing', {
+        from: this.previousView,
+        to: view
+      });
+    }
+
+    // Show loading spinner
+    try {
+      // Create a more descriptive loading message based on the view
+      let loadingMessage = 'Loading...';
+      switch (view) {
+        case 'token-manager':
+          loadingMessage = 'Loading Token Manager...';
+          break;
+        case 'import':
+          loadingMessage = 'Loading Import Tool...';
+          break;
+        case 'export':
+          loadingMessage = 'Loading Export Tool...';
+          break;
+        case 'settings':
+          loadingMessage = 'Loading Settings...';
+          break;
+        default:
+          loadingMessage = `Loading ${view.charAt(0).toUpperCase() + view.slice(1)}...`;
+      }
+
+      // Show spinner if available
+      if (window.app?.loadingSpinner?.show) {
+        window.app.loadingSpinner.show(loadingMessage);
+      }
+    } catch (error) {
+      this.logger.warn('Failed to show loading spinner', {
+        error: error.message
+      });
+    }
+
+    // Run cleanup handler for previous view if exists
+    if (this.previousView && this.viewCleanupHandlers.has(this.previousView)) {
+      try {
+        await this.viewCleanupHandlers.get(this.previousView)();
+        this.logger.debug('View cleanup completed', {
+          view: this.previousView
+        });
+      } catch (error) {
+        this.logger.warn('View cleanup failed', {
+          view: this.previousView,
+          error: error.message
+        });
+      }
+    }
+
+    // Hide all views
+    this.hideAllViews();
+
+    // Show target view
+    const viewElement = document.getElementById(`${view}-view`);
+    if (viewElement) {
+      viewElement.style.display = 'block';
+      viewElement.classList.add('active');
+    } else {
+      this.logger.warn('View element not found', {
+        view
+      });
+      // Hide spinner on error
+      if (window.app?.loadingSpinner?.hide) {
+        window.app.loadingSpinner.hide();
+      }
+      return false;
+    }
+
+    // Update navigation state
+    this.updateNavigationState(view);
+
+    // Run view initializer
+    if (this.viewInitializers.has(view)) {
+      try {
+        await this.viewInitializers.get(view)();
+        this.logger.debug('View initializer completed', {
+          view
+        });
+      } catch (error) {
+        this.logger.warn('View initializer failed', {
+          view,
+          error: error.message
+        });
+      }
+    }
+
+    // Update browser history
+    if (options.pushToHistory !== false && window.history) {
+      const url = new URL(window.location);
+      url.searchParams.set('view', view);
+      window.history.pushState({
+        view
+      }, '', url);
+    }
+
+    // Update current view
+    this.currentView = view;
+
+    // Add to navigation history
+    this.navigationHistory.push({
+      view,
+      timestamp: Date.now(),
+      from: this.previousView
+    });
+
+    // Hide spinner after view is fully loaded
+    try {
+      if (window.app?.loadingSpinner?.hide) {
+        window.app.loadingSpinner.hide();
+      }
+    } catch (error) {
+      this.logger.warn('Failed to hide loading spinner', {
+        error: error.message
+      });
+    }
+
+    // Emit view changed event
+    if (window.EventBus) {
+      window.EventBus.publish('view:changed', {
+        from: this.previousView,
+        to: view
+      });
+    }
+    return true;
   }
 
   /**
@@ -20502,7 +22084,7 @@ class NavigationSubsystem {
 }
 exports.NavigationSubsystem = NavigationSubsystem;
 
-},{"../utils/browser-logging-service.js":73}],67:[function(require,module,exports){
+},{"../utils/browser-logging-service.js":76}],69:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -21235,7 +22817,7 @@ class OperationManagerSubsystem {
 }
 exports.OperationManagerSubsystem = OperationManagerSubsystem;
 
-},{"../utils/browser-logging-service.js":73}],68:[function(require,module,exports){
+},{"../utils/browser-logging-service.js":76}],70:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -21325,33 +22907,14 @@ class PopulationSubsystem {
 }
 var _default = exports.default = PopulationSubsystem;
 
-},{}],69:[function(require,module,exports){
+},{}],71:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.RealtimeCommunicationSubsystem = void 0;
-function _interopRequireWildcard(e, t) {
-  if ("function" == typeof WeakMap) var r = new WeakMap(),
-    n = new WeakMap();
-  return (_interopRequireWildcard = function (e, t) {
-    if (!t && e && e.__esModule) return e;
-    var o,
-      i,
-      f = {
-        __proto__: null,
-        default: e
-      };
-    if (null === e || "object" != typeof e && "function" != typeof e) return f;
-    if (o = t ? n : r) {
-      if (o.has(e)) return o.get(e);
-      o.set(e, f);
-    }
-    for (const t in e) "default" !== t && {}.hasOwnProperty.call(e, t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, t)) && (i.get || i.set) ? o(f, t, i) : f[t] = e[t]);
-    return f;
-  })(e, t);
-}
+function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function (e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, default: e }; if (null === e || "object" != typeof e && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (const t in e) "default" !== t && {}.hasOwnProperty.call(e, t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, t)) && (i.get || i.set) ? o(f, t, i) : f[t] = e[t]); return f; })(e, t); }
 /**
  * Real-time Communication Subsystem
  * 
@@ -21887,7 +23450,7 @@ class RealtimeCommunicationSubsystem {
 }
 exports.RealtimeCommunicationSubsystem = RealtimeCommunicationSubsystem;
 
-},{"socket.io-client":27}],70:[function(require,module,exports){
+},{"socket.io-client":27}],72:[function(require,module,exports){
 "use strict";
 
 var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
@@ -22287,21 +23850,22 @@ class SettingsSubsystem {
       return regionMapping[standardizedRegion] || 'NorthAmerica';
     };
     const uiRegionValue = mapRegionForUI(settings.pingone_region || 'NA');
-    const fields = {
-      'pingone_environment_id': settings.pingone_environment_id || '',
-      'pingone_client_id': settings.pingone_client_id || '',
-      'pingone_client_secret': settings.pingone_client_secret || '',
-      'pingone_population_id': settings.pingone_population_id || '',
-      'region': uiRegionValue,
-      'rate-limit': settings.rate_limit || 90
-    };
-    Object.entries(fields).forEach(_ref => {
-      let [name, value] = _ref;
-      const field = form.querySelector(`[name="${name}"]`);
-      if (field) {
-        field.value = value;
-      }
-    });
+
+    // Use the correct IDs with _settings suffix for the form fields
+    document.getElementById('pingone_environment_id_settings').value = settings.pingone_environment_id || '';
+    document.getElementById('pingone_client_id_settings').value = settings.pingone_client_id || '';
+    document.getElementById('pingone_client_secret_settings').value = settings.pingone_client_secret || '';
+    document.getElementById('pingone_region_settings').value = uiRegionValue;
+
+    // These fields don't have _settings suffix
+    const populationField = document.getElementById('population-id');
+    if (populationField) {
+      populationField.value = settings.pingone_population_id || '';
+    }
+    const rateLimitField = document.getElementById('rate-limit');
+    if (rateLimitField) {
+      rateLimitField.value = settings.rate_limit || 90;
+    }
     const infoLog = this.logger?.info || this.logger?.log || console.log;
     infoLog('Settings form populated with current values');
   }
@@ -22534,8 +24098,17 @@ class SettingsSubsystem {
 }
 var _default = exports.default = SettingsSubsystem;
 
-},{"../../utils/config-standardization-browser.js":86,"../utils/pingone-client.js":82,"@babel/runtime/helpers/interopRequireDefault":1}],71:[function(require,module,exports){
+},{"../../utils/config-standardization-browser.js":90,"../utils/pingone-client.js":86,"@babel/runtime/helpers/interopRequireDefault":1}],73:[function(require,module,exports){
 "use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+/**
+ * @module
+ * @description ES Module (converted from CommonJS)
+ */
 
 /**
  * Token Manager Subsystem - Enhanced and Hardened Version
@@ -23691,13 +25264,384 @@ class TokenManagerSubsystem {
 }
 
 // Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = TokenManagerSubsystem;
-} else if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined') {
   window.TokenManagerSubsystem = TokenManagerSubsystem;
 }
 
-},{}],72:[function(require,module,exports){
+// ES Module export
+var _default = exports.default = TokenManagerSubsystem;
+
+},{}],74:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = exports.TokenNotificationSubsystem = void 0;
+var _winstonLogger = require("../utils/winston-logger.js");
+/**
+ * Token Notification Subsystem
+ * Handles user notifications for invalid/missing tokens and disabled functionality
+ */
+
+class TokenNotificationSubsystem {
+  constructor(logger, eventBus, navigationSubsystem) {
+    this.logger = logger || (0, _winstonLogger.createLogger)({
+      serviceName: 'token-notification-subsystem',
+      environment: 'development'
+    });
+    this.eventBus = eventBus;
+    this.navigationSubsystem = navigationSubsystem;
+    this.isInitialized = false;
+    this.isDestroyed = false;
+
+    // Notification state
+    this.currentNotification = null;
+    this.notificationElement = null;
+    this.lastTokenCheck = null;
+    this.checkInterval = null;
+    this.logger.info('Token Notification Subsystem initialized');
+  }
+
+  /**
+   * Initialize the subsystem
+   */
+  async init() {
+    if (this.isInitialized || this.isDestroyed) {
+      return;
+    }
+    try {
+      this.logger.debug('Initializing Token Notification Subsystem...');
+
+      // Create notification container
+      this.createNotificationContainer();
+
+      // Set up event listeners
+      this.setupEventListeners();
+
+      // Start token monitoring
+      this.startTokenMonitoring();
+
+      // Initial token check
+      this.checkTokenStatus();
+      this.isInitialized = true;
+      this.eventBus.emit('tokenNotification:initialized');
+      this.logger.info('Token Notification Subsystem initialized successfully');
+    } catch (error) {
+      this.logger.error('Failed to initialize Token Notification Subsystem', {
+        error: error.message,
+        stack: error.stack
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Destroy the subsystem
+   */
+  destroy() {
+    if (this.isDestroyed) {
+      return;
+    }
+    this.logger.debug('Destroying Token Notification Subsystem...');
+
+    // Clear monitoring
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+      this.checkInterval = null;
+    }
+
+    // Remove notification
+    this.hideNotification();
+
+    // Remove notification container
+    if (this.notificationElement) {
+      this.notificationElement.remove();
+      this.notificationElement = null;
+    }
+
+    // Mark as destroyed
+    this.isDestroyed = true;
+    this.isInitialized = false;
+    this.logger.info('Token Notification Subsystem destroyed');
+  }
+
+  /**
+   * Create notification container in DOM
+   */
+  createNotificationContainer() {
+    // Remove existing container if it exists
+    const existing = document.getElementById('token-notification-container');
+    if (existing) {
+      existing.remove();
+    }
+
+    // Create new container
+    this.notificationElement = document.createElement('div');
+    this.notificationElement.id = 'token-notification-container';
+    this.notificationElement.className = 'token-notification-container';
+    this.notificationElement.style.display = 'none';
+
+    // Insert at top of main content area
+    const mainContent = document.querySelector('.main-content') || document.body;
+    mainContent.insertBefore(this.notificationElement, mainContent.firstChild);
+    this.logger.debug('Token notification container created');
+  }
+
+  /**
+   * Set up event listeners
+   */
+  setupEventListeners() {
+    // Listen for token events
+    this.eventBus.on('token:refreshed', () => {
+      this.logger.debug('Token refreshed event received');
+      this.checkTokenStatus();
+    });
+    this.eventBus.on('token:expired', () => {
+      this.logger.debug('Token expired event received');
+      this.showTokenExpiredNotification();
+    });
+    this.eventBus.on('token:error', () => {
+      this.logger.debug('Token error event received');
+      this.showTokenErrorNotification();
+    });
+
+    // Listen for settings changes
+    this.eventBus.on('settings:updated', () => {
+      this.logger.debug('Settings updated event received');
+      this.checkTokenStatus();
+    });
+    this.logger.debug('Token notification event listeners set up');
+  }
+
+  /**
+   * Start token monitoring
+   */
+  startTokenMonitoring() {
+    // Check token status every 30 seconds
+    this.checkInterval = setInterval(() => {
+      this.checkTokenStatus();
+    }, 30000);
+    this.logger.debug('Token monitoring started');
+  }
+
+  /**
+   * Check current token status and show appropriate notification
+   * Coordinates with Global Token Manager to avoid conflicting messages
+   */
+  checkTokenStatus() {
+    try {
+      // First check if Global Token Manager is handling this
+      if (window.app && window.app.subsystems && window.app.subsystems.globalTokenManager) {
+        const globalTokenInfo = window.app.subsystems.globalTokenManager.getTokenInfoSync();
+
+        // If global token manager says token is valid, trust it and hide our notifications
+        if (globalTokenInfo && globalTokenInfo.hasToken && globalTokenInfo.timeLeft > 0) {
+          this.hideNotification();
+          this.lastTokenCheck = Date.now();
+          return;
+        }
+      }
+
+      // Fallback to our own token checking if global manager not available
+      const tokenInfo = this.getTokenInfo();
+      if (!tokenInfo.hasToken) {
+        this.showNoTokenNotification();
+      } else if (tokenInfo.timeLeft <= 0) {
+        this.showTokenExpiredNotification();
+      } else if (tokenInfo.timeLeft <= 300) {
+        // 5 minutes
+        this.showTokenExpiringNotification(tokenInfo.timeLeft);
+      } else {
+        // Token is valid - hide notification
+        this.hideNotification();
+      }
+      this.lastTokenCheck = Date.now();
+    } catch (error) {
+      this.logger.error('Error checking token status', {
+        error: error.message
+      });
+      // Only show error notification if global token manager is not handling it
+      if (!window.app?.subsystems?.globalTokenManager) {
+        this.showTokenErrorNotification();
+      }
+    }
+  }
+
+  /**
+   * Get token information from localStorage
+   */
+  getTokenInfo() {
+    try {
+      const token = localStorage.getItem('pingone_worker_token');
+      const expiry = localStorage.getItem('pingone_token_expiry');
+      if (!token || !expiry) {
+        return {
+          hasToken: false,
+          timeLeft: 0
+        };
+      }
+      const expiryTime = parseInt(expiry, 10);
+      const currentTime = Math.floor(Date.now() / 1000);
+      const timeLeft = expiryTime - currentTime;
+      return {
+        hasToken: true,
+        timeLeft: Math.max(0, timeLeft),
+        token: token.substring(0, 20) + '...' // Truncated for logging
+      };
+    } catch (error) {
+      this.logger.error('Error getting token info', {
+        error: error.message
+      });
+      return {
+        hasToken: false,
+        timeLeft: 0
+      };
+    }
+  }
+
+  /**
+   * Show notification for missing token
+   */
+  showNoTokenNotification() {
+    const message = `
+            <div class="token-notification-content">
+                <div class="token-notification-icon">🔒</div>
+                <div class="token-notification-text">
+                    <h4>Authentication Required</h4>
+                    <p>No valid PingOne token found. Most functionality is disabled until you authenticate.</p>
+                    <p><strong>What you can do:</strong></p>
+                    <ul>
+                        <li>Go to <strong>Settings</strong> to configure your PingOne credentials</li>
+                        <li>Use the <strong>Get Token</strong> button to authenticate</li>
+                        <li>Check the token status widget in the sidebar</li>
+                    </ul>
+                </div>
+                <div class="token-notification-actions">
+                    <button id="go-to-settings-btn" class="btn btn-primary btn-sm">Go to Settings</button>
+                    <button onclick="this.parentElement.parentElement.parentElement.style.display='none'" class="btn btn-secondary btn-sm">Dismiss</button>
+                </div>
+            </div>
+        `;
+    this.showNotification(message, 'no-token');
+  }
+
+  /**
+   * Show notification for expired token
+   */
+  showTokenExpiredNotification() {
+    const message = `
+            <div class="token-notification-content">
+                <div class="token-notification-icon">⏰</div>
+                <div class="token-notification-text">
+                    <h4>Token Expired</h4>
+                    <p>Your PingOne authentication token has expired. Please get a new token to continue using the application.</p>
+                </div>
+                <div class="token-notification-actions">
+                    <button onclick="window.app?.subsystems?.globalTokenManager?.refreshToken?.()" class="btn btn-warning btn-sm">Refresh Token</button>
+                    <button onclick="this.parentElement.parentElement.parentElement.style.display='none'" class="btn btn-secondary btn-sm">Dismiss</button>
+                </div>
+            </div>
+        `;
+    this.showNotification(message, 'expired-token');
+  }
+
+  /**
+   * Show notification for expiring token
+   */
+  showTokenExpiringNotification(timeLeft) {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    const timeString = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+    const message = `
+            <div class="token-notification-content">
+                <div class="token-notification-icon">⚠️</div>
+                <div class="token-notification-text">
+                    <h4>Token Expiring Soon</h4>
+                    <p>Your PingOne token will expire in <strong>${timeString}</strong>. Consider refreshing it to avoid interruption.</p>
+                </div>
+                <div class="token-notification-actions">
+                    <button onclick="window.app?.subsystems?.globalTokenManager?.refreshToken?.()" class="btn btn-warning btn-sm">Refresh Now</button>
+                    <button onclick="this.parentElement.parentElement.parentElement.style.display='none'" class="btn btn-secondary btn-sm">Dismiss</button>
+                </div>
+            </div>
+        `;
+    this.showNotification(message, 'expiring-token');
+  }
+
+  /**
+   * Show notification for token error
+   */
+  showTokenErrorNotification() {
+    const message = `
+            <div class="token-notification-content">
+                <div class="token-notification-icon">❌</div>
+                <div class="token-notification-text">
+                    <h4>Token Error</h4>
+                    <p>There was an error with your authentication token. Please check your settings and try again.</p>
+                </div>
+                <div class="token-notification-actions">
+                    <button onclick="window.location.hash='settings'" class="btn btn-primary btn-sm">Check Settings</button>
+                    <button onclick="this.parentElement.parentElement.parentElement.style.display='none'" class="btn btn-secondary btn-sm">Dismiss</button>
+                </div>
+            </div>
+        `;
+    this.showNotification(message, 'error-token');
+  }
+
+  /**
+   * Show notification with given content and type
+   */
+  showNotification(content, type) {
+    if (!this.notificationElement) {
+      this.logger.warn('Notification element not available');
+      return;
+    }
+
+    // Don't show the same notification repeatedly
+    if (this.currentNotification === type) {
+      return;
+    }
+    this.notificationElement.innerHTML = content;
+    this.notificationElement.className = `token-notification-container ${type}`;
+    this.notificationElement.style.display = 'block';
+    this.currentNotification = type;
+    this.logger.debug('Token notification shown', {
+      type
+    });
+
+    // Add event listener for the 'Go to Settings' button if it exists
+    const goToSettingsBtn = this.notificationElement.querySelector('#go-to-settings-btn');
+    if (goToSettingsBtn) {
+      goToSettingsBtn.addEventListener('click', e => {
+        e.preventDefault();
+        if (this.navigationSubsystem) {
+          this.navigationSubsystem.navigateToView('settings');
+        } else {
+          this.logger.error('NavigationSubsystem not available.');
+          // Fallback for safety
+          window.location.hash = 'settings';
+        }
+      });
+    }
+  }
+
+  /**
+   * Hide current notification
+   */
+  hideNotification() {
+    if (this.notificationElement) {
+      this.notificationElement.style.display = 'none';
+      this.notificationElement.innerHTML = '';
+    }
+    this.currentNotification = null;
+    this.logger.debug('Token notification hidden');
+  }
+}
+exports.TokenNotificationSubsystem = TokenNotificationSubsystem;
+var _default = exports.default = TokenNotificationSubsystem;
+
+},{"../utils/winston-logger.js":89}],75:[function(require,module,exports){
 (function (process){(function (){
 "use strict";
 
@@ -24352,7 +26296,7 @@ class ViewManagementSubsystem {
 exports.ViewManagementSubsystem = ViewManagementSubsystem;
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":25}],73:[function(require,module,exports){
+},{"_process":25}],76:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -24631,7 +26575,7 @@ const logger = exports.logger = createLogger({
 });
 var _default = exports.default = BrowserLoggingService;
 
-},{}],74:[function(require,module,exports){
+},{}],77:[function(require,module,exports){
 "use strict";
 
 var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
@@ -25021,7 +26965,7 @@ class BulletproofAppIntegration {
 exports.BulletproofAppIntegration = BulletproofAppIntegration;
 var _default = exports.default = BulletproofAppIntegration;
 
-},{"./bulletproof-global-handler.js":75,"./bulletproof-network-client.js":76,"./bulletproof-subsystem-wrapper.js":77,"@babel/runtime/helpers/interopRequireDefault":1}],75:[function(require,module,exports){
+},{"./bulletproof-global-handler.js":78,"./bulletproof-network-client.js":79,"./bulletproof-subsystem-wrapper.js":80,"@babel/runtime/helpers/interopRequireDefault":1}],78:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -25523,7 +27467,7 @@ window.bulletproofHandler = bulletproofHandler;
 // Also export as module
 var _default = exports.default = bulletproofHandler;
 
-},{}],76:[function(require,module,exports){
+},{}],79:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -26067,7 +28011,7 @@ const bulletproofNetworkClient = exports.bulletproofNetworkClient = new Bulletpr
 // Export both class and instance
 var _default = exports.default = BulletproofNetworkClient;
 
-},{}],77:[function(require,module,exports){
+},{}],80:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -26602,7 +28546,7 @@ function createBulletproofSubsystemWrapper(subsystem, logger) {
   }
 }
 
-},{}],78:[function(require,module,exports){
+},{}],81:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -27226,7 +29170,7 @@ function createBulletproofTokenManager(logger) {
 }
 var _default = exports.default = BulletproofTokenManager;
 
-},{"./bulletproof-subsystem-wrapper.js":77}],79:[function(require,module,exports){
+},{"./bulletproof-subsystem-wrapper.js":80}],82:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -27302,7 +29246,7 @@ class CryptoUtils {
 }
 exports.CryptoUtils = CryptoUtils;
 
-},{}],80:[function(require,module,exports){
+},{}],83:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -27513,7 +29457,218 @@ const debugLog = exports.debugLog = {
 };
 var _default = exports.default = debugLog;
 
-},{}],81:[function(require,module,exports){
+},{}],84:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+/**
+ * Global Loading Spinner Utility
+ * Version: 7.0.0.19
+ * 
+ * This module provides a global loading spinner that can be shown during page transitions,
+ * API calls, or any other operations that might take time to complete.
+ */
+
+class LoadingSpinner {
+  constructor() {
+    this.initialized = false;
+    this.spinnerElement = null;
+    this.spinnerOverlay = null;
+    this.spinnerMessage = null;
+    this.defaultMessage = 'Loading...';
+    this.timeoutId = null;
+    this.minDisplayTime = 300; // Minimum time to show spinner in ms
+    this.showDelay = 200; // Delay before showing spinner in ms
+  }
+
+  /**
+   * Initialize the spinner by creating and appending necessary DOM elements
+   */
+  initialize() {
+    if (this.initialized) return;
+
+    // Create spinner overlay
+    this.spinnerOverlay = document.createElement('div');
+    this.spinnerOverlay.className = 'global-spinner-overlay';
+
+    // Create spinner element
+    this.spinnerElement = document.createElement('div');
+    this.spinnerElement.className = 'global-spinner';
+
+    // Create message element
+    this.spinnerMessage = document.createElement('div');
+    this.spinnerMessage.className = 'global-spinner-message';
+    this.spinnerMessage.textContent = this.defaultMessage;
+
+    // Assemble and append to body
+    this.spinnerOverlay.appendChild(this.spinnerElement);
+    this.spinnerOverlay.appendChild(this.spinnerMessage);
+    document.body.appendChild(this.spinnerOverlay);
+    this.initialized = true;
+
+    // Add event listeners for page transitions
+    this.setupPageTransitionListeners();
+  }
+
+  /**
+   * Show the spinner with an optional custom message
+   * @param {string} message - Optional custom message to display
+   * @param {boolean} immediate - If true, show immediately without delay
+   */
+  show() {
+    let message = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.defaultMessage;
+    let immediate = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+    if (!this.initialized) {
+      this.initialize();
+    }
+
+    // Clear any existing timeout
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+    }
+
+    // Update message
+    this.spinnerMessage.textContent = message;
+
+    // Show spinner (with delay unless immediate is true)
+    if (immediate) {
+      this.spinnerOverlay.classList.add('active');
+    } else {
+      this.timeoutId = setTimeout(() => {
+        this.spinnerOverlay.classList.add('active');
+      }, this.showDelay);
+    }
+  }
+
+  /**
+   * Hide the spinner
+   * @param {boolean} force - If true, hide immediately regardless of minimum display time
+   */
+  hide() {
+    let force = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+    if (!this.initialized) return;
+
+    // Clear any pending show timeout
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+    }
+    if (force) {
+      this.spinnerOverlay.classList.remove('active');
+      return;
+    }
+
+    // Ensure spinner stays visible for minimum time to avoid flickering
+    const currentlyVisible = this.spinnerOverlay.classList.contains('active');
+    if (currentlyVisible) {
+      setTimeout(() => {
+        this.spinnerOverlay.classList.remove('active');
+      }, this.minDisplayTime);
+    } else {
+      this.spinnerOverlay.classList.remove('active');
+    }
+  }
+
+  /**
+   * Set up listeners for page transitions and AJAX requests
+   */
+  setupPageTransitionListeners() {
+    // Listen for view changes
+    if (window.EventBus) {
+      window.EventBus.subscribe('view:changing', data => {
+        this.show(`Loading ${data.view || 'page'}...`);
+      });
+      window.EventBus.subscribe('view:changed', () => {
+        this.hide();
+      });
+    }
+
+    // Intercept fetch API to show spinner during API calls
+    this.interceptFetch();
+
+    // Intercept XMLHttpRequest to show spinner during AJAX calls
+    this.interceptXHR();
+  }
+
+  /**
+   * Intercept fetch API to show/hide spinner during API calls
+   */
+  interceptFetch() {
+    const originalFetch = window.fetch;
+    const spinner = this;
+    window.fetch = function () {
+      for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+        args[_key] = arguments[_key];
+      }
+      // Don't show spinner for certain requests (like health checks)
+      const url = args[0]?.url || args[0];
+      if (typeof url === 'string' && (url.includes('/api/health') || url.includes('/ping') || url.includes('/favicon'))) {
+        return originalFetch.apply(this, args);
+      }
+      spinner.show('Loading data...');
+      return originalFetch.apply(this, args).then(response => {
+        spinner.hide();
+        return response;
+      }).catch(error => {
+        spinner.hide();
+        throw error;
+      });
+    };
+  }
+
+  /**
+   * Intercept XMLHttpRequest to show/hide spinner during AJAX calls
+   */
+  interceptXHR() {
+    const originalOpen = XMLHttpRequest.prototype.open;
+    const originalSend = XMLHttpRequest.prototype.send;
+    const spinner = this;
+    XMLHttpRequest.prototype.open = function () {
+      for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+        args[_key2] = arguments[_key2];
+      }
+      this._requestUrl = args[1];
+      return originalOpen.apply(this, args);
+    };
+    XMLHttpRequest.prototype.send = function () {
+      for (var _len3 = arguments.length, args = new Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+        args[_key3] = arguments[_key3];
+      }
+      // Don't show spinner for certain requests
+      if (this._requestUrl && (this._requestUrl.includes('/api/health') || this._requestUrl.includes('/ping') || this._requestUrl.includes('/favicon'))) {
+        return originalSend.apply(this, args);
+      }
+      spinner.show('Loading data...');
+
+      // Set up listeners to hide spinner when request completes
+      this.addEventListener('load', () => spinner.hide());
+      this.addEventListener('error', () => spinner.hide());
+      this.addEventListener('abort', () => spinner.hide());
+      return originalSend.apply(this, args);
+    };
+  }
+
+  /**
+   * Create and return an inline spinner element
+   * @returns {HTMLElement} Inline spinner element
+   */
+  createInlineSpinner() {
+    const spinner = document.createElement('div');
+    spinner.className = 'inline-spinner';
+    return spinner;
+  }
+}
+
+// Create singleton instance
+const loadingSpinner = new LoadingSpinner();
+
+// Export the singleton
+var _default = exports.default = loadingSpinner;
+
+},{}],85:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -27673,7 +29828,7 @@ class LocalApiClient {
 }
 var _default = exports.default = LocalApiClient;
 
-},{}],82:[function(require,module,exports){
+},{}],86:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -27769,7 +29924,7 @@ class PingOneClient {
 }
 var _default = exports.default = PingOneClient;
 
-},{"./pingone-tld.js":83}],83:[function(require,module,exports){
+},{"./pingone-tld.js":87}],87:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -27801,7 +29956,7 @@ function getTldForRegion(region) {
   return 'com';
 }
 
-},{}],84:[function(require,module,exports){
+},{}],88:[function(require,module,exports){
 (function (process){(function (){
 "use strict";
 
@@ -28070,9 +30225,9 @@ if (typeof window !== 'undefined') {
 }
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":25}],85:[function(require,module,exports){
+},{"_process":25}],89:[function(require,module,exports){
 arguments[4][50][0].apply(exports,arguments)
-},{"_process":25,"dup":50}],86:[function(require,module,exports){
+},{"_process":25,"dup":50}],90:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -28262,7 +30417,7 @@ function getConfigValue(config, standardKey) {
   return defaultValue;
 }
 
-},{}],87:[function(require,module,exports){
+},{}],91:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {

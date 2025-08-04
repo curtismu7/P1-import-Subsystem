@@ -401,21 +401,22 @@ class SettingsSubsystem {
         
         const uiRegionValue = mapRegionForUI(settings.pingone_region || 'NA');
         
-        const fields = {
-            'pingone_environment_id': settings.pingone_environment_id || '',
-            'pingone_client_id': settings.pingone_client_id || '',
-            'pingone_client_secret': settings.pingone_client_secret || '',
-            'pingone_population_id': settings.pingone_population_id || '',
-            'region': uiRegionValue,
-            'rate-limit': settings.rate_limit || 90
-        };
+        // Use the correct IDs with _settings suffix for the form fields
+        document.getElementById('pingone_environment_id_settings').value = settings.pingone_environment_id || '';
+        document.getElementById('pingone_client_id_settings').value = settings.pingone_client_id || '';
+        document.getElementById('pingone_client_secret_settings').value = settings.pingone_client_secret || '';
+        document.getElementById('pingone_region_settings').value = uiRegionValue;
         
-        Object.entries(fields).forEach(([name, value]) => {
-            const field = form.querySelector(`[name="${name}"]`);
-            if (field) {
-                field.value = value;
-            }
-        });
+        // These fields don't have _settings suffix
+        const populationField = document.getElementById('population-id');
+        if (populationField) {
+            populationField.value = settings.pingone_population_id || '';
+        }
+        
+        const rateLimitField = document.getElementById('rate-limit');
+        if (rateLimitField) {
+            rateLimitField.value = settings.rate_limit || 90;
+        }
         
         const infoLog = this.logger?.info || this.logger?.log || console.log;
         infoLog('Settings form populated with current values');

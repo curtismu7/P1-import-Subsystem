@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PingOne User Import v7.0.0.15</title>
+    <title>PingOne User Import v7.0.0.20</title>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
@@ -1334,7 +1334,7 @@
                         <span class="ping-trademark">PingIdentity<span class="trademark-symbol">™</span></span>
                     </div>
                     <span class="footer-copyright">
-                        &copy; 2025 PingOne Import Tool <span class="version-display" style="display: inline-block; font-size: 0.9em; margin-left: 10px; vertical-align: middle;">v7.0.0.15</span>
+                        &copy; 2025 PingOne Import Tool <span class="version-display" style="display: inline-block; font-size: 0.9em; margin-left: 10px; vertical-align: middle;">v7.0.0.20</span>
                     </span>
                 </div>
                 <div class="footer-right">
@@ -1358,10 +1358,16 @@
     <!-- API URL Subsystem Client Script -->
     <script src="/js/api-url-subsystem-client.js"></script>
     <!-- JavaScript -->
-    <!-- CRITICAL: Direct bundle loading - no more dynamic manifest system -->
-    <!-- This loads the latest bundle directly without complex API calls -->
-    <!-- Last fixed: 2025-07-22 - Replaced broken dynamic loading system -->
-        <script src="/js/bug-fix-loader.js"></script>
+    <!-- Import Maps Configuration -->
+    <script type="importmap" src="/import-maps.json"></script>
+    
+    <!-- Progressive Enhancement Loader -->
+    <!-- This script detects import maps support and loads either modules or bundle -->
+    <!-- Version: 7.0.0.20 - Added 2025-07-30 - Import Maps Migration -->
+    <script src="/js/import-maps-loader.js"></script>
+    
+    <!-- Pre-load critical fixes and utilities -->
+    <script src="/js/bug-fix-loader.js"></script>
     <!-- Console Cleaner - Suppresses all token-related console messages and fixes page title -->
     <script src="/js/console-cleaner.js"></script>
     <!-- Region Code Fix - Ensures standardized region codes (NA, EU, CA, AP) -->
@@ -1374,7 +1380,9 @@
     <script src="/js/test-region-code-fix.js"></script>
     <!-- Settings Loader - Loads settings from API before bundle initialization -->
     <script src="/js/settings-loader.js"></script>
-    <script src="/js/bundle-1754336432.js"></script>
+    
+    <!-- Bundle is now loaded dynamically by import-maps-loader.js -->
+    <!-- <script src="/js/bundle-1754340243.js"></script> -->
     
     <!-- Fallback error handling for bundle loading -->
     <script>

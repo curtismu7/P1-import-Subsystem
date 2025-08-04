@@ -169,18 +169,23 @@ export class EnhancedTokenStatusSubsystem {
      * Start monitoring token status
      */
     startMonitoring() {
-        // Fixed token status update interval - more frequent checks
-        // Check token status more frequently
+        // Clear any existing intervals first to prevent duplicates
+        this.stopMonitoring();
+        
+        // Initial check before starting intervals
+        this.checkTokenStatus();
+        
+        // Check status periodically (less frequently to prevent blinking)
         this.statusCheckInterval = setInterval(() => {
             this.checkTokenStatus();
-        }, 10000); // Check every 10 seconds instead of 30
+        }, this.CHECK_INTERVAL);
         
-        // Update UI countdown every second
+        // Update UI more frequently for countdown
         this.uiUpdateInterval = setInterval(() => {
             this.updateCountdown();
-        }, 1000);
+        }, this.UI_UPDATE_INTERVAL);
         
-        this.logger.debug('🔑 Token monitoring started with improved frequency');
+        this.logger.debug('🔑 Token status monitoring started');
     }
     
     /**
@@ -210,36 +215,49 @@ export class EnhancedTokenStatusSubsystem {
             // Try to get token info from various sources
             const tokenInfo = await this.getTokenInfo();
             
-            // Update internal state
-            this.tokenInfo = {
-                ...this.tokenInfo,
-                ...tokenInfo,
-                lastChecked: Date.now()
-            };
-            
-            // Update UI
-            this.updateUI();
-            
-            // Log token status
-            this.logTokenStatus();
-            
-            // Emit event
-            this.eventBus.emit('token-status:updated', this.tokenInfo);
+            // Only update if token validity changed or significant time difference
+            const shouldUpdate = 
+                this.tokenInfo.isValid !== tokenInfo.isValid || 
+                Math.abs(this.tokenInfo.expiresIn - tokenInfo.expiresIn) > 5;
+                
+            if (shouldUpdate) {
+                // Update internal state
+                this.tokenInfo = {
+                    ...this.tokenInfo,
+                    ...tokenInfo,
+                    lastChecked: Date.now()
+                };
+                
+                // Update UI
+                this.updateUI();
+                
+                // Log token status
+                this.logTokenStatus();
+                
+                // Emit event
+                this.eventBus.emit('token-status:updated', this.tokenInfo);
+            } else {
+                // Just update the expiration time without triggering UI updates
+                this.tokenInfo.expiresIn = tokenInfo.expiresIn;
+                this.tokenInfo.lastChecked = Date.now();
+            }
             
         } catch (error) {
             this.logger.error('🔑 Error checking token status', {
                 error: error.message
             });
             
-            // Set error state
-            this.tokenInfo = {
-                ...this.tokenInfo,
-                isValid: false,
-                error: error.message,
-                lastChecked: Date.now()
-            };
-            
-            this.updateUI();
+            // Set error state only if not already in error state
+            if (this.tokenInfo.isValid !== false || !this.tokenInfo.error) {
+                this.tokenInfo = {
+                    ...this.tokenInfo,
+                    isValid: false,
+                    error: error.message,
+                    lastChecked: Date.now()
+                };
+                
+                this.updateUI();
+            }
         }
     }
     
@@ -326,21 +344,26 @@ export class EnhancedTokenStatusSubsystem {
      * Update UI elements
      */
     updateUI() {
+        // Determine status type and styling
         const status = this.determineStatus();
         
-        // Update global token status
+        // Update global status in sidebar
         if (this.statusElements.global) {
             this.updateGlobalStatus(status);
         }
         
-        // Update other indicators
+        // Update all indicators
         Object.keys(this.statusElements).forEach(key => {
             if (key.startsWith('indicator_')) {
                 this.updateIndicator(this.statusElements[key], status);
             }
         });
         
-        this.logger.debug('🔑 UI updated', { status: status.type });
+        // Update countdown immediately
+        this.updateCountdown();
+        
+        // Log status
+        this.logTokenStatus();
     }
     
     /**
@@ -476,32 +499,36 @@ export class EnhancedTokenStatusSubsystem {
      * Update countdown display
      */
     updateCountdown() {
-        if (!this.tokenInfo.isValid || this.tokenInfo.expiresIn <= 0) return;
-        
-        // Recalculate time remaining
+        // Recalculate time remaining even if token is invalid
         if (this.tokenInfo.expiresAt) {
             const expiryTime = new Date(this.tokenInfo.expiresAt).getTime();
             const currentTime = Date.now();
             const expiresIn = Math.max(0, Math.floor((expiryTime - currentTime) / 1000));
             
-            this.tokenInfo.expiresIn = expiresIn;
-            
-            // Update countdown in global status
-            if (this.statusElements.global?.countdown) {
-                const minutes = Math.floor(expiresIn / 60);
-                this.statusElements.global.countdown.textContent = expiresIn > 0 ? `${minutes}m` : '';
-            }
-            
-            // Update time in indicators
-            Object.keys(this.statusElements).forEach(key => {
-                if (key.startsWith('indicator_') && this.statusElements[key].time) {
-                    this.statusElements[key].time.textContent = this.formatTimeRemaining();
+            // Only update the expiresIn value if it's changed significantly (more than 1 second)
+            // This prevents unnecessary UI updates that could cause flickering
+            if (Math.abs(this.tokenInfo.expiresIn - expiresIn) >= 1) {
+                this.tokenInfo.expiresIn = expiresIn;
+                
+                // Update countdown in global status
+                if (this.statusElements.global?.countdown) {
+                    const minutes = Math.floor(expiresIn / 60);
+                    const seconds = expiresIn % 60;
+                    this.statusElements.global.countdown.textContent = expiresIn > 0 ? 
+                        `${minutes}:${seconds.toString().padStart(2, '0')}` : '';
                 }
-            });
-            
-            // Check if token expired
-            if (expiresIn <= 0 && this.tokenInfo.isValid) {
-                this.handleTokenExpired();
+                
+                // Update time in indicators
+                Object.keys(this.statusElements).forEach(key => {
+                    if (key.startsWith('indicator_') && this.statusElements[key].time) {
+                        this.statusElements[key].time.textContent = this.formatTimeRemaining();
+                    }
+                });
+                
+                // Check if token expired
+                if (expiresIn <= 0 && this.tokenInfo.isValid) {
+                    this.handleTokenExpired();
+                }
             }
         }
     }

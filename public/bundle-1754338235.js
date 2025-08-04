@@ -6115,41 +6115,22 @@ exports.Logger = void 0;
 var _winstonLogger = require("./winston-logger.js");
 var _messageFormatter = _interopRequireDefault(require("./message-formatter.js"));
 var _uiManager = require("./ui-manager.js");
-function _interopRequireWildcard(e, t) {
-  if ("function" == typeof WeakMap) var r = new WeakMap(),
-    n = new WeakMap();
-  return (_interopRequireWildcard = function (e, t) {
-    if (!t && e && e.__esModule) return e;
-    var o,
-      i,
-      f = {
-        __proto__: null,
-        default: e
-      };
-    if (null === e || "object" != typeof e && "function" != typeof e) return f;
-    if (o = t ? n : r) {
-      if (o.has(e)) return o.get(e);
-      o.set(e, f);
-    }
-    for (const t in e) "default" !== t && {}.hasOwnProperty.call(e, t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, t)) && (i.get || i.set) ? o(f, t, i) : f[t] = e[t]);
-    return f;
-  })(e, t);
-} /**
-  * @fileoverview Winston-compatible logger for frontend environment
-  * 
-  * This module provides a Winston-like logging interface for the frontend
-  * that maintains consistency with server-side Winston logging while
-  * working within browser constraints.
-  * 
-  * Features:
-  * - Winston-compatible API (info, warn, error, debug)
-  * - Structured logging with metadata
-  * - Timestamp formatting
-  * - Log level filtering
-  * - Console and server transport support
-  * - Error stack trace handling
-  * - Environment-aware configuration
-  */
+function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function (e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, default: e }; if (null === e || "object" != typeof e && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (const t in e) "default" !== t && {}.hasOwnProperty.call(e, t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, t)) && (i.get || i.set) ? o(f, t, i) : f[t] = e[t]); return f; })(e, t); } /**
+ * @fileoverview Winston-compatible logger for frontend environment
+ * 
+ * This module provides a Winston-like logging interface for the frontend
+ * that maintains consistency with server-side Winston logging while
+ * working within browser constraints.
+ * 
+ * Features:
+ * - Winston-compatible API (info, warn, error, debug)
+ * - Structured logging with metadata
+ * - Timestamp formatting
+ * - Log level filtering
+ * - Console and server transport support
+ * - Error stack trace handling
+ * - Environment-aware configuration
+ */
 const ui = window.app && window.app.uiManager;
 
 /**
@@ -9261,7 +9242,7 @@ class UIManager {
 exports.UIManager = UIManager;
 
 }).call(this)}).call(this,require('_process'))
-},{"../../../src/client/utils/safe-logger.js":87,"./element-registry.js":40,"_process":25}],49:[function(require,module,exports){
+},{"../../../src/client/utils/safe-logger.js":88,"./element-registry.js":40,"_process":25}],49:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10246,10 +10227,6 @@ if (typeof window !== 'undefined') {
 },{}],53:[function(require,module,exports){
 "use strict";
 
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
 /**
  * Standardized Error Handling Utility
  * 
@@ -10553,7 +10530,8 @@ if (typeof module !== 'undefined' && module.exports) {
 } else if (typeof window !== 'undefined') {
   window.ErrorHandler = ErrorHandler;
 }
-var _default = exports.default = ErrorHandler;
+
+// ES module export removed to prevent syntax errors when loaded as a regular script
 
 },{}],54:[function(require,module,exports){
 "use strict";
@@ -11255,6 +11233,7 @@ var _tokenManagerSubsystem = _interopRequireDefault(require("./subsystems/token-
 var _tokenNotificationSubsystem = _interopRequireDefault(require("./subsystems/token-notification-subsystem.js"));
 var _enhancedProgressSubsystem = _interopRequireDefault(require("./subsystems/enhanced-progress-subsystem.js"));
 var _enhancedTokenStatusSubsystem = _interopRequireDefault(require("./subsystems/enhanced-token-status-subsystem.js"));
+var _loadingSpinner = require("./utils/loading-spinner.js");
 // File: app.js
 // Description: Main application entry point for PingOne user import tool
 // 
@@ -11300,18 +11279,21 @@ const FEATURE_FLAGS = {
 };
 class App {
   constructor() {
+    // Expose app instance globally for subsystems that rely on window.app
+    window.app = this;
+
     // Initialize centralized logger with safe wrapper to prevent logging errors from breaking the app
     try {
       this.logger = new _logger.Logger({
         context: 'app',
-        version: '7.0.0.6',
+        version: '7.0.0.19',
         enableConsole: true,
         enableStorage: false
       });
 
       // Test the logger
       this.logger.info('Centralized Logger initialized successfully', {
-        version: '7.0.0.6',
+        version: '7.0.0.19',
         featureFlags: FEATURE_FLAGS,
         userAgent: navigator.userAgent
       });
@@ -11342,7 +11324,7 @@ class App {
 
     // Log application start
     this.logger.info('🚀 PingOne Import Tool starting...', {
-      version: '7.0.0.6',
+      version: '7.0.0.18',
       timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,
       url: window.location.href
@@ -11365,6 +11347,7 @@ class App {
 
     // UI Components
     this.globalTokenManager = null;
+    this.loadingSpinner = null; // Global loading spinner
 
     // Modern subsystems (replacing legacy managers)
     this.progressSubsystem = null;
@@ -11389,7 +11372,7 @@ class App {
     this.socket = null;
 
     // Application version
-    this.version = '7.0.0.6';
+    this.version = '7.0.0.19';
     this.buildTimestamp = new Date().toISOString();
     this.environment = 'development';
     this.features = {
@@ -11663,6 +11646,30 @@ class App {
   async initializeCoreComponents() {
     this.logger.debug('Initializing core components');
     this.uiManager.setupUI();
+
+    // Initialize global loading spinner
+    try {
+      this.loadingSpinner = new _loadingSpinner.LoadingSpinner({
+        logger: this.logger.child({
+          component: 'loading-spinner'
+        }),
+        minDisplayTime: 300,
+        // Minimum time to show spinner (ms)
+        showDelay: 200,
+        // Delay before showing spinner (ms)
+        defaultMessage: 'Loading...',
+        containerSelector: 'body'
+      });
+      this.logger.debug('Global loading spinner initialized');
+
+      // Make the spinner available globally for other components
+      window.app = window.app || {};
+      window.app.loadingSpinner = this.loadingSpinner;
+    } catch (error) {
+      this.logger.error('Failed to initialize loading spinner', {
+        error: error.message
+      });
+    }
     this.settingsManager = new _settingsManager.default(this.logger.child({
       component: 'settings-manager'
     }));
@@ -11954,6 +11961,37 @@ class App {
       subsystemCount: Object.keys(this.subsystems).length,
       enabledSubsystems: Object.keys(this.subsystems)
     });
+  }
+
+  /**
+   * Initialize legacy components that are required for backward compatibility
+   * @returns {Promise<void>}
+   */
+  async initializeLegacyComponents() {
+    this.logger.debug('Initializing legacy components...');
+    try {
+      // Initialize any legacy components or subsystems here
+      // This is a placeholder for backward compatibility
+
+      // Legacy token manager initialization
+      if (this.subsystems.tokenManager) {
+        this.logger.debug('Legacy token manager already initialized');
+      } else {
+        this.logger.debug('Initializing legacy token manager');
+        this.subsystems.tokenManager = new _tokenManagerSubsystem.default(this.logger.child({
+          subsystem: 'token-manager'
+        }), this.uiManager, this.localClient);
+        await this.subsystems.tokenManager.init();
+        this.logger.debug('Legacy token manager initialized');
+      }
+      this.logger.debug('Legacy components initialized successfully');
+    } catch (error) {
+      this.logger.error('Failed to initialize legacy components', {
+        error: error.message,
+        stack: error.stack
+      });
+      // Don't throw the error to allow initialization to continue
+    }
   }
   setupEventListeners() {
     this.logger.debug('Setting up global event listeners');
@@ -12863,8 +12901,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 }).call(this)}).call(this,require('_process'))
-},{"../../public/js/modules/event-bus.js":42,"../../public/js/modules/file-logger.js":43,"../../public/js/modules/logger.js":44,"../../public/js/utils/centralized-logger.js":51,"../../public/js/utils/utility-loader.js":55,"./components/credentials-manager.js":57,"./components/settings-manager.js":58,"./components/ui-manager.js":59,"./subsystems/advanced-realtime-subsystem.js":60,"./subsystems/auth-management-subsystem.js":61,"./subsystems/connection-manager-subsystem.js":62,"./subsystems/enhanced-progress-subsystem.js":63,"./subsystems/enhanced-token-status-subsystem.js":64,"./subsystems/global-token-manager-subsystem.js":65,"./subsystems/history-subsystem.js":66,"./subsystems/import-subsystem.js":67,"./subsystems/navigation-subsystem.js":68,"./subsystems/operation-manager-subsystem.js":69,"./subsystems/population-subsystem.js":70,"./subsystems/realtime-communication-subsystem.js":71,"./subsystems/settings-subsystem.js":72,"./subsystems/token-manager-subsystem.js":73,"./subsystems/token-notification-subsystem.js":74,"./subsystems/view-management-subsystem.js":75,"./utils/browser-logging-service.js":76,"./utils/bulletproof-app-integration.js":77,"./utils/bulletproof-global-handler.js":78,"./utils/bulletproof-subsystem-wrapper.js":80,"./utils/bulletproof-token-manager.js":81,"./utils/debug-logger.js":83,"./utils/local-api-client.js":84,"./utils/pingone-client.js":85,"./utils/safe-logger.js":87,"@babel/runtime/helpers/interopRequireDefault":1,"_process":25}],57:[function(require,module,exports){
+},{"../../public/js/modules/event-bus.js":42,"../../public/js/modules/file-logger.js":43,"../../public/js/modules/logger.js":44,"../../public/js/utils/centralized-logger.js":51,"../../public/js/utils/utility-loader.js":55,"./components/credentials-manager.js":57,"./components/settings-manager.js":58,"./components/ui-manager.js":59,"./subsystems/advanced-realtime-subsystem.js":60,"./subsystems/auth-management-subsystem.js":61,"./subsystems/connection-manager-subsystem.js":62,"./subsystems/enhanced-progress-subsystem.js":63,"./subsystems/enhanced-token-status-subsystem.js":64,"./subsystems/global-token-manager-subsystem.js":65,"./subsystems/history-subsystem.js":66,"./subsystems/import-subsystem.js":67,"./subsystems/navigation-subsystem.js":68,"./subsystems/operation-manager-subsystem.js":69,"./subsystems/population-subsystem.js":70,"./subsystems/realtime-communication-subsystem.js":71,"./subsystems/settings-subsystem.js":72,"./subsystems/token-manager-subsystem.js":73,"./subsystems/token-notification-subsystem.js":74,"./subsystems/view-management-subsystem.js":75,"./utils/browser-logging-service.js":76,"./utils/bulletproof-app-integration.js":77,"./utils/bulletproof-global-handler.js":78,"./utils/bulletproof-subsystem-wrapper.js":80,"./utils/bulletproof-token-manager.js":81,"./utils/debug-logger.js":83,"./utils/loading-spinner.js":84,"./utils/local-api-client.js":85,"./utils/pingone-client.js":86,"./utils/safe-logger.js":88,"@babel/runtime/helpers/interopRequireDefault":1,"_process":25}],57:[function(require,module,exports){
 "use strict";
+
+/**
+ * @module
+ * @description ES Module (converted from CommonJS)
+ */
 
 /**
  * Credentials Manager
@@ -13682,7 +13725,7 @@ class SettingsManager {
 var _default = exports.default = SettingsManager;
 
 }).call(this)}).call(this,require('_process'))
-},{"../utils/crypto-utils.js":82,"../utils/winston-logger.js":88,"_process":25}],59:[function(require,module,exports){
+},{"../utils/crypto-utils.js":82,"../utils/winston-logger.js":89,"_process":25}],59:[function(require,module,exports){
 (function (process){(function (){
 "use strict";
 
@@ -16647,7 +16690,7 @@ class AdvancedRealtimeSubsystem {
 }
 exports.AdvancedRealtimeSubsystem = AdvancedRealtimeSubsystem;
 
-},{"../utils/pingone-client.js":85}],61:[function(require,module,exports){
+},{"../utils/pingone-client.js":86}],61:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -18635,17 +18678,22 @@ class EnhancedTokenStatusSubsystem {
    * Start monitoring token status
    */
   startMonitoring() {
-    // Fixed token status update interval - more frequent checks
-    // Check token status more frequently
+    // Clear any existing intervals first to prevent duplicates
+    this.stopMonitoring();
+
+    // Initial check before starting intervals
+    this.checkTokenStatus();
+
+    // Check status periodically (less frequently to prevent blinking)
     this.statusCheckInterval = setInterval(() => {
       this.checkTokenStatus();
-    }, 10000); // Check every 10 seconds instead of 30
+    }, this.CHECK_INTERVAL);
 
-    // Update UI countdown every second
+    // Update UI more frequently for countdown
     this.uiUpdateInterval = setInterval(() => {
       this.updateCountdown();
-    }, 1000);
-    this.logger.debug('🔑 Token monitoring started with improved frequency');
+    }, this.UI_UPDATE_INTERVAL);
+    this.logger.debug('🔑 Token status monitoring started');
   }
 
   /**
@@ -18673,34 +18721,44 @@ class EnhancedTokenStatusSubsystem {
       // Try to get token info from various sources
       const tokenInfo = await this.getTokenInfo();
 
-      // Update internal state
-      this.tokenInfo = {
-        ...this.tokenInfo,
-        ...tokenInfo,
-        lastChecked: Date.now()
-      };
+      // Only update if token validity changed or significant time difference
+      const shouldUpdate = this.tokenInfo.isValid !== tokenInfo.isValid || Math.abs(this.tokenInfo.expiresIn - tokenInfo.expiresIn) > 5;
+      if (shouldUpdate) {
+        // Update internal state
+        this.tokenInfo = {
+          ...this.tokenInfo,
+          ...tokenInfo,
+          lastChecked: Date.now()
+        };
 
-      // Update UI
-      this.updateUI();
+        // Update UI
+        this.updateUI();
 
-      // Log token status
-      this.logTokenStatus();
+        // Log token status
+        this.logTokenStatus();
 
-      // Emit event
-      this.eventBus.emit('token-status:updated', this.tokenInfo);
+        // Emit event
+        this.eventBus.emit('token-status:updated', this.tokenInfo);
+      } else {
+        // Just update the expiration time without triggering UI updates
+        this.tokenInfo.expiresIn = tokenInfo.expiresIn;
+        this.tokenInfo.lastChecked = Date.now();
+      }
     } catch (error) {
       this.logger.error('🔑 Error checking token status', {
         error: error.message
       });
 
-      // Set error state
-      this.tokenInfo = {
-        ...this.tokenInfo,
-        isValid: false,
-        error: error.message,
-        lastChecked: Date.now()
-      };
-      this.updateUI();
+      // Set error state only if not already in error state
+      if (this.tokenInfo.isValid !== false || !this.tokenInfo.error) {
+        this.tokenInfo = {
+          ...this.tokenInfo,
+          isValid: false,
+          error: error.message,
+          lastChecked: Date.now()
+        };
+        this.updateUI();
+      }
     }
   }
 
@@ -18785,22 +18843,26 @@ class EnhancedTokenStatusSubsystem {
    * Update UI elements
    */
   updateUI() {
+    // Determine status type and styling
     const status = this.determineStatus();
 
-    // Update global token status
+    // Update global status in sidebar
     if (this.statusElements.global) {
       this.updateGlobalStatus(status);
     }
 
-    // Update other indicators
+    // Update all indicators
     Object.keys(this.statusElements).forEach(key => {
       if (key.startsWith('indicator_')) {
         this.updateIndicator(this.statusElements[key], status);
       }
     });
-    this.logger.debug('🔑 UI updated', {
-      status: status.type
-    });
+
+    // Update countdown immediately
+    this.updateCountdown();
+
+    // Log status
+    this.logTokenStatus();
   }
 
   /**
@@ -18932,31 +18994,35 @@ class EnhancedTokenStatusSubsystem {
    * Update countdown display
    */
   updateCountdown() {
-    if (!this.tokenInfo.isValid || this.tokenInfo.expiresIn <= 0) return;
-
-    // Recalculate time remaining
+    // Recalculate time remaining even if token is invalid
     if (this.tokenInfo.expiresAt) {
       const expiryTime = new Date(this.tokenInfo.expiresAt).getTime();
       const currentTime = Date.now();
       const expiresIn = Math.max(0, Math.floor((expiryTime - currentTime) / 1000));
-      this.tokenInfo.expiresIn = expiresIn;
 
-      // Update countdown in global status
-      if (this.statusElements.global?.countdown) {
-        const minutes = Math.floor(expiresIn / 60);
-        this.statusElements.global.countdown.textContent = expiresIn > 0 ? `${minutes}m` : '';
-      }
+      // Only update the expiresIn value if it's changed significantly (more than 1 second)
+      // This prevents unnecessary UI updates that could cause flickering
+      if (Math.abs(this.tokenInfo.expiresIn - expiresIn) >= 1) {
+        this.tokenInfo.expiresIn = expiresIn;
 
-      // Update time in indicators
-      Object.keys(this.statusElements).forEach(key => {
-        if (key.startsWith('indicator_') && this.statusElements[key].time) {
-          this.statusElements[key].time.textContent = this.formatTimeRemaining();
+        // Update countdown in global status
+        if (this.statusElements.global?.countdown) {
+          const minutes = Math.floor(expiresIn / 60);
+          const seconds = expiresIn % 60;
+          this.statusElements.global.countdown.textContent = expiresIn > 0 ? `${minutes}:${seconds.toString().padStart(2, '0')}` : '';
         }
-      });
 
-      // Check if token expired
-      if (expiresIn <= 0 && this.tokenInfo.isValid) {
-        this.handleTokenExpired();
+        // Update time in indicators
+        Object.keys(this.statusElements).forEach(key => {
+          if (key.startsWith('indicator_') && this.statusElements[key].time) {
+            this.statusElements[key].time.textContent = this.formatTimeRemaining();
+          }
+        });
+
+        // Check if token expired
+        if (expiresIn <= 0 && this.tokenInfo.isValid) {
+          this.handleTokenExpired();
+        }
       }
     }
   }
@@ -20067,7 +20133,7 @@ exports.GlobalTokenManagerSubsystem = GlobalTokenManagerSubsystem;
 var _default = exports.default = GlobalTokenManagerSubsystem; // Make GlobalTokenManagerSubsystem available globally for bundle
 window.GlobalTokenManagerSubsystem = GlobalTokenManagerSubsystem;
 
-},{"../../utils/config-standardization-browser.js":89,"../../utils/region-config.js":90}],66:[function(require,module,exports){
+},{"../../utils/config-standardization-browser.js":90,"../../utils/region-config.js":91}],66:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -21285,7 +21351,7 @@ class ImportSubsystem {
 }
 exports.ImportSubsystem = ImportSubsystem;
 
-},{"../utils/safe-logger.js":87}],68:[function(require,module,exports){
+},{"../utils/safe-logger.js":88}],68:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -21417,8 +21483,77 @@ class NavigationSubsystem {
         return false;
       }
 
+      // Skip if already on this view
+      if (this.currentView === view) {
+        this.logger.debug('Already on requested view', {
+          view
+        });
+        return true;
+      }
+
+      // Store previous view
+      this.previousView = this.currentView;
+
+      // Emit view changing event
+      if (window.EventBus) {
+        window.EventBus.publish('view:changing', {
+          from: this.previousView,
+          to: view
+        });
+      }
+
+      // Show loading spinner
+      try {
+        // Create a more descriptive loading message based on the view
+        let loadingMessage = 'Loading...';
+        switch (view) {
+          case 'token-manager':
+            loadingMessage = 'Loading Token Manager...';
+            break;
+          case 'import':
+            loadingMessage = 'Loading Import Tool...';
+            break;
+          case 'export':
+            loadingMessage = 'Loading Export Tool...';
+            break;
+          case 'settings':
+            loadingMessage = 'Loading Settings...';
+            break;
+          default:
+            loadingMessage = `Loading ${view.charAt(0).toUpperCase() + view.slice(1)}...`;
+        }
+
+        // Show spinner if available
+        if (window.app?.loadingSpinner?.show) {
+          window.app.loadingSpinner.show(loadingMessage);
+        }
+      } catch (error) {
+        this.logger.warn('Failed to show loading spinner', {
+          error: error.message
+        });
+      }
+
       // Show the view
       const success = await this.showView(view, options.pushToHistory !== false);
+
+      // Hide spinner after view is fully loaded
+      try {
+        if (window.app?.loadingSpinner?.hide) {
+          window.app.loadingSpinner.hide();
+        }
+      } catch (error) {
+        this.logger.warn('Failed to hide loading spinner', {
+          error: error.message
+        });
+      }
+
+      // Emit view changed event
+      if (window.EventBus) {
+        window.EventBus.publish('view:changed', {
+          from: this.previousView,
+          to: view
+        });
+      }
       if (success) {
         this.logger.info('Navigation completed successfully', {
           view
@@ -21430,8 +21565,164 @@ class NavigationSubsystem {
         view,
         error: error.message
       });
+
+      // Hide spinner on error
+      try {
+        if (window.app?.loadingSpinner?.hide) {
+          window.app.loadingSpinner.hide(true); // Force hide immediately
+        }
+      } catch (spinnerError) {
+        this.logger.warn('Failed to hide spinner on error', {
+          error: spinnerError.message
+        });
+      }
       return false;
     }
+
+    // The code below is unreachable due to the try-catch block above
+    if (this.currentView === view) {
+      this.logger.debug('Already on requested view', {
+        view
+      });
+      return true;
+    }
+    this.logger.debug('Navigating to view', {
+      view,
+      from: this.currentView
+    });
+
+    // Store previous view
+    this.previousView = this.currentView;
+
+    // Emit view changing event
+    if (window.EventBus) {
+      window.EventBus.publish('view:changing', {
+        from: this.previousView,
+        to: view
+      });
+    }
+
+    // Show loading spinner
+    try {
+      // Create a more descriptive loading message based on the view
+      let loadingMessage = 'Loading...';
+      switch (view) {
+        case 'token-manager':
+          loadingMessage = 'Loading Token Manager...';
+          break;
+        case 'import':
+          loadingMessage = 'Loading Import Tool...';
+          break;
+        case 'export':
+          loadingMessage = 'Loading Export Tool...';
+          break;
+        case 'settings':
+          loadingMessage = 'Loading Settings...';
+          break;
+        default:
+          loadingMessage = `Loading ${view.charAt(0).toUpperCase() + view.slice(1)}...`;
+      }
+
+      // Show spinner if available
+      if (window.app?.loadingSpinner?.show) {
+        window.app.loadingSpinner.show(loadingMessage);
+      }
+    } catch (error) {
+      this.logger.warn('Failed to show loading spinner', {
+        error: error.message
+      });
+    }
+
+    // Run cleanup handler for previous view if exists
+    if (this.previousView && this.viewCleanupHandlers.has(this.previousView)) {
+      try {
+        await this.viewCleanupHandlers.get(this.previousView)();
+        this.logger.debug('View cleanup completed', {
+          view: this.previousView
+        });
+      } catch (error) {
+        this.logger.warn('View cleanup failed', {
+          view: this.previousView,
+          error: error.message
+        });
+      }
+    }
+
+    // Hide all views
+    this.hideAllViews();
+
+    // Show target view
+    const viewElement = document.getElementById(`${view}-view`);
+    if (viewElement) {
+      viewElement.style.display = 'block';
+      viewElement.classList.add('active');
+    } else {
+      this.logger.warn('View element not found', {
+        view
+      });
+      // Hide spinner on error
+      if (window.app?.loadingSpinner?.hide) {
+        window.app.loadingSpinner.hide();
+      }
+      return false;
+    }
+
+    // Update navigation state
+    this.updateNavigationState(view);
+
+    // Run view initializer
+    if (this.viewInitializers.has(view)) {
+      try {
+        await this.viewInitializers.get(view)();
+        this.logger.debug('View initializer completed', {
+          view
+        });
+      } catch (error) {
+        this.logger.warn('View initializer failed', {
+          view,
+          error: error.message
+        });
+      }
+    }
+
+    // Update browser history
+    if (options.pushToHistory !== false && window.history) {
+      const url = new URL(window.location);
+      url.searchParams.set('view', view);
+      window.history.pushState({
+        view
+      }, '', url);
+    }
+
+    // Update current view
+    this.currentView = view;
+
+    // Add to navigation history
+    this.navigationHistory.push({
+      view,
+      timestamp: Date.now(),
+      from: this.previousView
+    });
+
+    // Hide spinner after view is fully loaded
+    try {
+      if (window.app?.loadingSpinner?.hide) {
+        window.app.loadingSpinner.hide();
+      }
+    } catch (error) {
+      this.logger.warn('Failed to hide loading spinner', {
+        error: error.message
+      });
+    }
+
+    // Emit view changed event
+    if (window.EventBus) {
+      window.EventBus.publish('view:changed', {
+        from: this.previousView,
+        to: view
+      });
+    }
+    return true;
   }
 
   /**
@@ -22623,26 +22914,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.RealtimeCommunicationSubsystem = void 0;
-function _interopRequireWildcard(e, t) {
-  if ("function" == typeof WeakMap) var r = new WeakMap(),
-    n = new WeakMap();
-  return (_interopRequireWildcard = function (e, t) {
-    if (!t && e && e.__esModule) return e;
-    var o,
-      i,
-      f = {
-        __proto__: null,
-        default: e
-      };
-    if (null === e || "object" != typeof e && "function" != typeof e) return f;
-    if (o = t ? n : r) {
-      if (o.has(e)) return o.get(e);
-      o.set(e, f);
-    }
-    for (const t in e) "default" !== t && {}.hasOwnProperty.call(e, t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, t)) && (i.get || i.set) ? o(f, t, i) : f[t] = e[t]);
-    return f;
-  })(e, t);
-}
+function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function (e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, default: e }; if (null === e || "object" != typeof e && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (const t in e) "default" !== t && {}.hasOwnProperty.call(e, t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, t)) && (i.get || i.set) ? o(f, t, i) : f[t] = e[t]); return f; })(e, t); }
 /**
  * Real-time Communication Subsystem
  * 
@@ -23578,21 +23850,22 @@ class SettingsSubsystem {
       return regionMapping[standardizedRegion] || 'NorthAmerica';
     };
     const uiRegionValue = mapRegionForUI(settings.pingone_region || 'NA');
-    const fields = {
-      'pingone_environment_id': settings.pingone_environment_id || '',
-      'pingone_client_id': settings.pingone_client_id || '',
-      'pingone_client_secret': settings.pingone_client_secret || '',
-      'pingone_population_id': settings.pingone_population_id || '',
-      'region': uiRegionValue,
-      'rate-limit': settings.rate_limit || 90
-    };
-    Object.entries(fields).forEach(_ref => {
-      let [name, value] = _ref;
-      const field = form.querySelector(`[name="${name}"]`);
-      if (field) {
-        field.value = value;
-      }
-    });
+
+    // Use the correct IDs with _settings suffix for the form fields
+    document.getElementById('pingone_environment_id_settings').value = settings.pingone_environment_id || '';
+    document.getElementById('pingone_client_id_settings').value = settings.pingone_client_id || '';
+    document.getElementById('pingone_client_secret_settings').value = settings.pingone_client_secret || '';
+    document.getElementById('pingone_region_settings').value = uiRegionValue;
+
+    // These fields don't have _settings suffix
+    const populationField = document.getElementById('population-id');
+    if (populationField) {
+      populationField.value = settings.pingone_population_id || '';
+    }
+    const rateLimitField = document.getElementById('rate-limit');
+    if (rateLimitField) {
+      rateLimitField.value = settings.rate_limit || 90;
+    }
     const infoLog = this.logger?.info || this.logger?.log || console.log;
     infoLog('Settings form populated with current values');
   }
@@ -23825,8 +24098,17 @@ class SettingsSubsystem {
 }
 var _default = exports.default = SettingsSubsystem;
 
-},{"../../utils/config-standardization-browser.js":89,"../utils/pingone-client.js":85,"@babel/runtime/helpers/interopRequireDefault":1}],73:[function(require,module,exports){
+},{"../../utils/config-standardization-browser.js":90,"../utils/pingone-client.js":86,"@babel/runtime/helpers/interopRequireDefault":1}],73:[function(require,module,exports){
 "use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+/**
+ * @module
+ * @description ES Module (converted from CommonJS)
+ */
 
 /**
  * Token Manager Subsystem - Enhanced and Hardened Version
@@ -24982,11 +25264,12 @@ class TokenManagerSubsystem {
 }
 
 // Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = TokenManagerSubsystem;
-} else if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined') {
   window.TokenManagerSubsystem = TokenManagerSubsystem;
 }
+
+// ES Module export
+var _default = exports.default = TokenManagerSubsystem;
 
 },{}],74:[function(require,module,exports){
 "use strict";
@@ -25358,7 +25641,7 @@ class TokenNotificationSubsystem {
 exports.TokenNotificationSubsystem = TokenNotificationSubsystem;
 var _default = exports.default = TokenNotificationSubsystem;
 
-},{"../utils/winston-logger.js":88}],75:[function(require,module,exports){
+},{"../utils/winston-logger.js":89}],75:[function(require,module,exports){
 (function (process){(function (){
 "use strict";
 
@@ -29182,6 +29465,217 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 /**
+ * Global Loading Spinner Utility
+ * Version: 7.0.0.19
+ * 
+ * This module provides a global loading spinner that can be shown during page transitions,
+ * API calls, or any other operations that might take time to complete.
+ */
+
+class LoadingSpinner {
+  constructor() {
+    this.initialized = false;
+    this.spinnerElement = null;
+    this.spinnerOverlay = null;
+    this.spinnerMessage = null;
+    this.defaultMessage = 'Loading...';
+    this.timeoutId = null;
+    this.minDisplayTime = 300; // Minimum time to show spinner in ms
+    this.showDelay = 200; // Delay before showing spinner in ms
+  }
+
+  /**
+   * Initialize the spinner by creating and appending necessary DOM elements
+   */
+  initialize() {
+    if (this.initialized) return;
+
+    // Create spinner overlay
+    this.spinnerOverlay = document.createElement('div');
+    this.spinnerOverlay.className = 'global-spinner-overlay';
+
+    // Create spinner element
+    this.spinnerElement = document.createElement('div');
+    this.spinnerElement.className = 'global-spinner';
+
+    // Create message element
+    this.spinnerMessage = document.createElement('div');
+    this.spinnerMessage.className = 'global-spinner-message';
+    this.spinnerMessage.textContent = this.defaultMessage;
+
+    // Assemble and append to body
+    this.spinnerOverlay.appendChild(this.spinnerElement);
+    this.spinnerOverlay.appendChild(this.spinnerMessage);
+    document.body.appendChild(this.spinnerOverlay);
+    this.initialized = true;
+
+    // Add event listeners for page transitions
+    this.setupPageTransitionListeners();
+  }
+
+  /**
+   * Show the spinner with an optional custom message
+   * @param {string} message - Optional custom message to display
+   * @param {boolean} immediate - If true, show immediately without delay
+   */
+  show() {
+    let message = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.defaultMessage;
+    let immediate = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+    if (!this.initialized) {
+      this.initialize();
+    }
+
+    // Clear any existing timeout
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+    }
+
+    // Update message
+    this.spinnerMessage.textContent = message;
+
+    // Show spinner (with delay unless immediate is true)
+    if (immediate) {
+      this.spinnerOverlay.classList.add('active');
+    } else {
+      this.timeoutId = setTimeout(() => {
+        this.spinnerOverlay.classList.add('active');
+      }, this.showDelay);
+    }
+  }
+
+  /**
+   * Hide the spinner
+   * @param {boolean} force - If true, hide immediately regardless of minimum display time
+   */
+  hide() {
+    let force = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+    if (!this.initialized) return;
+
+    // Clear any pending show timeout
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+    }
+    if (force) {
+      this.spinnerOverlay.classList.remove('active');
+      return;
+    }
+
+    // Ensure spinner stays visible for minimum time to avoid flickering
+    const currentlyVisible = this.spinnerOverlay.classList.contains('active');
+    if (currentlyVisible) {
+      setTimeout(() => {
+        this.spinnerOverlay.classList.remove('active');
+      }, this.minDisplayTime);
+    } else {
+      this.spinnerOverlay.classList.remove('active');
+    }
+  }
+
+  /**
+   * Set up listeners for page transitions and AJAX requests
+   */
+  setupPageTransitionListeners() {
+    // Listen for view changes
+    if (window.EventBus) {
+      window.EventBus.subscribe('view:changing', data => {
+        this.show(`Loading ${data.view || 'page'}...`);
+      });
+      window.EventBus.subscribe('view:changed', () => {
+        this.hide();
+      });
+    }
+
+    // Intercept fetch API to show spinner during API calls
+    this.interceptFetch();
+
+    // Intercept XMLHttpRequest to show spinner during AJAX calls
+    this.interceptXHR();
+  }
+
+  /**
+   * Intercept fetch API to show/hide spinner during API calls
+   */
+  interceptFetch() {
+    const originalFetch = window.fetch;
+    const spinner = this;
+    window.fetch = function () {
+      for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+        args[_key] = arguments[_key];
+      }
+      // Don't show spinner for certain requests (like health checks)
+      const url = args[0]?.url || args[0];
+      if (typeof url === 'string' && (url.includes('/api/health') || url.includes('/ping') || url.includes('/favicon'))) {
+        return originalFetch.apply(this, args);
+      }
+      spinner.show('Loading data...');
+      return originalFetch.apply(this, args).then(response => {
+        spinner.hide();
+        return response;
+      }).catch(error => {
+        spinner.hide();
+        throw error;
+      });
+    };
+  }
+
+  /**
+   * Intercept XMLHttpRequest to show/hide spinner during AJAX calls
+   */
+  interceptXHR() {
+    const originalOpen = XMLHttpRequest.prototype.open;
+    const originalSend = XMLHttpRequest.prototype.send;
+    const spinner = this;
+    XMLHttpRequest.prototype.open = function () {
+      for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+        args[_key2] = arguments[_key2];
+      }
+      this._requestUrl = args[1];
+      return originalOpen.apply(this, args);
+    };
+    XMLHttpRequest.prototype.send = function () {
+      for (var _len3 = arguments.length, args = new Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+        args[_key3] = arguments[_key3];
+      }
+      // Don't show spinner for certain requests
+      if (this._requestUrl && (this._requestUrl.includes('/api/health') || this._requestUrl.includes('/ping') || this._requestUrl.includes('/favicon'))) {
+        return originalSend.apply(this, args);
+      }
+      spinner.show('Loading data...');
+
+      // Set up listeners to hide spinner when request completes
+      this.addEventListener('load', () => spinner.hide());
+      this.addEventListener('error', () => spinner.hide());
+      this.addEventListener('abort', () => spinner.hide());
+      return originalSend.apply(this, args);
+    };
+  }
+
+  /**
+   * Create and return an inline spinner element
+   * @returns {HTMLElement} Inline spinner element
+   */
+  createInlineSpinner() {
+    const spinner = document.createElement('div');
+    spinner.className = 'inline-spinner';
+    return spinner;
+  }
+}
+
+// Create singleton instance
+const loadingSpinner = new LoadingSpinner();
+
+// Export the singleton
+var _default = exports.default = loadingSpinner;
+
+},{}],85:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+/**
  * A client for making requests to the local application API.
  * It handles prepending the base API path, setting headers,
  * and consistent error handling and logging.
@@ -29334,7 +29828,7 @@ class LocalApiClient {
 }
 var _default = exports.default = LocalApiClient;
 
-},{}],85:[function(require,module,exports){
+},{}],86:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -29430,7 +29924,7 @@ class PingOneClient {
 }
 var _default = exports.default = PingOneClient;
 
-},{"./pingone-tld.js":86}],86:[function(require,module,exports){
+},{"./pingone-tld.js":87}],87:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -29462,7 +29956,7 @@ function getTldForRegion(region) {
   return 'com';
 }
 
-},{}],87:[function(require,module,exports){
+},{}],88:[function(require,module,exports){
 (function (process){(function (){
 "use strict";
 
@@ -29731,9 +30225,9 @@ if (typeof window !== 'undefined') {
 }
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":25}],88:[function(require,module,exports){
+},{"_process":25}],89:[function(require,module,exports){
 arguments[4][50][0].apply(exports,arguments)
-},{"_process":25,"dup":50}],89:[function(require,module,exports){
+},{"_process":25,"dup":50}],90:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -29923,7 +30417,7 @@ function getConfigValue(config, standardKey) {
   return defaultValue;
 }
 
-},{}],90:[function(require,module,exports){
+},{}],91:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
