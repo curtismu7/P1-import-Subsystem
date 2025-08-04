@@ -80,6 +80,7 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { createWinstonLogger, createRequestLogger, createErrorLogger, createPerformanceLogger, serverLogger, apiLogger } from './server/winston-config.js';
 import { logStartupSuccess, logStartupFailure, runStartupTests } from './src/server/services/startup-diagnostics.js';
@@ -395,22 +396,94 @@ if (useImportMaps) {
     console.log('📦 Bundle mode - serving traditional bundled application');
 }
 
+// Helper function to read settings.json and inject it into HTML
+async function injectSettingsIntoHtml(htmlFilePath, res) {
+    try {
+        // Read the HTML file
+        const htmlContent = await fs.readFile(htmlFilePath, 'utf8');
+        
+        // Read the settings.json file
+        const settingsPath = path.join(__dirname, 'data', 'settings.json');
+        let settingsJson = {};
+        
+        try {
+            const settingsContent = await fs.readFile(settingsPath, 'utf8');
+            settingsJson = JSON.parse(settingsContent);
+            console.log('📄 Settings.json loaded successfully for client injection:', settingsJson);
+            logger.info('📄 Settings.json loaded successfully for client injection', {
+                keys: Object.keys(settingsJson),
+                hasEnvironmentId: !!settingsJson.pingone_environment_id,
+                hasClientId: !!settingsJson.pingone_client_id,
+                hasClientSecret: !!settingsJson.pingone_client_secret,
+                hasRegion: !!settingsJson.pingone_region
+            });
+        } catch (error) {
+            console.error('⚠️ Could not read settings.json:', error);
+            logger.warn('⚠️ Could not read settings.json for client injection', { 
+                error: error.message,
+                path: settingsPath
+            });
+            // Continue with empty settings object
+        }
+        
+        // Create a script tag that sets window.settingsJson
+        const settingsScript = `<script>
+            // Injected settings from server
+            window.settingsJson = ${JSON.stringify(settingsJson)};
+            console.log('🔧 Settings loaded from server:', window.settingsJson);
+        </script>`;
+        
+        // Check if the HTML contains the head tag
+        if (!htmlContent.includes('</head>')) {
+            logger.error('❌ HTML does not contain </head> tag, cannot inject settings');
+            res.sendFile(htmlFilePath);
+            return;
+        }
+        
+        // Inject the script right before the closing </head> tag
+        const modifiedHtml = htmlContent.replace('</head>', `${settingsScript}
+</head>`);
+        
+        // Log success
+        logger.info('✅ Successfully injected settings into HTML');
+        
+        // Send the modified HTML
+        res.setHeader('Content-Type', 'text/html');
+        res.send(modifiedHtml);
+        
+    } catch (error) {
+        console.error('💥 Error injecting settings into HTML:', error);
+        logger.error('💥 Error injecting settings into HTML', { error: error.message, stack: error.stack });
+        // Fallback to sending the file directly
+        res.sendFile(htmlFilePath);
+    }
+}
+
 // Import Maps route must be registered BEFORE static file serving
 if (useImportMaps) {
     // Default route for Import Maps version - MUST come before static middleware
-    app.get('/', (req, res) => {
-        res.sendFile(path.join(__dirname, 'public', 'index-import-maps.html'));
+    app.get('/', async (req, res) => {
+        const htmlPath = path.join(__dirname, 'public', 'index-import-maps.html');
+        await injectSettingsIntoHtml(htmlPath, res);
     });
     
     console.log('🗺️  Import Maps route registered for /');
+} else {
+    // In bundle mode, we need to handle index.html directly to inject settings
+    app.get('/', async (req, res) => {
+        const htmlPath = path.join(__dirname, 'public', 'index.html');
+        await injectSettingsIntoHtml(htmlPath, res);
+    });
+    
+    console.log('📦 Bundle mode route registered for / with settings injection');
 }
 
 // Static file serving with caching headers
 app.use(express.static(path.join(__dirname, 'public'), {
     etag: true,
     lastModified: true,
-    // Exclude index.html when in Import Maps mode to prevent conflicts with route handler
-    index: useImportMaps ? false : ['index.html'],
+    // Exclude index.html to prevent conflicts with our custom route handler
+    index: false,
     setHeaders: (res, filePath) => {
         const fileExt = path.extname(filePath);
         if (fileExt === '.html' || filePath.includes('bundle-')) {

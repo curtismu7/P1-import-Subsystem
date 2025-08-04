@@ -72,18 +72,21 @@ const FEATURE_FLAGS = {
 
 class App {
     constructor() {
+        // Expose app instance globally for subsystems that rely on window.app
+        window.app = this;
+        
         // Initialize centralized logger with safe wrapper to prevent logging errors from breaking the app
         try {
             this.logger = new Logger({
                 context: 'app',
-                version: '7.0.0.15',
+                version: '7.0.0.16',
                 enableConsole: true,
                 enableStorage: false
             });
             
             // Test the logger
             this.logger.info('Centralized Logger initialized successfully', {
-                version: '7.0.0.15',
+                version: '7.0.0.16',
                 featureFlags: FEATURE_FLAGS,
                 userAgent: navigator.userAgent
             });
@@ -157,7 +160,7 @@ class App {
         this.socket = null;
         
         // Application version
-        this.version = '7.0.0.15';
+        this.version = '7.0.0.16';
         this.buildTimestamp = new Date().toISOString();
         this.environment = 'development';
         this.features = {
