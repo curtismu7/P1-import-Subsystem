@@ -1,4 +1,9 @@
 /**
+ * @module
+ * @description ES Module (converted from CommonJS)
+ */
+
+/**
  * Centralized Logger Fallback
  * 
  * Provides a fallback implementation of the centralized logger that won't break the application
@@ -116,7 +121,8 @@ window.logger = createSafeGlobalLogger();
 
 // Export for ES modules (only if in module context)
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { logger: window.logger, FallbackLogger };
+    export const logger = window.logger;
+export { FallbackLogger };;
 } else if (typeof window !== 'undefined') {
     // Already set window.logger above
 }

@@ -33,7 +33,7 @@ import { EventBus } from '../../public/js/modules/event-bus.js';
 import { CentralizedLogger } from '../../public/js/utils/centralized-logger.js';
 
 // Components
-import { SettingsManager } from '../../public/js/modules/settings-manager.js';
+import SettingsManager from './components/settings-manager.js';
 import { UIManager } from './components/ui-manager.js';
 import LocalApiClient from './utils/local-api-client.js'; // Assuming path
 import SettingsSubsystem from './subsystems/settings-subsystem.js';
@@ -51,6 +51,9 @@ import { NavigationSubsystem } from './subsystems/navigation-subsystem.js';
 import { RealtimeCommunicationSubsystem } from './subsystems/realtime-communication-subsystem.js';
 import { GlobalTokenManagerSubsystem } from './subsystems/global-token-manager-subsystem.js';
 import TokenManagerSubsystem from './subsystems/token-manager-subsystem.js';
+import TokenNotificationSubsystem from './subsystems/token-notification-subsystem.js';
+import EnhancedProgressSubsystem from './subsystems/enhanced-progress-subsystem.js';
+import EnhancedTokenStatusSubsystem from './subsystems/enhanced-token-status-subsystem.js';
 
 // Shim for FEATURE_FLAGS
 const FEATURE_FLAGS = {
@@ -73,14 +76,14 @@ class App {
         try {
             this.logger = new Logger({
                 context: 'app',
-                version: '7.0.0.6',
+                version: '7.0.0.11',
                 enableConsole: true,
                 enableStorage: false
             });
             
             // Test the logger
             this.logger.info('Centralized Logger initialized successfully', {
-                version: '7.0.0.6',
+                version: '7.0.0.11',
                 featureFlags: FEATURE_FLAGS,
                 userAgent: navigator.userAgent
             });
@@ -110,7 +113,7 @@ class App {
         
         // Log application start
         this.logger.info('🚀 PingOne Import Tool starting...', {
-            version: '7.0.0.6',
+            version: '7.0.0.11',
             timestamp: new Date().toISOString(),
             userAgent: navigator.userAgent,
             url: window.location.href
@@ -125,7 +128,7 @@ class App {
         this.versionManager = null;
         
         // API clients
-        this.localClient = null;
+        this.localClient = new LocalApiClient('/api', this.logger.child({ component: 'local-api-client' }));
         
         // UI Components
         this.globalTokenManager = null;
@@ -154,7 +157,7 @@ class App {
         this.socket = null;
         
         // Application version
-        this.version = '7.0.0.6';
+        this.version = '7.0.0.11';
         this.buildTimestamp = new Date().toISOString();
         this.environment = 'development';
         this.features = {

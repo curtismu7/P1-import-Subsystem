@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PingOne Import Tool - Import Maps Prototype</title>
+    
+    <!-- Import Maps Configuration -->
+    <script type="importmap">
+    {
+        "imports": {
+            "@/": "./",
+            "@/modules/": "./modules/",
+            "@/utils/": "./utils/",
+            "@/components/": "./components/",
+            
+            "logger": "./modules/logger.js",
+            "ui-manager": "./modules/ui-manager.js",
+            "settings-manager": "./modules/settings-manager.js"
+        }
+    }
+    </script>
+    
+    <!-- CSS (same as original) -->
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css">
+    <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/css/styles-fixed.css">
+    <link rel="stylesheet" href="/css/ping-identity.css">
+    <link rel="stylesheet" href="/css/token-status-indicator.css">
+    <link rel="stylesheet" href="/css/enhanced-token-status.css">
+    <link rel="stylesheet" href="/css/token-notification.css">
+    <link rel="stylesheet" href="/css/enhanced-progress.css">
+    <link rel="stylesheet" href="/css/progress-ui.css">
+    <link rel="stylesheet" href="/css/api-url-subsystem.css">
+    <link rel="stylesheet" href="/css/disclaimer-modal.css">
+    <link rel="stylesheet" href="/css/credentials-modal.css">
+    <link rel="stylesheet" href="/css/status-bar.css">
+    <link rel="stylesheet" href="/css/realtime-collaboration.css">
+    <link rel="stylesheet" href="/css/history-ui.css">
+    <link rel="stylesheet" href="/css/logging-ui.css">
+    <link rel="stylesheet" href="/css/testing-ui.css">
+    <link rel="stylesheet" href="/css/status-bar-fix.css">
+    <link rel="stylesheet" href="/css/version-widget.css">
+    <link rel="stylesheet" href="/css/token-manager.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="ping-logo">
+                <i class="fas fa-sync-alt fa-spin"></i>
+            </div>
+            <h3>Loading PingOne Import Tool</h3>
+            <p>Initializing Import Maps prototype...</p>
+            <div class="loading-progress">
+                <div class="progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Container -->
+    <div id="app-container" style="display: none;">
+        <!-- Sidebar Navigation -->
+        <nav id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h4>PingOne Import Tool</h4>
+                <span class="version-badge">Import Maps v1.0</span>
+            </div>
+            <ul class="nav-list">
+                <li><a href="#" data-view="home" class="nav-link active"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="#" data-view="settings" class="nav-link"><i class="fas fa-cog"></i> Settings</a></li>
+                <li><a href="#" data-view="import" class="nav-link"><i class="fas fa-upload"></i> Import</a></li>
+                <li><a href="#" data-view="export" class="nav-link"><i class="fas fa-download"></i> Export</a></li>
+                <li><a href="#" data-view="token-manager" class="nav-link"><i class="fas fa-key"></i> Token Manager</a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="main-content">
+            <!-- Home View -->
+            <div id="home-view" class="view active">
+                <h2>Welcome to PingOne Import Tool</h2>
+                <p>Import Maps Prototype - Native ES Module Loading</p>
+                <div class="status-cards">
+                    <div class="card">
+                        <h4>Module Loading</h4>
+                        <p id="module-status">Initializing...</p>
+                    </div>
+                    <div class="card">
+                        <h4>Performance</h4>
+                        <p id="performance-status">Measuring...</p>
+                        <div id="performance-metrics"></div>
+                    </div>
+                    <div class="card">
+                        <h4>Compatibility</h4>
+                        <p id="compatibility-status">Checking...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="settings-view" class="view">
+                <h2>Settings</h2>
+                <p>Settings management with Import Maps</p>
+                <form id="settings-form" class="settings-form">
+                    <div class="form-group">
+                        <label for="environmentId">Environment ID:</label>
+                        <input type="text" id="environmentId" name="environmentId" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientId">Client ID:</label>
+                        <input type="text" id="clientId" name="clientId" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientSecret">Client Secret:</label>
+                        <input type="password" id="clientSecret" name="clientSecret" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="region">Region:</label>
+                        <select id="region" name="region" class="form-control">
+                            <option value="NA">North America</option>
+                            <option value="EU">Europe</option>
+                            <option value="AP">Asia Pacific</option>
+                            <option value="CA">Canada</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                </form>
+            </div>
+
+            <!-- Import View -->
+            <div id="import-view" class="view">
+                <h2>Import Users</h2>
+                <p>Import functionality with Import Maps</p>
+            </div>
+
+            <!-- Export View -->
+            <div id="export-view" class="view">
+                <h2>Export Users</h2>
+                <p>Export functionality with Import Maps</p>
+            </div>
+
+            <!-- Token Manager View -->
+            <div id="token-manager-view" class="view">
+                <h2>Token Manager</h2>
+                <p>Token management with Import Maps</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Error Display -->
+    <div id="error-display" style="display: none;" class="error-container">
+        <h3>Import Maps Error</h3>
+        <p id="error-message"></p>
+        <button onclick="location.reload()">Retry</button>
+    </div>
+
+    <!-- Import Maps Application Entry Point -->
+    <script type="module">
+        // Browser compatibility check
+        function checkImportMapsSupport() {
+            return HTMLScriptElement.supports && HTMLScriptElement.supports('importmap');
+        }
+
+        // Update status display
+        function updateStatus(elementId, status, isError = false) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = status;
+                element.className = isError ? 'status-error' : 'status-success';
+            }
+        }
+
+        // Error handler
+        function handleError(error, context) {
+            console.error(`Import Maps Error (${context}):`, error);
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('app-container').style.display = 'none';
+            document.getElementById('error-display').style.display = 'block';
+            document.getElementById('error-message').textContent = `${context}: ${error.message}`;
+        }
+
+        // Check browser support first
+        const hasImportMaps = checkImportMapsSupport();
+        updateStatus('compatibility-status', hasImportMaps ? 'Supported' : 'Not Supported', !hasImportMaps);
+        
+        if (!hasImportMaps) {
+            handleError(new Error('Import Maps not supported in this browser'), 'Browser Compatibility');
+        } else {
+            // Load the main application
+            import('./app.js').catch(error => {
+                handleError(error, 'Application Loading');
+            });
+        }
+    </script>
+
+    <style>
+        /* Import Maps Prototype Styles */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-content {
+            text-align: center;
+            color: white;
+        }
+
+        .ping-logo {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .loading-progress {
+            width: 200px;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 1rem auto;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: white;
+            width: 0%;
+            animation: loading 2s ease-in-out infinite;
+        }
+
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
+        #app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #2c3e50;
+            color: white;
+            padding: 1rem;
+        }
+
+        .sidebar-header {
+            margin-bottom: 2rem;
+        }
+
+        .version-badge {
+            background: #3498db;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+        }
+
+        .nav-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .nav-list li {
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-link {
+            display: block;
+            color: white;
+            text-decoration: none;
+            padding: 0.75rem;
+            border-radius: 0.25rem;
+            transition: background-color 0.2s;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: #34495e;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .view {
+            display: none;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        .status-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .status-success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .status-error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .error-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border: 2px solid #e74c3c;
+            border-radius: 0.5rem;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Form Styles */
+        .settings-form {
+            max-width: 500px;
+            margin-top: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 0.25rem;
+            font-size: 1rem;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.25rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+
+        /* Performance Metrics */
+        .metrics-detail {
+            font-size: 0.875rem;
+            color: #666;
+            margin-top: 0.5rem;
+            line-height: 1.4;
+        }
+
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 0.25rem;
+            color: white;
+            font-weight: bold;
+            z-index: 10000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .notification-success {
+            background: #27ae60;
+        }
+
+        .notification-error {
+            background: #e74c3c;
+        }
+
+        .notification-info {
+            background: #3498db;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</body>
+</html>

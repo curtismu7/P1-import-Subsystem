@@ -1,6 +1,6 @@
 {
   "name": "pingone-import-cursor",
-  "version": "7.0.0.6",
+  "version": "7.0.0.11",
   "description": "A modern web application for importing users into PingOne using the PingOne Admin API.",
   "main": "server.js",
   "type": "module",
@@ -34,6 +34,8 @@
     "monitor:memory": "node --experimental-modules --experimental-json-modules -e \"import('./server/memory-monitor.js').then(m => console.log(JSON.stringify(m.getMemoryStatusReport(), null, 2)))\"",
     "start": "node --experimental-modules --experimental-json-modules scripts/always-background.js",
     "start:foreground": "node --experimental-modules --experimental-json-modules server.js",
+    "start:importmaps": "node --experimental-modules --experimental-json-modules server.js --import-maps",
+    "dev:importmaps": "nodemon --experimental-modules --experimental-json-modules server.js --import-maps",
     "start:background": "node --experimental-modules --experimental-json-modules scripts/start-background.js start",
     "start:daemon": "node --experimental-modules --experimental-json-modules scripts/daemon.js start",
     "stop:background": "node --experimental-modules --experimental-json-modules scripts/start-background.js stop",
@@ -68,7 +70,13 @@
     "restart:safe": "npm run stop && npm run check:port && npm run start:background",
     "restart:force": "node scripts/restart-server.js --no-kill",
     "restart:port": "node scripts/restart-server.js --port",
-    "check:port": "node -e \"import('./server/port-checker.js').then(m => m.checkPortStatus(4000)).then(console.log)\""
+    "check:port": "node -e \"import('./server/port-checker.js').then(m => m.checkPortStatus(4000)).then(console.log)\"",
+    "import-maps:build": "node scripts/hybrid-bundle-manager.js build",
+    "import-maps:bundle": "node scripts/hybrid-bundle-manager.js bundle",
+    "import-maps:convert": "node scripts/hybrid-bundle-manager.js convert",
+    "import-maps:update": "node scripts/hybrid-bundle-manager.js update-maps",
+    "import-maps:summary": "node scripts/hybrid-bundle-manager.js summary",
+    "module:convert": "node scripts/module-converter.js"
   },
   "keywords": [
     "pingone",
