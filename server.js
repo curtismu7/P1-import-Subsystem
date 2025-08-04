@@ -225,8 +225,14 @@ async function loadSettingsFromFile() {
             logger.info('Set PINGONE_CLIENT_SECRET: [HIDDEN]');
         }
         if (settings.region && !process.env.PINGONE_REGION) {
-            process.env.PINGONE_REGION = settings.region;
-            logger.info('Set PINGONE_REGION:', settings.region);
+            // Normalize region to NA/EU/APAC for PingOne API
+            let normalizedRegion = settings.region;
+            if (normalizedRegion === 'NorthAmerica' || normalizedRegion === 'NA') normalizedRegion = 'NA';
+            else if (normalizedRegion === 'Europe' || normalizedRegion === 'EU') normalizedRegion = 'EU';
+            else if (normalizedRegion === 'AsiaPacific' || normalizedRegion === 'APAC') normalizedRegion = 'APAC';
+            else if (normalizedRegion === 'Canada') normalizedRegion = 'NA'; // fallback for Canada
+            process.env.PINGONE_REGION = normalizedRegion;
+            logger.info('Set PINGONE_REGION:', normalizedRegion);
         }
         // Validate final config (env vars take precedence)
         const configToValidate = {
@@ -1353,6 +1359,15 @@ const startServer = async () => {
                 memory: memoryCleanup,
                 routes: routeMonitoringCleanup
             };
+            
+            // 🎯 MARK SERVER AS FULLY INITIALIZED
+            serverState.isInitialized = true;
+            serverState.isInitializing = false;
+            logger.info('🎉 Server initialization completed successfully', {
+                timestamp: new Date().toISOString(),
+                uptime: process.uptime(),
+                memoryUsage: Math.round(process.memoryUsage().rss / 1024 / 1024) + 'MB'
+            });
             
         } catch (error) {
             logger.error('💥 Error initializing monitoring systems:', error);

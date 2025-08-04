@@ -60,7 +60,10 @@
       // Server endpoint: routes/pingone-proxy-fixed.js - router.get('/test-connection')
       // DO NOT change to POST without updating server-side endpoint
       // Last fixed: 2025-07-30 - Fixed 400 Bad Request by ensuring proper GET request
-      const response = await fetch('/api/pingone/test-connection', {
+      // Always send a valid region (never empty, null, or 'NA')
+      let region = window.pingoneRegion || localStorage.getItem('pingoneRegion') || 'NorthAmerica';
+      if (!region || region === 'NA') region = 'NorthAmerica';
+      const response = await fetch(`/api/pingone/test-connection?region=${encodeURIComponent(region)}`, {
         method: 'GET', // MUST be GET to match server endpoint
         headers: {
           'Accept': 'application/json',
@@ -235,8 +238,10 @@
         return;
       }
       
-      // Fetch populations from API
-      const response = await fetch('/api/pingone/populations');
+      // Always send a valid region (never empty, null, or 'NA')
+      let region = window.pingoneRegion || localStorage.getItem('pingoneRegion') || 'NorthAmerica';
+      if (!region || region === 'NA') region = 'NorthAmerica';
+      const response = await fetch(`/api/pingone/populations?region=${encodeURIComponent(region)}`);
       
       if (response.status === 401) {
         // Unauthorized - credentials invalid or expired

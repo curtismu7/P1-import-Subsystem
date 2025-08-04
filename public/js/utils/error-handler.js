@@ -286,4 +286,4 @@ if (typeof module !== 'undefined' && module.exports) {
     window.ErrorHandler = ErrorHandler;
 }
 
-export { ErrorHandler };
+export default ErrorHandler;

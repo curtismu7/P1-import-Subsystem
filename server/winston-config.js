@@ -662,7 +662,7 @@ export function createWinstonLogger(options = {}) {
             service,
             env,
             pid: process.pid,
-            version: process.env.APP_VERSION || '6.5.2.4'
+            version: process.env.APP_VERSION || '7.0.0.2'
         },
         transports: [
             // Console transport for all environments
@@ -1232,6 +1232,14 @@ export const apiLogHelpers = {
             timestamp: new Date().toISOString(),
             ...data
         });
+    },
+    
+    logTokenStatus: (context, data = {}) => {
+        apiLogger.info(`🔑 TOKEN STATUS [${context}]`, {
+            context,
+            ...data,
+            timestamp: new Date().toISOString()
+        });
     }
 };
 
@@ -1241,4 +1249,53 @@ export const sseLogger = createComponentLogger('sse');
 export const importLogger = createComponentLogger('import');
 export const authLogger = createComponentLogger('auth');
 export const serverLogger = createServerLogger();
-export const clientLogger = createClientLogger(); 
+export const clientLogger = createClientLogger();
+
+/**
+ * EMOJIS Export for Logging Compatibility
+ * 
+ * Provides a standardized set of emoji constants for use in logging messages.
+ * These emojis serve as visual indicators for different log levels and contexts,
+ * improving the readability and expressiveness of log output.
+ * 
+ * ## Emoji Mapping
+ * 
+ * - **error**: ❌ Critical errors and issues
+ * - **warn**: ⚠️ Warning conditions and potential problems
+ * - **info**: ℹ️ Informational messages and operational updates
+ * - **debug**: 🐛 Debugging information and diagnostics
+ * - **trace**: 🔍 Tracing information for request/response lifecycle
+ * - **success**: ✅ Successful operations and milestones
+ * - **token**: 🔑 Token generation and validation events
+ * - **request**: 🚀 API request received
+ * - **response**: 📦 API response sent
+ * - **operation**: ⚙️ Significant operations and state changes
+ * - **separator**: ═ Visual separators for log sections
+ * 
+ * ## Usage Examples
+ * 
+ * ```javascript
+ * import { EMOJIS } from './winston-config.js';
+ * 
+ * logger.info(`${EMOJIS.request} API request received`);
+ * logger.error(`${EMOJIS.error} Critical error occurred`, { error });
+ * logger.debug(`${EMOJIS.debug} Debugging variable value`, { value });
+ * ```
+ * 
+ * TODO: Expand emoji set for more granular log categorization
+ * TODO: Allow custom emoji mappings in logger configuration
+ * VERIFY: Emojis render correctly in all supported log viewers
+ */
+export const EMOJIS = {
+  error: '❌',
+  warn: '⚠️',
+  info: 'ℹ️',
+  debug: '🐛',
+  trace: '🔍',
+  success: '✅',
+  token: '🔑',
+  request: '🚀',
+  response: '📦',
+  operation: '⚙️',
+  separator: '═',
+};

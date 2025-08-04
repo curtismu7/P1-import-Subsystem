@@ -665,6 +665,6 @@ describe('UIManager Core Functionality', () => {
       // Check if the notification container is empty
       const notificationContainer = document.getElementById('notification-container');
       expect(notificationContainer.children.length).toBe(0);
+
     });
-  });
 });

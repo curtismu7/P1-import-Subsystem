@@ -11,9 +11,9 @@
  * - PINGONE_REGION (optional, defaults to NA)
  */
 
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
+import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 
 // Skip these tests if credentials are not provided
 const skipTests = !process.env.PINGONE_CLIENT_ID || 

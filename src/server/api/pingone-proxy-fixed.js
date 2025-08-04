@@ -27,15 +27,14 @@ const PINGONE_API_BASE_URLS = {
 // Middleware to validate required settings
 const validateSettings = (req, res, next) => {
     const { environmentId, region } = req.settings;
-    
+    console.log('[validateSettings] region:', region, 'available:', Object.keys(PINGONE_API_BASE_URLS));
     if (!environmentId) {
         return res.status(400).json({ error: 'Environment ID is required' });
     }
-    
     if (!region || !PINGONE_API_BASE_URLS[region]) {
-        return res.status(400).json({ error: 'Valid region is required' });
+        console.error('[validateSettings] Invalid region:', region, 'env:', process.env.PINGONE_REGION);
+        return res.status(400).json({ error: 'Valid region is required', region, envRegion: process.env.PINGONE_REGION } );
     }
-    
     next();
 };
 
@@ -43,9 +42,26 @@ const validateSettings = (req, res, next) => {
 const injectSettings = (req, res, next) => {
     try {
         // Use environment variables for settings
+        // Normalize region code for internal lookup
+        const regionRaw = process.env.PINGONE_REGION || 'NorthAmerica';
+        const regionMap = {
+            'NA': 'NorthAmerica',
+            'EU': 'Europe',
+            'AP': 'Asia',
+            'CA': 'Canada',
+            'AUS': 'Australia',
+            'NorthAmerica': 'NorthAmerica',
+            'Europe': 'Europe',
+            'Asia': 'Asia',
+            'Canada': 'Canada',
+            'Australia': 'Australia',
+            'US': 'NorthAmerica',
+        };
+        const normalizedRegion = regionMap[regionRaw] || 'NorthAmerica';
         req.settings = {
             environmentId: process.env.PINGONE_ENVIRONMENT_ID || '',
-            region: process.env.PINGONE_REGION || 'NorthAmerica',
+            region: normalizedRegion,
+            regionRaw: regionRaw, // preserve original for API calls if needed
             apiClientId: process.env.PINGONE_CLIENT_ID || '',
             apiSecret: process.env.PINGONE_CLIENT_SECRET || ''
         };

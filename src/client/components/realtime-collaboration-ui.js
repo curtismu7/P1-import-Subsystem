@@ -1,3 +1,12 @@
+import { PingOneClient } from '../utils/pingone-client.js';
+    /**
+     * Get PingOne endpoints for the current region
+     * @param {string} region
+     * @returns {object}
+     */
+    getPingOneEndpoints(region) {
+        return PingOneClient.getPingOneEndpoints(region);
+    }
 /**
  * Real-time Collaboration UI Component
  * 

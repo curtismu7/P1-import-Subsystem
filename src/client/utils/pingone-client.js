@@ -1,6 +1,9 @@
+
 /**
  * @file A client for making requests to the PingOne API via the local server proxy.
  */
+
+import { getTldForRegion } from './pingone-tld.js';
 
 class PingOneClient {
     /**
@@ -36,16 +39,45 @@ class PingOneClient {
      * Tests the connection to the PingOne API.
      * @returns {Promise<object>} The connection test result.
      */
-    async testConnection() {
+    /**
+     * Tests the connection to the PingOne API, normalizing region value.
+     * @param {Object} settings - Settings object containing region and credentials.
+     * @returns {Promise<object>} The connection test result.
+     */
+    async testConnection(settings) {
         this.logger.debug('Testing PingOne API connection...');
         try {
-            const result = await this.localClient.get('/pingone/test-connection');
+            // Normalize region and get TLD
+            const region = settings.region || 'NA';
+            const tld = getTldForRegion(region);
+            // Example endpoint construction
+            const apiPath = '/v1/environments/{environmentId}/users';
+            const apiUrl = `https://api.pingone.${tld}${apiPath}`;
+            // Add constructed URLs to payload for template usage
+            const payload = { ...settings, region, tld, apiUrl };
+            const result = await this.localClient.post('/pingone/test-connection', payload);
             this.logger.info('Connection test completed.');
             return result;
         } catch (error) {
             this.logger.error('Connection test failed.', error);
             throw error;
         }
+    }
+
+    /**
+     * Constructs PingOne API endpoints using region and TLD
+     * @param {string} region
+     * @returns {object} All service URLs
+     */
+    static getPingOneEndpoints(region) {
+        const tld = getTldForRegion(region);
+        return {
+            api: `https://api.pingone.${tld}/v1`,
+            auth: `https://auth.pingone.${tld}/v1`,
+            orchestrate: `https://orchestrate-api.pingone.${tld}/v1`,
+            scim: `https://scim-api.pingone.${tld}/v1`,
+            tld
+        };
     }
 }
 

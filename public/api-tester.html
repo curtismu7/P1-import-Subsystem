@@ -920,10 +920,10 @@
             const data = await response.json();
             if (data.success) {
                 const settings = data.data;
-                document.getElementById('settings-env-id').value = settings.environmentId || '';
-                document.getElementById('settings-client-id').value = settings.apiClientId || '';
-                document.getElementById('settings-secret').value = settings.apiSecret || '';
-                document.getElementById('settings-pop-id').value = settings.populationId || '';
+                document.getElementById('settings-env-id').value = settings.pingone_environment_id || '';
+                document.getElementById('settings-client-id').value = settings.pingone_client_id || '';
+                document.getElementById('settings-secret').value = settings.pingone_client_secret || '';
+                document.getElementById('settings-pop-id').value = settings.pingone_population_id || '';
                 document.getElementById('settings-rate-limit').value = settings.rateLimit || 100;
                 document.getElementById('export-pop-id').value = settings.populationId || '';
                 document.getElementById('import-pop-id').value = settings.populationId || '';
@@ -1734,17 +1734,17 @@
             // Get form data
             const formData = new FormData(document.getElementById('settings-form'));
             const settings = {
-                environmentId: formData.get('environmentId'),
-                apiClientId: formData.get('clientId'),
-                apiSecret: formData.get('secret'),
-                populationId: formData.get('populationId'),
-                region: formData.get('region'),
+                pingone_environment_id: formData.get('environmentId'),
+                pingone_client_id: formData.get('clientId'),
+                pingone_client_secret: formData.get('secret'),
+                pingone_population_id: formData.get('populationId'),
+                pingone_region: formData.get('region'),
                 rateLimit: parseInt(formData.get('rateLimit')) || 100
             };
-            
+
             // Validate required fields
-            if (!settings.environmentId || !settings.apiClientId || !settings.apiSecret) {
-                throw new Error('Environment ID, API Client ID, and API Secret are required');
+            if (!settings.pingone_environment_id || !settings.pingone_client_id || !settings.pingone_client_secret) {
+                throw new Error('PingOne Environment ID, Client ID, and Client Secret are required');
             }
             
             // Test the settings API

@@ -1,3 +1,57 @@
+# BULLETPROOF CODING PRINCIPLES
+
+1. **Bulletproof Architecture**
+   - Multiple fallback layers, error isolation, graceful degradation, recovery mechanisms.
+2. **Configuration Management**
+   - Standardized keys (`pingone_*`), backward compatibility, multi-source loading, safe access.
+3. **Error Handling Standards**
+   - Always use try-catch, multiple fallback layers, user-friendly error messages.
+4. **Memory Management**
+   - Resource cleanup, memory monitoring, leak prevention, efficient caching.
+5. **Version Management**
+   - Consistent versioning, git integration, bundle management, documentation updates.
+6. **API Design Patterns**
+   - Standardized responses, proper HTTP status codes, comprehensive logging, error handling.
+7. **Client-Side Architecture**
+   - Subsystem pattern, safe DOM operations, event-driven, fallback UI.
+8. **Security Standards**
+   - Credential protection, secure storage, input validation, authentication.
+9. **Testing Requirements**
+   - Multi-layer testing, error scenario testing, performance testing, cross-browser testing.
+10. **Code Organization**
+    - Modular src/ structure, clear separation of concerns.
+11. **Documentation Standards**
+    - Comprehensive comments, API docs, memory updates, README updates.
+12. **Deployment Rules**
+    - Bundle cleanup, version consistency, health checks, rollback plan.
+13. **Logging Standards**
+    - Structured logging, sensitive data masking.
+14. **Performance Rules**
+    - Lazy loading, efficient updates, memory limits, fast response times.
+15. **User Experience Principles**
+    - Progressive enhancement, responsive design, accessibility, user feedback.
+
+---
+
+### Advanced Enhancements
+
+16. **Observability & Telemetry**
+    - Distributed tracing, metrics collection, real-time monitoring.
+17. **Dependency Management**
+    - Pin versions, automated updates, vulnerability scanning.
+18. **Internationalization & Localization**
+    - Multi-language support, resource files for text.
+19. **Continuous Integration/Continuous Deployment (CI/CD)**
+    - Automated testing/deployment, rollback automation.
+20. **Data Integrity & Consistency**
+    - Atomic operations, schema/type validation.
+21. **Developer Experience**
+    - Pre-commit hooks, code review, onboarding docs.
+
+---
+
+*All code, architecture, and documentation must comply with these principles. If any area is found lacking, refactor immediately to restore compliance.*
+
 # PingOne Import Tool
 
 A modern web application for importing users into PingOne using the PingOne Admin API.

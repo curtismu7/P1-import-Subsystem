@@ -15,6 +15,7 @@ import { createCircularProgress } from '../../../public/js/modules/circular-prog
 import { ElementRegistry } from '../../../public/js/modules/element-registry.js';
 import progressManager from '../../../public/js/modules/progress-manager.js';
 import { ErrorTypes } from '../../../public/js/modules/error/error-types.js';
+import ErrorHandler from '../../../public/js/utils/error-handler.js';
 import { SafeDOM } from '../../../public/js/modules/utils/safe-dom.js';
 
 // Enable debug mode for development (set to false in production)
