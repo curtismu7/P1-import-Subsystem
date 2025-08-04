@@ -119,8 +119,71 @@ export class NavigationSubsystem {
                 return false;
             }
             
+            // Skip if already on this view
+            if (this.currentView === view) {
+                this.logger.debug('Already on requested view', { view });
+                return true;
+            }
+            
+            // Store previous view
+            this.previousView = this.currentView;
+            
+            // Emit view changing event
+            if (window.EventBus) {
+                window.EventBus.publish('view:changing', { 
+                    from: this.previousView, 
+                    to: view 
+                });
+            }
+            
+            // Show loading spinner
+            try {
+                // Create a more descriptive loading message based on the view
+                let loadingMessage = 'Loading...';
+                switch(view) {
+                    case 'token-manager':
+                        loadingMessage = 'Loading Token Manager...';
+                        break;
+                    case 'import':
+                        loadingMessage = 'Loading Import Tool...';
+                        break;
+                    case 'export':
+                        loadingMessage = 'Loading Export Tool...';
+                        break;
+                    case 'settings':
+                        loadingMessage = 'Loading Settings...';
+                        break;
+                    default:
+                        loadingMessage = `Loading ${view.charAt(0).toUpperCase() + view.slice(1)}...`;
+                }
+                
+                // Show spinner if available
+                if (window.app?.loadingSpinner?.show) {
+                    window.app.loadingSpinner.show(loadingMessage);
+                }
+            } catch (error) {
+                this.logger.warn('Failed to show loading spinner', { error: error.message });
+            }
+            
             // Show the view
             const success = await this.showView(view, options.pushToHistory !== false);
+            
+            // Hide spinner after view is fully loaded
+            try {
+                if (window.app?.loadingSpinner?.hide) {
+                    window.app.loadingSpinner.hide();
+                }
+            } catch (error) {
+                this.logger.warn('Failed to hide loading spinner', { error: error.message });
+            }
+            
+            // Emit view changed event
+            if (window.EventBus) {
+                window.EventBus.publish('view:changed', { 
+                    from: this.previousView, 
+                    to: view 
+                });
+            }
             
             if (success) {
                 this.logger.info('Navigation completed successfully', { view });
@@ -129,8 +192,142 @@ export class NavigationSubsystem {
             return success;
         } catch (error) {
             this.logger.error('Navigation failed', { view, error: error.message });
+            
+            // Hide spinner on error
+            try {
+                if (window.app?.loadingSpinner?.hide) {
+                    window.app.loadingSpinner.hide(true); // Force hide immediately
+                }
+            } catch (spinnerError) {
+                this.logger.warn('Failed to hide spinner on error', { error: spinnerError.message });
+            }
+            
             return false;
         }
+        
+        // The code below is unreachable due to the try-catch block above
+        if (this.currentView === view) {
+            this.logger.debug('Already on requested view', { view });
+            return true;
+        }
+        
+        this.logger.debug('Navigating to view', { view, from: this.currentView });
+        
+        // Store previous view
+        this.previousView = this.currentView;
+        
+        // Emit view changing event
+        if (window.EventBus) {
+            window.EventBus.publish('view:changing', { 
+                from: this.previousView, 
+                to: view 
+            });
+        }
+        
+        // Show loading spinner
+        try {
+            // Create a more descriptive loading message based on the view
+            let loadingMessage = 'Loading...';
+            switch(view) {
+                case 'token-manager':
+                    loadingMessage = 'Loading Token Manager...';
+                    break;
+                case 'import':
+                    loadingMessage = 'Loading Import Tool...';
+                    break;
+                case 'export':
+                    loadingMessage = 'Loading Export Tool...';
+                    break;
+                case 'settings':
+                    loadingMessage = 'Loading Settings...';
+                    break;
+                default:
+                    loadingMessage = `Loading ${view.charAt(0).toUpperCase() + view.slice(1)}...`;
+            }
+            
+            // Show spinner if available
+            if (window.app?.loadingSpinner?.show) {
+                window.app.loadingSpinner.show(loadingMessage);
+            }
+        } catch (error) {
+            this.logger.warn('Failed to show loading spinner', { error: error.message });
+        }
+        
+        // Run cleanup handler for previous view if exists
+        if (this.previousView && this.viewCleanupHandlers.has(this.previousView)) {
+            try {
+                await this.viewCleanupHandlers.get(this.previousView)();
+                this.logger.debug('View cleanup completed', { view: this.previousView });
+            } catch (error) {
+                this.logger.warn('View cleanup failed', { view: this.previousView, error: error.message });
+            }
+        }
+        
+        // Hide all views
+        this.hideAllViews();
+        
+        // Show target view
+        const viewElement = document.getElementById(`${view}-view`);
+        if (viewElement) {
+            viewElement.style.display = 'block';
+            viewElement.classList.add('active');
+        } else {
+            this.logger.warn('View element not found', { view });
+            // Hide spinner on error
+            if (window.app?.loadingSpinner?.hide) {
+                window.app.loadingSpinner.hide();
+            }
+            return false;
+        }
+        
+        // Update navigation state
+        this.updateNavigationState(view);
+        
+        // Run view initializer
+        if (this.viewInitializers.has(view)) {
+            try {
+                await this.viewInitializers.get(view)();
+                this.logger.debug('View initializer completed', { view });
+            } catch (error) {
+                this.logger.warn('View initializer failed', { view, error: error.message });
+            }
+        }
+        
+        // Update browser history
+        if (options.pushToHistory !== false && window.history) {
+            const url = new URL(window.location);
+            url.searchParams.set('view', view);
+            window.history.pushState({ view }, '', url);
+        }
+        
+        // Update current view
+        this.currentView = view;
+        
+        // Add to navigation history
+        this.navigationHistory.push({
+            view,
+            timestamp: Date.now(),
+            from: this.previousView
+        });
+        
+        // Hide spinner after view is fully loaded
+        try {
+            if (window.app?.loadingSpinner?.hide) {
+                window.app.loadingSpinner.hide();
+            }
+        } catch (error) {
+            this.logger.warn('Failed to hide loading spinner', { error: error.message });
+        }
+        
+        // Emit view changed event
+        if (window.EventBus) {
+            window.EventBus.publish('view:changed', { 
+                from: this.previousView, 
+                to: view 
+            });
+        }
+        
+        return true;
     }
     
     /**
