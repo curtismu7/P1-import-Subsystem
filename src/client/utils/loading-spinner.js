@@ -1,6 +1,6 @@
 /**
  * Global Loading Spinner Utility
- * Version: 7.0.0.17
+ * Version: 7.0.0.19
  * 
  * This module provides a global loading spinner that can be shown during page transitions,
  * API calls, or any other operations that might take time to complete.

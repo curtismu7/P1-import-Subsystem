@@ -6,17 +6,24 @@ description: Manage Import Maps Migration
 
 This workflow helps manage the phased migration from Browserify bundling to ES Import Maps.
 
-## Steps
+## Phase 1: Setup & Configuration (Completed)
 
-1. Build the hybrid deployment (creates bundle and updates import maps)
+- ✅ Create import-maps.json configuration
+- ✅ Create import-maps-loader.js for progressive enhancement
+- ✅ Create app-module.js ES module entry point
+- ✅ Configure HTML to use import maps with bundle fallback
+
+## Phase 2: Module Conversion & Testing (Current)
+
+1. Clean up old bundles to ensure we're using the latest code
 // turbo
 ```bash
-npm run import-maps:build
+npm run cleanup:bundles
 ```
 
 2. Convert selected modules to ES modules format
 ```bash
-npm run import-maps:convert -- --dir=public/js/modules --verbose
+npm run import-maps:convert -- --module=logger
 ```
 
 3. Update the import maps configuration with new module paths
@@ -25,29 +32,62 @@ npm run import-maps:convert -- --dir=public/js/modules --verbose
 npm run import-maps:update
 ```
 
-4. Generate a deployment summary
+4. Build a new bundle for fallback support
 // turbo
 ```bash
-npm run import-maps:summary
+npm run build:bundle
 ```
 
-5. Test the application with import maps
+5. Restart the server to apply changes
 ```bash
 npm run restart:safe
 ```
 
-6. Open the application in a browser that supports import maps
+6. Test in browsers with import maps support
 ```bash
-open http://localhost:4000
+open http://localhost:4000?mode=modules
 ```
 
-7. Check for any errors in the browser console
-
-8. Update version number and commit changes
+7. Test in browsers without import maps support
 ```bash
-npm run version:update
-git add .
-git commit -m "Import Maps Migration: Phase progress"
+open http://localhost:4000?mode=bundle
+```
+
+8. Check for any errors in the browser console
+
+9. Update version number and commit changes
+// turbo
+```bash
+/commit-to-github
+```
+
+## Phase 3: Full Migration (Future)
+
+1. Convert all remaining modules to ES format
+```bash
+npm run import-maps:convert-all
+```
+
+2. Update all import statements to use import maps paths
+```bash
+npm run import-maps:update-imports
+```
+
+3. Remove bundle generation from build process
+```bash
+npm run import-maps:finalize
+```
+
+4. Update HTML to remove bundle fallback
+```bash
+npm run import-maps:clean-html
+```
+
+5. Final testing and deployment
+```bash
+npm run test:all
+npm run deploy
+```
 git push origin main
 ```
 
