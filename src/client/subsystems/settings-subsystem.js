@@ -6,7 +6,7 @@
  */
 
 import { STANDARD_KEYS } from '../../utils/config-standardization-browser.js';
-import PingOneClient from '../../utils/pingone-client.js';
+import PingOneClient from '../utils/pingone-client.js';
 
 class SettingsSubsystem {
     constructor(logger, uiManager, localClient, settingsManager, eventBus, credentialsManager) {

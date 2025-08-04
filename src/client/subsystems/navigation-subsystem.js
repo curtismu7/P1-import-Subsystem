@@ -258,7 +258,9 @@ export class NavigationSubsystem {
             'history': 'History'
         };
         
-        const baseTitle = 'PingOne User Import v6.5.2.1';
+        // Get version dynamically from app or fallback
+        const appVersion = this.app?.version || '7.0.0.6';
+        const baseTitle = `PingOne User Import v${appVersion}`;
         const viewTitle = titles[view];
         
         if (viewTitle) {
@@ -333,6 +335,13 @@ export class NavigationSubsystem {
             }
         });
         
+        // Token Manager view initializer
+        this.registerViewInitializer('token-manager', async () => {
+            if (this.app?.subsystems?.tokenManager && typeof this.app.subsystems.tokenManager.initialize === 'function') {
+                await this.app.subsystems.tokenManager.initialize();
+            }
+        });
+        
         this.logger.debug('Default view initializers registered');
     }
     
@@ -342,7 +351,7 @@ export class NavigationSubsystem {
      * @returns {boolean} - Whether the view is valid
      */
     isValidView(view) {
-        const validViews = ['home', 'import', 'export', 'modify', 'delete-csv', 'settings', 'logs', 'history', 'analytics'];
+        const validViews = ['home', 'import', 'export', 'modify', 'delete-csv', 'settings', 'logs', 'history', 'analytics', 'token-manager'];
         return validViews.includes(view);
     }
     

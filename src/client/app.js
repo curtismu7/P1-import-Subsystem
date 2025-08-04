@@ -50,6 +50,7 @@ import { ImportSubsystem } from './subsystems/import-subsystem.js';
 import { NavigationSubsystem } from './subsystems/navigation-subsystem.js';
 import { RealtimeCommunicationSubsystem } from './subsystems/realtime-communication-subsystem.js';
 import { GlobalTokenManagerSubsystem } from './subsystems/global-token-manager-subsystem.js';
+import TokenManagerSubsystem from './subsystems/token-manager-subsystem.js';
 
 // Shim for FEATURE_FLAGS
 const FEATURE_FLAGS = {
@@ -72,14 +73,14 @@ class App {
         try {
             this.logger = new Logger({
                 context: 'app',
-                version: '7.0.1.0',
+                version: '7.0.0.6',
                 enableConsole: true,
                 enableStorage: false
             });
             
             // Test the logger
             this.logger.info('Centralized Logger initialized successfully', {
-                version: '7.0.1.0',
+                version: '7.0.0.6',
                 featureFlags: FEATURE_FLAGS,
                 userAgent: navigator.userAgent
             });
@@ -109,7 +110,7 @@ class App {
         
         // Log application start
         this.logger.info('🚀 PingOne Import Tool starting...', {
-            version: '6.5.2.4',
+            version: '7.0.0.6',
             timestamp: new Date().toISOString(),
             userAgent: navigator.userAgent,
             url: window.location.href
@@ -153,7 +154,7 @@ class App {
         this.socket = null;
         
         // Application version
-        this.version = '7.0.1.0';
+        this.version = '7.0.0.6';
         this.buildTimestamp = new Date().toISOString();
         this.environment = 'development';
         this.features = {
@@ -500,6 +501,7 @@ class App {
                 { name: 'history', flag: true, constructor: HistorySubsystem, deps: [this.eventBus, this.subsystems.settings, () => this.subsystems.logging] },
                 { name: 'import', flag: FEATURE_FLAGS.USE_IMPORT_SUBSYSTEM, constructor: ImportSubsystem, deps: [this.logger, this.uiManager, this.localClient, this.subsystems.settings, this.eventBus, () => this.subsystems.population, () => this.subsystems.authManager] },
                 { name: 'export', flag: FEATURE_FLAGS.USE_EXPORT_SUBSYSTEM, constructor: ExportSubsystem, deps: [this.logger, this.uiManager, this.localClient, this.subsystems.settings, this.eventBus, () => this.subsystems.population] },
+                { name: 'tokenManager', flag: true, constructor: TokenManagerSubsystem, deps: [this.logger, this.uiManager, this.localClient] },
 
                 { name: 'advancedRealtime', flag: FEATURE_FLAGS.USE_ADVANCED_REALTIME, constructor: AdvancedRealtimeSubsystem, deps: [this.logger, this.eventBus, () => this.subsystems.realtimeManager, this.sessionSubsystem, this.progressSubsystem] },
             ];
@@ -895,7 +897,7 @@ class App {
                 this.currentView = view;
                 
                 // Update page title
-                this.updatePageTitle(view);
+                await this.updatePageTitle(view);
                 
                 this.logger.info(`🔧 DIRECT NAV: Navigation to ${view} completed successfully`);
                 
@@ -934,7 +936,7 @@ class App {
     /**
      * Update page title
      */
-    updatePageTitle(view) {
+    async updatePageTitle(view) {
         try {
             const titles = {
                 'home': 'Home',
@@ -948,7 +950,16 @@ class App {
             };
             
             const title = titles[view] || 'PingOne Import Tool';
-            document.title = `${title} - PingOne Import Tool v6.5.1.1`;
+            // Get version dynamically
+            let version = '7.0.0.6'; // fallback
+            try {
+                const versionResponse = await fetch('/api/version');
+                const versionData = await versionResponse.json();
+                version = versionData.version || version;
+            } catch (e) {
+                // Use fallback version
+            }
+            document.title = `${title} - PingOne Import Tool v${version}`;
             
             this.logger.debug(`🔧 DIRECT NAV: Updated page title to: ${document.title}`);
             
@@ -1489,12 +1500,6 @@ export default App;
 // Make App available globally for initialization
 window.App = App;
 
-// Initialize and start the application
-const app = new App();
-
-// Global app reference for debugging
-window.app = app;
-
 // 🛡️ Setup bulletproof cleanup on page unload - CANNOT FAIL
 try {
     window.addEventListener('beforeunload', () => {
@@ -1561,7 +1566,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const app = new App();
         window.app = app;
         await app.init();
-        window.logger?.info('🚀 PingOne Import Tool v6.5.1.2 initialized successfully') || console.log('🚀 PingOne Import Tool v6.5.1.2 initialized successfully');
+        
+        // Get version dynamically from package.json via API
+        let version = '7.0.0.6'; // fallback
+        try {
+            const versionResponse = await fetch('/api/version');
+            const versionData = await versionResponse.json();
+            version = versionData.version || version;
+        } catch (e) {
+            console.warn('Could not fetch dynamic version, using fallback');
+        }
+        
+        window.logger?.info(`🚀 PingOne Import Tool v${version} initialized successfully`) || console.log(`🚀 PingOne Import Tool v${version} initialized successfully`);
         window.logger?.info('📊 Health Status:', app.getHealthStatus()) || console.log('📊 Health Status:', app.getHealthStatus());
     } catch (error) {
         window.logger?.error('❌ Application initialization failed:', error) || console.error('❌ Application initialization failed:', error);

@@ -1,12 +1,5 @@
 import { PingOneClient } from '../utils/pingone-client.js';
-    /**
-     * Get PingOne endpoints for the current region
-     * @param {string} region
-     * @returns {object}
-     */
-    getPingOneEndpoints(region) {
-        return PingOneClient.getPingOneEndpoints(region);
-    }
+
 /**
  * Advanced Real-time Features Subsystem
  * 
@@ -779,17 +772,18 @@ export class AdvancedRealtimeSubsystem {
             isInitialized: true,
             activeUsers: this.activeUsers.size,
             collaborationRooms: this.collaborationRooms.size,
+            liveProgressStreams: this.liveProgressStreams ? this.liveProgressStreams.size : 0,
+            connectionStatus: this.realtimeCommunication ? this.realtimeCommunication.getConnectionStatus() : 'disconnected',
+            timestamp: new Date()
+        };
+    }
+
     async completeCollaborativeOperation(operationId, result) {
         this.logger.info('Completing collaborative operation', { operationId, result });
         if (this.activeOperations) {
             this.activeOperations.delete(operationId);
         }
         return Promise.resolve();
-    }
-            liveProgressStreams: this.liveProgressStreams.size,
-            connectionStatus: this.realtimeCommunication.getConnectionStatus(),
-            timestamp: new Date()
-        };
     }
     // Add missing API methods for tests
     async shareProgressUpdate(progressData) {
@@ -806,13 +800,6 @@ export class AdvancedRealtimeSubsystem {
         this.logger.info('Starting collaborative operation', { operationId, operationType });
         this.activeOperations.set(operationId, { type: operationType, started: true });
         return Promise.resolve();
-    async completeCollaborativeOperation(operationId, result) {
-        this.logger.info('Completing collaborative operation', { operationId, result });
-        if (this.activeOperations) {
-            this.activeOperations.delete(operationId);
-        }
-        return Promise.resolve();
-    }
     }
 
     async getRoomParticipants() {
