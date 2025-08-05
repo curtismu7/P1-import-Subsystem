@@ -1557,7 +1557,7 @@ class App {
                     const cachedToken = this.pingOneClient.getCachedToken();
                     if (cachedToken) {
                         if (typeof localStorage !== 'undefined') {
-                            const expiry = TokenAccess.getTokenInfo().expiresAt;
+                            const expiry = localStorage.getItem('pingone_token_expiry');
                             if (expiry) {
                                 const expiryTime = parseInt(expiry);
                                 if (Date.now() < expiryTime) {
@@ -1587,7 +1587,7 @@ class App {
                     const cachedToken = this.pingOneClient.getCachedToken();
                     if (cachedToken) {
                         if (typeof localStorage !== 'undefined') {
-                            const expiry = TokenAccess.getTokenInfo().expiresAt;
+                            const expiry = localStorage.getItem('pingone_token_expiry');
                             if (expiry) {
                                 const expiryTime = parseInt(expiry);
                                 if (Date.now() < expiryTime) {
@@ -1624,7 +1624,7 @@ class App {
                 const cachedToken = this.pingOneClient.getCachedToken();
                 if (cachedToken) {
                     if (typeof localStorage !== 'undefined') {
-                        const expiry = TokenAccess.getTokenInfo().expiresAt;
+                        const expiry = localStorage.getItem('pingone_token_expiry');
                         if (expiry) {
                             const expiryTime = parseInt(expiry);
                             if (Date.now() < expiryTime) {
@@ -3680,8 +3680,8 @@ class App {
             
             // Verify localStorage storage
             if (typeof localStorage !== 'undefined') {
-                const storedToken = await TokenAccess.getToken();
-                const storedExpiry = TokenAccess.getTokenInfo().expiresAt;
+                const storedToken = localStorage.getItem('pingone_worker_token');
+                const storedExpiry = localStorage.getItem('pingone_token_expiry');
                 console.log('localStorage verification:', {
                     hasStoredToken: !!storedToken,
                     hasStoredExpiry: !!storedExpiry,
@@ -3694,7 +3694,7 @@ class App {
                 console.log('🔍 [TRACE] Token exists, entering token processing block...');
                 // Calculate time remaining
                 let timeLeft = '';
-                const storedExpiry = TokenAccess.getTokenInfo().expiresAt;
+                const storedExpiry = localStorage.getItem('pingone_token_expiry');
                 
                 if (storedExpiry) {
                     const expiryTime = parseInt(storedExpiry, 10);

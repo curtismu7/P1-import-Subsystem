@@ -463,6 +463,7 @@ async function runImportProcess(sessionId, app) {
                             },
                             body: JSON.stringify(userData)
                         });
+                        
                         if (!createResponse.ok) {
                             errorText = await createResponse.text();
                             
@@ -522,6 +523,53 @@ async function runImportProcess(sessionId, app) {
                     } catch (err) {
                         // Log error to console for visibility
                         apiLogger.error('[USER CREATE EXCEPTION]', {
+                            sessionId,
+                            username,
+                            error: err,
+                            userData
+                        });
+                        debugLog.info(`❌ User creation exception`, {
+                            sessionId,
+                            username,
+                            error: err,
+                            userData
+                        });
+                        failed++;
+                        continue;
+                    }
+        
+        // Log successful user creation
+        debugLog.info(`✅ User created successfully: ${username}`, { 
+            lineNumber: user._lineNumber,
+            populationName,
+            populationId
+        });
+        if (logger.flush) await logger.flush();
+        sendProgressEvent(sessionId, processed, users.length, `Created: ${username} in ${populationName}`, 
+            { processed, created, skipped, failed }, username, populationName, populationId, app);
+            
+    } catch (error) {
+        const errorMsg = `Line ${user._lineNumber}: Error processing user ${user.username || user.email || 'unknown'} - ${error.message}`;
+        errors.push(errorMsg);
+        failed++;
+        debugLog.info(`❌ ${errorMsg}`);
+        if (logger.flush) await logger.flush();
+        sendProgressEvent(sessionId, processed, users.length, `Error: ${user.username || user.email || 'unknown'}`, 
+            { processed, created, skipped, failed }, user.username || user.email || 'unknown', populationName, populationId, app);
+                }
+            }
+            
+            // Add delay between batches to avoid rate limiting
+            if (i + batchSize < users.length) {
+                debugLog.info(`⏱️ Adding delay between batches: ${delayBetweenBatches}ms`);
+                await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+            }
+        }
+        
+        const importDuration = Date.now() - importStart;
+        logger.info(logSeparator('-'));
+        logger.info(logTag('IMPORT SUMMARY'), { tag: logTag('IMPORT SUMMARY'), separator: logSeparator('-') });
+        logger.info(`[${new Date().toISOString()}] [INFO] Import Summary:`, {
             total: users.length,
             processed,
             created,
@@ -593,10 +641,6 @@ async function runImportProcess(sessionId, app) {
         }
     }
 }
-
-// ============================================================================
-// FEATURE FLAGS MANAGEMENT ENDPOINTS
-// ============================================================================
 
 /**
  * @swagger
