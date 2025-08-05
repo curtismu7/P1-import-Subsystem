@@ -1,6 +1,8 @@
+import { APP_VERSION, getFormattedVersion } from '../../../src/version.js';
+
 export class VersionManager {
     constructor() {
-        this.version = '7.0.0.20'; // Update this with each new version
+        this.version = APP_VERSION; // Using centralized version source
         console.log(`Version Manager initialized with version ${this.version}`);
     }
 

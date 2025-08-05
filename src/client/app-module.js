@@ -1,10 +1,13 @@
 /**
  * PingOne Import Tool - Module Entry Point
- * Version: 7.0.0.20
  * 
  * This is the main entry point for the application when using import maps.
  * It imports and initializes all necessary modules in the correct order.
+ * Uses centralized version from src/version.js
  */
+
+// Import centralized version
+import { APP_VERSION, getFormattedVersion } from '../version.js';
 
 // Core imports
 import { Logger } from './utils/logger.js';
@@ -23,7 +26,7 @@ import { NotificationSubsystem } from './subsystems/notification-subsystem.js';
 // Initialize logger
 const logger = new Logger({
     appName: 'PingOne Import Tool',
-    version: '7.0.0.20',
+    version: APP_VERSION,
     useConsole: true,
     useServer: true
 });
@@ -42,7 +45,7 @@ const appState = {
  * Initialize the application
  */
 async function initializeApp() {
-    logger.info('🚀 Initializing PingOne Import Tool v7.0.0.19 (Import Maps Mode)');
+    logger.info(`🚀 Initializing PingOne Import Tool v${APP_VERSION} (Import Maps Mode)`);
     
     try {
         // Initialize core systems
@@ -139,7 +142,7 @@ if (document.readyState === 'loading') {
 
 // Expose global API
 window.PingOneImport = {
-    version: '7.0.0.19',
+    version: APP_VERSION,
     getState: () => ({ ...appState }),
     getSubsystem: (name) => appState.subsystems[name] || null,
     logger,

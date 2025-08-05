@@ -4,13 +4,13 @@
  * This script suppresses console warnings and errors related to token status
  * and fixes the page title and version display.
  * 
- * Version: 7.0.0.20
+ * Using centralized version from window.APP_VERSION (set by src/version.js)
  */
 (function() {
   console.log('🧹 Console Cleaner: Initializing...');
   
-  // Current version
-  const CURRENT_VERSION = 'v7.0.0.20';
+  // Current version from centralized source (via window global)
+  const CURRENT_VERSION = window.APP_VERSION ? `v${window.APP_VERSION}` : 'v7.0.0.20';
   
   // Fix page title immediately
   updatePageTitle();
@@ -135,7 +135,7 @@
       if (el.getAttribute('data-version') && 
           (el.getAttribute('data-version').includes('6.1') || 
            el.getAttribute('data-version').includes('7.0.0.13'))) {
-        el.setAttribute('data-version', el.getAttribute('data-version').replace(/[0-9.]+/g, '7.0.0.14'));
+        el.setAttribute('data-version', el.getAttribute('data-version').replace(/[0-9.]+/g, '7.0.0.20'));
       }
     });
   }

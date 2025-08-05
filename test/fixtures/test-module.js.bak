@@ -1,0 +1,60 @@
+/**
+ * Test module with various CommonJS patterns
+ * This will be used to test the enhanced module converter
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { promisify, inspect } = require('util');
+const logger = require('../../server/logger').getLogger('test-module');
+const helpers = require('./helpers').utils;
+
+// Submodule require
+const join = require('path').join;
+const dirname = require('path').dirname;
+
+// Function declaration
+function processData(data) {
+    return data.map(item => {
+        return {
+            id: item.id,
+            name: item.name,
+            processed: true
+        };
+    });
+}
+
+// Class declaration
+class DataProcessor {
+    constructor(options) {
+        this.options = options || {};
+        this.logger = logger;
+    }
+
+    process(data) {
+        return processData(data);
+    }
+}
+
+// Named exports
+exports.processData = processData;
+exports.DataProcessor = DataProcessor;
+
+// Named exports with module.exports
+module.exports.utils = {
+    isValid: (data) => !!data,
+    format: (data) => JSON.stringify(data, null, 2)
+};
+
+// Object.assign exports
+Object.assign(exports, {
+    version: '1.0.0',
+    author: 'PingOne Import Tool Team',
+    constants: {
+        MAX_ITEMS: 1000,
+        TIMEOUT: 30000
+    }
+});
+
+// Default export (will override previous exports)
+// module.exports = DataProcessor;

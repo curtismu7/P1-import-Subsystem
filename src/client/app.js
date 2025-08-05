@@ -1,5 +1,6 @@
 // File: app.js
 // Description: Main application entry point for PingOne user import tool
+// Version: Using centralized version from src/version.js
 // 
 // This file orchestrates the entire application, managing:
 // - UI state and view transitions
@@ -9,6 +10,9 @@
 // - Settings management and population selection
 // - Error handling and user feedback
 // - Disclaimer agreement and feature flags
+
+// Import centralized version
+import { APP_VERSION, getFormattedVersion, getVersionInfo } from '../version.js';
 
 // Browser-compatible logging system
 import { createLogger } from './utils/browser-logging-service.js';
@@ -80,14 +84,14 @@ class App {
         try {
             this.logger = new Logger({
                 context: 'app',
-                version: '7.0.0.19',
+                version: APP_VERSION,
                 enableConsole: true,
                 enableStorage: false
             });
             
             // Test the logger
             this.logger.info('Centralized Logger initialized successfully', {
-                version: '7.0.0.19',
+                version: APP_VERSION,
                 featureFlags: FEATURE_FLAGS,
                 userAgent: navigator.userAgent
             });
@@ -117,8 +121,7 @@ class App {
         
         // Log application start
         this.logger.info('🚀 PingOne Import Tool starting...', {
-            version: '7.0.0.18',
-            timestamp: new Date().toISOString(),
+            ...getVersionInfo(),
             userAgent: navigator.userAgent,
             url: window.location.href
         });
@@ -162,7 +165,7 @@ class App {
         this.socket = null;
         
         // Application version
-        this.version = '7.0.0.19';
+        this.version = '7.0.0.20';
         this.buildTimestamp = new Date().toISOString();
         this.environment = 'development';
         this.features = {

@@ -4,14 +4,14 @@ description: Commit changes to GitHub with version update
 
 # Commit to GitHub with Version Update
 
-This workflow updates the version number across the application and commits changes to GitHub.
+This workflow updates the version number across the application using the centralized version system and commits changes to GitHub.
 
 ## Steps
 
-1. Update the version number using the version update script
+1. Update the version number using the centralized version update script (replace X.Y.Z.W with the new version)
 // turbo
 ```bash
-npm run version:update
+npm run version:update:centralized 7.0.0.21
 ```
 
 2. Check the current version to verify it was updated correctly
@@ -34,7 +34,7 @@ git add .
 
 5. Commit changes with a descriptive message (replace VERSION with the current version)
 ```bash
-git commit -m "Import Maps Migration: Update to VERSION"
+git commit -m "🔖 Update version to VERSION - Centralized Version System"
 ```
 
 6. Push changes to GitHub
