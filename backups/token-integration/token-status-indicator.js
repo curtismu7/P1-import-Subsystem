@@ -232,8 +232,8 @@ class TokenStatusIndicator {
             console.log('⚠️ Unified Token Manager not available, using legacy method');
             
             // Check localStorage first - try both formats
-            const token = await TokenAccess.getToken();
-            const expiry = TokenAccess.getTokenInfo().expiresAt;
+            const token = localStorage.getItem('pingone_worker_token');
+            const expiry = localStorage.getItem('pingone_token_expiry');
 
             if (token && expiry) {
                 const expiryTime = parseInt(expiry, 10);
@@ -591,7 +591,7 @@ class TokenStatusIndicator {
             
             // Store token in localStorage
             const expiryTime = Date.now() + (data.expires_in * 1000);
-            await TokenAccess.setToken(data.access_token, Date.now() + 3600000);
+            localStorage.setItem('pingone_worker_token', data.access_token);
             localStorage.setItem('pingone_token_expiry', expiryTime.toString());
 
             // Update status
