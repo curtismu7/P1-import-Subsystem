@@ -12,43 +12,77 @@ This workflow helps manage the phased migration from Browserify bundling to ES I
 - ✅ Create import-maps-loader.js for progressive enhancement
 - ✅ Create app-module.js ES module entry point
 - ✅ Configure HTML to use import maps with bundle fallback
+- ✅ Update import-maps-loader.js to use centralized version
+- ✅ Update app-module.js to use centralized version
 
 ## Phase 2: Module Conversion & Testing (Current)
 
-1. Clean up old bundles to ensure we're using the latest code
+1. Check the current migration status
 // turbo
 ```bash
-npm run cleanup:bundles
+npm run import-maps:migration-status
 ```
 
-2. Convert selected modules to ES modules format
+2. Analyze the bundle to identify modules for migration
+// turbo
 ```bash
-npm run import-maps:convert -- --module=logger
+npm run import-maps:analyze
 ```
 
-3. Update the import maps configuration with new module paths
+3. Convert selected modules to ES modules format (replace PATH_TO_MODULE with actual path)
+```bash
+npm run import-maps:migrate PATH_TO_MODULE
+```
+
+4. Update the import maps configuration with new module paths
 // turbo
 ```bash
 npm run import-maps:update
 ```
 
-4. Build a new bundle for fallback support
+5. Build a new bundle for fallback support
 // turbo
 ```bash
 npm run build:bundle
 ```
 
-5. Restart the server to apply changes
+6. Restart the server to apply changes
 ```bash
 npm run restart:safe
 ```
 
-6. Test in browsers with import maps support
+7. Test in browsers with import maps support
 ```bash
-open http://localhost:4000?mode=modules
+open http://localhost:4000?mode=import-maps
 ```
 
-7. Test in browsers without import maps support
+8. Test in browsers with bundle fallback
+```bash
+open http://localhost:4000?mode=bundle
+```
+
+## Phase 3: Production Optimization & Deployment
+
+1. Update the centralized version to reflect import maps migration
+// turbo
+```bash
+npm run version:update:centralized
+```
+
+2. Test the application with import maps in production mode
+```bash
+NODE_ENV=production npm run start:importmaps
+```
+
+3. Commit changes to GitHub with version update
+```bash
+/commit-to-github
+```
+
+4. Monitor performance and error rates after deployment
+```bash
+npm run monitor:performance
+```
 ```bash
 open http://localhost:4000?mode=bundle
 ```

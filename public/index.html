@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PingOne User Import v7.0.0.20</title>
+    <title>PingOne User Import</title><!-- Title will be updated by version-loader.js -->
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
@@ -61,6 +61,9 @@
 </head>
 <body class="ping-identity-theme">
     <!-- Safe Logger Fallback - Loads first to ensure logging is always available -->
+    <!-- Version Loader - Must be first to initialize APP_VERSION for other scripts -->
+    <script src="/js/version-loader.js"></script>
+    
     <script src="/js/utils/centralized-logger-fallback.js"></script>
     
     <!-- Startup Wait Screen (spinner only shown during actual loading) -->
@@ -1334,7 +1337,7 @@
                         <span class="ping-trademark">PingIdentity<span class="trademark-symbol">™</span></span>
                     </div>
                     <span class="footer-copyright">
-                        &copy; 2025 PingOne Import Tool <span class="version-display" style="display: inline-block; font-size: 0.9em; margin-left: 10px; vertical-align: middle;">v7.0.0.20</span>
+                        &copy; 2025 PingOne Import Tool <span class="version-display" data-version="true" style="display: inline-block; font-size: 0.9em; margin-left: 10px; vertical-align: middle;">v7.0.0.20</span>
                     </span>
                 </div>
                 <div class="footer-right">
@@ -1382,7 +1385,7 @@
     <script src="/js/settings-loader.js"></script>
     
     <!-- Bundle is now loaded dynamically by import-maps-loader.js -->
-    <!-- <script src="/js/bundle-1754340243.js"></script> -->
+    <!-- <script src="/js/bundle-1754341289.js"></script> -->
     
     <!-- Fallback error handling for bundle loading -->
     <script>
@@ -1415,6 +1418,6 @@
 
     
     <!-- Version Display Component -->
-    <div id="version-display" class="version-widget">v7.0.0.18</div>
+    <div id="version-display" class="version-widget" data-version="true">v7.0.0.20</div>
 </body>
 </html>

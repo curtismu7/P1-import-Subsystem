@@ -3,7 +3,7 @@
  * 
  * This script specifically targets and fixes the token status display on the settings page.
  * 
- * Version: 7.0.0.14
+ * Using centralized version from window.APP_VERSION (set by src/version.js)
  */
 (function() {
   // Function to fix the token status display

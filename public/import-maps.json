@@ -69,6 +69,8 @@
     "bulletproof-global-handler": "/src/client/utils/bulletproof-global-handler.js",
     "debug-logger": "/src/client/utils/debug-logger.js",
     "safe-logger": "/src/client/utils/safe-logger.js",
+    "socket.io-client": "https://esm.sh/socket.io-client@4.7.5",
+    "axios": "https://esm.sh/axios@1.6.7",
     "@/app": "./js/app.js",
     "@/config": "./js/config.js"
   }

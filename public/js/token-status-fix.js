@@ -4,13 +4,13 @@
  * This script patches console warnings and debug logs to suppress token status warnings,
  * fixes page title and version display, and updates token status UI elements.
  * 
- * Version: 7.0.0.14
+ * Using centralized version from window.APP_VERSION (set by src/version.js)
  */
 (function() {
   console.log('🔧 Token Status Fix: Initializing...');
   
-  // Current version
-  const CURRENT_VERSION = 'v7.0.0.14';
+  // Current version from centralized source (via window global)
+  const CURRENT_VERSION = window.APP_VERSION ? `v${window.APP_VERSION}` : 'v7.0.0.20';
   
   // Fix page title immediately and set up a MutationObserver to catch any title changes
   updatePageTitle();

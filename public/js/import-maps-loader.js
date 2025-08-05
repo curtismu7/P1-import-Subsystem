@@ -1,11 +1,11 @@
 /**
  * Import Maps Loader
- * Version: 7.0.0.20
  * 
  * This script provides progressive enhancement for module loading:
- * - Uses import maps for modern browsers
- * - Falls back to bundle for older browsers
+ * - Uses import maps for modern browsers (preferred)
+ * - Falls back to bundle for older browsers only when necessary
  * - Provides configuration options for forcing a specific mode
+ * - Uses centralized version from window.APP_VERSION
  */
 
 (function() {
@@ -14,7 +14,8 @@
     // Configuration options (can be overridden via localStorage)
     const config = {
         // Set to 'import-maps', 'bundle', or 'auto'
-        preferredMode: localStorage.getItem('preferredLoadingMode') || 'auto',
+        // Default is now 'import-maps' to prioritize modules over bundle
+        preferredMode: localStorage.getItem('preferredLoadingMode') || 'import-maps',
         // Debug mode for additional console output
         debug: localStorage.getItem('debugModuleLoading') === 'true',
         // Bundle path (will be replaced with latest during build)
@@ -22,7 +23,9 @@
         // Import maps path
         importMapsPath: '/import-maps.json',
         // Main module entry point
-        moduleEntryPoint: '/src/client/app-module.js'
+        moduleEntryPoint: '/src/client/app-module.js',
+        // Version from centralized source
+        version: window.APP_VERSION || '7.0.0.21'
     };
     
     /**
@@ -68,7 +71,21 @@
      * @returns {string} 'import-maps' or 'bundle'
      */
     function determineLoadingMode() {
-        // If user has explicitly set a mode, respect that choice
+        // Check URL parameters first (highest priority)
+        const urlParams = new URLSearchParams(window.location.search);
+        const modeParam = urlParams.get('mode');
+        
+        if (modeParam === 'import-maps') {
+            debugLog('Using import maps (URL parameter)');
+            return 'import-maps';
+        }
+        
+        if (modeParam === 'bundle') {
+            debugLog('Using bundle (URL parameter)');
+            return 'bundle';
+        }
+        
+        // If user has explicitly set a mode via localStorage, respect that choice
         if (config.preferredMode === 'import-maps') {
             debugLog('Using import maps (user preference)');
             return 'import-maps';

@@ -13,6 +13,7 @@
  */
 
 import { createLogger } from '../utils/browser-logging-service.js';
+import { APP_VERSION, getFormattedVersion, getVersionedAppName } from '../../version.js';
 
 export class NavigationSubsystem {
     constructor(logger, uiManager, settingsManager, app) {
@@ -455,9 +456,8 @@ export class NavigationSubsystem {
             'history': 'History'
         };
         
-        // Get version dynamically from app or fallback
-        const appVersion = this.app?.version || '7.0.0.6';
-        const baseTitle = `PingOne User Import v${appVersion}`;
+        // Use centralized version source
+        const baseTitle = getVersionedAppName('PingOne User Import');
         const viewTitle = titles[view];
         
         if (viewTitle) {

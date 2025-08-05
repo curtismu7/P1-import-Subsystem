@@ -1,0 +1,31 @@
+# PingOne Import Tool - Version Reference Map
+# This file lists all locations where version numbers appear in the codebase
+
+## Package Files
+package.json                                -> version
+
+## HTML Files
+public/index.html                           -> <title>PingOne Import Tool v[VERSION]</title>
+public/index.html                           -> &copy; [YEAR] PingOne Import Tool v[VERSION]
+public/index.html                           -> <div id="version-display" class="version-widget">v[VERSION]</div>
+
+## JavaScript Files
+src/client/app.js                           -> version: '[VERSION]' (logger initialization)
+src/client/app.js                           -> version: '[VERSION]' (app initialization log)
+public/js/modules/version-manager.js        -> this.version = '[VERSION]'
+public/js/console-cleaner.js                -> version references in MutationObserver
+public/js/token-status-fix.js               -> CURRENT_VERSION constant
+public/js/settings-token-fix.js             -> version in file header
+src/client/subsystems/navigation-subsystem.js -> baseTitle reference (gets version from app)
+server.js                                   -> version in file header
+
+## Generated Files
+public/js/bundle-*.js                       -> contains compiled version references
+public/js/bundle-manifest.json              -> references to bundle with timestamp
+
+## Other Locations
+localStorage                                -> 'pingone_import_version'
+Browser Title                               -> "PingOne Import Tool v[VERSION]"
+UI Footer                                   -> "© [YEAR] PingOne Import Tool v[VERSION]"
+Red Version Badge                           -> v[VERSION]
+Console Logs                                -> version in various log messages
