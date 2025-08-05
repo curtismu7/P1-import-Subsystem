@@ -1,21 +1,26 @@
+/**
+ * Jest Test Setup File (ESM Version)
+ * Global test configuration and utilities for ES modules
+ * Version: 7.0.2.4
+ */
+
+// Import Jest globals explicitly for ESM compatibility
+import { jest } from '@jest/globals';
+
 // Polyfill setImmediate for Node.js compatibility
 if (typeof global.setImmediate === 'undefined') {
   global.setImmediate = (fn, ...args) => setTimeout(fn, 0, ...args);
 }
-// Polyfill TextEncoder/TextDecoder for Node.js v22+ compatibility with jsdom
-const util = require('util');
-if (typeof global.TextEncoder === 'undefined') {
-  global.TextEncoder = util.TextEncoder;
-}
-if (typeof global.TextDecoder === 'undefined') {
-  global.TextDecoder = util.TextDecoder;
-}
-/**
- * Jest Test Setup File
- * Global test configuration and utilities
- */
 
-// No need to import jest from @jest/globals as it's globally available in Jest
+// Polyfill TextEncoder/TextDecoder for Node.js v22+ compatibility with jsdom
+// In ESM context, we use the global versions if available
+if (typeof global.TextEncoder === 'undefined' && typeof TextEncoder !== 'undefined') {
+  global.TextEncoder = TextEncoder;
+}
+
+if (typeof global.TextDecoder === 'undefined' && typeof TextDecoder !== 'undefined') {
+  global.TextDecoder = TextDecoder;
+}
 
 // Global test timeout
 jest.setTimeout(30000);
@@ -61,4 +66,7 @@ process.env.NODE_ENV = 'test';
 process.env.PORT = '4001';
 process.env.TEST_MODE = 'true';
 
-console.log('🧪 Test setup completed');
+console.log('🧪 ESM Test setup completed');
+
+// Export for potential imports in test files
+export { jest };

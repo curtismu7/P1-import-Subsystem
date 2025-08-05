@@ -12,15 +12,17 @@
  * - Test data isolation
  */
 
-import dotenv from 'dotenv';
+import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Load environment variables from .env file if it exists
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+let settings = {};
+try {
+  const settingsPath = path.resolve(process.cwd(), 'data', 'settings.json');
+  const raw = fs.readFileSync(settingsPath, 'utf8');
+  settings = JSON.parse(raw);
+} catch (err) {
+  console.error('Failed to load settings.json:', err);
+  settings = {};
+}
 
 /**
  * Test environment configuration
@@ -34,10 +36,10 @@ export const TEST_ENV_CONFIG = {
   API_TIMEOUT: parseInt(process.env.API_TIMEOUT) || 30000,
   
   // PingOne Test Environment (REQUIRED)
-  PINGONE_TEST_CLIENT_ID: process.env.PINGONE_TEST_CLIENT_ID,
-  PINGONE_TEST_CLIENT_SECRET: process.env.PINGONE_TEST_CLIENT_SECRET,
-  PINGONE_TEST_ENVIRONMENT_ID: process.env.PINGONE_TEST_ENVIRONMENT_ID,
-  PINGONE_TEST_REGION: process.env.PINGONE_TEST_REGION || 'NorthAmerica',
+  PINGONE_TEST_CLIENT_ID: settings.pingone_client_id,
+  PINGONE_TEST_CLIENT_SECRET: settings.pingone_client_secret,
+  PINGONE_TEST_ENVIRONMENT_ID: settings.pingone_environment_id,
+  PINGONE_TEST_REGION: settings.pingone_region || 'NorthAmerica',
   
   // Test Configuration
   TEST_TIMEOUT: parseInt(process.env.TEST_TIMEOUT) || 60000,

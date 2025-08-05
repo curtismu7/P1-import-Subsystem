@@ -9,7 +9,7 @@
  */
 
 // Application version - SINGLE SOURCE OF TRUTH
-export const APP_VERSION = '7.0.0.21';
+export const APP_VERSION = '7.0.0.22';
 
 // Helper functions for version formatting
 export function getFormattedVersion() {
@@ -27,14 +27,12 @@ export function getVersionInfo() {
     version: APP_VERSION,
     formattedVersion: getFormattedVersion(),
     timestamp: new Date().toISOString(),
-    buildDate: '2025-08-04' // Update this on each release
+    buildDate: '2025-08-05' // Update this on each release
   };
 }
 
 // For backward compatibility with code that expects window.APP_VERSION
-if (typeof window !== 'undefined') {
-  window.APP_VERSION = APP_VERSION;
-}
+
 
 // Log version on module load (helps with debugging)
 console.log(`Version module loaded: ${getFormattedVersion()}`);

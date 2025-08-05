@@ -3,6 +3,7 @@
  * Tests the new subsystem architecture for PingOne Import Tool
  */
 
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, jest } from '@jest/globals';
 // Mock dependencies
 const mockEventBus = {
   on: jest.fn(),

@@ -308,15 +308,30 @@
             return hasSupport;
         }
 
-        // Error handler
+        // Error handler with fail-safe logging and fallback
         function handleError(error, context) {
+            try {
+                // Log error to server if possible
+                fetch('/api/log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'import-maps-error',
+                        context,
+                        message: error.message,
+                        stack: error.stack || null,
+                        timestamp: new Date().toISOString()
+                    })
+                }).catch(() => {});
+            } catch (e) {
+                // Ignore logging errors
+            }
+            // Console log as fallback
             console.error(`Import Maps Error (${context}):`, error);
             updateLoadingStatus(`Error: ${error.message}`);
-            
             // Show compatibility warning and fall back to bundles
             document.getElementById('loading-screen').style.display = 'none';
             document.getElementById('compatibility-warning').style.display = 'flex';
-            
             // Attempt to load bundle fallback after delay
             setTimeout(() => {
                 window.location.href = '/index.html'; // Fallback to bundle version

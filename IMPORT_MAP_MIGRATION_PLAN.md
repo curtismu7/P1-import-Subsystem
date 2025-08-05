@@ -50,11 +50,16 @@
 
 ---
 
+
 ## 5. Hardening
-- Add fail-safe logging for failed imports.
-- Maintain fallback to legacy bundle (hybrid loader).
-- Use semantic versioning for CDN imports.
-- Document rollback plan.
+- Add fail-safe logging for failed imports (see error handler in `index-import-maps.html`).
+- Maintain fallback to legacy bundle (hybrid loader) if import maps fail or browser is unsupported.
+- Use semantic versioning for CDN imports in `public/import-maps.json`.
+- **Rollback Plan:**
+    1. If import maps fail or browser is unsupported, user is redirected to `/index.html` (legacy bundle).
+    2. All ES module changes are tracked in git; revert to previous commit to restore bundle-based loading.
+    3. Legacy bundle and entry points remain available for immediate rollback.
+    4. Document any issues in this plan and update with solutions.
 
 ---
 

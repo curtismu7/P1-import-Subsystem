@@ -1,8 +1,17 @@
 {
-  "pingone_environment_id": "b9817c16-9910-4415-b67e-4ac687da74d9",
-  "pingone_client_id": "26e7f07c-11a4-402a-b064-07b55aee189e",
-  "pingone_client_secret": "9p3hLItWFzw5BxKjH3.~TIGVPP~uj4os6fY93170dMvXadn1GEsWTP2lHSTAoevq",
-  "pingone_population_id": "",
+  "pingone_environment_id": "test-env-settings-test-1754408007632-3c0gnohnn",
+  "pingone_client_id": "test-client-settings-test-1754408007632-3c0gnohnn",
+  "pingone_client_secret": "test-secret-settings-test-1754408007632-3c0gnohnn",
   "pingone_region": "NorthAmerica",
-  "rateLimit": 100
+  "rateLimit": 100,
+  "showDisclaimerModal": true,
+  "lastUpdated": "2025-08-05T15:33:28.812Z",
+  "environment-id": "test-env-settings-test-1754408007632-3c0gnohnn",
+  "api-client-id": "test-client-settings-test-1754408007632-3c0gnohnn",
+  "api-secret": "test-secret-settings-test-1754408007632-3c0gnohnn",
+  "region": "NorthAmerica",
+  "apiClientId": "test-client-id",
+  "apiSecret": "enc:954a40c13f004123f3145550b5a9de6f:tqyAiDbK91UaBhUqM0WBgZY6puj/GW8up2kcJ34CFBs=",
+  "environmentId": "test-environment-id",
+  "pingone_population_id": "test-pop-settings-test-1754408007632-3c0gnohnn"
 }

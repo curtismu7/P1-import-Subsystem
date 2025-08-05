@@ -436,18 +436,14 @@ class DisclaimerModal {
 }
 
 // Initialize disclaimer modal immediately (DOM is already loaded when bundle executes)
+// Initialize disclaimer modal immediately (DOM is already loaded when bundle executes)
 (function() {
     console.log('[DISCLAIMER DEBUG] Modal initialization starting immediately');
-    
-    // Wait for app to be fully initialized before showing disclaimer
     let disclaimerInitialized = false;
-    const initializeDisclaimer = () => {
-        console.log('[DISCLAIMER DEBUG] initializeDisclaimer called, disclaimerInitialized:', disclaimerInitialized);
+    async function initializeDisclaimer() {
         if (disclaimerInitialized) return;
-        
         // Ensure logManager is available before proceeding
         if (!window.logManager) {
-            console.log('[DISCLAIMER DEBUG] Creating logManager');
             window.logManager = {
                 log: function(level, message, data) {
                     const timestamp = new Date().toISOString();
@@ -460,36 +456,37 @@ class DisclaimerModal {
                 }
             };
         }
-        
+        // Fetch settings from server
+        let showDisclaimerModal = true;
+        try {
+            const response = await fetch('/api/settings');
+            if (response.ok) {
+                const result = await response.json();
+                if (result && typeof result.showDisclaimerModal !== 'undefined') {
+                    showDisclaimerModal = result.showDisclaimerModal;
+                }
+            }
+        } catch (err) {
+            console.warn('[DISCLAIMER DEBUG] Failed to fetch settings, defaulting showDisclaimerModal to true:', err);
+        }
         // Check disclaimer acceptance status
         const isAccepted = DisclaimerModal.isDisclaimerAccepted();
-        console.log('[DISCLAIMER DEBUG] isDisclaimerAccepted():', isAccepted);
-        
-        // Only show disclaimer if not previously accepted (with expiry/session logic)
-        if (!isAccepted) {
-            console.log('[DISCLAIMER DEBUG] Creating new DisclaimerModal');
+        // Only show disclaimer if not previously accepted and flag is true
+        if (!isAccepted && showDisclaimerModal) {
             new DisclaimerModal();
             disclaimerInitialized = true;
         } else {
-            console.log('[DISCLAIMER DEBUG] Disclaimer previously accepted, not showing modal');
-            // If previously accepted, just enable the application (no modal)
             if (typeof window.enableToolAfterDisclaimer === 'function') {
-                console.log('[STARTUP] [DEBUG] Disclaimer previously accepted, calling enableToolAfterDisclaimer');
                 window.enableToolAfterDisclaimer();
-            } else {
-                console.warn('[STARTUP] [DEBUG] enableToolAfterDisclaimer function not found');
             }
             disclaimerInitialized = true;
         }
-    };
-    
+    }
     // Try to initialize immediately
     initializeDisclaimer();
     // Also try after a short delay to ensure app components are loaded
     setTimeout(initializeDisclaimer, 100);
-    // Final attempt after longer delay to ensure logManager is available
     setTimeout(initializeDisclaimer, 1000);
-    // Additional attempt after app initialization
     setTimeout(initializeDisclaimer, 2000);
 })();
 

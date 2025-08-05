@@ -24,6 +24,7 @@ global.document = {
 };
 
 // Mock Socket.IO client
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, jest } from '@jest/globals';
 const mockSocketIO = {
     connected: false,
     on: jest.fn(),

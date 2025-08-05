@@ -1,3 +1,71 @@
+// PingOne credential management for tests
+let pingOneCredentials = null;
+let pingOneCredentialSource = 'none';
+
+async function loadPingOneCredentials() {
+  // Try /api/settings first
+  try {
+    const response = await fetch('/api/settings');
+    if (response.ok) {
+      const data = await response.json();
+      const settings = data.data || data.settings || {};
+      if (settings.environmentId && settings.apiClientId && settings.apiSecret) {
+        pingOneCredentials = {
+          environmentId: settings.environmentId,
+          apiClientId: settings.apiClientId,
+          apiSecret: settings.apiSecret,
+          region: settings.region || 'NorthAmerica'
+        };
+        pingOneCredentialSource = 'server';
+        logCredentialSource('server');
+        return;
+      }
+    }
+  } catch (e) {}
+  // Fallback to localStorage
+  const localCreds = localStorage.getItem('pingone-credentials');
+  if (localCreds) {
+    try {
+      const creds = JSON.parse(localCreds);
+      if (creds.environmentId && creds.clientId && creds.clientSecret) {
+        pingOneCredentials = {
+          environmentId: creds.environmentId,
+          apiClientId: creds.clientId,
+          apiSecret: creds.clientSecret,
+          region: creds.region || 'NorthAmerica'
+        };
+        pingOneCredentialSource = 'localStorage';
+        logCredentialSource('localStorage');
+        return;
+      }
+    } catch (e) {}
+  }
+  // Prompt user for credentials
+  pingOneCredentials = null;
+  pingOneCredentialSource = 'prompt';
+  logCredentialSource('prompt');
+}
+
+function logCredentialSource(source) {
+  const msg = `[🗝️ CREDENTIAL-MANAGER] [${new Date().toISOString()}] [ui-test-runner] INFO: Credential source: ${source}`;
+  log(msg, 'info');
+}
+
+function promptPingOneCredentials() {
+  // Simple prompt for demo; replace with modal for production
+  const environmentId = prompt('Enter PingOne Environment ID:');
+  const apiClientId = prompt('Enter PingOne Client ID:');
+  const apiSecret = prompt('Enter PingOne Client Secret:');
+  const region = prompt('Enter PingOne Region (default NorthAmerica):') || 'NorthAmerica';
+  if (environmentId && apiClientId && apiSecret) {
+    pingOneCredentials = { environmentId, apiClientId, apiSecret, region };
+    pingOneCredentialSource = 'user';
+    localStorage.setItem('pingone-credentials', JSON.stringify(pingOneCredentials));
+    logCredentialSource('user');
+    return true;
+  }
+  return false;
+}
 /**
  * Test Runner for PingOne Import Tool
  * 
@@ -635,32 +703,41 @@ function getSelectedTests() {
 }
 
 // Run tests
-function runTests(testIds) {
+async function runTests(testIds) {
     if (testState.running) {
         log('Tests are already running', 'warn');
         return;
     }
-    
     if (testIds.length === 0) {
         log('No tests selected', 'warn');
         return;
     }
-    
+    // If any selected test is a PingOne test, ensure credentials
+    const pingOneTestIds = testIds.filter(id => {
+        const test = testState.tests[id];
+        return test && (test.subsystem === 'pingone-api');
+    });
+    if (pingOneTestIds.length > 0) {
+        await loadPingOneCredentials();
+        if (!pingOneCredentials) {
+            if (!promptPingOneCredentials()) {
+                log('PingOne credentials are required for PingOne API tests.', 'error');
+                return;
+            }
+        }
+        log(`[🗝️ CREDENTIAL-MANAGER] Using PingOne credentials from: ${pingOneCredentialSource}`, 'info');
+    }
     // Reset test state
     resetTestState();
-    
     // Update UI
     document.getElementById('run-all-tests').disabled = true;
     document.getElementById('run-selected-tests').disabled = true;
     document.getElementById('stop-tests').disabled = false;
-    
     // Start tests
     testState.running = true;
     testState.startTime = Date.now();
     testState.queue = [...testIds];
-    
     log(`Starting ${testIds.length} tests...`, 'info');
-    
     // Run tests sequentially
     runNextTest();
 }

@@ -100,8 +100,8 @@ router.get('/status', requireAuth, async (req, res) => {
 router.get('/current-credentials', requireAuth, async (req, res) => {
     try {
         const credentials = await enhancedAuth.getCredentials();
-        
         if (!credentials) {
+            apiLogger.error('[🗝️ CREDENTIAL-MANAGER] No credentials currently configured');
             return res.json({
                 success: false,
                 message: 'No credentials currently configured'
@@ -113,15 +113,19 @@ router.get('/current-credentials', requireAuth, async (req, res) => {
             clientId: credentials.clientId,
             environmentId: credentials.environmentId,
             region: credentials.region,
-            hasClientSecret: !!credentials.clientSecret
+            hasClientSecret: !!credentials.clientSecret,
+            credentialSource: credentials.credentialSource || 'unknown',
+            tokenStatus: credentials.tokenStatus || 'unknown'
         };
+
+        apiLogger.info(`[🗝️ CREDENTIAL-MANAGER] [${new Date().toISOString()}] Credential source: ${sanitizedCredentials.credentialSource}, ClientID: ${sanitizedCredentials.clientId ? '***' + sanitizedCredentials.clientId.slice(-4) : 'missing'}, EnvID: ${sanitizedCredentials.environmentId ? '***' + sanitizedCredentials.environmentId.slice(-4) : 'missing'}, Region: ${sanitizedCredentials.region}, TokenStatus: ${sanitizedCredentials.tokenStatus}`);
 
         res.json({
             success: true,
             credentials: sanitizedCredentials
         });
     } catch (error) {
-        apiLogger.error('Error getting current credentials:', error);
+        apiLogger.error('[🗝️ CREDENTIAL-MANAGER] Error getting current credentials:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to get current credentials',

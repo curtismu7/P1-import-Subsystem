@@ -20,7 +20,8 @@
  * - WebSocket Subsystem
  */
 
-const { JSDOM } = require('jsdom');
+import { JSDOM } from 'jsdom';
+import { describe, test, expect, beforeEach } from '@jest/globals';
 
 // Create comprehensive DOM structure for testing all subsystems
 const dom = new JSDOM(`

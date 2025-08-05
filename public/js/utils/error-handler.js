@@ -280,10 +280,13 @@ class ErrorHandler {
 }
 
 // Export for both ES modules and CommonJS
+
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { ErrorHandler };
 } else if (typeof window !== 'undefined') {
     window.ErrorHandler = ErrorHandler;
 }
 
-// ES module export removed to prevent syntax errors when loaded as a regular script
+// Add ES module export for compatibility with Jest and modern imports
+export { ErrorHandler };
+export default ErrorHandler;

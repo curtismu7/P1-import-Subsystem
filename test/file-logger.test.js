@@ -1,5 +1,5 @@
-const { test, expect, beforeEach, afterEach, jest: jestMock } = require('@jest/globals');
-const FileLogger = require('../public/js/modules/file-logger');
+import { test, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { FileLogger } from '../public/js/modules/file-logger.js';
 
 // Mock localStorage
 const localStorageMock = (() => {

@@ -197,60 +197,54 @@ const settingsSchema = Joi.object({
 async function loadSettingsFromFile() {
     try {
         const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
-        logger.info('Loading settings from:', settingsPath);
         let settings = {};
+        let loadedFrom = 'settings.json';
         try {
             const data = await fs.readFile(settingsPath, 'utf8');
             settings = JSON.parse(data);
-            logger.info('Settings loaded:', Object.keys(settings));
         } catch (err) {
-            if (err.code === 'ENOENT') {
-                logger.info('Settings file not found, using environment variables only');
-            } else if (err instanceof SyntaxError) {
-                logger.error('Invalid JSON in settings file:', err.message);
-            } else {
-                logger.warn('Failed to load settings from file:', err.message);
-            }
+            loadedFrom = '.env';
+            logger.warn(`[🗝️ CREDENTIAL-MANAGER] [${new Date().toISOString()}] [server] WARN: settings.json not found or invalid, falling back to .env`);
         }
-        // Set environment variables from settings file if not already defined
-        if (settings.environmentId && !process.env.PINGONE_ENVIRONMENT_ID) {
-            process.env.PINGONE_ENVIRONMENT_ID = settings.environmentId;
-            logger.info('Set PINGONE_ENVIRONMENT_ID:', settings.environmentId.substring(0, 8) + '...');
-        }
-        if (settings.apiClientId && !process.env.PINGONE_CLIENT_ID) {
-            process.env.PINGONE_CLIENT_ID = settings.apiClientId;
-            logger.info('Set PINGONE_CLIENT_ID:', settings.apiClientId.substring(0, 8) + '...');
-        }
-        if (settings.apiSecret && !process.env.PINGONE_CLIENT_SECRET) {
-            process.env.PINGONE_CLIENT_SECRET = settings.apiSecret;
-            logger.info('Set PINGONE_CLIENT_SECRET: [HIDDEN]');
-        }
-        if (settings.region && !process.env.PINGONE_REGION) {
-            // Normalize region to NA/EU/APAC for PingOne API
-            let normalizedRegion = settings.region;
-            if (normalizedRegion === 'NorthAmerica' || normalizedRegion === 'NA') normalizedRegion = 'NA';
-            else if (normalizedRegion === 'Europe' || normalizedRegion === 'EU') normalizedRegion = 'EU';
-            else if (normalizedRegion === 'AsiaPacific' || normalizedRegion === 'APAC') normalizedRegion = 'APAC';
-            else if (normalizedRegion === 'Canada') normalizedRegion = 'NA'; // fallback for Canada
-            process.env.PINGONE_REGION = normalizedRegion;
-            logger.info('Set PINGONE_REGION:', normalizedRegion);
-        }
-        // Validate final config (env vars take precedence)
+
+        // Fallback logic: settings.json → .env
+        const environmentId = settings.environmentId || process.env.PINGONE_ENVIRONMENT_ID || '';
+        const apiClientId = settings.apiClientId || process.env.PINGONE_CLIENT_ID || '';
+        const apiSecret = settings.apiSecret || process.env.PINGONE_CLIENT_SECRET || '';
+        let region = settings.region || process.env.PINGONE_REGION || 'NA';
+        if (region === 'NorthAmerica' || region === 'NA') region = 'NA';
+        else if (region === 'Europe' || region === 'EU') region = 'EU';
+        else if (region === 'AsiaPacific' || region === 'APAC') region = 'APAC';
+        else if (region === 'Canada') region = 'NA';
+
+        // Mask secrets for logging
+        const mask = (val) => val ? `${val.substring(0,4)}...${val.substring(val.length-4)}` : '[NOT_SET]';
+        logger.info(`[🗝️ CREDENTIAL-MANAGER] [${new Date().toISOString()}] [server] INFO: Credential source: ${loadedFrom}`);
+        logger.info(`[🗝️ CREDENTIAL-MANAGER] [${new Date().toISOString()}] [server] INFO: ENV_ID: ${mask(environmentId)}, CLIENT_ID: ${mask(apiClientId)}, CLIENT_SECRET: ***MASKED***, REGION: ${region}`);
+
+        // Set env vars for downstream use
+        process.env.PINGONE_ENVIRONMENT_ID = environmentId;
+        process.env.PINGONE_CLIENT_ID = apiClientId;
+        process.env.PINGONE_CLIENT_SECRET = apiSecret;
+        process.env.PINGONE_REGION = region;
+
+        // Validate config
         const configToValidate = {
-            environmentId: process.env.PINGONE_ENVIRONMENT_ID,
-            apiClientId: process.env.PINGONE_CLIENT_ID,
-            apiSecret: process.env.PINGONE_CLIENT_SECRET,
-            region: process.env.PINGONE_REGION
+            environmentId,
+            apiClientId,
+            apiSecret,
+            region
         };
         const { error } = settingsSchema.validate(configToValidate);
         if (error) {
-            logger.error('❌ Invalid PingOne configuration:', error.message);
-            throw new Error('Invalid PingOne configuration: ' + error.message);
+            logger.error(`[🗝️ CREDENTIAL-MANAGER] [${new Date().toISOString()}] [server] ERROR: Invalid PingOne configuration: ${error.message}`);
+            // Do not throw, just warn and continue
+            return false;
         }
-        logger.info('✅ PingOne configuration validated successfully');
+        logger.info(`[🗝️ CREDENTIAL-MANAGER] [${new Date().toISOString()}] [server] INFO: PingOne configuration validated successfully`);
         return true;
     } catch (error) {
-        logger.error('Failed to load/validate settings:', error.message);
+        logger.error(`[🗝️ CREDENTIAL-MANAGER] [${new Date().toISOString()}] [server] ERROR: Failed to load/validate settings: ${error.message}`);
         return false;
     }
 }
@@ -259,7 +253,8 @@ async function loadSettingsFromFile() {
 const logger = createWinstonLogger({
     service: 'pingone-import',
     env: process.env.NODE_ENV || 'development',
-    enableFileLogging: process.env.NODE_ENV !== 'test'
+    enableFileLogging: process.env.NODE_ENV !== 'test',
+    enhancedLogging: process.env.ENABLE_ENHANCED_LOGGING === 'true'
 });
 
 // Create specialized loggers
@@ -300,6 +295,15 @@ const app = express();
 const server = http.createServer(app);
 let PORT = process.env.PORT || 4000;
 
+// Progress page feature flag
+app.set('enableProgressPage', process.env.ENABLE_PROGRESS_PAGE === 'true');
+
+// Debug mode flag
+app.set('debugMode', process.env.DEBUG_MODE === 'true');
+
+// Rate limit value
+app.set('rateLimit', Number(process.env.RATE_LIMIT) || 90);
+
 // Initialize WebSocket service
 webSocketService.initialize(server);
 
@@ -320,7 +324,12 @@ if (process.env.SKIP_DUPLICATE_CHECK === 'true') {
 app.set('logsRouter', logsRouter);
 
 // Enhanced request logging middleware
-app.use(requestLogger);
+if (process.env.ENABLE_ENHANCED_LOGGING === 'true') {
+    app.use(requestLogger);
+    logger.info('Enhanced request logging enabled');
+} else {
+    app.use((req, res, next) => next());
+}
 
 // CORS configuration
 app.use(cors({
@@ -358,6 +367,14 @@ app.use(express.urlencoded({
     extended: true, 
     limit: '10mb' 
 }));
+
+// Example: Use rate limit value in middleware (plug in your rate limiter here)
+// const rateLimit = require('express-rate-limit');
+// app.use(rateLimit({
+//     windowMs: 60 * 1000,
+//     max: app.get('rateLimit'),
+//     message: 'Too many requests, please try again later.'
+// }));
 
 // --- Auth routes ---
 app.get('/auth/login', (req, res) => {

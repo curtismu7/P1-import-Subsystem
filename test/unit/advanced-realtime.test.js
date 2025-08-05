@@ -20,6 +20,7 @@
 
 import { jest } from '@jest/globals';
 import winston from 'winston';
+import { PingOneClient } from '../../src/client/utils/pingone-client.js';
 
 // Mock EventBus for testing
 class MockEventBus {
@@ -247,18 +248,19 @@ const mockDOM = () => {
             setAttribute: jest.fn(),
             className: '',
             getAttribute: jest.fn(),
-        })),
-        getElementById: jest.fn((id) => {
-            if (id === 'status-message') {
-                return addDomMethods({
-                    id,
-                    innerHTML: '',
-                    textContent: '',
-                    style: {},
-                    children: [],
-                    childNodes: [],
-                    setAttribute: jest.fn(),
-                    className: '',
+/**
+ * Advanced Real-time Features Tests
+ * 
+ * Comprehensive tests for AdvancedRealtimeSubsystem and RealtimeCollaborationUI
+ * with ES Module compatibility and EventBus integration
+ */
+
+import { jest } from '@jest/globals';
+import winston from 'winston';
+import { PingOneClient } from '../../src/client/utils/pingone-client.js';
+
+// Mock EventBus for testing
+class MockEventBus {
                     getAttribute: jest.fn(),
                 });
             }
@@ -352,11 +354,11 @@ describe('Advanced Real-time Features Tests', () => {
             AdvancedRealtimeSubsystem = module.AdvancedRealtimeSubsystem;
             
             // Mock dependencies
-            const mockProgressSubsystem = { 
+            const mockProgressSubsystem = {
                 getProgress: jest.fn(() => ({ total: 100, completed: 50 })),
                 on: jest.fn()
             };
-            const mockSessionSubsystem = { 
+            const mockSessionSubsystem = {
                 getActiveSessions: jest.fn(() => 3),
                 getCurrentUser: jest.fn(() => ({ id: 'user1', name: 'Test User' }))
             };

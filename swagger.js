@@ -8,10 +8,67 @@
  * @version 6.5.2.4
  */
 
-import swaggerJsdoc from 'swagger-jsdoc';
-import swaggerUi from 'swagger-ui-express';
-import express from 'express';
-import path from 'path';
+var swaggerJsdoc = require('swagger-jsdoc');
+var swaggerUi = require('swagger-ui-express');
+var express = require('express');
+var fs = require('fs');
+// Credential fallback logic
+var swaggerCredentials = {};
+var credentialSource = 'env';
+var path = require('path');
+try {
+  var settingsPath = path.join(process.cwd(), 'data', 'settings.json');
+  if (fs.existsSync(settingsPath)) {
+    var raw = fs.readFileSync(settingsPath, 'utf8');
+    var parsed = JSON.parse(raw);
+    if (parsed.apiClientId && parsed.apiSecret && parsed.environmentId) {
+      swaggerCredentials = {
+        apiClientId: parsed.apiClientId,
+        apiSecret: parsed.apiSecret,
+        environmentId: parsed.environmentId,
+        region: parsed.region || 'NorthAmerica'
+      };
+      credentialSource = 'settings.json';
+    }
+  }
+} catch (err) {
+  swaggerCredentials = {};
+}
+// Fallback to env if not set
+swaggerCredentials.apiClientId = swaggerCredentials.apiClientId || process.env.PINGONE_CLIENT_ID;
+swaggerCredentials.apiSecret = swaggerCredentials.apiSecret || process.env.PINGONE_CLIENT_SECRET;
+swaggerCredentials.environmentId = swaggerCredentials.environmentId || process.env.PINGONE_ENVIRONMENT_ID;
+swaggerCredentials.region = swaggerCredentials.region || process.env.PINGONE_REGION || 'NorthAmerica';
+
+function logSwaggerCredentialSource(source) {
+  var msg = '[🗝️ CREDENTIAL-MANAGER] [' + new Date().toISOString() + '] [swagger] INFO: Credential source: ' + source;
+  console.log(msg);
+}
+logSwaggerCredentialSource(credentialSource);
+
+function getSwaggerToken(customCreds) {
+  customCreds = customCreds || {};
+  var creds = {
+    apiClientId: customCreds.apiClientId || swaggerCredentials.apiClientId,
+    apiSecret: customCreds.apiSecret || swaggerCredentials.apiSecret,
+    environmentId: customCreds.environmentId || swaggerCredentials.environmentId,
+    region: customCreds.region || swaggerCredentials.region
+  };
+  // Here you would call the PingOne token endpoint using these creds
+  // This is a stub for demonstration
+  return {
+    requestedWith: customCreds.apiClientId ? 'custom' : credentialSource,
+    creds: {
+      apiClientId: creds.apiClientId,
+      apiSecret: creds.apiSecret ? '***MASKED***' : '',
+      environmentId: creds.environmentId,
+      region: creds.region
+    },
+    token: 'demo-token-for-' + (creds.apiClientId || 'unknown')
+  };
+}
+
+module.exports.getSwaggerToken = getSwaggerToken;
 
 /**
  * Swagger configuration options
