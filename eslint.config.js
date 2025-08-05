@@ -6,46 +6,54 @@ export default [
   js.configs.recommended,
 
   // 2. Browser environment for all client-side code
-  {
-    files: [
-        "public/**/*.js",
-        "src/client/**/*.js",
-        "ui-subsystem/**/*.js",
-        "websocket-subsystem/**/*.js"
-    ],
-    languageOptions: {
-      globals: {
-        ...globals.browser,
-      }
-    }
+module.exports = {
+  env: {
+    browser: true,
+    node: true,
+    es2021: true,
+    es6: true
   },
-
-  // 3. Node environment for server-side code, config, and scripts
-  {
-    files: [
-        "**/*.cjs",
-        "*.js", // Root-level scripts
-        "server.js",
-        "routes/**/*.js",
-        "server/**/*.js",
-        "auth-subsystem/server/**/*.js"
-    ],
-    languageOptions: {
-      globals: {
-        ...globals.node,
-      }
-    }
+  extends: [
+    'eslint:recommended',
+    'plugin:import/errors',
+    'plugin:import/warnings',
+    'plugin:import/typescript',
+    'plugin:prettier/recommended'
+  ],
+  parserOptions: {
+    ecmaVersion: 2022,
+    sourceType: 'module'
   },
-
-  // 4. Jest environment for test files (includes node and browser globals)
-  {
-    files: ["tests/**/*.js"],
-    languageOptions: {
-      globals: {
-        ...globals.jest,
-        ...globals.node,
-        ...globals.browser,
-      }
-    }
+  plugins: [
+    'import',
+    'prettier'
+  ],
+  rules: {
+    'prettier/prettier': 'error',
+    'no-unused-vars': 'warn',
+    'no-console': 'off',
+    'import/no-unresolved': 'off',
+    'import/extensions': 'off',
+    'import/prefer-default-export': 'off',
+    'import/no-extraneous-dependencies': 'off',
+    'import/no-named-as-default': 'off',
+    'import/no-named-as-default-member': 'off',
+    'import/no-cycle': 'off',
+    'import/no-mutable-exports': 'off',
+    'import/no-import-module-exports': 'off',
+    'no-undef': 'off',
+    'no-var': 'error',
+    'prefer-const': 'error',
+    'prefer-arrow-callback': 'error',
+    'prefer-template': 'error',
+    'object-shorthand': 'error',
+    'arrow-body-style': 'error',
+    'no-useless-constructor': 'error',
+    'no-dupe-class-members': 'error',
+    'no-duplicate-imports': 'error',
+    'no-restricted-syntax': [
+      'error',
+      'WithStatement'
+    ]
   }
-];
+};

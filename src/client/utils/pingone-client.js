@@ -82,3 +82,4 @@ class PingOneClient {
 }
 
 export default PingOneClient;
+export { PingOneClient };

@@ -9261,7 +9261,7 @@ class UIManager {
 exports.UIManager = UIManager;
 
 }).call(this)}).call(this,require('_process'))
-},{"../../../src/client/utils/safe-logger.js":88,"./element-registry.js":40,"_process":25}],49:[function(require,module,exports){
+},{"../../../src/client/utils/safe-logger.js":89,"./element-registry.js":40,"_process":25}],49:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -9889,7 +9889,6 @@ const tokenLogger = exports.tokenLogger = createComponentLogger('token');
  * Provides structured logging with sensitive data masking, remote logging,
  * and consistent formatting across the application.
  */
-
 class CentralizedLogger {
   constructor() {
     let options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
@@ -10246,6 +10245,10 @@ if (typeof window !== 'undefined') {
 },{}],53:[function(require,module,exports){
 "use strict";
 
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = exports.ErrorHandler = void 0;
 /**
  * Standardized Error Handling Utility
  * 
@@ -10542,6 +10545,7 @@ class ErrorHandler {
 }
 
 // Export for both ES modules and CommonJS
+exports.ErrorHandler = ErrorHandler;
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     ErrorHandler
@@ -10550,7 +10554,8 @@ if (typeof module !== 'undefined' && module.exports) {
   window.ErrorHandler = ErrorHandler;
 }
 
-// ES module export removed to prevent syntax errors when loaded as a regular script
+// Add ES module export for compatibility with Jest and modern imports
+var _default = exports.default = ErrorHandler;
 
 },{}],54:[function(require,module,exports){
 "use strict";
@@ -11219,6 +11224,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = exports.App = void 0;
+var _versionService = require("./services/version-service.js");
 var _browserLoggingService = require("./utils/browser-logging-service.js");
 var _debugLogger = require("./utils/debug-logger.js");
 var _safeLogger = require("./utils/safe-logger.js");
@@ -11255,6 +11261,7 @@ var _enhancedTokenStatusSubsystem = _interopRequireDefault(require("./subsystems
 var _loadingSpinner = require("./utils/loading-spinner.js");
 // File: app.js
 // Description: Main application entry point for PingOne user import tool
+// Version: Using centralized version from src/version.js
 // 
 // This file orchestrates the entire application, managing:
 // - UI state and view transitions
@@ -11264,6 +11271,8 @@ var _loadingSpinner = require("./utils/loading-spinner.js");
 // - Settings management and population selection
 // - Error handling and user feedback
 // - Disclaimer agreement and feature flags
+
+// Import centralized version service
 
 // Browser-compatible logging system
 
@@ -11298,21 +11307,21 @@ const FEATURE_FLAGS = {
 };
 class App {
   constructor() {
-    // Expose app instance globally for subsystems that rely on window.app
-    window.app = this;
+    // Expose app instance for subsystems via ES module import or explicit reference
+    // Remove window.app global assignment for module-based architecture
 
     // Initialize centralized logger with safe wrapper to prevent logging errors from breaking the app
     try {
       this.logger = new _logger.Logger({
         context: 'app',
-        version: '7.0.0.20',
+        version: APP_VERSION,
         enableConsole: true,
         enableStorage: false
       });
 
       // Test the logger
       this.logger.info('Centralized Logger initialized successfully', {
-        version: '7.0.0.20',
+        version: APP_VERSION,
         featureFlags: FEATURE_FLAGS,
         userAgent: navigator.userAgent
       });
@@ -11343,8 +11352,7 @@ class App {
 
     // Log application start
     this.logger.info('🚀 PingOne Import Tool starting...', {
-      version: '7.0.0.20',
-      timestamp: new Date().toISOString(),
+      ...getVersionInfo(),
       userAgent: navigator.userAgent,
       url: window.location.href
     });
@@ -11390,10 +11398,10 @@ class App {
     this.currentView = 'home';
     this.socket = null;
 
-    // Application version
-    this.version = '7.0.0.20';
+    // Application version - will be properly initialized by updateVersionDisplay()
+    this.version = null; // Will be set by updateVersionDisplay method
     this.buildTimestamp = new Date().toISOString();
-    this.environment = 'development';
+    this.environment = process.env.NODE_ENV || 'development';
     this.features = {
       bulletproofProgressContainer: true
     };
@@ -11404,8 +11412,11 @@ class App {
 
   /**
    * 🛡️ Initialize Bulletproof System - CANNOT FAIL
+   * @async
+   * @returns {Promise<boolean>} True if initialization succeeded, false otherwise
+   * @description Sets up the bulletproof system components that ensure application resilience
    */
-  initializeBulletproofSystem() {
+  async initializeBulletproofSystem() {
     try {
       this.logger.info('🛡️ Initializing Bulletproof Protection System...');
 
@@ -11427,12 +11438,27 @@ class App {
 
   /**
    * Initialize the application
+   * @async
+   * @returns {Promise<void>} Promise that resolves when initialization is complete
+   * @throws {Error} If initialization fails
    */
   async init() {
     console.log('🔧 [APP INIT] Starting app.init() method...');
     try {
       console.log('🔧 [APP INIT] Logger available:', !!this.logger);
       this.logger.info('Starting application initialization');
+
+      // Initialize version information early
+      try {
+        await this.updateVersionDisplay();
+        this.logger.info('Version information initialized:', {
+          version: this.version
+        });
+      } catch (versionError) {
+        this.logger.warn('Could not initialize version information:', {
+          error: versionError.message
+        });
+      }
       console.log('🔧 [APP INIT] About to initialize core components...');
       this.uiManager.updateStartupMessage('Initializing core components...');
       await this.initializeCoreComponents();
@@ -11569,42 +11595,22 @@ class App {
   }
 
   /**
-   * Hide the startup screen with a smooth transition and proper cleanup
+   * Hide startup wait screen with animation
+   * @description Hides the startup wait screen with a fade-out animation and ensures app container is visible
    */
-  async loadVersion() {
+  hideStartupScreen() {
     try {
       const startupScreen = document.getElementById('startup-wait-screen');
       const appContainer = document.querySelector('.app-container');
       if (startupScreen) {
-        this.logger.debug('Starting to hide startup wait screen');
-
-        // Add fade-out class to trigger CSS transition
         startupScreen.classList.add('fade-out');
 
-        // Remove the startup-loading class from app container to show the app
-        if (appContainer) {
-          appContainer.classList.remove('startup-loading');
-        }
-
-        // Set a timeout to remove the element after the transition completes
-        const removeStartupScreen = () => {
-          try {
-            if (startupScreen && startupScreen.parentNode) {
-              // Force a reflow to ensure the fade-out animation plays
-              void startupScreen.offsetHeight;
-
-              // Remove the element from the DOM
-              startupScreen.parentNode.removeChild(startupScreen);
-              this.logger.debug('Startup wait screen removed from DOM');
-            }
-          } catch (error) {
-            this.logger.error('Error removing startup screen from DOM:', error);
+        // Remove the element after animation completes
+        setTimeout(() => {
+          if (startupScreen.parentNode) {
+            startupScreen.parentNode.removeChild(startupScreen);
           }
-        };
-
-        // Wait for the transition to complete before removing the element
-        // The transition duration is 0.5s (500ms) as defined in CSS
-        setTimeout(removeStartupScreen, 600);
+        }, 500);
         this.logger.debug('Startup wait screen hidden with animation');
       } else {
         this.logger.warn('Startup wait screen element not found');
@@ -11642,26 +11648,55 @@ class App {
 
   /**
    * Update version display in UI
+   * @async
+   * @returns {Promise<void>}
+   * @description Updates version information in UI elements using the centralized VersionService
    */
-  updateVersionDisplay() {
+  async updateVersionDisplay() {
     try {
+      // Get version from centralized service
+      const formattedVersion = await _versionService.VersionService.getFormattedVersion();
+      const version = await _versionService.VersionService.getVersion();
+
       // Update version widget
       const versionDisplay = document.getElementById('version-display');
       if (versionDisplay) {
-        versionDisplay.textContent = `v${this.version}`;
+        versionDisplay.textContent = formattedVersion;
       }
 
       // Update page title
-      document.title = `PingOne User Import v${this.version}`;
+      document.title = `PingOne User Import ${formattedVersion}`;
+
+      // Store version for internal use
+      this.version = version;
       this.logger.debug('Version display updated:', {
-        version: this.version
+        version
       });
     } catch (error) {
       this.logger.error('Failed to update version display:', {
         error: error.message
       });
+      // Attempt to get cached version as fallback
+      try {
+        const fallbackVersion = await _versionService.VersionService.getVersion(false);
+        this.version = fallbackVersion;
+        this.logger.warn('Using fallback version:', {
+          fallbackVersion
+        });
+      } catch (fallbackError) {
+        this.logger.error('Failed to get fallback version:', {
+          error: fallbackError.message
+        });
+      }
     }
   }
+
+  /**
+   * Initialize core components required by the application
+   * @async
+   * @returns {Promise<void>}
+   * @description Sets up essential services like settings, UI, API clients
+   */
   async initializeCoreComponents() {
     this.logger.debug('Initializing core components');
     this.uiManager.setupUI();
@@ -11682,8 +11717,7 @@ class App {
       this.logger.debug('Global loading spinner initialized');
 
       // Make the spinner available globally for other components
-      window.app = window.app || {};
-      window.app.loadingSpinner = this.loadingSpinner;
+      // Use explicit references for loadingSpinner instead of window.app
     } catch (error) {
       this.logger.error('Failed to initialize loading spinner', {
         error: error.message
@@ -11712,6 +11746,13 @@ class App {
     this.logger.debug('Realtime communication subsystem initialized as a core component');
     this.logger.debug('Core components initialized');
   }
+
+  /**
+   * Initialize all application subsystems based on feature flags
+   * @async
+   * @returns {Promise<void>}
+   * @description Creates and initializes all enabled subsystems
+   */
   async initializeSubsystems() {
     this.logger.info('Initializing subsystems...');
     this.uiManager.updateStartupMessage('Initializing subsystems...');
@@ -11924,7 +11965,8 @@ class App {
       await this.subsystems.globalTokenManager.init();
 
       // Make it available globally for debugging
-      window.globalTokenManager = this.subsystems.globalTokenManager;
+      // Use explicit references for globalTokenManager instead of window.globalTokenManager
+
       this.logger.info('Global Token Manager initialized successfully');
     } catch (error) {
       this.logger.error('Global token manager initialization failed', error);
@@ -11950,7 +11992,7 @@ class App {
       };
 
       // Make emergency manager available globally
-      window.globalTokenManager = this.subsystems.globalTokenManager;
+      // Use explicit references for globalTokenManager instead of window.globalTokenManager
     }
 
     // Initialize Token Notification Subsystem
@@ -11984,7 +12026,9 @@ class App {
 
   /**
    * Initialize legacy components that are required for backward compatibility
+   * @async
    * @returns {Promise<void>}
+   * @description Sets up legacy components that haven't been migrated to the new architecture
    */
   async initializeLegacyComponents() {
     this.logger.debug('Initializing legacy components...');
@@ -12807,11 +12851,13 @@ class App {
   }
 
   /**
-   * 🛡️ Cleanup bulletproof systems - CANNOT FAIL
+   * 🛡️ Cleanup bulletproof systems and resources - CANNOT FAIL
+   * @returns {void}
+   * @description Safely cleans up all resources to prevent memory leaks
    */
   cleanup() {
     try {
-      this.logger.info('🛡️ Cleaning up bulletproof systems...');
+      this.logger.info('🛡️ Cleaning up bulletproof systems and resources...');
 
       // Cleanup bulletproof token manager
       if (this.bulletproofTokenManager && typeof this.bulletproofTokenManager.destroy === 'function') {
@@ -12819,100 +12865,50 @@ class App {
         this.logger.debug('🛡️ Bulletproof token manager cleaned up');
       }
 
-      // Cleanup bulletproof app integration
-      if (this.bulletproofSystem && typeof this.bulletproofSystem.destroy === 'function') {
-        this.bulletproofSystem.destroy();
-        this.logger.debug('🛡️ Bulletproof app integration cleaned up');
+      // Clean up event listeners
+      if (this.eventBus && typeof this.eventBus.removeAllListeners === 'function') {
+        this.eventBus.removeAllListeners();
+        this.logger.debug('🛡️ Event bus listeners cleaned up');
       }
-      this.logger.info('🛡️ Bulletproof systems cleanup completed');
+
+      // Clean up subsystems
+      if (this.subsystems) {
+        Object.keys(this.subsystems).forEach(key => {
+          const subsystem = this.subsystems[key];
+          if (subsystem && typeof subsystem.destroy === 'function') {
+            try {
+              subsystem.destroy();
+              this.logger.debug(`🛡️ Subsystem ${key} cleaned up`);
+            } catch (subsystemError) {
+              this.logger.warn(`🛡️ Error cleaning up subsystem ${key}:`, subsystemError);
+            }
+          }
+        });
+      }
+
+      // Clean up UI components
+      if (this.uiManager && typeof this.uiManager.cleanup === 'function') {
+        this.uiManager.cleanup();
+        this.logger.debug('🛡️ UI Manager cleaned up');
+      }
+      this.logger.info('🛡️ All resources cleaned up successfully');
     } catch (error) {
-      this.logger.debug('🛡️ Bulletproof cleanup failed (non-critical)', error);
+      this.logger.error('🛡️ Error during cleanup:', error);
     }
   }
 }
 
 // Export App class for bundle
 exports.App = App;
-var _default = exports.default = App; // Make App available globally for initialization
-window.App = App;
-
-// 🛡️ Setup bulletproof cleanup on page unload - CANNOT FAIL
-try {
-  window.addEventListener('beforeunload', () => {
-    if (window.app && typeof window.app.cleanup === 'function') {
-      window.app.cleanup();
-    }
-  });
-
-  // Also cleanup on page hide (mobile/tablet support)
-  window.addEventListener('pagehide', () => {
-    if (window.app && typeof window.app.cleanup === 'function') {
-      window.app.cleanup();
-    }
-  });
-} catch (error) {
-  console.debug('🛡️ Failed to setup cleanup listeners (non-critical)', error);
-}
-
-// Expose enableToolAfterDisclaimer function globally for modal access
-window.enableToolAfterDisclaimer = () => {
-  if (window.app && typeof window.app.enableToolAfterDisclaimer === 'function') {
-    window.app.enableToolAfterDisclaimer();
-  } else {
-    window.logger?.warn('App not available or enableToolAfterDisclaimer method not found') || console.warn('App not available or enableToolAfterDisclaimer method not found');
-  }
-};
-
-// Expose loading functions for testing
-window.testLoading = {
-  show: (title, message) => {
-    if (window.app) {
-      window.app.showModalLoading(title, message);
-    }
-  },
-  hide: () => {
-    if (window.app) {
-      window.app.hideModalLoading();
-    }
-  },
-  testSequence: () => {
-    if (window.app) {
-      window.logger?.info('🔄 Testing loading sequence...') || console.log('🔄 Testing loading sequence...');
-      window.app.showModalLoading('Step 1', 'Testing loading overlay...');
-      setTimeout(() => {
-        window.app.showModalLoading('Step 2', 'Updating message...');
-        setTimeout(() => {
-          window.app.showModalLoading('Step 3', 'Almost done...');
-          setTimeout(() => {
-            window.app.hideModalLoading();
-            window.logger?.info('🔄 Loading test completed') || console.log('🔄 Loading test completed');
-          }, 1500);
-        }, 1500);
-      }, 1500);
-    }
-  }
-};
-
-// Make app globally available
-window.app = null;
-
-// Start the application when DOM is ready
+var _default = exports.default = App; // Start the application when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const app = new App();
-    window.app = app;
     await app.init();
 
-    // Get version dynamically from package.json via API
-    let version = '7.0.0.6'; // fallback
-    try {
-      const versionResponse = await fetch('/api/version');
-      const versionData = await versionResponse.json();
-      version = versionData.version || version;
-    } catch (e) {
-      console.warn('Could not fetch dynamic version, using fallback');
-    }
-    window.logger?.info(`🚀 PingOne Import Tool v${version} initialized successfully`) || console.log(`🚀 PingOne Import Tool v${version} initialized successfully`);
+    // Get version dynamically using the centralized VersionService
+    const formattedVersion = await _versionService.VersionService.getFormattedVersion();
+    window.logger?.info(`🚀 PingOne Import Tool ${formattedVersion} initialized successfully`) || console.log(`🚀 PingOne Import Tool ${formattedVersion} initialized successfully`);
     window.logger?.info('📊 Health Status:', app.getHealthStatus()) || console.log('📊 Health Status:', app.getHealthStatus());
   } catch (error) {
     window.logger?.error('❌ Application initialization failed:', error) || console.error('❌ Application initialization failed:', error);
@@ -12920,7 +12916,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 }).call(this)}).call(this,require('_process'))
-},{"../../public/js/modules/event-bus.js":42,"../../public/js/modules/file-logger.js":43,"../../public/js/modules/logger.js":44,"../../public/js/utils/centralized-logger.js":51,"../../public/js/utils/utility-loader.js":55,"./components/credentials-manager.js":57,"./components/settings-manager.js":58,"./components/ui-manager.js":59,"./subsystems/advanced-realtime-subsystem.js":60,"./subsystems/auth-management-subsystem.js":61,"./subsystems/connection-manager-subsystem.js":62,"./subsystems/enhanced-progress-subsystem.js":63,"./subsystems/enhanced-token-status-subsystem.js":64,"./subsystems/global-token-manager-subsystem.js":65,"./subsystems/history-subsystem.js":66,"./subsystems/import-subsystem.js":67,"./subsystems/navigation-subsystem.js":68,"./subsystems/operation-manager-subsystem.js":69,"./subsystems/population-subsystem.js":70,"./subsystems/realtime-communication-subsystem.js":71,"./subsystems/settings-subsystem.js":72,"./subsystems/token-manager-subsystem.js":73,"./subsystems/token-notification-subsystem.js":74,"./subsystems/view-management-subsystem.js":75,"./utils/browser-logging-service.js":76,"./utils/bulletproof-app-integration.js":77,"./utils/bulletproof-global-handler.js":78,"./utils/bulletproof-subsystem-wrapper.js":80,"./utils/bulletproof-token-manager.js":81,"./utils/debug-logger.js":83,"./utils/loading-spinner.js":84,"./utils/local-api-client.js":85,"./utils/pingone-client.js":86,"./utils/safe-logger.js":88,"@babel/runtime/helpers/interopRequireDefault":1,"_process":25}],57:[function(require,module,exports){
+},{"../../public/js/modules/event-bus.js":42,"../../public/js/modules/file-logger.js":43,"../../public/js/modules/logger.js":44,"../../public/js/utils/centralized-logger.js":51,"../../public/js/utils/utility-loader.js":55,"./components/credentials-manager.js":57,"./components/settings-manager.js":58,"./components/ui-manager.js":59,"./services/version-service.js":60,"./subsystems/advanced-realtime-subsystem.js":61,"./subsystems/auth-management-subsystem.js":62,"./subsystems/connection-manager-subsystem.js":63,"./subsystems/enhanced-progress-subsystem.js":64,"./subsystems/enhanced-token-status-subsystem.js":65,"./subsystems/global-token-manager-subsystem.js":66,"./subsystems/history-subsystem.js":67,"./subsystems/import-subsystem.js":68,"./subsystems/navigation-subsystem.js":69,"./subsystems/operation-manager-subsystem.js":70,"./subsystems/population-subsystem.js":71,"./subsystems/realtime-communication-subsystem.js":72,"./subsystems/settings-subsystem.js":73,"./subsystems/token-manager-subsystem.js":74,"./subsystems/token-notification-subsystem.js":75,"./subsystems/view-management-subsystem.js":76,"./utils/browser-logging-service.js":77,"./utils/bulletproof-app-integration.js":78,"./utils/bulletproof-global-handler.js":79,"./utils/bulletproof-subsystem-wrapper.js":81,"./utils/bulletproof-token-manager.js":82,"./utils/debug-logger.js":84,"./utils/loading-spinner.js":85,"./utils/local-api-client.js":86,"./utils/pingone-client.js":87,"./utils/safe-logger.js":89,"@babel/runtime/helpers/interopRequireDefault":1,"_process":25}],57:[function(require,module,exports){
 "use strict";
 
 /**
@@ -12943,9 +12939,17 @@ class CredentialsManager {
   /**
    * Initialize the credentials manager
    */
-  init() {
-    this.loadCredentials();
-    (window.logger?.info || console.log)('Credentials Manager initialized');
+  async init() {
+    await this.loadCredentialsWithFallback();
+    this.logCredentialEvent('info', {
+      credentialSource: this.credentialSource,
+      clientId: this.credentials.apiClientId ? '***' + this.credentials.apiClientId.slice(-4) : 'missing',
+      environmentId: this.credentials.environmentId ? '***' + this.credentials.environmentId.slice(-4) : 'missing',
+      region: this.credentials.region,
+      tokenStatus: 'client-init',
+      message: 'Credentials Manager initialized',
+      success: true
+    });
   }
 
   /**
@@ -12965,19 +12969,82 @@ class CredentialsManager {
   /**
    * Load credentials from localStorage
    */
-  loadCredentials() {
+  async loadCredentialsWithFallback() {
+    // Try API for server-side credentials first
+    try {
+      const res = await fetch('/api/auth/current-credentials');
+      const data = await res.json();
+      if (data.success && data.credentials) {
+        this.credentials = {
+          environmentId: data.credentials.environmentId,
+          apiClientId: data.credentials.clientId,
+          apiSecret: data.credentials.hasClientSecret ? '************' : '',
+          region: data.credentials.region,
+          populationId: ''
+        };
+        this.credentialSource = data.credentials.credentialSource || 'server';
+        this.logCredentialEvent('info', {
+          credentialSource: this.credentialSource,
+          clientId: this.credentials.apiClientId ? '***' + this.credentials.apiClientId.slice(-4) : 'missing',
+          environmentId: this.credentials.environmentId ? '***' + this.credentials.environmentId.slice(-4) : 'missing',
+          region: this.credentials.region,
+          tokenStatus: data.credentials.tokenStatus || 'unknown',
+          message: 'Loaded credentials from server',
+          success: true
+        });
+        return;
+      }
+    } catch (error) {
+      this.logCredentialEvent('warn', {
+        credentialSource: 'server',
+        clientId: '',
+        environmentId: '',
+        region: '',
+        tokenStatus: 'fetch-failed',
+        message: 'Failed to load credentials from server',
+        success: false
+      });
+    }
+    // Fallback to localStorage
     try {
       const stored = localStorage.getItem(this.storageKey);
       if (stored) {
         this.credentials = JSON.parse(stored);
-        (window.logger?.debug || console.log)('Credentials loaded from localStorage');
+        this.credentialSource = 'localStorage';
+        this.logCredentialEvent('info', {
+          credentialSource: 'localStorage',
+          clientId: this.credentials.apiClientId ? '***' + this.credentials.apiClientId.slice(-4) : 'missing',
+          environmentId: this.credentials.environmentId ? '***' + this.credentials.environmentId.slice(-4) : 'missing',
+          region: this.credentials.region,
+          tokenStatus: 'localStorage',
+          message: 'Credentials loaded from localStorage',
+          success: true
+        });
       } else {
         this.credentials = this.getDefaultCredentials();
-        (window.logger?.debug || console.log)('No stored credentials found, using defaults');
+        this.credentialSource = 'default';
+        this.logCredentialEvent('warn', {
+          credentialSource: 'default',
+          clientId: '',
+          environmentId: '',
+          region: '',
+          tokenStatus: 'default',
+          message: 'No stored credentials found, using defaults',
+          success: false
+        });
       }
     } catch (error) {
-      (window.logger?.warn || console.warn)('Failed to load credentials from localStorage:', error);
       this.credentials = this.getDefaultCredentials();
+      this.credentialSource = 'error';
+      this.logCredentialEvent('error', {
+        credentialSource: 'error',
+        clientId: '',
+        environmentId: '',
+        region: '',
+        tokenStatus: 'error',
+        message: 'Failed to load credentials from localStorage',
+        success: false
+      });
     }
   }
 
@@ -13132,10 +13199,17 @@ class CredentialsManager {
   displayCredentialsModal() {
     const modal = document.getElementById('credentials-modal');
     if (!modal) {
-      (window.logger?.error || console.error)('Credentials modal element not found');
+      this.logCredentialEvent('error', {
+        credentialSource: this.credentialSource,
+        clientId: '',
+        environmentId: '',
+        region: '',
+        tokenStatus: 'modal',
+        message: 'Credentials modal element not found',
+        success: false
+      });
       return;
     }
-
     // Populate modal content
     const modalContent = modal.querySelector('.modal-content');
     if (modalContent) {
@@ -13143,15 +13217,41 @@ class CredentialsManager {
                 <h3>API Credentials</h3>
                 <p><strong>Environment ID:</strong> ${this.credentials.environmentId}</p>
                 <p><strong>API Client ID:</strong> ${this.credentials.apiClientId}</p>
-                <p><strong>API Secret:</strong> ${this.credentials.apiSecret}</p>
+                <p><strong>API Secret:</strong> ************ <span title="Secret is masked for security">(masked)</span></p>
                 <p><strong>Region:</strong> ${this.credentials.region}</p>
                 <p><strong>Population ID:</strong> ${this.credentials.populationId}</p>
+                <p><em>Source: ${this.credentialSource || 'unknown'}</em></p>
             `;
     }
-
     // Show modal
     modal.style.display = 'block';
-    (window.logger?.info || console.log)('Credentials modal displayed');
+    this.logCredentialEvent('info', {
+      credentialSource: this.credentialSource,
+      clientId: this.credentials.apiClientId ? '***' + this.credentials.apiClientId.slice(-4) : 'missing',
+      environmentId: this.credentials.environmentId ? '***' + this.credentials.environmentId.slice(-4) : 'missing',
+      region: this.credentials.region,
+      tokenStatus: 'modal',
+      message: 'Credentials modal displayed',
+      success: true
+    });
+  }
+  /**
+   * Unified credential event logger
+   */
+  logCredentialEvent(level, _ref) {
+    let {
+      credentialSource,
+      clientId,
+      environmentId,
+      region,
+      tokenStatus,
+      message,
+      success
+    } = _ref;
+    const timestamp = new Date().toISOString();
+    const logMsg = `[🗝️ CREDENTIAL-MANAGER] [${timestamp}] [${level.toUpperCase()}] Source: ${credentialSource || 'unknown'} | ClientID: ${clientId || 'missing'} | EnvID: ${environmentId || 'missing'} | Region: ${region || 'missing'} | TokenStatus: ${tokenStatus || 'unknown'} | Success: ${success ? '✅' : '❌'} | ${message}`;
+    (window.logger?.log || console.log)(logMsg);
+    // TODO: Forward to UI logging page and server logs if needed
   }
 
   /**
@@ -13744,7 +13844,7 @@ class SettingsManager {
 var _default = exports.default = SettingsManager;
 
 }).call(this)}).call(this,require('_process'))
-},{"../utils/crypto-utils.js":82,"../utils/winston-logger.js":89,"_process":25}],59:[function(require,module,exports){
+},{"../utils/crypto-utils.js":83,"../utils/winston-logger.js":90,"_process":25}],59:[function(require,module,exports){
 (function (process){(function (){
 "use strict";
 
@@ -15852,6 +15952,128 @@ exports.UIManager = UIManager;
 
 }).call(this)}).call(this,require('_process'))
 },{"../../../public/js/modules/circular-progress.js":39,"../../../public/js/modules/element-registry.js":40,"../../../public/js/modules/error/error-types.js":41,"../../../public/js/modules/progress-manager.js":46,"../../../public/js/modules/utils/safe-dom.js":49,"../../../public/js/utils/error-handler.js":53,"@babel/runtime/helpers/interopRequireDefault":1,"_process":25}],60:[function(require,module,exports){
+(function (process){(function (){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = exports.VersionService = void 0;
+var _version = require("../../version.js");
+/**
+ * @fileoverview Version Service - Centralized version management for the application
+ * Handles version fetching, caching, and formatting across the application
+ * @version 7.0.0.21
+ */
+
+/**
+ * Default fallback version if API request fails
+ * @type {string}
+ */
+const DEFAULT_VERSION = _version.APP_VERSION || '7.0.0.21';
+
+/**
+ * Cache for version information to avoid repeated API calls
+ * @type {Object}
+ */
+let versionCache = null;
+let versionFetchPromise = null;
+
+/**
+ * VersionService class for centralized version management
+ */
+class VersionService {
+  /**
+   * Get the application version
+   * @async
+   * @param {boolean} [forceRefresh=false] - Force refresh from API even if cached
+   * @returns {Promise<string>} - The application version
+   */
+  static async getVersion() {
+    let forceRefresh = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+    // Return cached version if available and not forcing refresh
+    if (versionCache && !forceRefresh) {
+      return versionCache.version;
+    }
+
+    // If already fetching, return the existing promise
+    if (versionFetchPromise) {
+      return versionFetchPromise;
+    }
+
+    // Create a new fetch promise
+    versionFetchPromise = this._fetchVersionFromApi().then(version => {
+      versionCache = {
+        version,
+        timestamp: Date.now()
+      };
+      versionFetchPromise = null;
+      return version;
+    }).catch(error => {
+      console.warn('Could not fetch version from API:', error);
+      versionFetchPromise = null;
+      return DEFAULT_VERSION;
+    });
+    return versionFetchPromise;
+  }
+
+  /**
+   * Get formatted version string with prefix (e.g., "v7.0.0.21")
+   * @async
+   * @returns {Promise<string>} - Formatted version string
+   */
+  static async getFormattedVersion() {
+    const version = await this.getVersion();
+    return `v${version}`;
+  }
+
+  /**
+   * Get detailed version information including build date and environment
+   * @async
+   * @returns {Promise<Object>} - Version information object
+   */
+  static async getVersionInfo() {
+    const version = await this.getVersion();
+    return {
+      version,
+      formattedVersion: `v${version}`,
+      buildDate: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development'
+    };
+  }
+
+  /**
+   * Fetch version from API
+   * @private
+   * @async
+   * @returns {Promise<string>} - Version string
+   */
+  static async _fetchVersionFromApi() {
+    try {
+      const response = await fetch('/api/version');
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`);
+      }
+      const data = await response.json();
+      return data.version || DEFAULT_VERSION;
+    } catch (error) {
+      console.warn('Error fetching version:', error);
+      return DEFAULT_VERSION;
+    }
+  }
+
+  /**
+   * Clear the version cache
+   */
+  static clearCache() {
+    versionCache = null;
+  }
+}
+exports.VersionService = VersionService;
+var _default = exports.default = VersionService;
+
+}).call(this)}).call(this,require('_process'))
+},{"../../version.js":93,"_process":25}],61:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -16709,7 +16931,7 @@ class AdvancedRealtimeSubsystem {
 }
 exports.AdvancedRealtimeSubsystem = AdvancedRealtimeSubsystem;
 
-},{"../utils/pingone-client.js":86}],61:[function(require,module,exports){
+},{"../utils/pingone-client.js":87}],62:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -17287,7 +17509,7 @@ class AuthManagementSubsystem {
 }
 exports.AuthManagementSubsystem = AuthManagementSubsystem;
 
-},{}],62:[function(require,module,exports){
+},{}],63:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -17923,7 +18145,7 @@ class ConnectionManagerSubsystem {
 }
 exports.ConnectionManagerSubsystem = ConnectionManagerSubsystem;
 
-},{"../utils/browser-logging-service.js":76}],63:[function(require,module,exports){
+},{"../utils/browser-logging-service.js":77}],64:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -18529,7 +18751,7 @@ class EnhancedProgressSubsystem {
 exports.EnhancedProgressSubsystem = EnhancedProgressSubsystem;
 var _default = exports.default = EnhancedProgressSubsystem;
 
-},{"../utils/browser-logging-service.js":76}],64:[function(require,module,exports){
+},{"../utils/browser-logging-service.js":77}],65:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -19234,7 +19456,7 @@ class EnhancedTokenStatusSubsystem {
 exports.EnhancedTokenStatusSubsystem = EnhancedTokenStatusSubsystem;
 var _default = exports.default = EnhancedTokenStatusSubsystem;
 
-},{"../utils/browser-logging-service.js":76}],65:[function(require,module,exports){
+},{"../utils/browser-logging-service.js":77}],66:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -20152,7 +20374,7 @@ exports.GlobalTokenManagerSubsystem = GlobalTokenManagerSubsystem;
 var _default = exports.default = GlobalTokenManagerSubsystem; // Make GlobalTokenManagerSubsystem available globally for bundle
 window.GlobalTokenManagerSubsystem = GlobalTokenManagerSubsystem;
 
-},{"../../utils/config-standardization-browser.js":90,"../../utils/region-config.js":91}],66:[function(require,module,exports){
+},{"../../utils/config-standardization-browser.js":91,"../../utils/region-config.js":92}],67:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -20237,7 +20459,7 @@ class HistorySubsystem {
 }
 var _default = exports.default = HistorySubsystem;
 
-},{}],67:[function(require,module,exports){
+},{}],68:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -21370,7 +21592,7 @@ class ImportSubsystem {
 }
 exports.ImportSubsystem = ImportSubsystem;
 
-},{"../utils/safe-logger.js":88}],68:[function(require,module,exports){
+},{"../utils/safe-logger.js":89}],69:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -21378,6 +21600,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.NavigationSubsystem = void 0;
 var _browserLoggingService = require("../utils/browser-logging-service.js");
+var _version = require("../../version.js");
 /**
  * Navigation Subsystem
  * 
@@ -21890,9 +22113,8 @@ class NavigationSubsystem {
       'history': 'History'
     };
 
-    // Get version dynamically from app or fallback
-    const appVersion = this.app?.version || '7.0.0.6';
-    const baseTitle = `PingOne User Import v${appVersion}`;
+    // Use centralized version source
+    const baseTitle = (0, _version.getVersionedAppName)('PingOne User Import');
     const viewTitle = titles[view];
     if (viewTitle) {
       document.title = `${viewTitle} - ${baseTitle}`;
@@ -22103,7 +22325,7 @@ class NavigationSubsystem {
 }
 exports.NavigationSubsystem = NavigationSubsystem;
 
-},{"../utils/browser-logging-service.js":76}],69:[function(require,module,exports){
+},{"../../version.js":93,"../utils/browser-logging-service.js":77}],70:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -22836,7 +23058,7 @@ class OperationManagerSubsystem {
 }
 exports.OperationManagerSubsystem = OperationManagerSubsystem;
 
-},{"../utils/browser-logging-service.js":76}],70:[function(require,module,exports){
+},{"../utils/browser-logging-service.js":77}],71:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -22926,7 +23148,7 @@ class PopulationSubsystem {
 }
 var _default = exports.default = PopulationSubsystem;
 
-},{}],71:[function(require,module,exports){
+},{}],72:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -23488,7 +23710,7 @@ class RealtimeCommunicationSubsystem {
 }
 exports.RealtimeCommunicationSubsystem = RealtimeCommunicationSubsystem;
 
-},{"socket.io-client":27}],72:[function(require,module,exports){
+},{"socket.io-client":27}],73:[function(require,module,exports){
 "use strict";
 
 var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
@@ -24136,7 +24358,7 @@ class SettingsSubsystem {
 }
 var _default = exports.default = SettingsSubsystem;
 
-},{"../../utils/config-standardization-browser.js":90,"../utils/pingone-client.js":86,"@babel/runtime/helpers/interopRequireDefault":1}],73:[function(require,module,exports){
+},{"../../utils/config-standardization-browser.js":91,"../utils/pingone-client.js":87,"@babel/runtime/helpers/interopRequireDefault":1}],74:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -25309,7 +25531,7 @@ if (typeof window !== 'undefined') {
 // ES Module export
 var _default = exports.default = TokenManagerSubsystem;
 
-},{}],74:[function(require,module,exports){
+},{}],75:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -25679,7 +25901,7 @@ class TokenNotificationSubsystem {
 exports.TokenNotificationSubsystem = TokenNotificationSubsystem;
 var _default = exports.default = TokenNotificationSubsystem;
 
-},{"../utils/winston-logger.js":89}],75:[function(require,module,exports){
+},{"../utils/winston-logger.js":90}],76:[function(require,module,exports){
 (function (process){(function (){
 "use strict";
 
@@ -26334,7 +26556,7 @@ class ViewManagementSubsystem {
 exports.ViewManagementSubsystem = ViewManagementSubsystem;
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":25}],76:[function(require,module,exports){
+},{"_process":25}],77:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -26613,7 +26835,7 @@ const logger = exports.logger = createLogger({
 });
 var _default = exports.default = BrowserLoggingService;
 
-},{}],77:[function(require,module,exports){
+},{}],78:[function(require,module,exports){
 "use strict";
 
 var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
@@ -27003,7 +27225,7 @@ class BulletproofAppIntegration {
 exports.BulletproofAppIntegration = BulletproofAppIntegration;
 var _default = exports.default = BulletproofAppIntegration;
 
-},{"./bulletproof-global-handler.js":78,"./bulletproof-network-client.js":79,"./bulletproof-subsystem-wrapper.js":80,"@babel/runtime/helpers/interopRequireDefault":1}],78:[function(require,module,exports){
+},{"./bulletproof-global-handler.js":79,"./bulletproof-network-client.js":80,"./bulletproof-subsystem-wrapper.js":81,"@babel/runtime/helpers/interopRequireDefault":1}],79:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -27505,7 +27727,7 @@ window.bulletproofHandler = bulletproofHandler;
 // Also export as module
 var _default = exports.default = bulletproofHandler;
 
-},{}],79:[function(require,module,exports){
+},{}],80:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -28049,7 +28271,7 @@ const bulletproofNetworkClient = exports.bulletproofNetworkClient = new Bulletpr
 // Export both class and instance
 var _default = exports.default = BulletproofNetworkClient;
 
-},{}],80:[function(require,module,exports){
+},{}],81:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -28584,7 +28806,7 @@ function createBulletproofSubsystemWrapper(subsystem, logger) {
   }
 }
 
-},{}],81:[function(require,module,exports){
+},{}],82:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -29208,7 +29430,7 @@ function createBulletproofTokenManager(logger) {
 }
 var _default = exports.default = BulletproofTokenManager;
 
-},{"./bulletproof-subsystem-wrapper.js":80}],82:[function(require,module,exports){
+},{"./bulletproof-subsystem-wrapper.js":81}],83:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -29284,7 +29506,7 @@ class CryptoUtils {
 }
 exports.CryptoUtils = CryptoUtils;
 
-},{}],83:[function(require,module,exports){
+},{}],84:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -29495,7 +29717,7 @@ const debugLog = exports.debugLog = {
 };
 var _default = exports.default = debugLog;
 
-},{}],84:[function(require,module,exports){
+},{}],85:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -29706,7 +29928,7 @@ const loadingSpinner = new LoadingSpinner();
 // Export the singleton
 var _default = exports.default = loadingSpinner;
 
-},{}],85:[function(require,module,exports){
+},{}],86:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -29866,13 +30088,13 @@ class LocalApiClient {
 }
 var _default = exports.default = LocalApiClient;
 
-},{}],86:[function(require,module,exports){
+},{}],87:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.default = void 0;
+exports.default = exports.PingOneClient = void 0;
 var _pingoneTld = require("./pingone-tld.js");
 /**
  * @file A client for making requests to the PingOne API via the local server proxy.
@@ -29960,9 +30182,10 @@ class PingOneClient {
     };
   }
 }
+exports.PingOneClient = PingOneClient;
 var _default = exports.default = PingOneClient;
 
-},{"./pingone-tld.js":87}],87:[function(require,module,exports){
+},{"./pingone-tld.js":88}],88:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -29994,7 +30217,7 @@ function getTldForRegion(region) {
   return 'com';
 }
 
-},{}],88:[function(require,module,exports){
+},{}],89:[function(require,module,exports){
 (function (process){(function (){
 "use strict";
 
@@ -30263,9 +30486,9 @@ if (typeof window !== 'undefined') {
 }
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":25}],89:[function(require,module,exports){
+},{"_process":25}],90:[function(require,module,exports){
 arguments[4][50][0].apply(exports,arguments)
-},{"_process":25,"dup":50}],90:[function(require,module,exports){
+},{"_process":25,"dup":50}],91:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30455,7 +30678,7 @@ function getConfigValue(config, standardKey) {
   return defaultValue;
 }
 
-},{}],91:[function(require,module,exports){
+},{}],92:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30737,5 +30960,54 @@ function clearRegionFromStorage() {
     console.warn('⚠️ Cannot clear region from localStorage:', error.message);
   }
 }
+
+},{}],93:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.APP_VERSION = void 0;
+exports.getFormattedVersion = getFormattedVersion;
+exports.getVersionInfo = getVersionInfo;
+exports.getVersionedAppName = getVersionedAppName;
+/**
+ * PingOne Import Tool - Centralized Version Configuration
+ * 
+ * This file serves as the single source of truth for the application version.
+ * All version references throughout the application should import from this file.
+ * 
+ * Usage:
+ * import { APP_VERSION, getFormattedVersion } from '../path/to/version.js';
+ */
+
+// Application version - SINGLE SOURCE OF TRUTH
+const APP_VERSION = exports.APP_VERSION = '7.0.0.21';
+
+// Helper functions for version formatting
+function getFormattedVersion() {
+  return `v${APP_VERSION}`;
+}
+
+// For use in HTML title, footer, etc.
+function getVersionedAppName() {
+  let prefix = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'PingOne Import Tool';
+  return `${prefix} ${getFormattedVersion()}`;
+}
+
+// For logging and debugging
+function getVersionInfo() {
+  return {
+    version: APP_VERSION,
+    formattedVersion: getFormattedVersion(),
+    timestamp: new Date().toISOString(),
+    buildDate: '2025-08-04' // Update this on each release
+  };
+}
+
+// For backward compatibility with code that expects window.APP_VERSION
+
+// Log version on module load (helps with debugging)
+console.log(`Version module loaded: ${getFormattedVersion()}`);
 
 },{}]},{},[56]);

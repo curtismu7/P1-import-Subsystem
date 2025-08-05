@@ -10,7 +10,8 @@ import { dirname as dirname } from 'path';
  * This will be used to test the enhanced module converter
  */
 
-const logger = require('../../server/logger').getLogger('test-module');
+import { getLogger } from '../../server/logger';
+const logger = getLogger('test-module');
 
 // Submodule require
 
@@ -42,17 +43,12 @@ class DataProcessor {
 // Named exports with module.exports
 
 // Object.assign exports
-Object.assign(exports, {
-    version: '1.0.0',
-    author: 'PingOne Import Tool Team',
-    constants: {
-        MAX_ITEMS: 1000,
-        TIMEOUT: 30000
-    }
-});
-
-// Default export (will override previous exports)
-// export default DataProcessor;
+export const version = '1.0.0';
+export const author = 'PingOne Import Tool Team';
+export const constants = {
+    MAX_ITEMS: 1000,
+    TIMEOUT: 30000
+};
 
 export { processData };
 export { DataProcessor };

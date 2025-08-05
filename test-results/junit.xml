@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="15" failures="0" errors="0" time="0.75">
+  <testsuite name="test/esm-comprehensive.test.mjs" errors="0" failures="0" skipped="0" timestamp="2025-08-05T17:56:34" time="0.289" tests="6">
+    <testcase classname="Comprehensive ESM Testing" name="should be able to import package.json" time="0.003">
+    </testcase>
+    <testcase classname="Comprehensive ESM Testing" name="should support all modern JavaScript features" time="0.002">
+    </testcase>
+    <testcase classname="Comprehensive ESM Testing" name="should support async/await with promises" time="0.011">
+    </testcase>
+    <testcase classname="Comprehensive ESM Testing" name="should support modern class features" time="0.001">
+    </testcase>
+    <testcase classname="Comprehensive ESM Testing" name="should support dynamic imports" time="0">
+    </testcase>
+    <testcase classname="Comprehensive ESM Testing" name="should support top-level await simulation" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="test/esm-module-integration.test.mjs" errors="0" failures="0" skipped="0" timestamp="2025-08-05T17:56:34" time="0.073" tests="3">
+    <testcase classname="ESM Module Integration" name="should support basic ESM functionality" time="0.001">
+    </testcase>
+    <testcase classname="ESM Module Integration" name="should support native ESM features" time="0">
+    </testcase>
+    <testcase classname="ESM Module Integration" name="should support async/await patterns" time="0.012">
+    </testcase>
+  </testsuite>
+  <testsuite name="test/esm-project-integration.test.mjs" errors="0" failures="0" skipped="0" timestamp="2025-08-05T17:56:34" time="0.072" tests="3">
+    <testcase classname="ESM Project Integration" name="should be able to import package.json" time="0.001">
+    </testcase>
+    <testcase classname="ESM Project Integration" name="should support importing project modules" time="0.003">
+    </testcase>
+    <testcase classname="ESM Project Integration" name="should support modern JavaScript features in ESM context" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="test/esm-support.test.mjs" errors="0" failures="0" skipped="0" timestamp="2025-08-05T17:56:34" time="0.067" tests="3">
+    <testcase classname="ESM Support" name="should support ESM syntax" time="0.001">
+    </testcase>
+    <testcase classname="ESM Support" name="should support modern JavaScript features" time="0">
+    </testcase>
+    <testcase classname="ESM Support" name="should support async/await" time="0">
+    </testcase>
+  </testsuite>
+</testsuites>

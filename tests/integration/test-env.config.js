@@ -12,20 +12,47 @@
  * - Test data isolation
  */
 
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+"use strict";
+var fs = require('fs');
+var path = require('path');
+var settings = {};
+var credentialSource = 'env';
+try {
+  var settingsPath = path.resolve(__dirname, '../../../data/settings.json');
+  if (fs.existsSync(settingsPath)) {
+    var raw = fs.readFileSync(settingsPath, 'utf8');
+    var parsed = JSON.parse(raw);
+    // Debug: Log raw parsed object
+    console.log('[🗝️ CREDENTIAL-MANAGER] Raw parsed settings:', JSON.stringify(parsed, null, 2));
+    // Only use if all required credentials are present and non-empty strings
+    if (
+      typeof parsed.pingone_client_id === 'string' && parsed.pingone_client_id.trim() !== '' &&
+      typeof parsed.pingone_client_secret === 'string' && parsed.pingone_client_secret.trim() !== '' &&
+      typeof parsed.pingone_environment_id === 'string' && parsed.pingone_environment_id.trim() !== ''
+    ) {
+      settings = parsed;
+      credentialSource = 'settings.json';
+    } else {
+      settings = {};
+    }
+  } else {
+    settings = {};
+  }
+} catch (err) {
+  console.error('Failed to load settings.json:', err);
+  settings = {};
+}
 
-// Load environment variables from .env file if it exists
-dotenv.config({ path: path.join(__dirname, '../../.env') });
-
+function logCredentialSource(source) {
+  var msg = '[🗝️ CREDENTIAL-MANAGER] [' + new Date().toISOString() + '] [test-env] INFO: Credential source: ' + source;
+  // Log to console and optionally to a file or test log
+  console.log(msg);
+}
 /**
  * Test environment configuration
  */
-export const TEST_ENV_CONFIG = {
+var TEST_ENV_CONFIG = {
   // Environment validation
   NODE_ENV: process.env.NODE_ENV || 'test',
   
@@ -34,10 +61,10 @@ export const TEST_ENV_CONFIG = {
   API_TIMEOUT: parseInt(process.env.API_TIMEOUT) || 30000,
   
   // PingOne Test Environment (REQUIRED)
-  PINGONE_TEST_CLIENT_ID: process.env.PINGONE_TEST_CLIENT_ID,
-  PINGONE_TEST_CLIENT_SECRET: process.env.PINGONE_TEST_CLIENT_SECRET,
-  PINGONE_TEST_ENVIRONMENT_ID: process.env.PINGONE_TEST_ENVIRONMENT_ID,
-  PINGONE_TEST_REGION: process.env.PINGONE_TEST_REGION || 'NorthAmerica',
+  PINGONE_TEST_CLIENT_ID: settings.pingone_client_id || process.env.PINGONE_CLIENT_ID,
+  PINGONE_TEST_CLIENT_SECRET: settings.pingone_client_secret || process.env.PINGONE_CLIENT_SECRET,
+  PINGONE_TEST_ENVIRONMENT_ID: settings.pingone_environment_id || process.env.PINGONE_ENVIRONMENT_ID,
+  PINGONE_TEST_REGION: settings.pingone_region || process.env.PINGONE_REGION || 'NorthAmerica',
   
   // Test Configuration
   TEST_TIMEOUT: parseInt(process.env.TEST_TIMEOUT) || 60000,
@@ -57,9 +84,11 @@ export const TEST_ENV_CONFIG = {
 /**
  * Validate test environment configuration
  */
-export const validateTestEnvironment = () => {
-  const errors = [];
-  const warnings = [];
+function validateTestEnvironment() {
+  // Log credential source in unified format
+  logCredentialSource(credentialSource);
+  var errors = [];
+  var warnings = [];
   
   // Check for required environment variables
   if (!TEST_ENV_CONFIG.PINGONE_TEST_CLIENT_ID) {
@@ -73,9 +102,10 @@ export const validateTestEnvironment = () => {
   }
   
   // Validate region
-  const validRegions = ['NorthAmerica', 'Europe', 'AsiaPacific'];
-  if (!validRegions.includes(TEST_ENV_CONFIG.PINGONE_TEST_REGION)) {
-    errors.push(`PINGONE_TEST_REGION must be one of: ${validRegions.join(', ')}`);
+  var validRegions = ['NorthAmerica', 'Europe', 'AsiaPacific'];
+  var regionValid = validRegions.indexOf(TEST_ENV_CONFIG.PINGONE_TEST_REGION) !== -1;
+  if (!regionValid) {
+    errors.push('PINGONE_TEST_REGION must be one of: ' + validRegions.join(', '));
   }
   
   // Production environment guard
@@ -94,42 +124,44 @@ export const validateTestEnvironment = () => {
   // Display warnings
   if (warnings.length > 0) {
     console.warn('⚠️  Test environment warnings:');
-    warnings.forEach(warning => console.warn(`   ${warning}`));
+    warnings.forEach(function(warning) {
+      console.warn('   ' + warning);
+    });
   }
   
   // Throw error if validation fails
   if (errors.length > 0) {
-    throw new Error(`Test environment validation failed:\n${errors.join('\n')}`);
+    throw new Error('Test environment validation failed:\n' + errors.join('\n'));
   }
   
   console.log('✅ Test environment validated successfully');
-  console.log(`📍 API Base URL: ${TEST_ENV_CONFIG.API_BASE_URL}`);
-  console.log(`🌍 PingOne Region: ${TEST_ENV_CONFIG.PINGONE_TEST_REGION}`);
-  console.log(`🏢 Environment ID: ${TEST_ENV_CONFIG.PINGONE_TEST_ENVIRONMENT_ID}`);
-  console.log(`⏱️  Test Timeout: ${TEST_ENV_CONFIG.TEST_TIMEOUT}ms`);
-  console.log(`🔄 Retry Attempts: ${TEST_ENV_CONFIG.TEST_RETRY_ATTEMPTS}`);
+  console.log('📍 API Base URL: ' + TEST_ENV_CONFIG.API_BASE_URL);
+  console.log('🌍 PingOne Region: ' + TEST_ENV_CONFIG.PINGONE_TEST_REGION);
+  console.log('🏢 Environment ID: ' + TEST_ENV_CONFIG.PINGONE_TEST_ENVIRONMENT_ID);
+  console.log('⏱️  Test Timeout: ' + TEST_ENV_CONFIG.TEST_TIMEOUT + 'ms');
+  console.log('🔄 Retry Attempts: ' + TEST_ENV_CONFIG.TEST_RETRY_ATTEMPTS);
 };
 
 /**
  * Get secure configuration for tests
  */
-export const getSecureConfig = () => {
+function getSecureConfig() {
   // Mask sensitive data for logging
-  const maskedConfig = {
-    ...TEST_ENV_CONFIG,
-    PINGONE_TEST_CLIENT_ID: TEST_ENV_CONFIG.PINGONE_TEST_CLIENT_ID ? 
-      `${TEST_ENV_CONFIG.PINGONE_TEST_CLIENT_ID.substring(0, 8)}...` : 'NOT_SET',
-    PINGONE_TEST_CLIENT_SECRET: TEST_ENV_CONFIG.PINGONE_TEST_CLIENT_SECRET ? 
-      '***MASKED***' : 'NOT_SET'
-  };
-  
+  var maskedConfig = {};
+  for (var key in TEST_ENV_CONFIG) {
+    maskedConfig[key] = TEST_ENV_CONFIG[key];
+  }
+  maskedConfig.PINGONE_TEST_CLIENT_ID = TEST_ENV_CONFIG.PINGONE_TEST_CLIENT_ID ?
+    TEST_ENV_CONFIG.PINGONE_TEST_CLIENT_ID.substring(0, 8) + '...' : 'NOT_SET';
+  maskedConfig.PINGONE_TEST_CLIENT_SECRET = TEST_ENV_CONFIG.PINGONE_TEST_CLIENT_SECRET ?
+    '***MASKED***' : 'NOT_SET';
   return maskedConfig;
-};
+}
 
 /**
  * Create test-specific environment variables
  */
-export const createTestEnvVars = () => {
+function createTestEnvVars() {
   return {
     NODE_ENV: 'test',
     API_BASE_URL: TEST_ENV_CONFIG.API_BASE_URL,
@@ -138,12 +170,12 @@ export const createTestEnvVars = () => {
     PINGONE_ENVIRONMENT_ID: TEST_ENV_CONFIG.PINGONE_TEST_ENVIRONMENT_ID,
     PINGONE_REGION: TEST_ENV_CONFIG.PINGONE_TEST_REGION
   };
-};
+}
 
 /**
  * Check if tests should run
  */
-export const shouldRunTests = () => {
+function shouldRunTests() {
   try {
     validateTestEnvironment();
     return true;
@@ -151,14 +183,13 @@ export const shouldRunTests = () => {
     console.error('❌ Test environment validation failed:', error.message);
     return false;
   }
-};
+}
 
 /**
  * Get test configuration summary
  */
-export const getTestConfigSummary = () => {
-  const config = getSecureConfig();
-  
+function getTestConfigSummary() {
+  var config = getSecureConfig();
   return {
     environment: config.NODE_ENV,
     apiBaseUrl: config.API_BASE_URL,
@@ -172,7 +203,13 @@ export const getTestConfigSummary = () => {
     logRequests: config.TEST_LOG_REQUESTS,
     logResponses: config.TEST_LOG_RESPONSES
   };
-};
+}
 
-// Export default configuration
-export default TEST_ENV_CONFIG; 
+module.exports = {
+  TEST_ENV_CONFIG: TEST_ENV_CONFIG,
+  validateTestEnvironment: validateTestEnvironment,
+  getSecureConfig: getSecureConfig,
+  createTestEnvVars: createTestEnvVars,
+  shouldRunTests: shouldRunTests,
+  getTestConfigSummary: getTestConfigSummary
+};

@@ -1,6 +1,6 @@
 {
   "name": "pingone-import-cursor",
-  "version": "7.0.0.21",
+  "version": "7.0.0.22",
   "description": "A modern web application for importing users into PingOne using the PingOne Admin API.",
   "main": "server.js",
   "type": "module",
@@ -9,6 +9,7 @@
   },
   "scripts": {
     "test": "NODE_OPTIONS='--experimental-vm-modules' node scripts/run-tests.js",
+    "test:esm": "NODE_OPTIONS='--experimental-vm-modules' jest --config=jest.config.mjs test/esm-support.test.mjs test/esm-module-integration.test.mjs test/esm-project-integration.test.mjs test/esm-comprehensive.test.mjs",
     "test:unit": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest test/unit/**/*.test.js --config=jest.config.mjs",
     "test:integration": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest test/integration/**/*.test.js --config=jest.config.mjs",
     "test:e2e": "NODE_OPTIONS='--experimental-vm-modules' node scripts/run-tests.js e2e",
@@ -17,6 +18,11 @@
     "test:bulletproof:unit": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest test/unit/bulletproof-*.test.js --config=jest.bulletproof.config.mjs",
     "test:bulletproof:integration": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest test/integration/bulletproof-*.test.js --config=jest.bulletproof.config.mjs",
     "test:bulletproof:watch": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest test/unit/bulletproof-*.test.js test/integration/bulletproof-*.test.js test/bulletproof-*.test.mjs --watch --config=jest.bulletproof.config.mjs",
+    "lint": "eslint . --ext .js,.mjs --fix",
+    "lint:check": "eslint . --ext .js,.mjs",
+    "lint:test": "eslint test/ --ext .js,.mjs --fix",
+    "format": "prettier --write '**/*.{js,mjs,json}'",
+    "format:check": "prettier --check '**/*.{js,mjs,json}'",
     "test:bulletproof:runner": "node --experimental-modules --experimental-json-modules scripts/run-bulletproof-tests.js",
     "test:bulletproof:coverage": "node --experimental-modules --experimental-json-modules scripts/run-bulletproof-tests.js --coverage",
     "test:coverage": "cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest --coverage --config=jest.config.mjs",
@@ -110,41 +116,11 @@
       ]
     ]
   },
-  "jest": {
-    "collectCoverage": true,
-    "coverageDirectory": "coverage",
-    "testEnvironment": "jsdom",
-    "transform": {
-      "^.+\\.(js|mjs)$": [
-        "babel-jest",
-        {
-          "configFile": "./config/babel.config.json"
-        }
-      ]
-    },
-    "moduleNameMapper": {
-      "^@/(.*)$": "<rootDir>/public/js/$1",
-      "^@modules/(.*)$": "<rootDir>/public/js/modules/$1",
-      "^@test/(.*)$": "<rootDir>/test/$1"
-    },
-    "testMatch": [
-      "**/test/**/*.test.js",
-      "**/__tests__/**/*.js"
-    ],
-    "testPathIgnorePatterns": [
-      "/node_modules/",
-      "/dist/",
-      "/public/"
-    ],
-    "setupFilesAfterEnv": [
-      "<rootDir>/test/setup.js"
-    ]
-  },
   "dependencies": {
     "@babel/core": "^7.28.0",
     "@babel/runtime": "^7.28.2",
     "@socket.io/redis-adapter": "^8.2.1",
-    "axios": "^0.27.2",
+    "axios": "^1.11.0",
     "babelify": "^10.0.0",
     "bcryptjs": "^2.4.3",
     "browserify": "^17.0.1",
@@ -163,6 +139,7 @@
     "joi": "^17.12.0",
     "jslint": "^0.12.1",
     "jsonwebtoken": "^9.0.2",
+    "lint": "^1.1.2",
     "mongoose": "^8.0.0",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",

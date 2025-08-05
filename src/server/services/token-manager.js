@@ -94,7 +94,6 @@ class TokenManager {
      */
     async getCredentials() {
         // Helper function to get a setting by multiple possible keys
-        // Handles different naming conventions (camelCase, kebab-case)
         const getSetting = (obj, ...keys) => {
             for (const key of keys) {
                 if (obj && typeof obj === 'object' && obj[key]) return obj[key];
@@ -102,99 +101,109 @@ class TokenManager {
             return undefined;
         };
 
-        // First try environment variables (preferred source)
-        let clientId = process.env.PINGONE_CLIENT_ID;
-        let clientSecret = process.env.PINGONE_CLIENT_SECRET;
-        let environmentId = process.env.PINGONE_ENVIRONMENT_ID;
-        let region = process.env.PINGONE_REGION || 'NorthAmerica';
+        let credentialSource = null;
+        let clientId = null, clientSecret = null, environmentId = null, region = null;
+        let tokenStatus = 'not-acquired';
 
-        // Check if environment variables are actually set (not just empty strings)
-        const hasEnvVars = clientId && clientSecret && environmentId;
-        
-        if (!hasEnvVars) {
-            this.logger.info('Environment variables missing or incomplete, reading from settings file');
-            const settings = await this.readSettingsFromFile();
-            
-            if (settings) {
-                this.logger.debug('Settings loaded from file:', Object.keys(settings));
-                
-                // Debug: Check what we're actually getting
-                this.logger.debug('Raw settings:', {
-                    'api-client-id': settings['api-client-id'],
-                    'environment-id': settings['environment-id'],
-                    'api-secret': settings['api-secret'],
-                    'apiClientId': settings.apiClientId,
-                    'environmentId': settings.environmentId,
-                    'apiSecret': settings.apiSecret
-                });
-                
-                // Accept both camelCase and kebab-case
-                clientId = clientId || getSetting(settings, 'apiClientId', 'api-client-id');
-                environmentId = environmentId || getSetting(settings, 'environmentId', 'environment-id');
-                region = region || getSetting(settings, 'region') || 'NorthAmerica';
-
-                // Prefer plain api-secret if both exist
-                let apiSecret = getSetting(settings, 'api-secret', 'apiSecret');
-                
-                this.logger.debug('API secret selected:', apiSecret ? (apiSecret.startsWith('enc:') ? '[ENCRYPTED]' : '[PLAIN]') : 'not found');
-                if (!clientSecret && apiSecret) {
-                    if (apiSecret.startsWith('enc:')) {
-                        // This is an encrypted value, try to decrypt it
-                        try {
-                            clientSecret = await this.decryptApiSecret(apiSecret);
-                            if (clientSecret) {
-                                this.logger.info('Successfully decrypted API secret from settings file');
-                            } else {
-                                this.logger.warn('Failed to decrypt API secret, trying as plain text');
-                                // If decryption fails, try using the value after 'enc:' as plain text
-                                clientSecret = apiSecret.substring(4);
-                            }
-                        } catch (error) {
-                            this.logger.warn('Failed to decrypt API secret, using as plain text:', error.message);
-                            // If decryption fails, try using the value after 'enc:' as plain text
+        // 1. Try settings.json first
+        const settings = await this.readSettingsFromFile();
+        if (settings) {
+            clientId = getSetting(settings, 'apiClientId', 'api-client-id');
+            environmentId = getSetting(settings, 'environmentId', 'environment-id');
+            region = getSetting(settings, 'region') || 'NorthAmerica';
+            let apiSecret = getSetting(settings, 'api-secret', 'apiSecret');
+            if (apiSecret) {
+                if (apiSecret.startsWith('enc:')) {
+                    try {
+                        clientSecret = await this.decryptApiSecret(apiSecret);
+                        if (clientSecret) {
+                            tokenStatus = 'decrypted';
+                        } else {
                             clientSecret = apiSecret.substring(4);
+                            tokenStatus = 'decryption-failed-used-plain';
                         }
-                    } else {
-                        // This is an unencrypted value - use it directly
-                        clientSecret = apiSecret;
-                        this.logger.info('Using plain text API secret from settings file');
+                    } catch (error) {
+                        clientSecret = apiSecret.substring(4);
+                        tokenStatus = 'decryption-failed-used-plain';
                     }
-                }
-                
-                // Additional fallback: if we still don't have a clientSecret, check if the apiSecret 
-                // is actually a valid secret that doesn't start with 'enc:' but looks encrypted
-                if (!clientSecret && apiSecret && apiSecret.length > 20) {
-                    this.logger.info('Using API secret as-is (may be plain text or custom encoding)');
+                } else {
                     clientSecret = apiSecret;
+                    tokenStatus = 'plain';
                 }
-                
-                this.logger.debug('Final credentials check:', {
-                    clientId: clientId ? '***' + clientId.slice(-4) : 'missing',
-                    environmentId: environmentId ? '***' + environmentId.slice(-4) : 'missing',
-                    clientSecret: clientSecret ? '***' + clientSecret.slice(-4) : 'missing',
-                    region: region
-                });
             }
+            credentialSource = 'settings.json';
         }
 
+        // 2. If any required field missing, try .env
+        if (!clientId || !clientSecret || !environmentId) {
+            clientId = clientId || process.env.PINGONE_CLIENT_ID;
+            clientSecret = clientSecret || process.env.PINGONE_CLIENT_SECRET;
+            environmentId = environmentId || process.env.PINGONE_ENVIRONMENT_ID;
+            region = region || process.env.PINGONE_REGION || 'NorthAmerica';
+            credentialSource = 'env';
+            tokenStatus = 'env';
+        }
+
+        // 3. Local storage fallback is not possible server-side
 
         // Final check: all required credentials must be present
         if (!clientId || !clientSecret || !environmentId) {
-            this.logger.error('Missing PingOne credentials: clientId, clientSecret, or environmentId');
-            this.logger.error('Please configure your PingOne API credentials in the Settings page or data/settings.json');
+            this.logCredentialEvent('error', {
+                credentialSource,
+                clientId,
+                environmentId,
+                region,
+                tokenStatus,
+                message: 'Missing PingOne credentials: clientId, clientSecret, or environmentId',
+                success: false
+            });
             return null;
         }
 
         // Validate credential format
         if (clientId === 'YOUR_CLIENT_ID_HERE' || clientSecret === 'YOUR_CLIENT_SECRET_HERE' || environmentId === 'YOUR_ENVIRONMENT_ID_HERE') {
-            this.logger.error('PingOne credentials are not configured. Please update data/settings.json with your actual credentials.');
+            this.logCredentialEvent('error', {
+                credentialSource,
+                clientId,
+                environmentId,
+                region,
+                tokenStatus,
+                message: 'PingOne credentials are not configured. Please update data/settings.json with your actual credentials.',
+                success: false
+            });
             return null;
         }
 
         // Store current region for API base URL generation
         this.currentRegion = region;
 
-        return { clientId, clientSecret, environmentId, region };
+        this.logCredentialEvent('info', {
+            credentialSource,
+            clientId: clientId ? '***' + clientId.slice(-4) : 'missing',
+            environmentId: environmentId ? '***' + environmentId.slice(-4) : 'missing',
+            region,
+            tokenStatus,
+            message: 'Credentials loaded',
+            success: true
+        });
+
+        return { clientId, clientSecret, environmentId, region, credentialSource };
+    }
+
+    /**
+     * Unified credential event logger
+     */
+    logCredentialEvent(level, { credentialSource, clientId, environmentId, region, tokenStatus, message, success }) {
+        const timestamp = new Date().toISOString();
+        const logMsg = `[🗝️ CREDENTIAL-MANAGER] [${timestamp}] [${level.toUpperCase()}] Source: ${credentialSource || 'unknown'} | ClientID: ${clientId || 'missing'} | EnvID: ${environmentId || 'missing'} | Region: ${region || 'missing'} | TokenStatus: ${tokenStatus || 'unknown'} | Success: ${success ? '✅' : '❌'} | ${message}`;
+        if (level === 'error') {
+            this.logger.error(logMsg);
+        } else if (level === 'warn') {
+            this.logger.warn(logMsg);
+        } else {
+            this.logger.info(logMsg);
+        }
+        // TODO: Forward to UI logging page and server logs if needed
     }
 
     /**

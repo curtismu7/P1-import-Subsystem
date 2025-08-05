@@ -3,13 +3,13 @@
  * @author PingOne Import Tool Team
  * @version 6.5.0
  * @since 1.0.0
- * 
+*
  * @description
  * This module serves as the central API router for the application. It imports and
  * mounts all sub-routers for different API areas, such as debug logging and client-side
  * logging. It also includes a global request/response logging middleware and a health
  * check endpoint.
- * 
+*
  * @requires express
  * @requires multer
  * @requires node-fetch
@@ -24,6 +24,7 @@ import { v4 as uuidv4 } from 'uuid';
 import fetch from 'node-fetch';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs/promises';
 import logsRouter from './logs.js';
 import debugLogRouter from './debug-log.js';
 import credentialRouter from './credential-management.js';
@@ -33,7 +34,10 @@ import historyRouter from './history.js';
 import pingoneRouter from './pingone.js';
 import versionRouter from './version.js';
 import settingsRouter from './settings.js';
-import { apiLogHelpers } from '../../server/winston-config.js';
+import { apiLogHelpers, apiLogger } from '../../server/winston-config.js';
+import { logSeparator, logTag } from '../../server/winston-config.js';
+import { debugLog } from '../../src/shared/debug-utils.js';
+import { sendProgressEvent } from '../../server/connection-manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -121,9 +125,9 @@ router.get('/health', async (req, res) => {
         }
 
         const responseTime = Date.now() - startTime;
-        apiLogger.info(`${functionName} - Health check completed successfully`, { 
-            requestId: req.requestId, 
-            responseTime: `${responseTime}ms` 
+        apiLogger.info(`${functionName} - Health check completed successfully`, {
+            requestId: req.requestId,
+            responseTime: `${responseTime}ms`
         });
         
         res.status(200).json({
@@ -161,7 +165,7 @@ router.get('/health', async (req, res) => {
  * Uses memory storage for processing CSV files with 10MB size limit
  * This prevents disk I/O and allows direct buffer access for parsing
  */
-const upload = multer({ 
+const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
         fileSize: 10 * 1024 * 1024 // 10MB limit - sufficient for most CSV files
@@ -174,14 +178,14 @@ const upload = multer({
 
 /**
  * Runs the import process in the background
- * 
+*
  * This function handles the complete import workflow:
  * 1. Parses the uploaded CSV file
  * 2. Validates user data and population information
  * 3. Creates users in PingOne via API calls
  * 4. Sends real-time progress updates via SSE
  * 5. Handles errors and provides detailed logging
- * 
+*
  * @param {string} sessionId - Unique session identifier for SSE communication
  * @param {Object} app - Express app instance for accessing services
  */
@@ -193,7 +197,7 @@ async function runImportProcess(sessionId, app) {
         logger.info(`[${new Date().toISOString()}] [INFO] Import process started`, { sessionId });
         if (logger.flush) await logger.flush();
         
-        debugLog("Import", "🔄 Starting import process", { sessionId });
+        debugLog.info("🔄 Starting import process", { sessionId }, "Import");
         
         // Get import session data
         const importSessions = app.get('importSessions');
@@ -220,14 +224,14 @@ async function runImportProcess(sessionId, app) {
         });
         if (logger.flush) await logger.flush();
         
-        debugLog("Import", "🔍 Session data retrieved", { 
+        debugLog.info("🔍 Session data retrieved", {
             populationId: populationId || 'MISSING',
             populationName: populationName || 'MISSING',
             totalUsers: totalUsers || 0
         });
         
         // Parse CSV file
-        debugLog("Import", "📄 Parsing CSV file", { fileName: file.originalname });
+        debugLog.info("📄 Parsing CSV file", { fileName: file.originalname });
         const csvContent = file.buffer.toString('utf8');
         const lines = csvContent.split('\n').filter(line => line.trim());
         
@@ -247,7 +251,7 @@ async function runImportProcess(sessionId, app) {
             return user;
         });
         
-        debugLog("Import", "✅ CSV parsed successfully", { 
+        debugLog.info("✅ CSV parsed successfully", {
             totalUsers: users.length,
             headers: headers
         });
@@ -304,7 +308,7 @@ async function runImportProcess(sessionId, app) {
         const apiDomain = getApiDomain(region);
         logger.info(`Using API domain: ${apiDomain} (region: ${region})`, { region, apiDomain });
         
-        debugLog("Import", "🔑 Authentication ready", { environmentId });
+        debugLog.info("🔑 Authentication ready", { environmentId });
         if (logger.flush) await logger.flush();
         
         // Process users in batches to avoid rate limiting
@@ -316,7 +320,7 @@ async function runImportProcess(sessionId, app) {
         for (let i = 0; i < users.length; i += batchSize) {
             const batch = users.slice(i, i + batchSize);
             
-            debugLog("Import", `📦 Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(users.length/batchSize)}`, {
+            debugLog.info(`📦 Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(users.length/batchSize)}`, {
                 batchSize: batch.length,
                 startIndex: i
             });
@@ -333,7 +337,7 @@ async function runImportProcess(sessionId, app) {
                         const error = `Line ${user._lineNumber}: Missing username or email`;
                         errors.push(error);
                         failed++;
-                        debugLog("Import", `❌ ${error}`);
+                        debugLog.info(`❌ ${error}`);
                         if (logger.flush) await logger.flush();
                         continue;
                     }
@@ -385,8 +389,8 @@ async function runImportProcess(sessionId, app) {
                             if (checkData._embedded && checkData._embedded.users && checkData._embedded.users.length > 0) {
                                 // User already exists
                                 skipped++;
-                                debugLog("Import", `⏭️ User already exists: ${username}`, { lineNumber: user._lineNumber });
-                                sendProgressEvent(sessionId, processed, users.length, `Skipped: ${username} already exists`, 
+                                debugLog.info(`⏭️ User already exists: ${username}`, { lineNumber: user._lineNumber });
+                                sendProgressEvent(sessionId, processed, users.length, `Skipped: ${username} already exists`,
                                     { processed, created, skipped, failed }, username, populationName, populationId, app);
                                 continue;
                             }
@@ -439,7 +443,7 @@ async function runImportProcess(sessionId, app) {
                     if (user.title) userData.title = user.title;
                     
                     // DEBUG: Log the user creation request
-                    debugLog("Import", `🔍 Creating user in PingOne`, {
+                    debugLog.info(`🔍 Creating user in PingOne`, {
                         sessionId,
                         username,
                         populationId,
@@ -466,8 +470,8 @@ async function runImportProcess(sessionId, app) {
                             let isUniquenessViolation = false;
                             try {
                                 const errorData = JSON.parse(errorText);
-                                isUniquenessViolation = errorData.code === 'INVALID_DATA' && 
-                                    errorData.details && 
+                                isUniquenessViolation = errorData.code === 'INVALID_DATA' &&
+                                    errorData.details &&
                                     errorData.details.some(detail => detail.code === 'UNIQUENESS_VIOLATION');
                             } catch (e) {
                                 // If we can't parse the error, assume it's not a uniqueness violation
@@ -476,13 +480,20 @@ async function runImportProcess(sessionId, app) {
                             if (isUniquenessViolation) {
                                 // Treat uniqueness violation as a skip, not a failure
                                 logger.info(`[${new Date().toISOString()}] [INFO] User already exists (uniqueness violation): ${username}`);
-                                debugLog("Import", `⏭️ User already exists (uniqueness violation): ${username}`, { 
-                                    lineNumber: user._lineNumber,
-                                    errorText 
-                                });
+                                debugLog.info(`⏭️ User already exists (uniqueness violation): ${username}`,
+                                    { lineNumber: user._lineNumber, errorText });
                                 skipped++;
-                                sendProgressEvent(sessionId, processed, users.length, `Skipped: ${username} already exists`, 
-                                    { processed, created, skipped, failed }, username, populationName, populationId, app);
+                                sendProgressEvent(
+                                    sessionId,
+                                    processed,
+                                    users.length,
+                                    `Skipped: ${username} already exists`,
+                                    { processed, created, skipped, failed },
+                                    username,
+                                    populationName,
+                                    populationId,
+                                    app
+                                );
                                 continue;
                             }
                             
@@ -495,7 +506,7 @@ async function runImportProcess(sessionId, app) {
                                 errorText,
                                 userData
                             });
-                            debugLog("Import", `❌ User creation failed`, {
+                            debugLog.info(`❌ User creation failed`, {
                                 sessionId,
                                 username,
                                 status: createResponse.status,
@@ -511,52 +522,6 @@ async function runImportProcess(sessionId, app) {
                     } catch (err) {
                         // Log error to console for visibility
                         apiLogger.error('[USER CREATE EXCEPTION]', {
-                            sessionId,
-                            username,
-                            error: err,
-                            userData
-                        });
-                        debugLog("Import", `❌ User creation exception`, {
-                            sessionId,
-                            username,
-                            error: err,
-                            userData
-                        });
-                        failed++;
-                        continue;
-                    }
-                    
-                    debugLog("Import", `✅ User created successfully: ${username}`, { 
-                        lineNumber: user._lineNumber,
-                        populationName,
-                        populationId
-                    });
-                    if (logger.flush) await logger.flush();
-                    sendProgressEvent(sessionId, processed, users.length, `Created: ${username} in ${populationName}`, 
-                        { processed, created, skipped, failed }, username, populationName, populationId, app);
-                    
-                } catch (error) {
-                    const errorMsg = `Line ${user._lineNumber}: Error processing user ${user.username || user.email || 'unknown'} - ${error.message}`;
-                    errors.push(errorMsg);
-                    failed++;
-                    debugLog("Import", `❌ ${errorMsg}`);
-                    if (logger.flush) await logger.flush();
-                    sendProgressEvent(sessionId, processed, users.length, `Error: ${user.username || user.email || 'unknown'}`, 
-                        { processed, created, skipped, failed }, user.username || user.email || 'unknown', populationName, populationId, app);
-                }
-            }
-            
-            // Add delay between batches to avoid rate limiting
-            if (i + batchSize < users.length) {
-                debugLog("Import", `⏱️ Adding delay between batches: ${delayBetweenBatches}ms`);
-                await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
-            }
-        }
-        
-        const importDuration = Date.now() - importStart;
-        logger.info(logSeparator('-'));
-        logger.info(logTag('IMPORT SUMMARY'), { tag: logTag('IMPORT SUMMARY'), separator: logSeparator('-') });
-        logger.info(`[${new Date().toISOString()}] [INFO] Import Summary:`, {
             total: users.length,
             processed,
             created,
@@ -574,7 +539,7 @@ async function runImportProcess(sessionId, app) {
         if (logger.flush) await logger.flush();
         
         // Send completion event
-        debugLog("Import", "🏁 Import process completed", {
+        debugLog.info("🏁 Import process completed", {
             total: users.length,
             processed,
             created,
@@ -958,11 +923,11 @@ router.post('/import', upload.single('file'), async (req, res, next) => {
         });
         if (logger.flush) await logger.flush();
         
-        debugLog("Import", "🚀 Import request received");
+        debugLog.info("🚀 Import request received");
         
         // Validate file upload
         if (!req.file) {
-            debugLog("Import", "❌ No file uploaded");
+            debugLog.info("❌ No file uploaded");
             return res.status(400).json({
                 success: false,
                 error: 'No file uploaded',
@@ -983,14 +948,14 @@ router.post('/import', upload.single('file'), async (req, res, next) => {
         });
         if (logger.flush) await logger.flush();
         
-        debugLog("Import", "🔍 Population data received", { 
+        debugLog.info("🔍 Population data received", { 
             populationId: populationId || 'MISSING', 
             populationName: populationName || 'MISSING',
             totalUsers: totalUsers || 'MISSING'
         });
         
         if (!populationId || !populationName) {
-            debugLog("Import", "❌ Missing population information", { populationId, populationName });
+            debugLog.info("❌ Missing population information", { populationId, populationName });
             logger.error(`[${new Date().toISOString()}] [ERROR] Missing population information`, {
                 populationId: populationId || 'MISSING',
                 populationName: populationName || 'MISSING'
@@ -1003,7 +968,7 @@ router.post('/import', upload.single('file'), async (req, res, next) => {
             });
         }
         
-        debugLog("Import", "✅ Import options validated", {
+        debugLog.info("✅ Import options validated", {
             totalUsers: parseInt(totalUsers) || 0,
             populationId,
             populationName,
@@ -1040,11 +1005,11 @@ router.post('/import', upload.single('file'), async (req, res, next) => {
         }
         req.app.get('importSessions').set(sessionId, importSession);
         
-        debugLog("Import", "📋 Import session created", { sessionId });
+        debugLog.info("📋 Import session created", { sessionId });
         
         // Start import process in background with proper error handling
         runImportProcess(sessionId, req.app).catch(error => {
-            debugLog("Import", "❌ Background import process failed", { error: error.message });
+            debugLog.info("❌ Background import process failed", { error: error.message });
             sendErrorEvent(sessionId, 'Import failed', error.message, {}, req.app);
         });
         
@@ -1059,7 +1024,7 @@ router.post('/import', upload.single('file'), async (req, res, next) => {
         });
         
     } catch (error) {
-        debugLog("Import", "❌ Import endpoint error", { error: error.message });
+        debugLog.info("❌ Import endpoint error", { error: error.message });
         res.status(500).json({
             success: false,
             error: 'Import failed',
@@ -2096,7 +2061,7 @@ function logExportTokenGeneration(req, environmentId, expiresAt) {
         ip: req.ip
     };
 
-    debugLog("Export", "📝 Export token generation logged", logEntry);
+    debugLog.info("📝 Export token generation logged", logEntry);
 }
 
 /**
@@ -2176,7 +2141,7 @@ function logExportOperation(req, operationData) {
         ip: req.ip
     };
 
-    debugLog("Export", "📝 Export operation logged", logEntry);
+    debugLog.info("📝 Export operation logged", logEntry);
     
     // Also log to operations history
     logOperationToHistory(req, {
@@ -2306,7 +2271,7 @@ router.get('/version', (req, res) => {
 // --- DELETE USERS ENDPOINT ---
 router.post('/delete-users', upload.single('file'), async (req, res) => {
     try {
-        debugLog("Delete", "🔄 Delete users request received", {
+        debugLog.info("🔄 Delete users request received", {
             hasFile: !!req.file,
             populationId: req.body.populationId,
             type: req.body.type,
@@ -2368,13 +2333,13 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
                 return user;
             });
 
-            debugLog("Delete", "📄 CSV parsed successfully", { 
+            debugLog.info("📄 CSV parsed successfully", { 
                 totalUsers: usersToDelete.length,
                 headers: headers
             });
         } else if (req.body.type === 'population' && req.body.populationId) {
             // Get all users from the specified population
-            debugLog("Delete", "👥 Fetching all users from population", {
+            debugLog.info("👥 Fetching all users from population", {
                 populationId: req.body.populationId
             });
 
@@ -2397,18 +2362,18 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
                             email: user.primaryEmail?.address,
                             id: user.id
                         }));
-                        debugLog("Delete", "👥 Population users fetched successfully", {
+                        debugLog.info("👥 Population users fetched successfully", {
                             totalUsers: usersToDelete.length,
                             populationId: req.body.populationId
                         });
                     } else {
-                        debugLog("Delete", "👥 No users found in population", {
+                        debugLog.info("👥 No users found in population", {
                             populationId: req.body.populationId
                         });
                     }
                 } else {
                     const errorText = await populationResponse.text();
-                    debugLog("Delete", "❌ Failed to fetch population users", {
+                    debugLog.info("❌ Failed to fetch population users", {
                         populationId: req.body.populationId,
                         status: populationResponse.status,
                         error: errorText
@@ -2420,7 +2385,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
                     });
                 }
             } catch (error) {
-                debugLog("Delete", "❌ Error fetching population users", {
+                debugLog.info("❌ Error fetching population users", {
                     populationId: req.body.populationId,
                     error: error.message
                 });
@@ -2441,7 +2406,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
         const skipNotFound = req.body.skipNotFound === 'true';
         const populationId = req.body.populationId;
 
-        debugLog("Delete", "🗑️ Starting delete process", {
+        debugLog.info("🗑️ Starting delete process", {
             totalUsers: usersToDelete.length,
             populationId,
             skipNotFound
@@ -2460,7 +2425,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
                 if (user.id) {
                     existingUser = user;
                     lookupMethod = 'id';
-                    debugLog("Delete", `🗑️ Using user with existing ID`, {
+                    debugLog.info(`🗑️ Using user with existing ID`, {
                         user: existingUser.username || existingUser.email,
                         userId: existingUser.id
                     });
@@ -2486,7 +2451,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
                                 }
                             }
                         } catch (error) {
-                            debugLog("Delete", `🔍 Username lookup failed for "${user.username}"`, { error: error.message });
+                            debugLog.info(`🔍 Username lookup failed for "${user.username}"`, { error: error.message });
                         }
                     }
 
@@ -2511,14 +2476,14 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
                                 }
                             }
                         } catch (error) {
-                            debugLog("Delete", `🔍 Email lookup failed for "${user.email}"`, { error: error.message });
+                            debugLog.info(`🔍 Email lookup failed for "${user.email}"`, { error: error.message });
                         }
                     }
                 }
 
                 // Delete user if found
                 if (existingUser) {
-                    debugLog("Delete", `🗑️ Deleting user found by ${lookupMethod}`, {
+                    debugLog.info(`🗑️ Deleting user found by ${lookupMethod}`, {
                         user: existingUser.username || existingUser.email,
                         userId: existingUser.id
                     });
@@ -2536,7 +2501,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
 
                     if (deleteResponse.ok) {
                         deleted++;
-                        debugLog("Delete", `✅ Successfully deleted user`, {
+                        debugLog.info(`✅ Successfully deleted user`, {
                             user: existingUser.username || existingUser.email
                         });
                     } else {
@@ -2548,7 +2513,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
                             details: errorText
                         });
                         failed++;
-                        debugLog("Delete", `❌ Failed to delete user`, {
+                        debugLog.info(`❌ Failed to delete user`, {
                             user: existingUser.username || existingUser.email,
                             error: errorMessage
                         });
@@ -2556,7 +2521,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
                 } else {
                     if (skipNotFound) {
                         skipped++;
-                        debugLog("Delete", `⏭️ User not found, skipping`, {
+                        debugLog.info(`⏭️ User not found, skipping`, {
                             user: user.username || user.email || 'Unknown'
                         });
                     } else {
@@ -2565,7 +2530,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
                             user: user.username || user.email || 'Unknown',
                             error: 'User not found'
                         });
-                        debugLog("Delete", `❌ User not found`, {
+                        debugLog.info(`❌ User not found`, {
                             user: user.username || user.email || 'Unknown'
                         });
                     }
@@ -2581,7 +2546,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
                     user: user.username || user.email || 'Unknown',
                     error: errorMessage
                 });
-                debugLog("Delete", `❌ Error processing user`, {
+                debugLog.info(`❌ Error processing user`, {
                     user: user.username || user.email || 'Unknown',
                     error: error.message
                 });
@@ -2606,7 +2571,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
             }
         };
 
-        debugLog("Delete", "✅ Delete operation completed", result);
+        debugLog.info("✅ Delete operation completed", result);
 
         // Log delete operation to history
         try {
@@ -2631,7 +2596,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
         res.json(result);
 
     } catch (error) {
-        debugLog("Delete", "❌ Delete operation failed", { error: error.message });
+        debugLog.info("❌ Delete operation failed", { error: error.message });
         res.status(500).json({
             success: false,
             error: error.message || 'Internal server error'
@@ -2650,7 +2615,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
  */
 router.post('/test-connection', async (req, res) => {
     try {
-        debugLog("Settings", "🔌 Testing connection with current settings");
+        debugLog.info("🔌 Testing connection with current settings");
         
         // Get token manager from app
         const tokenManager = req.app.get('tokenManager');
@@ -2668,7 +2633,7 @@ router.post('/test-connection', async (req, res) => {
         // Get token info for response
         const tokenInfo = tokenManager.getTokenInfo();
         
-        debugLog("Settings", "✅ Connection test successful", {
+        debugLog.info("✅ Connection test successful", {
             hasToken: !!token,
             expiresAt: tokenInfo.expiresAt
         });
@@ -2684,7 +2649,7 @@ router.post('/test-connection', async (req, res) => {
         });
         
     } catch (error) {
-        debugLog("Settings", "❌ Connection test failed", { error: error.message });
+        debugLog.info("❌ Connection test failed", { error: error.message });
         
         res.status(500).json({
             success: false,
@@ -2708,7 +2673,7 @@ router.post('/test-connection', async (req, res) => {
  */
 router.get('/pingone/users', async (req, res) => {
     try {
-        debugLog("PingOne", "👥 Fetching users from PingOne API", {
+        debugLog.info("👥 Fetching users from PingOne API", {
             query: req.query,
             headers: Object.keys(req.headers)
         });
@@ -2775,7 +2740,7 @@ router.get('/pingone/users', async (req, res) => {
             pingOneUrl += `?${params.toString()}`;
         }
 
-        debugLog("PingOne", "🌐 Making request to PingOne API", {
+        debugLog.info("🌐 Making request to PingOne API", {
             url: pingOneUrl,
             environmentId: environmentId.substring(0, 8) + '...',
             hasToken: !!token
@@ -2793,7 +2758,7 @@ router.get('/pingone/users', async (req, res) => {
 
         if (!pingOneResponse.ok) {
             const errorData = await pingOneResponse.json().catch(() => ({}));
-            debugLog("PingOne", "❌ PingOne API request failed", {
+            debugLog.info("❌ PingOne API request failed", {
                 status: pingOneResponse.status,
                 statusText: pingOneResponse.statusText,
                 errorData
@@ -2808,7 +2773,7 @@ router.get('/pingone/users', async (req, res) => {
 
         const users = await pingOneResponse.json();
         
-        debugLog("PingOne", "✅ Users fetched successfully", {
+        debugLog.info("✅ Users fetched successfully", {
             count: users._embedded?.users?.length || 0,
             hasEmbedded: !!users._embedded,
             hasUsers: !!users._embedded?.users
@@ -2818,7 +2783,7 @@ router.get('/pingone/users', async (req, res) => {
         res.json(users);
 
     } catch (error) {
-        debugLog("PingOne", "❌ Error fetching users", { error: error.message });
+        debugLog.info("❌ Error fetching users", { error: error.message });
         res.status(500).json({
             success: false,
             error: error.message || 'Internal server error',

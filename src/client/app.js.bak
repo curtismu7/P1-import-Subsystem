@@ -164,10 +164,10 @@ class App {
         this.currentView = 'home';
         this.socket = null;
         
-        // Application version - will be properly initialized by updateVersionDisplay()
-        this.version = null; // Will be set by updateVersionDisplay method
+        // Application version
+        this.version = '7.0.0.20';
         this.buildTimestamp = new Date().toISOString();
-        this.environment = process.env.NODE_ENV || 'development';
+        this.environment = 'development';
         this.features = {
             bulletproofProgressContainer: true,
 
@@ -216,15 +216,6 @@ class App {
         try {
             console.log('🔧 [APP INIT] Logger available:', !!this.logger);
             this.logger.info('Starting application initialization');
-            
-            // Initialize version information early
-            try {
-                await this.updateVersionDisplay();
-                this.logger.info('Version information initialized:', { version: this.version });
-            } catch (versionError) {
-                this.logger.warn('Could not initialize version information:', { error: versionError.message });
-            }
-            
             console.log('🔧 [APP INIT] About to initialize core components...');
             this.uiManager.updateStartupMessage('Initializing core components...');
             
@@ -363,28 +354,6 @@ class App {
         } catch (error) {
             this.logger.warn('Error checking credentials availability', { error: error.message });
             return false;
-        }
-    }
-    
-    /**
-     * Hide startup wait screen with animation
-     * @description Hides the startup wait screen with a fade-out animation and ensures app container is visible
-     */
-    hideStartupScreen() {
-        try {
-            const startupScreen = document.getElementById('startup-wait-screen');
-            const appContainer = document.querySelector('.app-container');
-            
-            if (startupScreen) {
-                startupScreen.classList.add('fade-out');
-                
-                // Remove the element after animation completes
-                setTimeout(() => {
-                    if (startupScreen.parentNode) {
-                        startupScreen.parentNode.removeChild(startupScreen);
-                    }
-                }, 500);
-                
                 this.logger.debug('Startup wait screen hidden with animation');
             } else {
                 this.logger.warn('Startup wait screen element not found');
@@ -424,39 +393,21 @@ class App {
 
     /**
      * Update version display in UI
-     * @async
-     * @returns {Promise<void>}
-     * @description Updates version information in UI elements using the centralized VersionService
      */
-    async updateVersionDisplay() {
+    updateVersionDisplay() {
         try {
-            // Get version from centralized service
-            const formattedVersion = await VersionService.getFormattedVersion();
-            const version = await VersionService.getVersion();
-            
             // Update version widget
             const versionDisplay = document.getElementById('version-display');
             if (versionDisplay) {
-                versionDisplay.textContent = formattedVersion;
+                versionDisplay.textContent = `v${this.version}`;
             }
             
             // Update page title
-            document.title = `PingOne User Import ${formattedVersion}`;
+            document.title = `PingOne User Import v${this.version}`;
             
-            // Store version for internal use
-            this.version = version;
-            
-            this.logger.debug('Version display updated:', { version });
+            this.logger.debug('Version display updated:', { version: this.version });
         } catch (error) {
             this.logger.error('Failed to update version display:', { error: error.message });
-            // Attempt to get cached version as fallback
-            try {
-                const fallbackVersion = await VersionService.getVersion(false);
-                this.version = fallbackVersion;
-                this.logger.warn('Using fallback version:', { fallbackVersion });
-            } catch (fallbackError) {
-                this.logger.error('Failed to get fallback version:', { error: fallbackError.message });
-            }
         }
     }
 
@@ -1555,48 +1506,19 @@ handleFileDrop(event) {
     }
     
     /**
-     * 🛡️ Cleanup bulletproof systems and resources - CANNOT FAIL
+     * 🛡️ Cleanup bulletproof systems - CANNOT FAIL
      * @returns {void}
      * @description Safely cleans up all resources to prevent memory leaks
      */
     cleanup() {
         try {
-            this.logger.info('🛡️ Cleaning up bulletproof systems and resources...');
+            this.logger.info('🛡️ Cleaning up bulletproof systems...');
             
             // Cleanup bulletproof token manager
             if (this.bulletproofTokenManager && typeof this.bulletproofTokenManager.destroy === 'function') {
                 this.bulletproofTokenManager.destroy();
                 this.logger.debug('🛡️ Bulletproof token manager cleaned up');
             }
-            
-            // Clean up event listeners
-            if (this.eventBus && typeof this.eventBus.removeAllListeners === 'function') {
-                this.eventBus.removeAllListeners();
-                this.logger.debug('🛡️ Event bus listeners cleaned up');
-            }
-            
-            // Clean up subsystems
-            if (this.subsystems) {
-                Object.keys(this.subsystems).forEach(key => {
-                    const subsystem = this.subsystems[key];
-                    if (subsystem && typeof subsystem.destroy === 'function') {
-                        try {
-                            subsystem.destroy();
-                            this.logger.debug(`🛡️ Subsystem ${key} cleaned up`);
-                        } catch (subsystemError) {
-                            this.logger.warn(`🛡️ Error cleaning up subsystem ${key}:`, subsystemError);
-                        }
-                    }
-                });
-            }
-            
-            // Clean up UI components
-            if (this.uiManager && typeof this.uiManager.cleanup === 'function') {
-                this.uiManager.cleanup();
-                this.logger.debug('🛡️ UI Manager cleaned up');
-            }
-            
-            this.logger.info('🛡️ All resources cleaned up successfully');
         } catch (error) {
             this.logger.error('🛡️ Error during cleanup:', error);
         }
@@ -1612,17 +1534,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const app = new App();
         await app.init();
+        // Get version dynamically from package.json via API
+        let version = '7.0.0.6'; // fallback
+        try {
+            const versionResponse = await fetch('/api/version');
+            const versionData = await versionResponse.json();
+            version = versionData.version || version;
+        } catch (e) {
+            console.warn('Could not fetch dynamic version, using fallback');
+        }
         
-        // Get version dynamically using the centralized VersionService
-        const formattedVersion = await VersionService.getFormattedVersion();
-        
-        window.logger?.info(`🚀 PingOne Import Tool ${formattedVersion} initialized successfully`) || 
-            console.log(`🚀 PingOne Import Tool ${formattedVersion} initialized successfully`);
-        
-        window.logger?.info('📊 Health Status:', app.getHealthStatus()) || 
-            console.log('📊 Health Status:', app.getHealthStatus());
+        window.logger?.info(`🚀 PingOne Import Tool v${version} initialized successfully`) || console.log(`🚀 PingOne Import Tool v${version} initialized successfully`);
+        window.logger?.info('📊 Health Status:', app.getHealthStatus()) || console.log('📊 Health Status:', app.getHealthStatus());
     } catch (error) {
-        window.logger?.error('❌ Application initialization failed:', error) || 
-            console.error('❌ Application initialization failed:', error);
+        window.logger?.error('❌ Application initialization failed:', error) || console.error('❌ Application initialization failed:', error);
     }
 });

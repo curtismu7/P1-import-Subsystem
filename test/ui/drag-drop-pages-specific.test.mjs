@@ -14,7 +14,7 @@
  * @date 2025-07-30
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, jest } from '@jest/globals';
 import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';

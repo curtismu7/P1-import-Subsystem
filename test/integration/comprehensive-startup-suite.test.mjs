@@ -1,19 +1,24 @@
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, jest } from '@jest/globals';
+import process from 'process';
+import { setTimeout } from 'timers/promises';
+const globalObj = typeof global !== 'undefined' ? global : globalThis;
+globalObj.console = console;
+
 /**
  * Comprehensive Startup and System Integration Tests
- * 
+ *
  * Tests the complete application startup sequence including:
  * - Server initialization phases
  * - Service dependencies and initialization order
  * - Configuration loading and validation
  * - API endpoint availability after startup
  * - Socket.IO and WebSocket connections
- * 
+ *
  * @version 1.0.0
  * @author AI Assistant
  * @date 2025-07-30
  */
 
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { spawn } from 'child_process';
 import request from 'supertest';
 
@@ -102,8 +107,8 @@ describe('🚀 Comprehensive Startup and System Tests', () => {
             expect(foundIndicators).toBeGreaterThanOrEqual(Math.ceil(startupIndicators.length / 2));
             
             // Verify no critical errors
-            const criticalErrors = errorLogs.filter(log => 
-                log.includes('EADDRINUSE') || 
+            const criticalErrors = errorLogs.filter(log =>
+                log.includes('EADDRINUSE') ||
                 log.includes('ECONNREFUSED') ||
                 log.includes('Cannot find module') ||
                 log.includes('SyntaxError')

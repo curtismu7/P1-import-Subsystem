@@ -5,6 +5,33 @@
  * for the PingOne User Import Tool. It provides a comprehensive web-based interface for
  * managing PingOne user data operations including import, export, and modification.
  */
+// Auto-set PingOne environment variables from settings.json on server startup
+
+import fs from 'fs/promises';
+import path from 'path';
+
+async function setPingOneEnvVars() {
+    try {
+        const settingsPath = path.resolve(process.cwd(), 'data/settings.json');
+        try {
+            await fs.access(settingsPath);
+            const settingsRaw = await fs.readFile(settingsPath, 'utf8');
+            const settings = JSON.parse(settingsRaw);
+            process.env.PINGONE_ENVIRONMENT_ID = settings.pingone_environment_id || '';
+            process.env.PINGONE_CLIENT_ID = settings.pingone_client_id || '';
+            process.env.PINGONE_CLIENT_SECRET = settings.pingone_client_secret || '';
+            process.env.PINGONE_REGION = settings.pingone_region || 'NorthAmerica';
+            console.warn('[PingOne ENV] Environment variables set from settings.json.');
+        } catch {
+            console.warn('[PingOne ENV] settings.json not found. Environment variables not set.');
+        }
+    } catch (error) {
+        console.error('[PingOne ENV] Failed to set environment variables from settings.json:', error.message);
+        // Do not throw, app should continue working
+    }
+}
+
+await setPingOneEnvVars();
 
 // Core dependencies
 import express from 'express';

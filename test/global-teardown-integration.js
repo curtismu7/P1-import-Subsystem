@@ -2,7 +2,7 @@
  * Global teardown for integration tests
  */
 
-module.exports = async () => {
+export default async () => {
   console.log('\n🧹 Cleaning up integration test environment...');
   
   // Any global cleanup can go here

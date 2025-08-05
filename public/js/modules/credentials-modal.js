@@ -31,7 +31,6 @@ class CredentialsModal {
             const response = await fetch('/api/settings');
             if (response.ok) {
                 const data = await response.json();
-                // The API returns data in data.data structure
                 const settings = data.data || data.settings || {};
                 this.credentials = {
                     environmentId: settings.environmentId || settings['environment-id'] || '',
@@ -41,21 +40,53 @@ class CredentialsModal {
                     populationId: settings.populationId || settings['population-id'] || '',
                     rateLimit: settings.rateLimit || settings['rate-limit'] || 90
                 };
-                
-                console.log('Credentials loaded from server:', {
-                    hasEnvironmentId: !!this.credentials.environmentId,
-                    hasClientId: !!this.credentials.clientId,
-                    hasClientSecret: !!this.credentials.clientSecret,
-                    region: this.credentials.region
-                });
-            } else {
-                console.warn('Failed to load credentials from settings');
-                this.credentials = null;
+                if (this.credentials.environmentId && this.credentials.clientId && this.credentials.clientSecret) {
+                    this.logCredentialSource('server');
+                    return;
+                }
             }
-        } catch (error) {
-            console.error('Error loading credentials:', error);
+            // Fallback to localStorage
+            var localCreds = window.localStorage.getItem('pingone-credentials');
+            if (localCreds) {
+                try {
+                    var creds = JSON.parse(localCreds);
+                    this.credentials = {
+                        environmentId: creds.environmentId || '',
+                        clientId: creds.clientId || '',
+                        clientSecret: creds.clientSecret || '',
+                        region: creds.region || 'NorthAmerica',
+                        populationId: creds.populationId || '',
+                        rateLimit: creds.rateLimit || 90
+                    };
+                    if (this.credentials.environmentId && this.credentials.clientId && this.credentials.clientSecret) {
+                        this.logCredentialSource('localStorage');
+                        return;
+                    }
+                } catch (e) {
+                    // Ignore parse errors
+                }
+            }
+            // No credentials found, prompt user
             this.credentials = null;
+            this.logCredentialSource('prompt');
+        } catch (error) {
+            this.credentials = null;
+            this.logCredentialSource('error');
         }
+    }
+
+    logCredentialSource(source) {
+        var msg = '[🗝️ CREDENTIAL-MANAGER] [' + new Date().toISOString() + '] [ui] INFO: Credential source: ' + source;
+        if (window.sessionStorage) {
+            var logs = [];
+            try {
+                logs = JSON.parse(window.sessionStorage.getItem('credential-logs') || '[]');
+            } catch (e) {}
+            logs.push(msg);
+            window.sessionStorage.setItem('credential-logs', JSON.stringify(logs));
+        }
+        console.log(msg);
+    }
     }
 
     createModal() {
@@ -331,8 +362,8 @@ class CredentialsModal {
     async useCurrentCredentials() {
         this.logEvent('credentials_used', { 
             hasCredentials: !!this.credentials,
-            environmentId: this.credentials?.environmentId ? 'set' : 'not_set',
-            clientId: this.credentials?.clientId ? 'set' : 'not_set'
+            environmentId: (this.credentials && this.credentials.environmentId) ? 'set' : 'not_set',
+            clientId: (this.credentials && this.credentials.clientId) ? 'set' : 'not_set'
         });
         
         // Show loading state on button
@@ -997,23 +1028,33 @@ class CredentialsModal {
         return false;
         
         // Original logic (commented out for debugging):
-        // try {
-        //     // Check if modal was already shown in this session
-        //     const modalShown = sessionStorage.getItem('credentials_modal_shown');
-        //     if (modalShown === 'true') {
-        //         console.log('Credentials modal already shown in this session');
-        //         return false;
-        //     }
-        //     
-        //     // Always show modal on startup to ask user about stored credentials
-        //     // This gives users the choice to use stored credentials or configure new ones
-        //     console.log('Showing credentials modal on startup to ask about stored credentials');
-        //     return true;
-        //     
-        // } catch (error) {
-        //     console.error('Error checking if credentials modal should be shown:', error);
-        //     return true; // Show modal on error to be safe
-        // }
+        try {
+            // Check if modal was already shown in this session
+            const modalShown = sessionStorage.getItem('credentials_modal_shown');
+            if (modalShown === 'true') {
+                console.log('Credentials modal already shown in this session');
+                return false;
+            }
+
+            // Check settings.json flag via API
+            const response = await fetch('/api/settings');
+            if (response.ok) {
+                const data = await response.json();
+                const settings = data.data || data.settings || {};
+                if (settings.showCredentialConfirmationModal === false) {
+                    console.log('Credentials modal disabled by settings.json flag');
+                    return false;
+                }
+            }
+
+            // Always show modal on startup to ask user about stored credentials
+            // This gives users the choice to use stored credentials or configure new ones
+            console.log('Showing credentials modal on startup to ask about stored credentials');
+            return true;
+        } catch (error) {
+            console.error('Error checking if credentials modal should be shown:', error);
+            return true; // Show modal on error to be safe
+        }
     }
 
     /**

@@ -18,9 +18,17 @@ class CredentialsManager {
     /**
      * Initialize the credentials manager
      */
-    init() {
-        this.loadCredentials();
-        (window.logger?.info || console.log)('Credentials Manager initialized');
+    async init() {
+        await this.loadCredentialsWithFallback();
+        this.logCredentialEvent('info', {
+            credentialSource: this.credentialSource,
+            clientId: this.credentials.apiClientId ? '***' + this.credentials.apiClientId.slice(-4) : 'missing',
+            environmentId: this.credentials.environmentId ? '***' + this.credentials.environmentId.slice(-4) : 'missing',
+            region: this.credentials.region,
+            tokenStatus: 'client-init',
+            message: 'Credentials Manager initialized',
+            success: true
+        });
     }
 
     /**
@@ -40,19 +48,82 @@ class CredentialsManager {
     /**
      * Load credentials from localStorage
      */
-    loadCredentials() {
+    async loadCredentialsWithFallback() {
+        // Try API for server-side credentials first
+        try {
+            const res = await fetch('/api/auth/current-credentials');
+            const data = await res.json();
+            if (data.success && data.credentials) {
+                this.credentials = {
+                    environmentId: data.credentials.environmentId,
+                    apiClientId: data.credentials.clientId,
+                    apiSecret: data.credentials.hasClientSecret ? '************' : '',
+                    region: data.credentials.region,
+                    populationId: ''
+                };
+                this.credentialSource = data.credentials.credentialSource || 'server';
+                this.logCredentialEvent('info', {
+                    credentialSource: this.credentialSource,
+                    clientId: this.credentials.apiClientId ? '***' + this.credentials.apiClientId.slice(-4) : 'missing',
+                    environmentId: this.credentials.environmentId ? '***' + this.credentials.environmentId.slice(-4) : 'missing',
+                    region: this.credentials.region,
+                    tokenStatus: data.credentials.tokenStatus || 'unknown',
+                    message: 'Loaded credentials from server',
+                    success: true
+                });
+                return;
+            }
+        } catch (error) {
+            this.logCredentialEvent('warn', {
+                credentialSource: 'server',
+                clientId: '',
+                environmentId: '',
+                region: '',
+                tokenStatus: 'fetch-failed',
+                message: 'Failed to load credentials from server',
+                success: false
+            });
+        }
+        // Fallback to localStorage
         try {
             const stored = localStorage.getItem(this.storageKey);
             if (stored) {
                 this.credentials = JSON.parse(stored);
-                (window.logger?.debug || console.log)('Credentials loaded from localStorage');
+                this.credentialSource = 'localStorage';
+                this.logCredentialEvent('info', {
+                    credentialSource: 'localStorage',
+                    clientId: this.credentials.apiClientId ? '***' + this.credentials.apiClientId.slice(-4) : 'missing',
+                    environmentId: this.credentials.environmentId ? '***' + this.credentials.environmentId.slice(-4) : 'missing',
+                    region: this.credentials.region,
+                    tokenStatus: 'localStorage',
+                    message: 'Credentials loaded from localStorage',
+                    success: true
+                });
             } else {
                 this.credentials = this.getDefaultCredentials();
-                (window.logger?.debug || console.log)('No stored credentials found, using defaults');
+                this.credentialSource = 'default';
+                this.logCredentialEvent('warn', {
+                    credentialSource: 'default',
+                    clientId: '',
+                    environmentId: '',
+                    region: '',
+                    tokenStatus: 'default',
+                    message: 'No stored credentials found, using defaults',
+                    success: false
+                });
             }
         } catch (error) {
-            (window.logger?.warn || console.warn)('Failed to load credentials from localStorage:', error);
             this.credentials = this.getDefaultCredentials();
+            this.credentialSource = 'error';
+            this.logCredentialEvent('error', {
+                credentialSource: 'error',
+                clientId: '',
+                environmentId: '',
+                region: '',
+                tokenStatus: 'error',
+                message: 'Failed to load credentials from localStorage',
+                success: false
+            });
         }
     }
 
@@ -198,10 +269,17 @@ class CredentialsManager {
     displayCredentialsModal() {
         const modal = document.getElementById('credentials-modal');
         if (!modal) {
-            (window.logger?.error || console.error)('Credentials modal element not found');
+            this.logCredentialEvent('error', {
+                credentialSource: this.credentialSource,
+                clientId: '',
+                environmentId: '',
+                region: '',
+                tokenStatus: 'modal',
+                message: 'Credentials modal element not found',
+                success: false
+            });
             return;
         }
-
         // Populate modal content
         const modalContent = modal.querySelector('.modal-content');
         if (modalContent) {
@@ -209,15 +287,32 @@ class CredentialsManager {
                 <h3>API Credentials</h3>
                 <p><strong>Environment ID:</strong> ${this.credentials.environmentId}</p>
                 <p><strong>API Client ID:</strong> ${this.credentials.apiClientId}</p>
-                <p><strong>API Secret:</strong> ${this.credentials.apiSecret}</p>
+                <p><strong>API Secret:</strong> ************ <span title="Secret is masked for security">(masked)</span></p>
                 <p><strong>Region:</strong> ${this.credentials.region}</p>
                 <p><strong>Population ID:</strong> ${this.credentials.populationId}</p>
+                <p><em>Source: ${this.credentialSource || 'unknown'}</em></p>
             `;
         }
-
         // Show modal
         modal.style.display = 'block';
-        (window.logger?.info || console.log)('Credentials modal displayed');
+        this.logCredentialEvent('info', {
+            credentialSource: this.credentialSource,
+            clientId: this.credentials.apiClientId ? '***' + this.credentials.apiClientId.slice(-4) : 'missing',
+            environmentId: this.credentials.environmentId ? '***' + this.credentials.environmentId.slice(-4) : 'missing',
+            region: this.credentials.region,
+            tokenStatus: 'modal',
+            message: 'Credentials modal displayed',
+            success: true
+        });
+    }
+    /**
+     * Unified credential event logger
+     */
+    logCredentialEvent(level, { credentialSource, clientId, environmentId, region, tokenStatus, message, success }) {
+        const timestamp = new Date().toISOString();
+        const logMsg = `[🗝️ CREDENTIAL-MANAGER] [${timestamp}] [${level.toUpperCase()}] Source: ${credentialSource || 'unknown'} | ClientID: ${clientId || 'missing'} | EnvID: ${environmentId || 'missing'} | Region: ${region || 'missing'} | TokenStatus: ${tokenStatus || 'unknown'} | Success: ${success ? '✅' : '❌'} | ${message}`;
+        (window.logger?.log || console.log)(logMsg);
+        // TODO: Forward to UI logging page and server logs if needed
     }
 
     /**

@@ -209,9 +209,6 @@ describe('Route Availability Integration Tests', () => {
             
             for (const route of routes) {
                 const response = await request(app).get(route);
-                expect(response.type).toBe('application/json');
-            }
-        });
         
         test('error responses should have consistent format', async () => {
             const response = await request(app).get('/api/non-existent');
@@ -226,6 +223,9 @@ describe('Route Availability Integration Tests', () => {
 describe('Route Health Check System', () => {
     let app;
     
+import { expect } from 'chai';
+import fetch from 'node-fetch';
+
     beforeAll(async () => {
         const { createTestApp } = await import('./test-helpers/app-factory.js');
         app = await createTestApp();

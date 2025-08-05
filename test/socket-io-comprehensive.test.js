@@ -9,10 +9,11 @@
  * - Error handling and recovery
  */
 
-const io = require('socket.io-client');
-const WebSocket = require('ws');
-const http = require('http');
-const assert = require('assert');
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, jest } from '@jest/globals';
+import io from 'socket.io-client';
+import WebSocket from 'ws';
+import http from 'http';
+import assert from 'assert';
 
 describe('Socket.IO and WebSocket Comprehensive Testing', () => {
     let server;

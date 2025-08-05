@@ -5,6 +5,7 @@
  */
 
 import { uiLogger } from '../public/js/utils/uiLogger.js';
+import { test, expect, beforeEach, afterEach, jest } from '@jest/globals';
 
 describe('UI Logger', () => {
   it('should log info messages correctly', () => {

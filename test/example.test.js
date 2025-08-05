@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 
 describe('Example Test Suite', () => {
   beforeEach(() => {
