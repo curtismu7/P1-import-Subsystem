@@ -1,10 +1,10 @@
 // Set up TextEncoder and TextDecoder as globals before anything else
-const { TextEncoder, TextDecoder } = require('util');
+import { TextEncoder, TextDecoder } from 'util';
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder;
 
 // Now import JSDOM after setting up TextEncoder/TextDecoder
-const { JSDOM } = require('jsdom');
+import { JSDOM } from 'jsdom';
 
 // Set up JSDOM
 const dom = new JSDOM('<!doctype html><html><body></body></html>', {

@@ -5,7 +5,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { UnifiedTokenManager, TOKEN_STATUS, TOKEN_SOURCES } from '../../src/shared/unified-token-manager.js';
+import { PingOneTokenManager, TOKEN_STATUS, TOKEN_SOURCES } from '../../src/shared/pingone-token-manager.js';
 import { TokenAccess, initializeTokenManager } from '../../src/shared/token-integration-helper.js';
 
 // Mock localStorage
@@ -31,7 +31,7 @@ beforeEach(() => {
 describe('UnifiedTokenManager', () => {
     describe('Initialization', () => {
         test('should initialize with default configuration', async () => {
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             
             expect(manager.config.expiryBufferMs).toBe(5 * 60 * 1000);
             expect(manager.config.warningThresholdMs).toBe(10 * 60 * 1000);
@@ -44,7 +44,7 @@ describe('UnifiedTokenManager', () => {
                 enableLogging: false
             };
             
-            const manager = new UnifiedTokenManager(customConfig);
+            const manager = new PingOneTokenManager(customConfig);
             
             expect(manager.config.expiryBufferMs).toBe(10 * 60 * 1000);
             expect(manager.config.enableLogging).toBe(false);
@@ -53,7 +53,7 @@ describe('UnifiedTokenManager', () => {
     
     describe('Token Storage and Retrieval', () => {
         test('should set and get token correctly', async () => {
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             const token = 'test-token-123';
             const expiresAt = Date.now() + 3600000; // 1 hour from now
             
@@ -64,7 +64,7 @@ describe('UnifiedTokenManager', () => {
         });
         
         test('should persist token to localStorage', async () => {
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             const token = 'test-token-123';
             const expiresAt = Date.now() + 3600000;
             
@@ -93,14 +93,14 @@ describe('UnifiedTokenManager', () => {
             
             mockLocalStorage.store['pingone_token_cache'] = JSON.stringify(tokenData);
             
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             const retrievedToken = await manager.getToken();
             
             expect(retrievedToken).toBe(token);
         });
         
         test('should clear token correctly', async () => {
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             const token = 'test-token-789';
             const expiresAt = Date.now() + 3600000;
             
@@ -115,7 +115,7 @@ describe('UnifiedTokenManager', () => {
     
     describe('Token Expiry Validation', () => {
         test('should detect expired token', async () => {
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             const token = 'expired-token';
             const expiresAt = Date.now() - 3600000; // 1 hour ago
             
@@ -128,7 +128,7 @@ describe('UnifiedTokenManager', () => {
         });
         
         test('should detect expiring token', async () => {
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             const token = 'expiring-token';
             const expiresAt = Date.now() + (5 * 60 * 1000); // 5 minutes from now
             
@@ -141,7 +141,7 @@ describe('UnifiedTokenManager', () => {
         });
         
         test('should detect valid token', async () => {
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             const token = 'valid-token';
             const expiresAt = Date.now() + (60 * 60 * 1000); // 1 hour from now
             
@@ -155,7 +155,7 @@ describe('UnifiedTokenManager', () => {
         });
         
         test('should validate token expiry for components', async () => {
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             const token = 'component-token';
             const expiresAt = Date.now() + (60 * 60 * 1000);
             
@@ -178,7 +178,7 @@ describe('UnifiedTokenManager', () => {
             mockLocalStorage.store['pingone_worker_token'] = legacyToken;
             mockLocalStorage.store['pingone_token_expiry'] = legacyExpiry;
             
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             const retrievedToken = await manager.getToken();
             
             expect(retrievedToken).toBe(legacyToken);
@@ -197,7 +197,7 @@ describe('UnifiedTokenManager', () => {
             mockLocalStorage.store['pingone_worker_token'] = legacyToken;
             mockLocalStorage.store['pingone_token_expiry'] = legacyExpiry;
             
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             await manager.getToken();
             
             // Legacy tokens should be cleared
@@ -220,7 +220,7 @@ describe('UnifiedTokenManager', () => {
                 })
             });
             
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             const token = await manager.getToken();
             
             expect(token).toBe('server-managed');
@@ -231,7 +231,7 @@ describe('UnifiedTokenManager', () => {
             // Mock server error
             global.fetch.mockRejectedValueOnce(new Error('Server error'));
             
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             const token = await manager.getToken();
             
             expect(token).toBeNull();
@@ -240,14 +240,14 @@ describe('UnifiedTokenManager', () => {
     
     describe('Error Handling', () => {
         test('should handle invalid token format', async () => {
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             
             await expect(manager.setToken('', Date.now() + 3600000))
                 .rejects.toThrow('Token must be a non-empty string');
         });
         
         test('should handle invalid expiry time', async () => {
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             
             await expect(manager.setToken('valid-token', 'invalid-expiry'))
                 .rejects.toThrow('ExpiresAt must be a valid timestamp');
@@ -259,7 +259,7 @@ describe('UnifiedTokenManager', () => {
                 throw new Error('localStorage error');
             });
             
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             
             // Should not throw, but handle gracefully
             await expect(manager.setToken('test-token', Date.now() + 3600000))
@@ -269,7 +269,7 @@ describe('UnifiedTokenManager', () => {
     
     describe('Token Information', () => {
         test('should return comprehensive token information', async () => {
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             const token = 'info-test-token';
             const expiresAt = Date.now() + 3600000;
             
@@ -294,7 +294,7 @@ describe('UnifiedTokenManager', () => {
         });
         
         test('should return missing token information when no token', () => {
-            const manager = new UnifiedTokenManager();
+            const manager = new PingOneTokenManager();
             const tokenInfo = manager.getTokenInfo();
             
             expect(tokenInfo).toMatchObject({
@@ -314,7 +314,7 @@ describe('TokenAccess Integration', () => {
             enableLogging: false
         });
         
-        expect(manager).toBeInstanceOf(UnifiedTokenManager);
+        expect(manager).toBeInstanceOf(PingOneTokenManager);
         expect(typeof TokenAccess.getToken).toBe('function');
         expect(typeof TokenAccess.setToken).toBe('function');
         expect(typeof TokenAccess.clearToken).toBe('function');
@@ -354,7 +354,7 @@ describe('TokenAccess Integration', () => {
 
 describe('Edge Cases and Stress Tests', () => {
     test('should handle concurrent token requests', async () => {
-        const manager = new UnifiedTokenManager();
+        const manager = new PingOneTokenManager();
         const token = 'concurrent-test-token';
         const expiresAt = Date.now() + 3600000;
         
@@ -371,7 +371,7 @@ describe('Edge Cases and Stress Tests', () => {
     });
     
     test('should handle rapid token updates', async () => {
-        const manager = new UnifiedTokenManager();
+        const manager = new PingOneTokenManager();
         
         // Rapidly set multiple tokens
         for (let i = 0; i < 5; i++) {
@@ -386,7 +386,7 @@ describe('Edge Cases and Stress Tests', () => {
     });
     
     test('should handle token expiry edge cases', async () => {
-        const manager = new UnifiedTokenManager({ expiryBufferMs: 1000 });
+        const manager = new PingOneTokenManager({ expiryBufferMs: 1000 });
         
         // Token that expires exactly at buffer time
         const token = 'edge-case-token';
@@ -406,7 +406,7 @@ describe('Edge Cases and Stress Tests', () => {
 // Performance tests
 describe('Performance Tests', () => {
     test('should handle large number of token info requests efficiently', () => {
-        const manager = new UnifiedTokenManager();
+        const manager = new PingOneTokenManager();
         const token = 'performance-test-token';
         const expiresAt = Date.now() + 3600000;
         

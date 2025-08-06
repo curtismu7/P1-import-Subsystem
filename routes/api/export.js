@@ -32,7 +32,6 @@ let exportStatus = {
 router.get('/status', (req, res) => {
     try {
         const response = {
-            success: true,
             status: exportStatus.status,
             isRunning: exportStatus.isRunning,
             progress: {
@@ -60,13 +59,9 @@ router.get('/status', (req, res) => {
             downloadUrl: exportStatus.downloadUrl
         };
 
-        res.json(response);
+        res.success('Export status retrieved successfully', response);
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to get export status',
-            details: error.message
-        });
+        res.error('Failed to get export status', { code: 'EXPORT_STATUS_ERROR', details: error.message }, 500);
     }
 });
 
@@ -77,11 +72,7 @@ router.get('/status', (req, res) => {
 router.post('/start', express.json(), (req, res) => {
     try {
         if (exportStatus.isRunning) {
-            return res.status(409).json({
-                success: false,
-                error: 'Export operation already running',
-                sessionId: exportStatus.sessionId
-            });
+            return res.error('Export operation already running', { code: 'EXPORT_ALREADY_RUNNING', details: exportStatus.sessionId }, 409);
         }
 
         const { sessionId, totalRecords, populationId, populationName, outputFileName } = req.body;
@@ -102,18 +93,9 @@ router.post('/start', express.json(), (req, res) => {
             downloadUrl: null
         };
 
-        res.json({
-            success: true,
-            message: 'Export operation started',
-            sessionId: exportStatus.sessionId,
-            status: exportStatus.status
-        });
+        res.success('Export operation started', { sessionId: exportStatus.sessionId, status: exportStatus.status });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to start export operation',
-            details: error.message
-        });
+        res.error('Failed to start export operation', { code: 'EXPORT_START_ERROR', details: error.message }, 500);
     }
 });
 
@@ -126,10 +108,7 @@ router.post('/progress', express.json(), (req, res) => {
         const { processed, errors, warnings, currentPopulation } = req.body;
 
         if (!exportStatus.isRunning) {
-            return res.status(400).json({
-                success: false,
-                error: 'No export operation running'
-            });
+            return res.error('No export operation running', { code: 'EXPORT_NOT_RUNNING', details: null }, 400);
         }
 
         if (typeof processed === 'number') exportStatus.processed = processed;
@@ -137,17 +116,9 @@ router.post('/progress', express.json(), (req, res) => {
         if (typeof warnings === 'number') exportStatus.warnings = warnings;
         if (currentPopulation) exportStatus.currentPopulation = currentPopulation;
 
-        res.json({
-            success: true,
-            message: 'Progress updated',
-            status: exportStatus.status
-        });
+        res.success('Progress updated', { status: exportStatus.status });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to update export progress',
-            details: error.message
-        });
+        res.error('Failed to update export progress', { code: 'EXPORT_PROGRESS_ERROR', details: error.message }, 500);
     }
 });
 
@@ -172,9 +143,7 @@ router.post('/complete', express.json(), (req, res) => {
         if (outputFile) exportStatus.outputFile = outputFile;
         if (downloadUrl) exportStatus.downloadUrl = downloadUrl;
 
-        res.json({
-            success: true,
-            message: `Export operation ${exportStatus.status}`,
+        res.success(`Export operation ${exportStatus.status}`, {
             status: exportStatus.status,
             finalStats: {
                 processed: exportStatus.processed,
@@ -186,11 +155,7 @@ router.post('/complete', express.json(), (req, res) => {
             downloadUrl: exportStatus.downloadUrl
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to complete export operation',
-            details: error.message
-        });
+        res.error('Failed to complete export operation', { code: 'EXPORT_COMPLETE_ERROR', details: error.message }, 500);
     }
 });
 
@@ -201,27 +166,16 @@ router.post('/complete', express.json(), (req, res) => {
 router.post('/cancel', (req, res) => {
     try {
         if (!exportStatus.isRunning) {
-            return res.status(400).json({
-                success: false,
-                error: 'No export operation running'
-            });
+            return res.error('No export operation running', { code: 'EXPORT_NOT_RUNNING', details: null }, 400);
         }
 
         exportStatus.isRunning = false;
         exportStatus.endTime = Date.now();
         exportStatus.status = 'cancelled';
 
-        res.json({
-            success: true,
-            message: 'Export operation cancelled',
-            status: exportStatus.status
-        });
+        res.success('Export operation cancelled', { status: exportStatus.status });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to cancel export operation',
-            details: error.message
-        });
+        res.error('Failed to cancel export operation', { code: 'EXPORT_CANCEL_ERROR', details: error.message }, 500);
     }
 });
 
@@ -247,17 +201,9 @@ router.delete('/reset', (req, res) => {
             downloadUrl: null
         };
 
-        res.json({
-            success: true,
-            message: 'Export status reset',
-            status: exportStatus.status
-        });
+        res.success('Export status reset', { status: exportStatus.status });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to reset export status',
-            details: error.message
-        });
+        res.error('Failed to reset export status', { code: 'EXPORT_RESET_ERROR', details: error.message }, 500);
     }
 });
 

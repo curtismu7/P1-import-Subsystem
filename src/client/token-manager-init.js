@@ -10,7 +10,7 @@ import { initializeTokenManager, TokenAccess, MigrationUtils, TokenMonitoring } 
 /**
  * Initialize the unified token management system
  */
-export async function initializeUnifiedTokenManager(app) {
+export async function initializePingOneTokenManager(app) {
     try {
         console.log('🚀 Initializing Unified Token Management System...');
         
@@ -182,7 +182,7 @@ function updateGlobalReferences(app, tokenManager) {
     // Make TokenAccess available globally
     if (typeof window !== 'undefined') {
         window.TokenAccess = TokenAccess;
-        window.UnifiedTokenManager = tokenManager;
+        window.PingOneTokenManager = tokenManager;
     }
     
     // Update app references

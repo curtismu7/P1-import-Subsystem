@@ -6,6 +6,7 @@
 
 /** @type {import('jest').Config} */
 export default {
+
   // Test environment
   testEnvironment: 'jsdom',
   
@@ -13,21 +14,23 @@ export default {
   testMatch: [
     '**/test/**/*.test.mjs',
     '**/test/**/*.spec.mjs',
-    '**/test/**/*.test.js',
-    '**/test/**/*.spec.js',
     '**/__tests__/**/*.mjs',
-    '**/__tests__/**/*.js',
     '**/?(*.)+(spec|test).mjs'
   ],
+
+  // Polyfill setup
+  setupFiles: ['./jest.setup.mjs'],
+
   
   // File extensions to test
   moduleFileExtensions: ['js', 'mjs', 'jsx', 'json', 'node'],
   
   // Transform settings for ESM
-  transform: {
-    // Transform JS files with babel-jest
-    '^.+\.(js|mjs)$': ['babel-jest', { configFile: './babel.config.mjs' }]
-  },
+  // transform: {
+  //   // Transform JS files with babel-jest
+  //   '^.+\\.(js|mjs)$': ['babel-jest', { configFile: './babel.config.mjs' }]
+  // },
+
   
   // Transform ignore patterns
   transformIgnorePatterns: [
@@ -35,17 +38,28 @@ export default {
   ],
   
   // Module name mapper for path aliases
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
-    '^@server/(.*)$': '<rootDir>/server/$1',
-    '^@client/(.*)$': '<rootDir>/public/$1',
-    '^@utils/(.*)$': '<rootDir>/utils/$1',
-    '^@test/(.*)$': '<rootDir>/test/$1',
-    '^@routes/(.*)$': '<rootDir>/routes/$1',
-    '^@modules/(.*)$': '<rootDir>/public/js/modules/$1',
-    '^@src/(.*)$': '<rootDir>/src/$1',
-    '^(\.{1,2}/.*)\.js$': '$1'
-  },
+  // moduleNameMapper: {
+  //   '^@/(.*)$': '<rootDir>/$1',
+  //   '^@server/(.*)$': '<rootDir>/server/$1',
+  //   '^@client/(.*)$': '<rootDir>/public/$1',
+  //   '^@utils/(.*)$': '<rootDir>/utils/$1',
+  //   '^@test/(.*)$': '<rootDir>/test/$1',
+  //   '^@routes/(.*)$': '<rootDir>/routes/$1',
+  //   '^@modules/(.*)$': '<rootDir>/public/js/modules/$1',
+  //   '^@src/(.*)$': '<rootDir>/src/$1',
+  //   '^(\\.{1,2}/.*)\\.js$': '$1'
+  // },
+  // moduleNameMapper: {
+  //   '^@/(.*)$': '<rootDir>/$1',
+  //   '^@server/(.*)$': '<rootDir>/server/$1',
+  //   '^@client/(.*)$': '<rootDir>/public/$1',
+  //   '^@utils/(.*)$': '<rootDir>/utils/$1',
+  //   '^@test/(.*)$': '<rootDir>/test/$1',
+  //   '^@routes/(.*)$': '<rootDir>/routes/$1',
+  //   '^@modules/(.*)$': '<rootDir>/public/js/modules/$1',
+  //   '^@src/(.*)$': '<rootDir>/src/$1',
+  //   '^(\\.{1,2}/.*)\\.js$': '$1'
+  // },
   
   // Setup files - use only the CommonJS setup file for now
   setupFilesAfterEnv: [

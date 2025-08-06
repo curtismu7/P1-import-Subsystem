@@ -1,0 +1,251 @@
+{
+  "timestamp": "2025-08-06T18:19:56.308Z",
+  "summary": {
+    "totalActions": 39,
+    "filesMerged": 21,
+    "filesRemoved": 15,
+    "filesUpdated": 3,
+    "filesKept": 0
+  },
+  "actions": [
+    {
+      "action": "MERGE",
+      "file": "public/css/core/variables.css",
+      "reason": "Core styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.261Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/core/base.css",
+      "reason": "Core styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.264Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/layout/responsive.css",
+      "reason": "Layout styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.264Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/components/buttons.css",
+      "reason": "Component styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.265Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/components/forms.css",
+      "reason": "Component styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.265Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/components/progress.css",
+      "reason": "Component styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.266Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/styles.css",
+      "reason": "Application styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.268Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/styles-fixed.css",
+      "reason": "Application styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.269Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/enhanced-progress.css",
+      "reason": "Application styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.271Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/progress-ui.css",
+      "reason": "Application styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.272Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/status-bar.css",
+      "reason": "Application styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.286Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/history-ui.css",
+      "reason": "Application styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.287Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/logging-ui.css",
+      "reason": "Application styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.287Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/credentials-modal.css",
+      "reason": "UI component styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.288Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/disclaimer-modal.css",
+      "reason": "UI component styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.288Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/credential-management.css",
+      "reason": "UI component styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.292Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/realtime-collaboration.css",
+      "reason": "UI component styles merged into main.css",
+      "timestamp": "2025-08-06T18:19:56.294Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/ping-identity.css",
+      "reason": "Theme styles merged into themes.css",
+      "timestamp": "2025-08-06T18:19:56.297Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/enhanced-token-status.css",
+      "reason": "Theme styles merged into themes.css",
+      "timestamp": "2025-08-06T18:19:56.297Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/token-manager.css",
+      "reason": "Theme styles merged into themes.css",
+      "timestamp": "2025-08-06T18:19:56.298Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/css/swagger-custom.css",
+      "reason": "Vendor styles merged into vendor.css",
+      "timestamp": "2025-08-06T18:19:56.299Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/styles.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.301Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/styles-fixed.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.301Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/enhanced-progress.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.301Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/progress-ui.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.302Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/status-bar.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.302Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/history-ui.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.303Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/logging-ui.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.303Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/credentials-modal.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.303Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/disclaimer-modal.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.303Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/credential-management.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.304Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/realtime-collaboration.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.304Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/ping-identity.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.305Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/enhanced-token-status.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.305Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/token-manager.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.305Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/css/swagger-custom.css",
+      "reason": "Consolidated into main/themes/vendor.css",
+      "timestamp": "2025-08-06T18:19:56.306Z"
+    },
+    {
+      "action": "UPDATE",
+      "file": "public/index.html",
+      "reason": "Updated to use consolidated CSS",
+      "timestamp": "2025-08-06T18:19:56.307Z"
+    },
+    {
+      "action": "UPDATE",
+      "file": "public/history.html",
+      "reason": "Updated to use consolidated CSS",
+      "timestamp": "2025-08-06T18:19:56.307Z"
+    },
+    {
+      "action": "UPDATE",
+      "file": "public/api-docs.html",
+      "reason": "Updated to use consolidated CSS",
+      "timestamp": "2025-08-06T18:19:56.308Z"
+    }
+  ],
+  "newStructure": {
+    "main.css": "Core application styles, components, and utilities",
+    "themes.css": "Ping Identity branding and theme overrides",
+    "vendor.css": "Third-party and vendor-specific styles"
+  }
+}

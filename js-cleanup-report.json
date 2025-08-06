@@ -1,0 +1,595 @@
+{
+  "timestamp": "2025-08-06T19:05:53.942Z",
+  "summary": {
+    "totalActions": 96,
+    "filesRemoved": 61,
+    "filesMerged": 30,
+    "filesMoved": 0,
+    "directoriesCreated": 5
+  },
+  "actions": [
+    {
+      "action": "CREATE",
+      "file": "public/js/components",
+      "reason": "Directory created",
+      "timestamp": "2025-08-06T19:05:53.903Z"
+    },
+    {
+      "action": "CREATE",
+      "file": "public/js/pages",
+      "reason": "Directory created",
+      "timestamp": "2025-08-06T19:05:53.905Z"
+    },
+    {
+      "action": "CREATE",
+      "file": "public/js/services",
+      "reason": "Directory created",
+      "timestamp": "2025-08-06T19:05:53.905Z"
+    },
+    {
+      "action": "CREATE",
+      "file": "public/js/utils",
+      "reason": "Directory created",
+      "timestamp": "2025-08-06T19:05:53.906Z"
+    },
+    {
+      "action": "CREATE",
+      "file": "public/js/state",
+      "reason": "Directory created",
+      "timestamp": "2025-08-06T19:05:53.906Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/bug-fix-status.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.907Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/bug-fix-tester.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.908Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/credentials-manager.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.908Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/credentials-modal.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.909Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/disclaimer-modal.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.909Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/file-handler.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.909Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/global-error-handler.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.910Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/global-status-manager.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.910Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/log-manager.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.911Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/pingone-client.js.backup",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.911Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/resource-manager.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.912Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/safe-api.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.912Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/settings-manager-new.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.912Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/version-display.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.913Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/error-logging/models.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.913Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/token-management/example.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.913Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/utils/centralized-logger.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.914Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/utils/centralized-logger-fallback.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.914Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/utils/enhanced-client-logger.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.915Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/utils/event-manager.js.bak",
+      "reason": "Backup/duplicate file",
+      "timestamp": "2025-08-06T19:05:53.915Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/utils/centralized-logger.js",
+      "reason": "Merged into consolidated utils",
+      "timestamp": "2025-08-06T19:05:53.916Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/utils/error-handler.js",
+      "reason": "Merged into consolidated utils",
+      "timestamp": "2025-08-06T19:05:53.916Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/utils/safe-dom.js",
+      "reason": "Merged into consolidated utils",
+      "timestamp": "2025-08-06T19:05:53.917Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/utils/safe-dom.js",
+      "reason": "Merged into consolidated utils",
+      "timestamp": "2025-08-06T19:05:53.917Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/utils/config-constants.js",
+      "reason": "Merged into consolidated utils",
+      "timestamp": "2025-08-06T19:05:53.917Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/local-api-client.js",
+      "reason": "Merged into consolidated API client",
+      "timestamp": "2025-08-06T19:05:53.919Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/local-api.js",
+      "reason": "Merged into consolidated API client",
+      "timestamp": "2025-08-06T19:05:53.919Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/pingone-client.js",
+      "reason": "Merged into consolidated API client",
+      "timestamp": "2025-08-06T19:05:53.919Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/pingone-api.js",
+      "reason": "Merged into consolidated API client",
+      "timestamp": "2025-08-06T19:05:53.920Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/api-factory.js",
+      "reason": "Merged into consolidated API client",
+      "timestamp": "2025-08-06T19:05:53.920Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/safe-api.js",
+      "reason": "Merged into consolidated API client",
+      "timestamp": "2025-08-06T19:05:53.920Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/ui-manager.js",
+      "reason": "Merged into UI components",
+      "timestamp": "2025-08-06T19:05:53.921Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/ui-manager-fixed.js",
+      "reason": "Merged into UI components",
+      "timestamp": "2025-08-06T19:05:53.922Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/ui-manager-updated.js",
+      "reason": "Merged into UI components",
+      "timestamp": "2025-08-06T19:05:53.922Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/credentials-modal.js",
+      "reason": "Merged into UI components",
+      "timestamp": "2025-08-06T19:05:53.922Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/disclaimer-modal.js",
+      "reason": "Merged into UI components",
+      "timestamp": "2025-08-06T19:05:53.923Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/disclaimer-banner.js",
+      "reason": "Merged into UI components",
+      "timestamp": "2025-08-06T19:05:53.923Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/circular-progress.js",
+      "reason": "Merged into UI components",
+      "timestamp": "2025-08-06T19:05:53.923Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/message-formatter.js",
+      "reason": "Merged into UI components",
+      "timestamp": "2025-08-06T19:05:53.924Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/import-subsystem.js",
+      "reason": "Merged into import-export subsystem",
+      "timestamp": "2025-08-06T19:05:53.925Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/export-subsystem.js",
+      "reason": "Merged into import-export subsystem",
+      "timestamp": "2025-08-06T19:05:53.925Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/export-manager.js",
+      "reason": "Merged into import-export subsystem",
+      "timestamp": "2025-08-06T19:05:53.926Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/population-subsystem.js",
+      "reason": "Merged into population subsystem",
+      "timestamp": "2025-08-06T19:05:53.926Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/population-manager.js",
+      "reason": "Merged into population subsystem",
+      "timestamp": "2025-08-06T19:05:53.927Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/population-service.js",
+      "reason": "Merged into population subsystem",
+      "timestamp": "2025-08-06T19:05:53.927Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/progress-subsystem.js",
+      "reason": "Merged into progress subsystem",
+      "timestamp": "2025-08-06T19:05:53.927Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/progress-manager.js",
+      "reason": "Merged into progress subsystem",
+      "timestamp": "2025-08-06T19:05:53.928Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/progress-persistence.js",
+      "reason": "Merged into progress subsystem",
+      "timestamp": "2025-08-06T19:05:53.928Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/auth-management-subsystem.js",
+      "reason": "Merged into auth subsystem",
+      "timestamp": "2025-08-06T19:05:53.928Z"
+    },
+    {
+      "action": "MERGE",
+      "file": "public/js/modules/global-token-manager.js",
+      "reason": "Merged into auth subsystem",
+      "timestamp": "2025-08-06T19:05:53.929Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/ui-manager.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.930Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/ui-manager-fixed.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.930Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/ui-manager-updated.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.930Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/local-api-client.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.931Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/local-api.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.931Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/pingone-client.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.932Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/pingone-api.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.932Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/api-factory.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.932Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/safe-api.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.933Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/utils/centralized-logger.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.933Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/utils/error-handler.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.933Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/utils/config-constants.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.933Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/utils/safe-dom.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.934Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/bug-fix-status.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.934Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/bug-fix-tester.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.934Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/feature-flags-example.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.934Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/settings-manager-new.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.935Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/version-display.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.935Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/resource-manager.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.935Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/import-subsystem.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.936Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/export-subsystem.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.936Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/export-manager.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.937Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/population-subsystem.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.937Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/population-manager.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.938Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/population-service.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.938Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/progress-subsystem.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.938Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/progress-manager.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.938Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/progress-persistence.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.938Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/auth-management-subsystem.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.939Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/global-token-manager.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.939Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/credentials-modal.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.939Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/disclaimer-modal.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.939Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/disclaimer-banner.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.940Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/circular-progress.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.940Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/modules/message-formatter.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.940Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/api-url-subsystem-client.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.940Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/delete-page-handler.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.941Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/settings-loader.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.941Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/sidebar-token-list.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.941Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/simple-navigation.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.942Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "public/js/version-loader.js",
+      "reason": "Obsolete/consolidated file",
+      "timestamp": "2025-08-06T19:05:53.942Z"
+    }
+  ],
+  "newStructure": {
+    "components/": "Reusable UI components",
+    "pages/": "Page-specific functionality and subsystems",
+    "services/": "API clients and external services",
+    "utils/": "Utility functions and helpers",
+    "state/": "Application state management"
+  }
+}

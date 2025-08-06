@@ -81,7 +81,7 @@ describe('Auth Subsystem Client', () => {
   let PingOneAuthClient;
   let PingOneAuth;
   
-  before(() => {
+  before(async () => {
     // Save original globals
     originalLocalStorage = global.localStorage;
     originalCrypto = global.crypto;
@@ -95,9 +95,9 @@ describe('Auth Subsystem Client', () => {
     global.atob = (str) => Buffer.from(str, 'base64').toString();
     
     // Import modules (in a browser environment, these would be imported differently)
-    CredentialStorage = require('../../auth-subsystem/client/credential-storage.js').default;
-    PingOneAuthClient = require('../../auth-subsystem/client/pingone-auth-client.js').default;
-    PingOneAuth = require('../../auth-subsystem/client/index.js').PingOneAuth;
+    CredentialStorage = (await import('../../auth-subsystem/client/credential-storage.js')).default;
+    PingOneAuthClient = (await import('../../auth-subsystem/client/pingone-auth-client.js')).default;
+    PingOneAuth = (await import('../../auth-subsystem/client/index.js')).PingOneAuth;
   });
   
   after(() => {

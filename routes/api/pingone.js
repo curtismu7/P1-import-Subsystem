@@ -190,14 +190,11 @@ router.post('/token', async (req, res) => {
                 responseTime: `${responseTime}ms`
             });
             
-            res.json({
-                success: true,
-                data: {
-                    access_token: tokenData.access_token,
-                    token_type: tokenData.token_type,
-                    expires_in: tokenData.expires_in,
-                    scope: tokenData.scope
-                }
+            return res.success('Access token retrieved successfully', {
+                access_token: tokenData.access_token,
+                token_type: tokenData.token_type,
+                expires_in: tokenData.expires_in,
+                scope: tokenData.scope
             });
         } else {
             const errorData = await tokenResponse.text();
@@ -211,11 +208,7 @@ router.post('/token', async (req, res) => {
                 responseTime: `${responseTime}ms`
             });
             
-            res.status(tokenResponse.status).json({
-                success: false,
-                error: 'Token request failed',
-                details: errorData
-            });
+            return res.error('Token request failed', { code: 'TOKEN_REQUEST_FAILED', message: errorData }, tokenResponse.status);
         }
         
     } catch (error) {
@@ -228,11 +221,7 @@ router.post('/token', async (req, res) => {
             responseTime: `${responseTime}ms`
         });
         
-        res.status(500).json({
-            success: false,
-            error: 'Token request failed',
-            details: error.message
-        });
+        return res.error('Failed to get access token', { code: 'TOKEN_ERROR', message: error.message }, 500);
     }
 });
 
@@ -249,17 +238,11 @@ router.get('/populations', async (req, res) => {
         const authHeader = req.headers.authorization;
         
         if (!authHeader) {
-            return res.status(401).json({
-                success: false,
-                error: 'Authorization header required'
-            });
+            return res.error('Authorization header required', { code: 'AUTHORIZATION_REQUIRED', message: 'Authorization header required' }, 401);
         }
         
         if (!environmentId || !region) {
-            return res.status(400).json({
-                success: false,
-                error: 'Environment ID and region are required'
-            });
+            return res.error('Environment ID and region are required', { code: 'MISSING_FIELDS', message: 'Environment ID and region are required' }, 400);
         }
         
         // Determine the correct PingOne domain
@@ -271,10 +254,7 @@ router.get('/populations', async (req, res) => {
         
         const domain = regionDomains[region.toUpperCase()];
         if (!domain) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid region'
-            });
+            return res.error('Invalid region', { code: 'INVALID_REGION', message: 'Region must be one of: NA, EU, APAC' }, 400);
         }
         
         // Get populations
@@ -300,9 +280,8 @@ router.get('/populations', async (req, res) => {
                 responseTime: `${responseTime}ms`
             });
             
-            res.json({
-                success: true,
-                data: populationsData._embedded?.populations || [],
+            return res.success('Populations retrieved successfully', {
+                populations: populationsData._embedded?.populations || [],
                 count: populationsData._embedded?.populations?.length || 0
             });
         } else {
@@ -317,11 +296,7 @@ router.get('/populations', async (req, res) => {
                 responseTime: `${responseTime}ms`
             });
             
-            res.status(populationsResponse.status).json({
-                success: false,
-                error: 'Failed to retrieve populations',
-                details: errorData
-            });
+            return res.error('Failed to retrieve populations', { code: 'POPULATIONS_REQUEST_FAILED', message: errorData }, populationsResponse.status);
         }
         
     } catch (error) {
@@ -334,11 +309,7 @@ router.get('/populations', async (req, res) => {
             responseTime: `${responseTime}ms`
         });
         
-        res.status(500).json({
-            success: false,
-            error: 'Failed to retrieve populations',
-            details: error.message
-        });
+        return res.error('Failed to retrieve populations', { code: 'POPULATIONS_REQUEST_ERROR', message: error.message }, 500);
     }
 });
 

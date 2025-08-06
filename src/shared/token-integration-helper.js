@@ -5,7 +5,7 @@
  * with existing token management systems and prevent direct localStorage access.
  */
 
-import { UnifiedTokenManager, TOKEN_STATUS } from './unified-token-manager.js';
+import { PingOneTokenManager, TOKEN_STATUS } from './pingone-token-manager.js';
 
 /**
  * Global token manager instance
@@ -21,7 +21,7 @@ export function initializeTokenManager(options = {}) {
         return globalTokenManager;
     }
     
-    globalTokenManager = new UnifiedTokenManager(options);
+    globalTokenManager = new PingOneTokenManager(options);
     
     // Patch localStorage to prevent direct token access
     if (options.preventDirectAccess !== false) {
@@ -161,7 +161,7 @@ function patchLocalStorageAccess() {
     const originalSetItem = localStorage.setItem;
     const originalRemoveItem = localStorage.removeItem;
     
-    // Token-related keys that should be managed by UnifiedTokenManager
+    // Token-related keys that should be managed by PingOneTokenManager
     const PROTECTED_KEYS = [
         'pingone_token_cache',
         'pingone_worker_token',

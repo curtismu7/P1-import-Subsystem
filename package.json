@@ -1,6 +1,6 @@
 {
   "name": "pingone-import-cursor",
-  "version": "7.1.0.0",
+  "version": "7.1.0.22",
   "description": "A modern web application for importing users into PingOne using the PingOne Admin API.",
   "main": "server.js",
   "type": "module",
@@ -40,8 +40,7 @@
     "monitor:memory": "node --experimental-modules --experimental-json-modules -e \"import('./server/memory-monitor.js').then(m => console.log(JSON.stringify(m.getMemoryStatusReport(), null, 2)))\"",
     "start": "node --experimental-modules --experimental-json-modules scripts/always-background.js",
     "start:foreground": "node --experimental-modules --experimental-json-modules server.js",
-    "start:importmaps": "cross-env USE_IMPORT_MAPS=true NODE_ENV=development node --experimental-modules --experimental-json-modules server.js --import-maps",
-    "dev:importmaps": "nodemon --experimental-modules --experimental-json-modules server.js --import-maps",
+    "start:dev": "cross-env NODE_ENV=development node --experimental-modules --experimental-json-modules server.js",
     "start:background": "node --experimental-modules --experimental-json-modules scripts/start-background.js start",
     "start:daemon": "node --experimental-modules --experimental-json-modules scripts/daemon.js start",
     "stop:background": "node --experimental-modules --experimental-json-modules scripts/start-background.js stop",
@@ -52,16 +51,10 @@
     "status:daemon": "node --experimental-modules --experimental-json-modules scripts/daemon.js status",
     "dev": "nodemon --experimental-modules --experimental-json-modules server.js",
     "stop": "pkill -f 'node.*server.js' || true",
-    "build": "node --experimental-modules --experimental-json-modules scripts/unified-build.js",
-    "build:prod": "node --experimental-modules --experimental-json-modules scripts/unified-build.js --production",
-    "build:optimized": "npm run build:bundle && npm run minify:bundle",
-    "build:bundle": "TIMESTAMP=$(date +%s) && npx browserify src/client/app.js -t [ babelify --configFile ./babel.config.mjs ] -o public/js/bundle-${TIMESTAMP}.js && echo '{\"bundleFile\": \"bundle-'${TIMESTAMP}'.js\"}' > public/js/bundle-manifest.json && node scripts/update-bundle-reference.js",
-    "build:bundle:import-maps": "node scripts/hybrid-bundle-manager.js bundle && node scripts/update-bundle-reference.js",
-    "cleanup:bundles": "node --experimental-modules --experimental-json-modules scripts/cleanup-old-bundles.js",
-    "minify:bundle": "node --experimental-modules --experimental-json-modules scripts/minify-bundle.js",
-    "analyze:bundle": "node --experimental-modules --experimental-json-modules scripts/analyze-bundle.js",
-    "verify:build": "node --experimental-modules --experimental-json-modules scripts/verify-build.js",
-    "postinstall": "npm run build:bundle",
+    "build": "echo 'No build step needed - using import maps'",
+
+
+    "verify:modules": "node -e \"console.log('Import maps ready - no build needed')\"",
     "fix:population-dropdown": "node --experimental-modules --experimental-json-modules scripts/fix-population-dropdown.js",
     "fix:token-status": "node --experimental-modules --experimental-json-modules scripts/fix-token-status-widget.js",
     "fix:progress": "node --experimental-modules --experimental-json-modules scripts/fix-progress-subsystem.js",
@@ -80,16 +73,16 @@
     "restart:force": "node scripts/restart-server.js --no-kill",
     "restart:port": "node scripts/restart-server.js --port",
     "check:port": "node -e \"import('./server/port-checker.js').then(m => m.checkPortStatus(4000)).then(console.log)\"",
-    "import-maps:build": "node scripts/hybrid-bundle-manager.js build",
-    "import-maps:bundle": "node scripts/hybrid-bundle-manager.js bundle",
-    "import-maps:convert": "node scripts/hybrid-bundle-manager.js convert",
-    "import-maps:update": "node scripts/hybrid-bundle-manager.js update-maps",
+
+
+
+
     "import-maps:analyze": "node scripts/import-maps-migration.js analyze",
     "import-maps:migrate": "node scripts/import-maps-migration.js convert",
     "import-maps:migration-status": "node scripts/import-maps-migration.js status",
     "import-maps:migration-test": "node scripts/import-maps-migration.js test",
-    "import-maps:summary": "node scripts/hybrid-bundle-manager.js summary",
-    "import-maps:bundle-status": "node scripts/hybrid-bundle-manager.js status",
+
+
     "module:convert": "node scripts/module-converter.js"
   },
   "keywords": [
@@ -100,30 +93,13 @@
   ],
   "author": "",
   "license": "ISC",
-  "browserify": {
-    "transform": [
-      [
-        "babelify",
-        {
-          "configFile": "./config/babel.config.json",
-          "presets": [
-            "@babel/preset-env"
-          ],
-          "plugins": [
-            "@babel/plugin-transform-runtime"
-          ]
-        }
-      ]
-    ]
-  },
   "dependencies": {
     "@babel/core": "^7.28.0",
     "@babel/runtime": "^7.28.2",
     "@socket.io/redis-adapter": "^8.2.1",
     "axios": "^1.11.0",
-    "babelify": "^10.0.0",
     "bcryptjs": "^2.4.3",
-    "browserify": "^17.0.1",
+
     "compression": "^1.7.4",
     "connect-redis": "^7.1.0",
     "cors": "^2.8.5",
@@ -180,13 +156,13 @@
     "@babel/register": "^7.27.0",
     "@babel/runtime-corejs3": "^7.28.2",
     "@eslint/js": "^9.31.0",
-    "@jest/globals": "^29.7.0",
-    "@testing-library/dom": "^9.3.4",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^12.1.5",
-    "@testing-library/user-event": "^13.5.0",
+    "@jest/globals": "^30.0.5",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.6.4",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^30.0.0",
-    "babel-jest": "^29.7.0",
+    "babel-jest": "^30.0.5",
     "babel-plugin-dynamic-import-node": "^2.3.3",
     "babel-plugin-istanbul": "^6.1.1",
     "chai": "^5.2.0",
@@ -203,8 +179,8 @@
     "globals": "^16.3.0",
     "husky": "^9.0.11",
     "identity-obj-proxy": "^3.0.0",
-    "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
+    "jest": "^30.0.5",
+    "jest-environment-jsdom": "^30.0.5",
     "jest-extended": "^4.0.2",
     "jest-junit": "^16.0.0",
     "jsdom": "^26.1.0",

@@ -484,7 +484,7 @@ class App {
                 
                 // Make TokenAccess globally available
                 window.TokenAccess = TokenAccess;
-                window.UnifiedTokenManager = this.tokenManager;
+                window.PingOneTokenManager = this.tokenManager;
                 
                 console.log('✅ Unified Token Management System initialized successfully');
             } catch (error) {

@@ -4,7 +4,7 @@
  * Tests the UI integration and functionality of the API Client Subsystem
  */
 
-const { JSDOM } = require('jsdom');
+import { JSDOM } from 'jsdom';
 
 const dom = new JSDOM(`
 <!DOCTYPE html>

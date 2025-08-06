@@ -48,6 +48,61 @@ const router = Router();
 router.use('/debug-log', debugLogRouter);
 router.use('/logs', logsRouter);
 router.use('/auth', credentialRouter);
+
+/**
+ * @swagger
+ * /api/status:
+ *   get:
+ *     summary: Get server status information
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Server status retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     status:
+ *                       type: string
+ *                     uptime:
+ *                       type: number
+ *                     memory:
+ *                       type: object
+ *                     version:
+ *                       type: string
+ *                 timestamp:
+ *                   type: string
+ */
+router.get('/status', (req, res) => {
+    try {
+        const serverStatus = {
+            status: 'running',
+            uptime: process.uptime(),
+            memory: process.memoryUsage(),
+            version: process.version,
+            nodeVersion: process.version,
+            platform: process.platform,
+            arch: process.arch,
+            pid: process.pid,
+            environment: process.env.NODE_ENV || 'development'
+        };
+        
+        res.success('Server status retrieved successfully', serverStatus);
+    } catch (error) {
+        res.error('Failed to retrieve server status', {
+            code: 'STATUS_ERROR',
+            details: error.message
+        }, 500);
+    }
+});
 router.use('/export', exportRouter);
 router.use('/import', importRouter);
 router.use('/history', historyRouter);
@@ -130,8 +185,7 @@ router.get('/health', async (req, res) => {
             responseTime: `${responseTime}ms`
         });
         
-        res.status(200).json({
-            success: true,
+        res.success('Health check completed successfully', {
             status: 'healthy',
             checks: healthChecks,
             responseTime: `${responseTime}ms`
@@ -146,13 +200,12 @@ router.get('/health', async (req, res) => {
             responseTime: `${responseTime}ms`
         });
         
-        res.status(500).json({
-            success: false,
+        res.error('Health check failed', {
+            code: 'HEALTH_CHECK_ERROR',
             status: 'unhealthy',
-            error: error.message,
-            timestamp: new Date().toISOString(),
-            requestId: req.requestId
-        });
+            details: error.message,
+            responseTime: `${responseTime}ms`
+        }, 500);
     }
 });
 
@@ -743,13 +796,13 @@ router.post('/feature-flags/:flag', (req, res) => {
         
         // Validate that enabled is a boolean value
         if (typeof enabled !== 'boolean') {
-            return res.status(400).json({ error: 'enabled must be a boolean' });
+            return res.error('enabled must be a boolean', { code: 'VALIDATION_ERROR' }, 400);
         }
         
         featureFlags.setFeatureFlag(flag, enabled);
-        res.json({ success: true, flag, enabled });
+        res.success('Feature flag set successfully', { flag, enabled });
     } catch (error) {
-        res.status(500).json({ error: 'Failed to set feature flag', details: error.message });
+        res.error('Failed to set feature flag', { code: 'FEATURE_FLAG_SET_ERROR', details: error.message }, 500);
     }
 });
 
@@ -784,9 +837,9 @@ router.post('/feature-flags/:flag', (req, res) => {
 router.post('/feature-flags/reset', (req, res) => {
     try {
         featureFlags.resetFeatureFlags();
-        res.json({ success: true, message: 'Feature flags reset to defaults' });
+        res.success('Feature flags reset to defaults', null);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to reset feature flags', details: error.message });
+        res.error('Failed to reset feature flags', { code: 'FEATURE_FLAG_RESET_ERROR', details: error.message }, 500);
     }
 });
 
@@ -1396,17 +1449,16 @@ router.get('/history', async (req, res) => {
             duration: `${duration}ms`
         });
         
-        res.json(responseData);
+        res.success('History retrieved successfully', responseData);
         
     } catch (error) {
         const duration = Date.now() - startTime;
         console.error(`🔍 [History Debug] ${requestId} - Error occurred after ${duration}ms:`, error);
         console.error(`🔍 [History Debug] ${requestId} - Error stack:`, error.stack);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to retrieve history',
+        res.error('Failed to retrieve history', {
+            code: 'HISTORY_RETRIEVAL_ERROR',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
+        }, 500);
     }
 });
 
@@ -1476,18 +1528,14 @@ router.get('/populations', async (req, res) => {
         const tokenManager = req.app.get('tokenManager');
         if (!tokenManager) {
             apiLogger.error(`${functionName} - Token manager not available`, { requestId: req.requestId });
-            return res.status(500).json({ success: false, error: 'Token manager not available' });
+            return res.error('Token manager not available', { code: 'TOKEN_MANAGER_ERROR' }, 500);
         }
 
         // Get environment ID and API base URL from token manager
         const environmentId = await tokenManager.getEnvironmentId();
         if (!environmentId) {
             apiLogger.error(`${functionName} - Environment ID not configured`, { requestId: req.requestId });
-            return res.status(500).json({
-                success: false,
-                error: 'Environment ID not configured',
-                details: 'Please configure your Environment ID in the Settings page'
-            });
+            return res.error('Environment ID not configured', { code: 'ENVIRONMENT_ID_ERROR' }, 500);
         }
 
         // Get API base URL from token manager
@@ -1497,7 +1545,7 @@ router.get('/populations', async (req, res) => {
         const token = await tokenManager.getAccessToken();
         if (!token) {
             apiLogger.error(`${functionName} - Failed to get access token`, { requestId: req.requestId });
-            return res.status(401).json({ success: false, error: 'Failed to get access token' });
+            return res.error('Failed to get access token', { code: 'TOKEN_ACCESS_ERROR' }, 401);
         }
 
         // Fetch populations from PingOne API
@@ -1540,8 +1588,7 @@ router.get('/populations', async (req, res) => {
             userCount: population.userCount || 0
         }));
         
-        res.json({
-            success: true,
+        res.success('Populations retrieved successfully', {
             populations: formattedPopulations,
             total: formattedPopulations.length
         });

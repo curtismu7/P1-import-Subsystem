@@ -5,7 +5,7 @@
  * These tests make real API requests to PingOne services.
  */
 
-const { JSDOM } = require('jsdom');
+import { JSDOM } from 'jsdom';
 
 const dom = new JSDOM(`
 <!DOCTYPE html>

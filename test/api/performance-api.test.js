@@ -1,6 +1,6 @@
-const request = require('supertest');
-const app = require('../../server');
-const { performance } = require('perf_hooks');
+import request from 'supertest';
+import app from '../../server/index.js';
+import { performance } from 'perf_hooks';
 
 describe('API Performance Test Suite', () => {
     let server;

@@ -266,7 +266,7 @@ describe('Comprehensive UI Tests', () => {
   let uiManager;
   let mockLogger;
   
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset DOM
     document.body.innerHTML = dom.serialize();
     
@@ -370,9 +370,9 @@ describe('Comprehensive UI Tests', () => {
   });
   
   describe('UIManager Initialization', () => {
-    test('Should initialize with default state', () => {
+    test('Should initialize with default state', async () => {
       // Import UIManager dynamically to avoid ESM issues
-      const { UIManager } = require('../../public/js/modules/ui-manager.js');
+      const { UIManager } = await import('../../public/js/modules/ui-manager.js');
       
       uiManager = new UIManager(mockLogger);
       
@@ -382,14 +382,14 @@ describe('Comprehensive UI Tests', () => {
       expect(uiManager.navItems).toBeDefined();
     });
     
-    test('Should load persisted status from localStorage', () => {
+    test('Should load persisted status from localStorage', async () => {
       const mockStatus = {
         import: { operation: 'Import', status: 'Completed', timestamp: Date.now() }
       };
       
       localStorageMock.getItem.mockReturnValue(JSON.stringify(mockStatus));
       
-      const { UIManager } = require('../../public/js/modules/ui-manager.js');
+      const { UIManager } = await import('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
       
       expect(localStorageMock.getItem).toHaveBeenCalledWith('pingone-import-last-status');
@@ -397,8 +397,8 @@ describe('Comprehensive UI Tests', () => {
   });
   
   describe('Navigation', () => {
-    beforeEach(() => {
-      const { UIManager } = require('../../public/js/modules/ui-manager.js');
+    beforeEach(async () => {
+      const { UIManager } = await import('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
     
@@ -435,8 +435,8 @@ describe('Comprehensive UI Tests', () => {
   });
   
   describe('Settings View', () => {
-    beforeEach(() => {
-      const { UIManager } = require('../../public/js/modules/ui-manager.js');
+    beforeEach(async () => {
+      const { UIManager } = await import('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
     
@@ -518,8 +518,8 @@ describe('Comprehensive UI Tests', () => {
   });
   
   describe('Import View', () => {
-    beforeEach(() => {
-      const { UIManager } = require('../../public/js/modules/ui-manager.js');
+    beforeEach(async () => {
+      const { UIManager } = await import('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
     
@@ -580,8 +580,8 @@ describe('Comprehensive UI Tests', () => {
   });
   
   describe('Export View', () => {
-    beforeEach(() => {
-      const { UIManager } = require('../../public/js/modules/ui-manager.js');
+    beforeEach(async () => {
+      const { UIManager } = await import('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
     
@@ -614,8 +614,8 @@ describe('Comprehensive UI Tests', () => {
   });
   
   describe('Logs View', () => {
-    beforeEach(() => {
-      const { UIManager } = require('../../public/js/modules/ui-manager.js');
+    beforeEach(async () => {
+      const { UIManager } = await import('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
     
@@ -705,8 +705,8 @@ describe('Comprehensive UI Tests', () => {
   });
   
   describe('Delete CSV View', () => {
-    beforeEach(() => {
-      const { UIManager } = require('../../public/js/modules/ui-manager.js');
+    beforeEach(async () => {
+      const { UIManager } = await import('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
     
@@ -754,8 +754,8 @@ describe('Comprehensive UI Tests', () => {
   });
   
   describe('Modify View', () => {
-    beforeEach(() => {
-      const { UIManager } = require('../../public/js/modules/ui-manager.js');
+    beforeEach(async () => {
+      const { UIManager } = await import('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
     
@@ -803,8 +803,8 @@ describe('Comprehensive UI Tests', () => {
   });
   
   describe('Notifications and Alerts', () => {
-    beforeEach(() => {
-      const { UIManager } = require('../../public/js/modules/ui-manager.js');
+    beforeEach(async () => {
+      const { UIManager } = await import('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
     
@@ -838,8 +838,8 @@ describe('Comprehensive UI Tests', () => {
   });
   
   describe('Error Handling', () => {
-    beforeEach(() => {
-      const { UIManager } = require('../../public/js/modules/ui-manager.js');
+    beforeEach(async () => {
+      const { UIManager } = await import('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
     
@@ -904,8 +904,8 @@ describe('Comprehensive UI Tests', () => {
   });
   
   describe('Progress Tracking', () => {
-    beforeEach(() => {
-      const { UIManager } = require('../../public/js/modules/ui-manager.js');
+    beforeEach(async () => {
+      const { UIManager } = await import('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
     
@@ -943,8 +943,8 @@ describe('Comprehensive UI Tests', () => {
   });
   
   describe('Status Management', () => {
-    beforeEach(() => {
-      const { UIManager } = require('../../public/js/modules/ui-manager.js');
+    beforeEach(async () => {
+      const { UIManager } = await import('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
     
@@ -980,8 +980,8 @@ describe('Comprehensive UI Tests', () => {
   });
   
   describe('Form Management', () => {
-    beforeEach(() => {
-      const { UIManager } = require('../../public/js/modules/ui-manager.js');
+    beforeEach(async () => {
+      const { UIManager } = await import('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
     

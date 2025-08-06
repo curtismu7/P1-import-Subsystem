@@ -1,0 +1,59 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+Here are the rules and guiding principles that are being used for the PingOne Import Tool project, based on your explicit user rules, project documentation, and implementation memories:
+
+1. Version Management Rules
+The application version is the single source of truth in package.json.
+All version displays (UI, server logs, API, etc.) must dynamically reflect the value in package.json.
+On every commit to GitHub, the version number must be updated and propagated everywhere (UI, server, logs, terminal, etc.).
+The terminal and application logs must always show the correct version matching the deployed code.
+2. Bulletproof Architecture Rules
+All core subsystems (Import, Export, Error Handling, Analytics, Token Management, UI updates) must be “bulletproof”:
+Cannot fail under any circumstances.
+Multiple fallback layers for all critical operations.
+All errors must be caught and handled gracefully, never crashing the app or blocking the UI.
+Retry logic with exponential backoff for network/API operations.
+DOM and state updates must be protected with try-catch and safe fallback logic.
+Every subsystem must be isolated so errors in one do not affect others.
+3. API & Route Management Rules
+All API endpoints must be mounted and accessible as documented.
+Every endpoint must use robust error handling and return consistent, user-friendly JSON error responses.
+All API routes must be tested and verified after changes.
+Route mounting issues (e.g., 404s) must be fixed immediately.
+4. Configuration & Security Rules
+All configuration values (credentials, environment IDs, etc.) must be managed via environment variables or settings.json, never hardcoded.
+Credentials must be encrypted at rest and only decrypted in memory when needed.
+Never expose secrets in logs, client-side code, or error messages.
+5. Testing & Deployment Rules
+All changes must be covered by comprehensive tests (unit, integration, API, frontend, UI).
+Bulletproof systems must be tested for all failure and edge cases.
+Use safe, incremental deployment with full rollback capability.
+Monitor system health and logs after every deployment.
+6. Logging & Monitoring Rules
+All logs must be written to the appropriate file in the logs/ directory (access, error, application, combined, performance).
+Logs must always include the current application version.
+Health endpoints and performance metrics must be available and accurate.
+7. UI/UX Rules
+The UI must be modern, responsive, and styled according to Ping Identity branding.
+All user-facing errors must be clear, actionable, and never block the main workflow.
+Real-time progress and status indicators must always be accurate and never get stuck.
+Analytics and dashboard data must never break the app, regardless of data structure or errors.
+8. Coding & Structure Rules
+Use modular, service-oriented patterns for both server and client code.
+All shared utilities must be reusable and robust.
+Never duplicate code—use single sources of truth and DRY principles.
+All new files and features must be documented in the appropriate section of /docs/.
+9. Memory & Performance Rules
+The app must monitor and log memory usage, and proactively handle high memory conditions.
+Performance optimizations (caching, lazy loading, etc.) must not compromise reliability or security.
+10. General Safety & Quality Rules
+No breaking changes—backward compatibility must be maintained unless explicitly versioned.
+All improvements must be incremental, testable, and easy to roll back.
+Any critical or high-priority issue (e.g., route missing, version mismatch, bundle bloat) must be addressed before new features.
+Summary:
+The PingOne Import Tool is governed by strict bulletproofing, version control, error handling, modularity, and user experience rules. Every part of the system must be robust, maintainable, and safe, with clear procedures for updates, testing, and deployment. All critical information—especially version—must be accurate and visible everywhere, and the system must never fail silently or block the user.
+
+If you need a more detailed breakdown of any specific rule set (e.g., versioning, error handling, deployment), let me know!

@@ -244,7 +244,7 @@ function displayNextSteps() {
     console.log('\n📋 Next Steps:');
     console.log('');
     console.log('1. 🧪 Run the test suite:');
-    console.log('   npm test -- unified-token-manager.test.js');
+    console.log('   npm test -- pingone-token-manager.test.js');
     console.log('');
     console.log('2. 🔄 Restart the application:');
     console.log('   npm run restart');

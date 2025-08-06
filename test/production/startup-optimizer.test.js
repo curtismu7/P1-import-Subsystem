@@ -269,11 +269,11 @@ describe('Singleton instance', () => {
         expect(startupOptimizer).toBeInstanceOf(StartupOptimizer);
     });
     
-    test('should maintain state across imports', () => {
+    test('should maintain state across imports', async () => {
         startupOptimizer.testProperty = 'test-value';
         
         // Re-import to test singleton behavior
-        const { default: reimportedOptimizer } = require('../../src/server/services/startup-optimizer.js');
+        const { default: reimportedOptimizer } = await import('../../src/server/services/startup-optimizer.js');
         
         expect(reimportedOptimizer.testProperty).toBe('test-value');
     });

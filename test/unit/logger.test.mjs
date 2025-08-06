@@ -78,7 +78,7 @@ describe('Logger', () => {
       expect(logger.serverLoggingEnabled).toBe(true);
     });
 
-    it('should create a winston logger instance', () => {
+    it('should create a winston logger instance', async () => {
       const { createWinstonLogger } = await import('../../src/client/utils/winston-logger.js');
       expect(createWinstonLogger).toHaveBeenCalledWith({
         service: 'pingone-import-frontend',

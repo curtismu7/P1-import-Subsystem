@@ -4,7 +4,7 @@
  * A minimal test to verify that the testing environment is working correctly
  */
 
-const { JSDOM } = require('jsdom');
+import { JSDOM } from 'jsdom';
 
 // Create a simple DOM structure
 const dom = new JSDOM(`

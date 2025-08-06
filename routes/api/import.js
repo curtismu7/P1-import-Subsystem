@@ -63,13 +63,9 @@ router.get('/status', (req, res) => {
             sessionId: importStatus.sessionId
         };
 
-        res.json(response);
+        res.success('Import status retrieved successfully', response);
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to get import status',
-            details: error.message
-        });
+        res.error('Failed to get import status', { code: 'IMPORT_STATUS_ERROR', details: error.message }, 500);
     }
 });
 
@@ -80,11 +76,7 @@ router.get('/status', (req, res) => {
 router.post('/start', express.json(), (req, res) => {
     try {
         if (importStatus.isRunning) {
-            return res.status(409).json({
-                success: false,
-                error: 'Import operation already running',
-                sessionId: importStatus.sessionId
-            });
+            return res.error('Import operation already running', { code: 'IMPORT_ALREADY_RUNNING', sessionId: importStatus.sessionId }, 409);
         }
 
         const { sessionId, totalRecords, fileName } = req.body;
@@ -103,18 +95,9 @@ router.post('/start', express.json(), (req, res) => {
             status: 'running'
         };
 
-        res.json({
-            success: true,
-            message: 'Import operation started',
-            sessionId: importStatus.sessionId,
-            status: importStatus.status
-        });
+        res.success('Import operation started', { sessionId: importStatus.sessionId, status: importStatus.status });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to start import operation',
-            details: error.message
-        });
+        res.error('Failed to start import operation', { code: 'IMPORT_START_ERROR', details: error.message }, 500);
     }
 });
 
@@ -127,10 +110,7 @@ router.post('/progress', express.json(), (req, res) => {
         const { processed, errors, warnings, currentFile } = req.body;
 
         if (!importStatus.isRunning) {
-            return res.status(400).json({
-                success: false,
-                error: 'No import operation running'
-            });
+            return res.error('No import operation running', { code: 'IMPORT_NOT_RUNNING' }, 400);
         }
 
         if (typeof processed === 'number') importStatus.processed = processed;
@@ -138,17 +118,9 @@ router.post('/progress', express.json(), (req, res) => {
         if (typeof warnings === 'number') importStatus.warnings = warnings;
         if (currentFile) importStatus.currentFile = currentFile;
 
-        res.json({
-            success: true,
-            message: 'Progress updated',
-            status: importStatus.status
-        });
+        res.success('Progress updated', { status: importStatus.status });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to update import progress',
-            details: error.message
-        });
+        res.error('Failed to update import progress', { code: 'IMPORT_PROGRESS_ERROR', details: error.message }, 500);
     }
 });
 
@@ -170,23 +142,17 @@ router.post('/complete', express.json(), (req, res) => {
             importStatus.warnings = finalStats.warnings || importStatus.warnings;
         }
 
-        res.json({
-            success: true,
-            message: `Import operation ${importStatus.status}`,
-            status: importStatus.status,
+        res.success(`Import operation ${importStatus.status}`, { 
+            status: importStatus.status, 
             finalStats: {
                 processed: importStatus.processed,
                 errors: importStatus.errors,
                 warnings: importStatus.warnings,
                 duration: importStatus.endTime - importStatus.startTime
-            }
+            } 
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to complete import operation',
-            details: error.message
-        });
+        res.error('Failed to complete import operation', { code: 'IMPORT_COMPLETE_ERROR', details: error.message }, 500);
     }
 });
 
@@ -197,27 +163,16 @@ router.post('/complete', express.json(), (req, res) => {
 router.post('/cancel', (req, res) => {
     try {
         if (!importStatus.isRunning) {
-            return res.status(400).json({
-                success: false,
-                error: 'No import operation running'
-            });
+            return res.error('No import operation running', { code: 'IMPORT_NOT_RUNNING' }, 400);
         }
 
         importStatus.isRunning = false;
         importStatus.endTime = Date.now();
         importStatus.status = 'cancelled';
 
-        res.json({
-            success: true,
-            message: 'Import operation cancelled',
-            status: importStatus.status
-        });
+        res.success('Import operation cancelled', { status: importStatus.status });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to cancel import operation',
-            details: error.message
-        });
+        res.error('Failed to cancel import operation', { code: 'IMPORT_CANCEL_ERROR', details: error.message }, 500);
     }
 });
 
@@ -241,17 +196,9 @@ router.delete('/reset', (req, res) => {
             status: 'idle'
         };
 
-        res.json({
-            success: true,
-            message: 'Import status reset',
-            status: importStatus.status
-        });
+        res.success('Import status reset', { status: importStatus.status });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to reset import status',
-            details: error.message
-        });
+        res.error('Failed to reset import status', { code: 'IMPORT_RESET_ERROR', details: error.message }, 500);
     }
 });
 
@@ -263,18 +210,12 @@ router.post('/', upload.single('file'), (req, res) => {
     try {
         // Check if file was uploaded
         if (!req.file) {
-            return res.status(400).json({
-                success: false,
-                error: 'No file uploaded'
-            });
+            return res.error('No file uploaded', { code: 'NO_FILE_UPLOADED' }, 400);
         }
 
         // Check if population ID was provided
         if (!req.body.populationId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Population ID is required'
-            });
+            return res.error('Population ID is required', { code: 'POPULATION_ID_REQUIRED' }, 400);
         }
 
         // Get file details
@@ -309,14 +250,12 @@ router.post('/', upload.single('file'), (req, res) => {
         console.log(`🔄 Import started: ${fileName}, ${totalRecords} records, session: ${sessionId}`);
         
         // Return success response
-        res.json({
-            success: true,
-            message: 'Import started successfully',
-            sessionId: sessionId,
-            total: totalRecords,
-            fileName: fileName,
-            fileSize: fileSize,
-            populationId: req.body.populationId
+        res.success('Import started successfully', { 
+            sessionId: sessionId, 
+            total: totalRecords, 
+            fileName: fileName, 
+            fileSize: fileSize, 
+            populationId: req.body.populationId 
         });
         
         // In a real implementation, you would start a background process to handle the import
@@ -325,11 +264,7 @@ router.post('/', upload.single('file'), (req, res) => {
         
     } catch (error) {
         console.error('Import error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to start import',
-            details: error.message
-        });
+        res.error('Failed to start import', { code: 'IMPORT_START_ERROR', details: error.message }, 500);
     }
 });
 
