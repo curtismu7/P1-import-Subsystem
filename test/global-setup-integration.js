@@ -2,7 +2,7 @@
  * Global setup for integration tests
  */
 
-module.exports = async () => {
+export default async () => {
   console.log('🚀 Setting up integration test environment...');
   
   // Check if required environment variables are set

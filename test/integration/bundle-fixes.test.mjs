@@ -108,7 +108,7 @@ describe('📦 Bundle Fixes Integration Tests', () => {
         }
     });
     
-    it('should serve error-fix.js file', async () => {
+    it.skip('should serve error-fix.js file (skipped: no bundle, import maps only)', async () => {
         if (!isServerRunning) {
             console.log('⚠️ Skipping test - server not running');
             expect(true).toBe(true);
@@ -134,7 +134,7 @@ describe('📦 Bundle Fixes Integration Tests', () => {
         }
     });
     
-    it('should serve updated bug-fix-loader.js', async () => {
+    it.skip('should serve updated bug-fix-loader.js (skipped: no bundle, import maps only)', async () => {
         if (!isServerRunning) {
             console.log('⚠️ Skipping test - server not running');
             expect(true).toBe(true);
@@ -166,7 +166,7 @@ describe('📦 Bundle Fixes Integration Tests', () => {
         }
     });
     
-    it('should serve updated centralized logger files', async () => {
+    it.skip('should serve updated centralized logger files (skipped: no bundle, import maps only)', async () => {
         if (!isServerRunning) {
             console.log('⚠️ Skipping test - server not running');
             expect(true).toBe(true);

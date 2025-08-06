@@ -1,5 +1,5 @@
 // Global test setup for API tests
-const path = require('path');
+import path from 'path';
 
 // Set test environment variables
 process.env.NODE_ENV = 'test';

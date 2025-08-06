@@ -364,10 +364,10 @@ function generateMigrationReport(results) {
     report.push('');
     report.push('### Step 1: Initialize Unified Token Manager');
     report.push('```javascript');
-    report.push("import { initializeUnifiedTokenManager } from './src/client/token-manager-init.js';");
+    report.push("import { initializePingOneTokenManager } from './src/client/token-manager-init.js';");
     report.push('');
     report.push('// In your main application initialization');
-    report.push('await initializeUnifiedTokenManager(app);');
+    report.push('await initializePingOneTokenManager(app);');
     report.push('```');
     report.push('');
     
@@ -407,7 +407,7 @@ function generateMigrationReport(results) {
     report.push('');
     report.push('Run the comprehensive test suite after migration:');
     report.push('```bash');
-    report.push('npm test -- unified-token-manager.test.js');
+    report.push('npm test -- pingone-token-manager.test.js');
     report.push('```');
     report.push('');
     

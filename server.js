@@ -84,7 +84,8 @@ import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { createWinstonLogger, createRequestLogger, createErrorLogger, createPerformanceLogger, serverLogger, apiLogger } from './server/winston-config.js';
 import { logStartupSuccess, logStartupFailure, runStartupTests } from './src/server/services/startup-diagnostics.js';
-import { createConnectionManager } from './server/connection-manager.js';
+// Enhanced real-time communication (replaces old connection manager)
+// import { createConnectionManager } from './server/connection-manager.js';
 import { router as authSubsystemRouter, pingOneAuth } from './auth-subsystem/server/index.js';
 import EnhancedServerAuth from './auth-subsystem/server/enhanced-server-auth.js';
 import credentialManagementRouter, { initializeCredentialRoutes } from './routes/api/credential-management.js';
@@ -118,8 +119,14 @@ import session from 'express-session';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const { version: appVersion } = require('./package.json');
+
+// Import new middleware for improved backend-frontend communication
+import { responseWrapper } from './server/utils/api-response.js';
+import { errorHandler, notFoundHandler, asyncHandler } from './server/middleware/error-handler.js';
+import { sanitizeInput } from './server/middleware/validation.js';
 import { WebSocketServer } from 'ws';
 import { Server as SocketIOServer } from 'socket.io';
+import { EnhancedRealtimeManager } from './server/services/enhanced-realtime-manager.js';
 
 // 🛡️ Hardening & Monitoring Systems
 import { performRouteHealthCheck, startRouteMonitoring, generateRouteHealthReport } from './server/route-health-checker.js';
@@ -264,13 +271,7 @@ const performanceLogger = createPerformanceLogger(logger);
 
 // Import startup optimizer for production-ready initialization
 import startupOptimizer from './src/server/services/startup-optimizer.js';
-import { getErrorHandler } from './src/shared/error-handler.js';
-
-// Initialize centralized error handling
-const errorHandler = getErrorHandler({
-
-    enableUserNotification: false // Server-side, no user notifications
-});
+// Removed duplicate error handler - using middleware errorHandler instead
 
 // Use pingOneAuth from auth subsystem for token management
 // This replaces the legacy TokenManager with the new auth subsystem
@@ -368,6 +369,25 @@ app.use(express.urlencoded({
     limit: '10mb' 
 }));
 
+// ============================================================================
+// NEW MIDDLEWARE FOR IMPROVED BACKEND-FRONTEND COMMUNICATION
+// ============================================================================
+
+// Input sanitization middleware (prevents XSS and injection attacks)
+app.use(sanitizeInput({
+    fields: ['body', 'query', 'params'],
+    stripHtml: true,
+    trimWhitespace: true
+}));
+
+// Response standardization middleware (fixes QA issues)
+import { standardizeResponse, addRequestId } from './server/middleware/response-standardization.js';
+app.use(addRequestId);
+app.use(standardizeResponse);
+
+// Standardized API response wrapper
+app.use(responseWrapper);
+
 // Example: Use rate limit value in middleware (plug in your rate limiter here)
 // const rateLimit = require('express-rate-limit');
 // app.use(rateLimit({
@@ -403,15 +423,9 @@ app.use(['/swagger.html', '/swagger', '/swagger.json'], ensureAuthenticated);
 // Setup Swagger documentation
 setupSwagger(app);
 
-// Check for Import Maps mode
-console.log('🔍 DEBUG: process.argv =', process.argv);
-const useImportMaps = process.argv.includes('--import-maps');
-console.log('🔍 DEBUG: useImportMaps =', useImportMaps);
-if (useImportMaps) {
-    console.log('🗺️  Import Maps mode enabled - serving ES modules directly');
-} else {
-    console.log('📦 Bundle mode - serving traditional bundled application');
-}
+// Import Maps mode is now the default (no more bundles)
+const useImportMaps = true;
+console.log('🗺️  Import Maps mode enabled - serving ES modules directly (default)');
 
 // Helper function to read settings.json and inject it into HTML
 async function injectSettingsIntoHtml(htmlFilePath, res) {
@@ -476,24 +490,13 @@ async function injectSettingsIntoHtml(htmlFilePath, res) {
     }
 }
 
-// Import Maps route must be registered BEFORE static file serving
-if (useImportMaps) {
-    // Default route for Import Maps version - MUST come before static middleware
-    app.get('/', async (req, res) => {
-        const htmlPath = path.join(__dirname, 'public', 'index-import-maps.html');
-        await injectSettingsIntoHtml(htmlPath, res);
-    });
-    
-    console.log('🗺️  Import Maps route registered for /');
-} else {
-    // In bundle mode, we need to handle index.html directly to inject settings
-    app.get('/', async (req, res) => {
-        const htmlPath = path.join(__dirname, 'public', 'index.html');
-        await injectSettingsIntoHtml(htmlPath, res);
-    });
-    
-    console.log('📦 Bundle mode route registered for / with settings injection');
-}
+// Default route for Import Maps (ES modules)
+app.get('/', async (req, res) => {
+    const htmlPath = path.join(__dirname, 'public', 'index.html');
+    await injectSettingsIntoHtml(htmlPath, res);
+});
+
+console.log('🗺️  Import Maps route registered for /');
 
 // Static file serving with caching headers
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -503,12 +506,12 @@ app.use(express.static(path.join(__dirname, 'public'), {
     index: false,
     setHeaders: (res, filePath) => {
         const fileExt = path.extname(filePath);
-        if (fileExt === '.html' || filePath.includes('bundle-')) {
+        if (fileExt === '.html') {
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');
-        } else if (fileExt === '.js' && useImportMaps) {
-            // For Import Maps, serve JS modules with proper MIME type and no caching during development
+        } else if (fileExt === '.js') {
+            // Serve JS modules with proper MIME type and no caching during development
             res.setHeader('Content-Type', 'application/javascript');
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         } else {
@@ -518,36 +521,34 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 // Serve source files for Import Maps
-if (useImportMaps) {
-    app.use('/src', express.static(path.join(__dirname, 'src'), {
-        etag: true,
-        lastModified: true,
-        setHeaders: (res, filePath) => {
-            const fileExt = path.extname(filePath);
-            if (fileExt === '.js') {
-                res.setHeader('Content-Type', 'application/javascript');
-                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-            }
+app.use('/src', express.static(path.join(__dirname, 'src'), {
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, filePath) => {
+        const fileExt = path.extname(filePath);
+        if (fileExt === '.js') {
+            res.setHeader('Content-Type', 'application/javascript');
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         }
-    }));
-    
-    console.log('📦 Source files served at /src for Import Maps');
-    console.log('🗺️  Import Maps version available at http://localhost:4000/');
-}
+    }
+}));
 
-// Debug route to check Import Maps status
-app.get('/api/debug/import-maps', (req, res) => {
+console.log('📦 Source files served at /src for Import Maps');
+console.log('🗺️  Import Maps version available at http://localhost:4000/');
+
+// Debug route to check module system status
+app.get('/api/debug/modules', (req, res) => {
     res.json({
+        moduleSystem: 'import-maps',
         useImportMaps: useImportMaps,
-        processArgv: process.argv,
-        hasImportMapsFlag: process.argv.includes('--import-maps'),
+        version: packageVersion,
         timestamp: new Date().toISOString()
     });
 });
 
 console.log('📚 Swagger UI available at http://localhost:4000/swagger.html');
 console.log('📄 Swagger JSON available at http://localhost:4000/swagger.json');
-console.log('🔍 Debug endpoint available at http://localhost:4000/api/debug/import-maps');
+console.log('🔍 Debug endpoint available at http://localhost:4000/api/debug/modules');
 
 /**
  * @swagger
@@ -675,16 +676,95 @@ app.get('/startup-report', (req, res) => {
     });
 });
 
-// Endpoint to get the latest bundle filename for cache-busting
-app.get('/api/bundle-info', async (req, res) => {
+// Import Maps info endpoint (replaces bundle-info)
+app.get('/api/module-info', async (req, res) => {
     try {
-        const manifestPath = path.join(__dirname, 'public', 'js', 'bundle-manifest.json');
-        const manifestData = await fs.readFile(manifestPath, 'utf8');
-        const manifest = JSON.parse(manifestData);
-        res.json(manifest);
+        const importMapsPath = path.join(__dirname, 'public', 'import-maps.json');
+        const importMapsData = await fs.readFile(importMapsPath, 'utf8');
+        const importMaps = JSON.parse(importMapsData);
+        
+        res.json({
+            type: 'import-maps',
+            version: packageVersion,
+            timestamp: new Date().toISOString(),
+            imports: importMaps.imports
+        });
     } catch (error) {
-        logger.error('Failed to read bundle manifest', { error: error.message });
-        res.status(500).json({ error: 'Could not retrieve bundle information.' });
+        logger.error('Failed to read import maps', { error: error.message });
+        res.status(500).json({ error: 'Could not retrieve module information.' });
+    }
+});
+
+// Real-time communication statistics endpoint
+app.get('/api/realtime/stats', (req, res) => {
+    try {
+        const realtimeManager = req.app.get('realtimeManager');
+        if (!realtimeManager) {
+            return res.status(503).json({
+                success: false,
+                error: 'Real-time manager not available',
+                code: 'SERVICE_UNAVAILABLE'
+            });
+        }
+
+        const stats = realtimeManager.getStats();
+        res.json({
+            success: true,
+            message: 'Real-time statistics retrieved successfully',
+            data: stats,
+            meta: {
+                timestamp: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        logger.error('Failed to get real-time stats', { error: error.message });
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve real-time statistics',
+            code: 'INTERNAL_ERROR'
+        });
+    }
+});
+
+// Session information endpoint
+app.get('/api/realtime/session/:sessionId', (req, res) => {
+    try {
+        const realtimeManager = req.app.get('realtimeManager');
+        if (!realtimeManager) {
+            return res.status(503).json({
+                success: false,
+                error: 'Real-time manager not available',
+                code: 'SERVICE_UNAVAILABLE'
+            });
+        }
+
+        const sessionInfo = realtimeManager.getSessionInfo(req.params.sessionId);
+        if (!sessionInfo) {
+            return res.status(404).json({
+                success: false,
+                error: 'Session not found',
+                code: 'SESSION_NOT_FOUND'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Session information retrieved successfully',
+            data: sessionInfo,
+            meta: {
+                timestamp: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        logger.error('Failed to get session info', { 
+            sessionId: req.params.sessionId,
+            error: error.message 
+        });
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve session information',
+            code: 'INTERNAL_ERROR'
+        });
     }
 });
 
@@ -941,57 +1021,15 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Fallback 404 route (with status message)
-app.use('*', (req, res) => {
-    // Check if response has already been sent
-    if (res.headersSent) {
-        return;
-    }
-    
-    logger.warn('404 Not Found', {
-        url: req.originalUrl,
-        method: req.method,
-        ip: req.ip,
-        userAgent: req.get('user-agent')
-    });
-    res.status(404).json({
-        success: false,
-        error: 'Page not found.',
-        code: 'NOT_FOUND'
-    });
-});
+// ============================================================================
+// CENTRALIZED ERROR HANDLING (REPLACES OLD ERROR HANDLERS)
+// ============================================================================
 
-// Global error handler
-app.use(async (err, req, res, next) => {
-    // Check if response has already been sent
-    if (res.headersSent) {
-        return next(err);
-    }
-    
-    // Log the error with full context
-    logger.error('Unhandled application error', {
-        error: err.message,
-        stack: err.stack,
-        code: err.code,
-        url: req.originalUrl,
-        method: req.method,
-        ip: req.ip,
-        userAgent: req.get('user-agent'),
-        body: req.body ? JSON.stringify(req.body).substring(0, 500) : null,
-        timestamp: new Date().toISOString()
-    });
-    
-    // Update server state
-    serverState.lastError = err;
-    
-    // Send error response
-    res.status(err.status || 500).json({
-        success: false,
-        error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
-        status: err.status || 500,
-        timestamp: new Date().toISOString()
-    });
-});
+// 404 Not Found handler
+app.use(notFoundHandler);
+
+// Centralized error handler with logging and standardized responses
+app.use(errorHandler);
 
 // Import the logs directory check
 import { ensureLogsDirectory } from './scripts/ensure-logs-directory.js';
@@ -1232,9 +1270,10 @@ const startServer = async () => {
     global.ioClients = new Map();
     global.io = io; // Make Socket.IO instance globally available
     
-    // Initialize connection manager
-    const connectionManager = createConnectionManager(logger);
-    app.set('connectionManager', connectionManager);
+    // Initialize enhanced real-time manager
+    const realtimeManager = new EnhancedRealtimeManager(io, logger);
+    app.set('realtimeManager', realtimeManager);
+    app.set('connectionManager', realtimeManager); // Backward compatibility
     
     // Add error handling to Socket.IO server
     io.on('error', (error) => {
@@ -1326,8 +1365,7 @@ const startServer = async () => {
         });
     });
 
-    // Initialize connection manager with Socket.IO only
-    connectionManager.initialize(io);
+    // Enhanced real-time manager is already initialized with io
 
     // Note: WebSocket server removed to prevent conflicts with Socket.IO
     // Socket.IO already handles WebSocket connections via wsEngine: WebSocketServer

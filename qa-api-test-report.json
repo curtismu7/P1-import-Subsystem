@@ -1,0 +1,607 @@
+{
+  "summary": {
+    "totalTests": 26,
+    "passed": 0,
+    "failed": 25,
+    "warnings": 1,
+    "categories": {
+      "Structure": {
+        "PASS": 0,
+        "FAIL": 13,
+        "WARN": 0
+      },
+      "Health": {
+        "PASS": 0,
+        "FAIL": 1,
+        "WARN": 0
+      },
+      "Settings": {
+        "PASS": 0,
+        "FAIL": 2,
+        "WARN": 0
+      },
+      "Token": {
+        "PASS": 0,
+        "FAIL": 1,
+        "WARN": 0
+      },
+      "Logs": {
+        "PASS": 0,
+        "FAIL": 1,
+        "WARN": 0
+      },
+      "History": {
+        "PASS": 0,
+        "FAIL": 2,
+        "WARN": 0
+      },
+      "UI Status": {
+        "PASS": 0,
+        "FAIL": 1,
+        "WARN": 0
+      },
+      "File": {
+        "PASS": 0,
+        "FAIL": 2,
+        "WARN": 0
+      },
+      "Error": {
+        "PASS": 0,
+        "FAIL": 2,
+        "WARN": 1
+      }
+    }
+  },
+  "timestamp": "2025-08-06T20:08:13.852Z",
+  "testResults": [
+    {
+      "category": "Structure",
+      "test": "Health Check Structure",
+      "status": "FAIL",
+      "details": {
+        "error": "Missing or invalid \"timestamp\" field",
+        "response": {
+          "success": true,
+          "message": "Success",
+          "data": {
+            "status": "ok",
+            "timestamp": "2025-08-06T20:08:12.849Z",
+            "uptime": 10884.688368417,
+            "server": {
+              "isInitialized": true,
+              "isInitializing": false,
+              "pingOneInitialized": true,
+              "pingOne": {
+                "initialized": true,
+                "hasRequiredConfig": "b9817c16-9910-4415-b67e-4ac687da74d9",
+                "environmentId": "configured",
+                "region": "NA"
+              }
+            },
+            "system": {
+              "node": "v22.16.0",
+              "platform": "darwin",
+              "memory": {
+                "rss": 229310464,
+                "heapTotal": 33882112,
+                "heapUsed": 30896128,
+                "external": 3745904,
+                "arrayBuffers": 114840
+              },
+              "memoryUsage": "91%",
+              "env": "production",
+              "pid": 41445
+            },
+            "optimization": {
+              "status": "healthy",
+              "isInitialized": true,
+              "tokenCached": null,
+              "tokenStatus": {
+                "hasToken": true,
+                "isValid": false,
+                "expiresIn": 0,
+                "environmentId": "b9817c16-9910-4415-b67e-4ac687da74d9",
+                "region": "NA",
+                "lastUpdated": null
+              }
+            },
+            "token": {
+              "hasToken": true,
+              "isValid": false,
+              "expiresIn": 0,
+              "environmentId": "b9817c16-9910-4415-b67e-4ac687da74d9",
+              "region": "NA"
+            },
+            "checks": {
+              "pingOneConfigured": "ok",
+              "pingOneConnected": "ok",
+              "memory": "warn",
+              "startupOptimization": "ok",
+              "tokenAcquisition": "ok",
+              "websocket": "ok"
+            }
+          },
+          "meta": {
+            "timestamp": "2025-08-06T20:08:12.850Z",
+            "version": "1.0"
+          }
+        }
+      },
+      "timestamp": "2025-08-06T20:08:12.851Z"
+    },
+    {
+      "category": "Health",
+      "test": "Server Health",
+      "status": "FAIL",
+      "details": {
+        "error": "Health check failed or invalid structure"
+      },
+      "timestamp": "2025-08-06T20:08:12.854Z"
+    },
+    {
+      "category": "Structure",
+      "test": "GET Settings Structure",
+      "status": "FAIL",
+      "details": {
+        "error": "Missing or invalid \"timestamp\" field",
+        "response": {
+          "success": true,
+          "message": "Settings retrieved successfully",
+          "data": {
+            "pingone_environment_id": "test-environment-id",
+            "pingone_region": "NorthAmerica",
+            "pingone_client_id": "test-client-id",
+            "pingone_population_id": "test-pop-settings-test-1754408007632-3c0gnohnn",
+            "environmentId": "test-environment-id",
+            "region": "NorthAmerica",
+            "apiClientId": "test-client-id",
+            "populationId": "test-pop-settings-test-1754408007632-3c0gnohnn",
+            "lastUpdated": "2025-08-05T15:33:28.812Z"
+          },
+          "meta": {
+            "timestamp": "2025-08-06T20:08:12.925Z",
+            "version": "1.0"
+          }
+        }
+      },
+      "timestamp": "2025-08-06T20:08:12.927Z"
+    },
+    {
+      "category": "Settings",
+      "test": "POST Settings",
+      "status": "FAIL",
+      "details": {
+        "error": "HTTP 400"
+      },
+      "timestamp": "2025-08-06T20:08:12.979Z"
+    },
+    {
+      "category": "Structure",
+      "test": "Invalid Settings Structure",
+      "status": "FAIL",
+      "details": {
+        "error": "Missing or invalid \"message\" field, Missing \"data\" field, Missing or invalid \"timestamp\" field",
+        "response": {
+          "success": false,
+          "error": {
+            "message": "Validation failed",
+            "code": "VALIDATION_ERROR",
+            "details": {
+              "validationErrors": [
+                {
+                  "field": "",
+                  "message": "\"value\" must have at least 1 key",
+                  "value": {}
+                }
+              ]
+            },
+            "timestamp": "2025-08-06T20:08:13.012Z"
+          }
+        }
+      },
+      "timestamp": "2025-08-06T20:08:13.013Z"
+    },
+    {
+      "category": "Settings",
+      "test": "Invalid Settings Handling",
+      "status": "FAIL",
+      "details": {},
+      "timestamp": "2025-08-06T20:08:13.013Z"
+    },
+    {
+      "category": "Structure",
+      "test": "Token Status Structure",
+      "status": "FAIL",
+      "details": {
+        "error": "Missing or invalid \"timestamp\" field",
+        "response": {
+          "success": true,
+          "message": "Success",
+          "data": {
+            "hasToken": true,
+            "isValid": false,
+            "expiresIn": 0,
+            "environmentId": "b9817c16-9910-4415-b67e-4ac687da74d9",
+            "region": "NA",
+            "lastUpdated": null
+          },
+          "meta": {
+            "timestamp": "2025-08-06T20:08:13.046Z",
+            "version": "1.0"
+          }
+        }
+      },
+      "timestamp": "2025-08-06T20:08:13.048Z"
+    },
+    {
+      "category": "Structure",
+      "test": "Token Refresh Structure",
+      "status": "FAIL",
+      "details": {
+        "error": "Missing or invalid \"message\" field, Missing \"data\" field, Missing or invalid \"timestamp\" field",
+        "response": {
+          "success": true,
+          "expiresIn": 3599,
+          "environmentId": "b9817c16-9910-4415-b67e-4ac687da74d9",
+          "region": "NA"
+        }
+      },
+      "timestamp": "2025-08-06T20:08:13.210Z"
+    },
+    {
+      "category": "Structure",
+      "test": "Credential Test Structure",
+      "status": "FAIL",
+      "details": {
+        "error": "Missing or invalid \"message\" field, Missing \"data\" field, Missing or invalid \"timestamp\" field",
+        "response": {
+          "success": false,
+          "error": {
+            "message": "Resource not found",
+            "code": "NOT_FOUND",
+            "details": {},
+            "timestamp": "2025-08-06T20:08:13.260Z"
+          }
+        }
+      },
+      "timestamp": "2025-08-06T20:08:13.261Z"
+    },
+    {
+      "category": "Token",
+      "test": "Credential Test Structure",
+      "status": "FAIL",
+      "details": {},
+      "timestamp": "2025-08-06T20:08:13.261Z"
+    },
+    {
+      "category": "Logs",
+      "test": "GET Logs",
+      "status": "FAIL",
+      "details": {
+        "error": "HTTP 404"
+      },
+      "timestamp": "2025-08-06T20:08:13.298Z"
+    },
+    {
+      "category": "Structure",
+      "test": "History Structure",
+      "status": "FAIL",
+      "details": {
+        "error": "Missing or invalid \"message\" field, Missing \"data\" field, Missing or invalid \"timestamp\" field",
+        "response": {
+          "success": true,
+          "history": [
+            {
+              "id": 3,
+              "type": "modify",
+              "status": "failed",
+              "timestamp": "2025-08-06T16:51:48.529Z",
+              "populationId": "test-pop-1",
+              "populationName": "Test Population 1",
+              "recordsProcessed": 25,
+              "recordsSuccessful": 0,
+              "recordsErrors": 25,
+              "duration": 5000,
+              "error": "Authentication token expired"
+            },
+            {
+              "id": 2,
+              "type": "export",
+              "status": "completed",
+              "timestamp": "2025-08-06T16:36:48.529Z",
+              "populationId": "test-pop-2",
+              "populationName": "Test Population 2",
+              "recordsProcessed": 75,
+              "recordsSuccessful": 75,
+              "recordsErrors": 0,
+              "duration": 12000,
+              "filename": "users-export-2025-07-23.csv"
+            },
+            {
+              "id": 1,
+              "type": "import",
+              "status": "completed",
+              "timestamp": "2025-08-06T16:06:48.529Z",
+              "populationId": "test-pop-1",
+              "populationName": "Test Population 1",
+              "recordsProcessed": 150,
+              "recordsSuccessful": 148,
+              "recordsErrors": 2,
+              "duration": 45000,
+              "filename": "users-import-2025-07-23.csv"
+            }
+          ],
+          "pagination": {
+            "total": 3,
+            "limit": 50,
+            "offset": 0,
+            "hasMore": false
+          },
+          "filters": {}
+        }
+      },
+      "timestamp": "2025-08-06T20:08:13.361Z"
+    },
+    {
+      "category": "History",
+      "test": "GET History",
+      "status": "FAIL",
+      "details": {
+        "error": "History data should be an array"
+      },
+      "timestamp": "2025-08-06T20:08:13.362Z"
+    },
+    {
+      "category": "Structure",
+      "test": "Date Filtered History Structure",
+      "status": "FAIL",
+      "details": {
+        "error": "Missing or invalid \"message\" field, Missing \"data\" field, Missing or invalid \"timestamp\" field",
+        "response": {
+          "success": true,
+          "history": [
+            {
+              "id": 3,
+              "type": "modify",
+              "status": "failed",
+              "timestamp": "2025-08-06T16:51:48.529Z",
+              "populationId": "test-pop-1",
+              "populationName": "Test Population 1",
+              "recordsProcessed": 25,
+              "recordsSuccessful": 0,
+              "recordsErrors": 25,
+              "duration": 5000,
+              "error": "Authentication token expired"
+            },
+            {
+              "id": 2,
+              "type": "export",
+              "status": "completed",
+              "timestamp": "2025-08-06T16:36:48.529Z",
+              "populationId": "test-pop-2",
+              "populationName": "Test Population 2",
+              "recordsProcessed": 75,
+              "recordsSuccessful": 75,
+              "recordsErrors": 0,
+              "duration": 12000,
+              "filename": "users-export-2025-07-23.csv"
+            },
+            {
+              "id": 1,
+              "type": "import",
+              "status": "completed",
+              "timestamp": "2025-08-06T16:06:48.529Z",
+              "populationId": "test-pop-1",
+              "populationName": "Test Population 1",
+              "recordsProcessed": 150,
+              "recordsSuccessful": 148,
+              "recordsErrors": 2,
+              "duration": 45000,
+              "filename": "users-import-2025-07-23.csv"
+            }
+          ],
+          "pagination": {
+            "total": 3,
+            "limit": 50,
+            "offset": 0,
+            "hasMore": false
+          },
+          "filters": {}
+        }
+      },
+      "timestamp": "2025-08-06T20:08:13.389Z"
+    },
+    {
+      "category": "History",
+      "test": "GET Date Filtered History",
+      "status": "FAIL",
+      "details": {},
+      "timestamp": "2025-08-06T20:08:13.390Z"
+    },
+    {
+      "category": "Structure",
+      "test": "Populations Structure",
+      "status": "FAIL",
+      "details": {
+        "error": "Missing or invalid \"message\" field, Missing \"data\" field, Missing or invalid \"timestamp\" field",
+        "response": {
+          "success": true,
+          "populations": [
+            {
+              "id": "3840c98d-202d-4f6a-8871-f3bc66cb3fa8",
+              "name": "Sample Users",
+              "description": "This is a sample user population created when the organization was provisioned.",
+              "userCount": 360
+            },
+            {
+              "id": "6fe3f6ea-39c5-4ad7-990b-53802bbcda49",
+              "name": "More Sample Users",
+              "description": "This is a sample user population created when the organization was provisioned.",
+              "userCount": 2
+            },
+            {
+              "id": "48af9c64-24fd-4eea-a8eb-16b7e4744fc8",
+              "name": "TEST",
+              "description": "",
+              "userCount": 303
+            },
+            {
+              "id": "a83ccc54-6a98-4754-a15e-dcb5b8b027ed",
+              "name": "NewPopulation",
+              "description": "",
+              "userCount": 452
+            },
+            {
+              "id": "af772f0d-9b92-4fda-a8c4-b18199ac5f07",
+              "name": "NewUsers",
+              "description": "",
+              "userCount": 20
+            },
+            {
+              "id": "4b2f1908-0755-4e31-9e42-f39d9cfc992b",
+              "name": "emptyPop",
+              "description": "",
+              "userCount": 11
+            },
+            {
+              "id": "28059928-b602-4c7c-8014-20fd00a0e950",
+              "name": "first",
+              "description": "",
+              "userCount": 20
+            }
+          ],
+          "total": 7
+        }
+      },
+      "timestamp": "2025-08-06T20:08:13.638Z"
+    },
+    {
+      "category": "UI Status",
+      "test": "GET Populations",
+      "status": "FAIL",
+      "details": {
+        "error": "Populations data should be an array"
+      },
+      "timestamp": "2025-08-06T20:08:13.638Z"
+    },
+    {
+      "category": "Structure",
+      "test": "Import Error Structure",
+      "status": "FAIL",
+      "details": {
+        "error": "Missing or invalid \"message\" field, Missing \"data\" field, Missing or invalid \"timestamp\" field",
+        "response": {
+          "success": false,
+          "error": "No file uploaded"
+        }
+      },
+      "timestamp": "2025-08-06T20:08:13.742Z"
+    },
+    {
+      "category": "File",
+      "test": "Import Without File",
+      "status": "FAIL",
+      "details": {
+        "error": "Should return structured error for missing file"
+      },
+      "timestamp": "2025-08-06T20:08:13.742Z"
+    },
+    {
+      "category": "Structure",
+      "test": "Export Structure",
+      "status": "FAIL",
+      "details": {
+        "error": "Missing or invalid \"timestamp\" field",
+        "response": {
+          "success": true,
+          "message": "Export completed successfully",
+          "data": "id,username,email,givenName,familyName,enabled\n1,user1@example.com,user1@example.com,John,Doe,true\n2,user2@example.com,user2@example.com,Jane,Smith,true",
+          "filename": "pingone-users-export-2025-08-06.csv",
+          "format": "csv",
+          "recordCount": 2,
+          "sessionId": "export_1754510893766"
+        }
+      },
+      "timestamp": "2025-08-06T20:08:13.767Z"
+    },
+    {
+      "category": "File",
+      "test": "Export Request Structure",
+      "status": "FAIL",
+      "details": {},
+      "timestamp": "2025-08-06T20:08:13.768Z"
+    },
+    {
+      "category": "Structure",
+      "test": "404 Error Structure",
+      "status": "FAIL",
+      "details": {
+        "error": "Missing or invalid \"message\" field, Missing \"data\" field, Missing or invalid \"timestamp\" field",
+        "response": {
+          "success": false,
+          "error": {
+            "message": "Resource not found",
+            "code": "NOT_FOUND",
+            "details": {},
+            "timestamp": "2025-08-06T20:08:13.792Z"
+          }
+        }
+      },
+      "timestamp": "2025-08-06T20:08:13.793Z"
+    },
+    {
+      "category": "Error",
+      "test": "404 Handling",
+      "status": "FAIL",
+      "details": {},
+      "timestamp": "2025-08-06T20:08:13.793Z"
+    },
+    {
+      "category": "Structure",
+      "test": "Malformed JSON Error Structure",
+      "status": "FAIL",
+      "details": {
+        "error": "Missing or invalid \"message\" field, Missing \"data\" field, Missing or invalid \"timestamp\" field",
+        "response": {
+          "success": false,
+          "error": {
+            "message": "Validation failed",
+            "code": "VALIDATION_ERROR",
+            "details": {
+              "validationErrors": [
+                {
+                  "field": "",
+                  "message": "\"value\" must have at least 1 key",
+                  "value": {}
+                }
+              ]
+            },
+            "timestamp": "2025-08-06T20:08:13.821Z"
+          }
+        }
+      },
+      "timestamp": "2025-08-06T20:08:13.822Z"
+    },
+    {
+      "category": "Error",
+      "test": "Malformed JSON Handling",
+      "status": "FAIL",
+      "details": {},
+      "timestamp": "2025-08-06T20:08:13.822Z"
+    },
+    {
+      "category": "Error",
+      "test": "Method Not Allowed",
+      "status": "WARN",
+      "details": {
+        "error": "Expected 405, got 404"
+      },
+      "timestamp": "2025-08-06T20:08:13.851Z"
+    }
+  ],
+  "recommendations": [
+    "Review failed tests and fix API response structures",
+    "Address warning conditions for better API reliability",
+    "Critical: Fix response structure validation failures"
+  ]
+}

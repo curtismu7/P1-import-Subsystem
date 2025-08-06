@@ -1,7 +1,6 @@
 // Mock node-fetch
+import fetch, { Response } from 'node-fetch';
 jest.mock('node-fetch');
-const fetch = require('node-fetch');
-const { Response } = jest.requireActual('node-fetch');
 
 const TEST_USER = {
   email: `testuser_${Date.now()}@example.com`,

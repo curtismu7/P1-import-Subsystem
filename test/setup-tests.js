@@ -212,11 +212,16 @@ jest.setTimeout(30000);
 // TextEncoder/TextDecoder Polyfills
 // =============================
 
+import { TextEncoder, TextDecoder } from 'util';
+
 // Polyfill TextEncoder and TextDecoder for Node.js
-if (typeof TextEncoder === 'undefined') {
-  const { TextEncoder, TextDecoder } = require('util');
-  global.TextEncoder = TextEncoder;
-  global.TextDecoder = TextDecoder;
+defineTextEncoderPolyfill();
+
+function defineTextEncoderPolyfill() {
+  if (typeof global.TextEncoder === 'undefined') {
+    global.TextEncoder = TextEncoder;
+    global.TextDecoder = TextDecoder;
+  }
 }
 
 // Polyfill setImmediate for Node.js

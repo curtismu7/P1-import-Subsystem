@@ -8,7 +8,7 @@ process.env.JWT_SECRET = 'test-secret-key-123';
 process.env.PORT = '4000';
 
 // Add TextEncoder and TextDecoder polyfills
-const { TextEncoder, TextDecoder } = require('util');
+import { TextEncoder, TextDecoder } from 'util';
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder;
 

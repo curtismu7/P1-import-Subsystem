@@ -5,9 +5,9 @@
  * to prevent "Navigation Error: Invalid view: home" issues.
  */
 
-const assert = require('assert');
-const path = require('path');
-const fs = require('fs');
+import assert from 'assert';
+import path from 'path';
+import fs from 'fs';
 
 describe('Navigation System Tests', () => {
     let ViewManagementSubsystem, NavigationSubsystem;

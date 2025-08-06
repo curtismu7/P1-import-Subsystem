@@ -35,14 +35,11 @@ export default {
       presets: [
         ['@babel/preset-env', {
           targets: { node: 'current' },
-          // Auto-detect module type based on file extension
-          // This allows .mjs files to remain as ESM while .js files can be transformed
-          modules: 'auto'
+          modules: false // Always preserve ESM for tests
         }]
       ],
       plugins: [
-        // Add any test-specific plugins here
-        '@babel/plugin-transform-modules-commonjs'
+        // Add any test-specific plugins here (none needed for ESM)
       ]
     },
     production: {

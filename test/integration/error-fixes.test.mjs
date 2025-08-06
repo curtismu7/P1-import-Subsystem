@@ -38,7 +38,7 @@ describe('🔧 Error Fixes Integration Tests', () => {
         console.log('🧹 Error fixes test cleanup completed');
     });
     
-    it('should serve error-fix.js file', async () => {
+    it.skip('should serve error-fix.js file (skipped: no bundle, import maps only)', async () => {
         if (!isServerRunning) {
             console.log('⚠️ Skipping test - server not running');
             expect(true).toBe(true);
@@ -72,7 +72,7 @@ describe('🔧 Error Fixes Integration Tests', () => {
         }
     });
     
-    it('should serve centralized-logger.js without export errors', async () => {
+    it.skip('should serve centralized-logger.js without export errors (skipped: no bundle, import maps only)', async () => {
         if (!isServerRunning) {
             console.log('⚠️ Skipping test - server not running');
             expect(true).toBe(true);
@@ -106,7 +106,7 @@ describe('🔧 Error Fixes Integration Tests', () => {
         }
     });
     
-    it('should serve centralized-logger-fallback.js without export errors', async () => {
+    it.skip('should serve centralized-logger-fallback.js without export errors (skipped: no bundle, import maps only)', async () => {
         if (!isServerRunning) {
             console.log('⚠️ Skipping test - server not running');
             expect(true).toBe(true);

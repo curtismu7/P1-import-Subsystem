@@ -3,9 +3,9 @@
  * Test suite for the enhanced Swagger interface structure and functionality
  */
 
-const fs = require('fs');
-const path = require('path');
-const assert = require('assert');
+import fs from 'fs';
+import path from 'path';
+import assert from 'assert';
 
 describe('Swagger API Tool - Enhanced Interface', () => {
     let swaggerHtml;

@@ -12,7 +12,7 @@
  * @date 2025-07-30
  */
 
-import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, jest } from '@jest/globals';
 import { JSDOM } from 'jsdom';
 
 // Setup DOM environment for testing

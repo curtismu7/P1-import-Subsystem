@@ -83,8 +83,7 @@ router.get('/', (req, res) => {
         const total = filteredHistory.length;
         const paginatedHistory = filteredHistory.slice(offset, offset + limit);
         
-        res.json({
-            success: true,
+        res.success('History retrieved successfully', {
             history: paginatedHistory,
             pagination: {
                 total,
@@ -99,11 +98,10 @@ router.get('/', (req, res) => {
         });
         
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to retrieve operation history',
+        res.error('Failed to retrieve operation history', {
+            code: 'HISTORY_RETRIEVAL_ERROR',
             details: error.message
-        });
+        }, 500);
     }
 });
 
@@ -123,17 +121,13 @@ router.get('/:id', (req, res) => {
             });
         }
         
-        res.json({
-            success: true,
-            operation
-        });
+        res.success('Operation details retrieved successfully', { operation });
         
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to retrieve operation details',
+        res.error('Failed to retrieve operation details', {
+            code: 'HISTORY_DETAIL_ERROR',
             details: error.message
-        });
+        }, 500);
     }
 });
 
@@ -158,10 +152,7 @@ router.post('/', express.json(), (req, res) => {
         
         // Validate required fields
         if (!type || !status) {
-            return res.status(400).json({
-                success: false,
-                error: 'Operation type and status are required'
-            });
+            return res.error('Missing required fields', { code: 'VALIDATION_ERROR' }, 400);
         }
         
         const newOperation = {
@@ -181,18 +172,13 @@ router.post('/', express.json(), (req, res) => {
         
         operationHistory.push(newOperation);
         
-        res.status(201).json({
-            success: true,
-            message: 'Operation added to history',
-            operation: newOperation
-        });
+        res.success('Operation added to history', { operation: newOperation }, 201);
         
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to add operation to history',
+        res.error('Failed to add operation to history', {
+            code: 'HISTORY_ADD_ERROR',
             details: error.message
-        });
+        }, 500);
     }
 });
 
@@ -206,26 +192,18 @@ router.delete('/:id', (req, res) => {
         const index = operationHistory.findIndex(op => op.id === operationId);
         
         if (index === -1) {
-            return res.status(404).json({
-                success: false,
-                error: 'Operation not found'
-            });
+            return res.error('Operation not found', { code: 'NOT_FOUND' }, 404);
         }
         
         const removedOperation = operationHistory.splice(index, 1)[0];
         
-        res.json({
-            success: true,
-            message: 'Operation removed from history',
-            operation: removedOperation
-        });
+        res.success('Operation removed from history', { id: operationId, operation: removedOperation });
         
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Failed to remove operation from history',
+        res.error('Failed to remove operation from history', {
+            code: 'HISTORY_DELETE_ERROR',
             details: error.message
-        });
+        }, 500);
     }
 });
 

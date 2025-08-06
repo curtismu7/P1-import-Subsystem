@@ -1,0 +1,971 @@
+{
+  "timestamp": "2025-08-06T18:12:37.155Z",
+  "summary": {
+    "totalActions": 160,
+    "filesRemoved": 139,
+    "filesKept": 21,
+    "errors": 0
+  },
+  "actions": [
+    {
+      "action": "KEEP",
+      "file": ".DS_Store",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:36.993Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "api-docs.html",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:36.995Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "api-tester.html",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:36.996Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "api-testing-ui.html",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:36.996Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "bundle-test.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:36.997Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "comprehensive-integration-test.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:36.997Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "css",
+      "reason": "Directory - will process separately",
+      "timestamp": "2025-08-06T18:12:36.997Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "debug-log-viewer.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:36.998Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "debug-subsystems.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:36.999Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "delete-page-test.js",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:36.999Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "dismiss-modal.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:36.999Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "entry.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.000Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "favicon.ico",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:37.000Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "history.html",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:37.000Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "import-maps.json",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:37.000Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "index-import-maps.html",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:37.000Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "index.html",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:37.000Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "index.html.bak",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:37.001Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "inject-import-test.js",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:37.001Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "js",
+      "reason": "Directory - will process separately",
+      "timestamp": "2025-08-06T18:12:37.001Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "logs",
+      "reason": "Directory - will process separately",
+      "timestamp": "2025-08-06T18:12:37.001Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "ping-identity-logo.png",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:37.001Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "ping-identity-logo.svg",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:37.001Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "setup-settings.js",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:37.001Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "simple-export-test.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.002Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "simple-import-test.js",
+      "reason": "Essential file",
+      "timestamp": "2025-08-06T18:12:37.002Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "swagger",
+      "reason": "Directory - will process separately",
+      "timestamp": "2025-08-06T18:12:37.002Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-all-fixes-verification.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.002Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-all-url-fixes-verification.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.002Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-api-tester-fixes.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.003Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-api-tester-token-refresh.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.003Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-api-tester-token-status-startup.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.003Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-api-url-feature.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.004Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-app-init.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.004Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-app-initialization.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.004Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-app-stability.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.005Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-auth-subsystem.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.005Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-comprehensive-audit.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.005Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-comprehensive-features.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.006Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-connection-fixes-verification.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.006Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-connection-issues.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.006Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-connection-status-fix.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.007Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-connection.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.007Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-credentials-live.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.007Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-credentials-modal.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.007Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-credentials-save.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.007Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-debug.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.008Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-delete-comprehensive.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.008Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-delete-page-embedded.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.008Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-disclaimer-banner.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.008Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-disclaimer-fix.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.009Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-disclaimer-modal.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.061Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-disclaimer-quick.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.093Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-drag-drop-fix.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.094Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-enhanced-progress-ui.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.095Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-export.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.095Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-feature-flag-removal.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.096Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-final-verification.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.096Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-global-token-status.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.096Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-header-overlap-fix.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.100Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-history-filter-fix.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.101Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-import-button.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.102Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-import-comprehensive.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.102Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-import-debug.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.102Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-import-endpoint.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.103Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-import-progress-comprehensive.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.104Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-import-progress-debug.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.105Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-import-progress-final.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.105Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-import-progress-fix.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.105Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-import-progress-window.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.105Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-import-validation.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.106Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-import.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.106Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-js-load.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.107Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-main-app-connection.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.107Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-message-formatting.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.107Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-minimal.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.107Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-operations.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.108Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-ping-styling.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.108Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-population-dropdown.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.108Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-population-error-logging.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.108Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-population-fix-verification.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.109Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-population-regression.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.109Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-population-selection-debug.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.110Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-population-selection-extensive.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.111Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-population-selection-issue.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.117Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-population-simple.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.118Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-population-verification-simple.js",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.119Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-population-verification.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.119Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-populations-dropdown-fix.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.120Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-progress-container-fixes.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.120Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-progress-improvements.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.120Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-progress-timeout.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.121Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-progress-ui.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.121Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-retry-logic.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.121Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-runner.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.122Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-session-id-fixes.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.122Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-sessionid-validation.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.123Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-settings-debug.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.123Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-settings-localstorage.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.123Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-settings-region-dropdown.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.124Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-settings-status-field.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.124Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-settings.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.124Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-simple.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.124Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-socket-fallback.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.125Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-socket-io.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.125Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-sse-session-id-fix.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.125Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-status-bar-styling-fix.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.126Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-status-bar.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.126Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-swagger-fix.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.126Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-swagger-modify-debug.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.127Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-swagger-modify-fix-verification.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.127Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-swagger-modify-fix.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.128Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-swagger-server-status-check.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.128Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-swagger-ui.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.128Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-timing-fix-verification.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.128Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-timing-fix.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.128Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-token-alert-enhancement.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.129Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-token-manager.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.129Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-token-refresh-enhancement.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.129Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-token-status-bar-fix.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.129Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-token-status-removal-verification.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.130Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-token-status.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.130Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-token-validation-all-operations.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.131Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-ui-debug.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.132Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-url-issue.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.132Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-version-indicator.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.133Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-version-position.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.134Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-websocket-connection.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.139Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-websocket-fallback-simulation.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.140Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "test-websocket-fallback-verification.html",
+      "reason": "Test/debug file - not needed",
+      "timestamp": "2025-08-06T18:12:37.140Z"
+    },
+    {
+      "action": "KEEP",
+      "file": "vendor",
+      "reason": "Directory - will process separately",
+      "timestamp": "2025-08-06T18:12:37.140Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/test-progress-improvements.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.141Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/test-region-code-fix.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.142Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/test-runner.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.142Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/test-unified-token-manager.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.142Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/junk.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.142Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/error-fix.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.143Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/bug-fix-loader.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.143Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/console-cleaner.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.144Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/startup-screen-fix.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.145Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/population-dropdown-fix.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.145Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/progress-window-fix.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.145Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/region-code-fix.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.146Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/settings-token-fix.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.147Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/token-status-fix.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.148Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/token-logging-enhancement.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.149Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/import-api-fix.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.149Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/api-url-updater.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.150Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "js/browser-compatibility.js",
+      "reason": "Legacy/test JavaScript file",
+      "timestamp": "2025-08-06T18:12:37.150Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "css/styles.css.backup",
+      "reason": "Legacy/duplicate CSS file",
+      "timestamp": "2025-08-06T18:12:37.151Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "css/bug-fix-notifications.css",
+      "reason": "Legacy/duplicate CSS file",
+      "timestamp": "2025-08-06T18:12:37.151Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "css/testing-ui.css",
+      "reason": "Legacy/duplicate CSS file",
+      "timestamp": "2025-08-06T18:12:37.152Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "css/status-bar-fix.css",
+      "reason": "Legacy/duplicate CSS file",
+      "timestamp": "2025-08-06T18:12:37.152Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "css/api-url-display.css",
+      "reason": "Legacy/duplicate CSS file",
+      "timestamp": "2025-08-06T18:12:37.152Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "css/api-url-subsystem.css",
+      "reason": "Legacy/duplicate CSS file",
+      "timestamp": "2025-08-06T18:12:37.152Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "css/compact-token-info.css",
+      "reason": "Legacy/duplicate CSS file",
+      "timestamp": "2025-08-06T18:12:37.153Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "css/global-spinner.css",
+      "reason": "Legacy/duplicate CSS file",
+      "timestamp": "2025-08-06T18:12:37.153Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "css/token-notification.css",
+      "reason": "Legacy/duplicate CSS file",
+      "timestamp": "2025-08-06T18:12:37.154Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "css/token-status-indicator.css",
+      "reason": "Legacy/duplicate CSS file",
+      "timestamp": "2025-08-06T18:12:37.154Z"
+    },
+    {
+      "action": "REMOVE",
+      "file": "css/version-widget.css",
+      "reason": "Legacy/duplicate CSS file",
+      "timestamp": "2025-08-06T18:12:37.155Z"
+    }
+  ]
+}

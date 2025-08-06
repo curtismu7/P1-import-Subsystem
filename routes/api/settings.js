@@ -4,6 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { getRegionConfig, normalizeRegion, validateRegion, DEFAULT_REGION } from '../../src/utils/region-config.js';
 import { STANDARD_KEYS, standardizeConfigKeys, createBackwardCompatibleConfig } from '../../src/utils/config-standardization.js';
+import { asyncHandler } from '../../server/middleware/error-handler.js';
+import { validateBody, schemas } from '../../server/middleware/validation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,57 +18,42 @@ const SETTINGS_FILE = path.join(__dirname, '../../data/settings.json');
  * Get current settings
  * GET /api/settings
  */
-router.get('/', async (req, res) => {
-    try {
-        const settingsContent = await fs.readFile(SETTINGS_FILE, 'utf8');
-        const rawSettings = JSON.parse(settingsContent);
+router.get('/', asyncHandler(async (req, res) => {
+    const settingsContent = await fs.readFile(SETTINGS_FILE, 'utf8');
+    const rawSettings = JSON.parse(settingsContent);
+    
+    // Standardize configuration keys
+    const standardizedSettings = standardizeConfigKeys(rawSettings);
+    
+    // Don't send sensitive data like secrets
+    const publicSettings = {
+        // Standardized keys (primary)
+        [STANDARD_KEYS.ENVIRONMENT_ID]: standardizedSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
+        [STANDARD_KEYS.REGION]: standardizedSettings[STANDARD_KEYS.REGION] || '',
+        [STANDARD_KEYS.CLIENT_ID]: standardizedSettings[STANDARD_KEYS.CLIENT_ID] || '',
+        [STANDARD_KEYS.POPULATION_ID]: standardizedSettings[STANDARD_KEYS.POPULATION_ID] || '',
         
-        // Standardize configuration keys
-        const standardizedSettings = standardizeConfigKeys(rawSettings);
+        // Legacy keys for backward compatibility
+        environmentId: standardizedSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
+        region: standardizedSettings[STANDARD_KEYS.REGION] || '',
+        apiClientId: standardizedSettings[STANDARD_KEYS.CLIENT_ID] || '',
+        populationId: standardizedSettings[STANDARD_KEYS.POPULATION_ID] || '',
         
-        // Don't send sensitive data like secrets
-        const publicSettings = {
-            // Standardized keys (primary)
-            [STANDARD_KEYS.ENVIRONMENT_ID]: standardizedSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
-            [STANDARD_KEYS.REGION]: standardizedSettings[STANDARD_KEYS.REGION] || '',
-            [STANDARD_KEYS.CLIENT_ID]: standardizedSettings[STANDARD_KEYS.CLIENT_ID] || '',
-            [STANDARD_KEYS.POPULATION_ID]: standardizedSettings[STANDARD_KEYS.POPULATION_ID] || '',
-            
-            // Legacy keys for backward compatibility
-            environmentId: standardizedSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
-            region: standardizedSettings[STANDARD_KEYS.REGION] || '',
-            apiClientId: standardizedSettings[STANDARD_KEYS.CLIENT_ID] || '',
-            populationId: standardizedSettings[STANDARD_KEYS.POPULATION_ID] || '',
-            
-            // Don't send apiSecret for security
-            lastUpdated: rawSettings.lastUpdated || null
-        };
-        
-        res.json(publicSettings);
-    } catch (error) {
-        console.error('Error reading settings:', error);
-        res.status(500).json({
-            error: 'Failed to read settings',
-            message: error.message
-        });
-    }
-});
+        // Don't send apiSecret for security
+        lastUpdated: rawSettings.lastUpdated || null
+    };
+    
+    res.success('Settings retrieved successfully', publicSettings);
+}));
 
 /**
  * Save settings
  * POST /api/settings
  */
-router.post('/', async (req, res) => {
-    try {
-        const newSettings = req.body;
-        
-        // Validate required fields
-        if (!newSettings.environmentId || !newSettings.apiClientId || !newSettings.apiSecret || !newSettings.region) {
-            return res.status(400).json({
-                error: 'Missing required fields',
-                required: ['environmentId', 'apiClientId', 'apiSecret', 'region']
-            });
-        }
+router.post('/', 
+    validateBody(schemas.settingsUpdate),
+    asyncHandler(async (req, res) => {
+        const newSettings = req.validatedBody;
         
         // Read existing settings
         let existingSettings = {};
@@ -102,10 +89,7 @@ router.post('/', async (req, res) => {
         console.log('Settings saved successfully');
         
         // Return success without sensitive data
-        res.json({
-            success: true,
-            message: 'Settings saved successfully',
-            
+        const responseData = {
             // Standardized keys (primary)
             [STANDARD_KEYS.ENVIRONMENT_ID]: updatedSettings[STANDARD_KEYS.ENVIRONMENT_ID],
             [STANDARD_KEYS.REGION]: updatedSettings[STANDARD_KEYS.REGION],
@@ -119,23 +103,17 @@ router.post('/', async (req, res) => {
             populationId: updatedSettings[STANDARD_KEYS.POPULATION_ID],
             
             lastUpdated: updatedSettings.lastUpdated
-        });
+        };
         
-    } catch (error) {
-        console.error('Error saving settings:', error);
-        res.status(500).json({
-            error: 'Failed to save settings',
-            message: error.message
-        });
-    }
-});
+        res.success('Settings saved successfully', responseData);
+    }));
 
 /**
  * Get complete credentials for internal token acquisition
  * GET /api/settings/credentials
  * This endpoint includes the API secret and should only be used internally
  */
-router.get('/credentials', async (req, res) => {
+router.get('/credentials', asyncHandler(async (req, res) => {
     try {
         const settingsContent = await fs.readFile(SETTINGS_FILE, 'utf8');
         const rawSettings = JSON.parse(settingsContent);
@@ -184,19 +162,12 @@ router.get('/credentials', async (req, res) => {
             });
         }
         
-        res.json({
-            success: true,
-            credentials: credentials
-        });
+        res.success('Credentials retrieved successfully', credentials);
         
     } catch (error) {
         console.error('Error reading credentials:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to read credentials',
-            message: error.message
-        });
+        res.error('Failed to read credentials', { code: 'SETTINGS_READ_ERROR', message: error.message }, 500);
     }
-});
+}));
 
 export default router;

@@ -240,7 +240,7 @@ describe('🐛 Swagger UI Debug Tests', () => {
             
             // Check for common error-causing patterns
             const problemPatterns = [
-                { pattern: /fetch\\(['\"]\/api\/token['\"]/g, issue: 'Missing /api/token endpoint' },
+                { pattern: /fetch\(['"]\/api\/token['"]\)/g, issue: 'Missing /api/token endpoint' },
                 { pattern: /SwaggerUIBundle is not defined/g, issue: 'SwaggerUIBundle not loaded' },
                 { pattern: /SwaggerUIStandalonePreset is not defined/g, issue: 'SwaggerUIStandalonePreset not loaded' },
                 { pattern: /Cannot read property.*of undefined/g, issue: 'Undefined property access' },

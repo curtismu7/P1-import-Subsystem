@@ -417,14 +417,14 @@ describe('Subsystem Architecture Integration Tests', () => {
       expect(success).toBe(false);
     });
 
-    test('should handle localStorage errors gracefully', () => {
+    test('should handle localStorage errors gracefully', async () => {
       // Mock localStorage to throw errors
       const originalSetItem = localStorage.setItem;
       localStorage.setItem = jest.fn(() => {
         throw new Error('Storage quota exceeded');
       });
 
-      const LoggingModule = require('../public/js/modules/logging-subsystem.js');
+      const LoggingModule = (await import('../public/js/modules/logging-subsystem.js')).default;
       const loggingSubsystem = new LoggingModule.LoggingSubsystem(mockEventBus, mockSettingsSubsystem);
       
       // Should not throw error

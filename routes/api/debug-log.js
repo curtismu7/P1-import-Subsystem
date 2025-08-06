@@ -36,11 +36,11 @@ router.post('/', express.json(), (req, res) => {
         // Write to debug log file
         fs.appendFileSync(DEBUG_LOG_FILE, entry);
         
-        res.json({ success: true, message: 'Debug log entry written' });
+        res.success('Debug log entry written', { message: 'Debug log entry written' });
         
     } catch (error) {
         console.error('Failed to write debug log entry:', error);
-        res.status(500).json({ error: 'Failed to write debug log entry' });
+        res.error('Failed to write debug log entry', { code: 'DEBUG_LOG_ERROR', details: error.message }, 500);
     }
 });
 
@@ -50,7 +50,7 @@ router.get('/', (req, res) => {
         const { lines = 100, filter } = req.query;
         
         if (!fs.existsSync(DEBUG_LOG_FILE)) {
-            return res.json({ entries: [], message: 'Debug log file not found' });
+            return res.success('Debug log file not found', { entries: [], message: 'Debug log file not found' });
         }
         
         // Read the log file
@@ -68,7 +68,7 @@ router.get('/', (req, res) => {
         // Get the last N lines
         const recentLines = filteredLines.slice(-parseInt(lines));
         
-        res.json({ 
+        res.success('Debug logs retrieved successfully', { 
             entries: recentLines,
             total: filteredLines.length,
             showing: recentLines.length
@@ -76,7 +76,7 @@ router.get('/', (req, res) => {
         
     } catch (error) {
         console.error('Failed to read debug log:', error);
-        res.status(500).json({ error: 'Failed to read debug log' });
+        res.error('Failed to read debug log', { code: 'DEBUG_LOG_ERROR', details: error.message }, 500);
     }
 });
 
@@ -86,7 +86,7 @@ router.get('/file', (req, res) => {
         const { lines = 100, filter } = req.query;
         
         if (!fs.existsSync(DEBUG_LOG_FILE)) {
-            return res.json({ entries: [], message: 'Debug log file not found' });
+            return res.success('Debug log file not found', { entries: [], message: 'Debug log file not found' });
         }
         
         // Read the log file
@@ -104,7 +104,7 @@ router.get('/file', (req, res) => {
         // Get the last N lines
         const recentLines = filteredLines.slice(-parseInt(lines));
         
-        res.json({ 
+        res.success('Debug logs retrieved successfully', { 
             entries: recentLines,
             total: filteredLines.length,
             showing: recentLines.length,
@@ -113,7 +113,7 @@ router.get('/file', (req, res) => {
         
     } catch (error) {
         console.error('Failed to read debug log file:', error);
-        res.status(500).json({ error: 'Failed to read debug log file' });
+        res.error('Failed to read debug log file', { code: 'DEBUG_LOG_ERROR', details: error.message }, 500);
     }
 });
 
@@ -126,7 +126,7 @@ router.post('/file', express.json(), (req, res) => {
         const logContent = content || entry;
         
         if (!logContent) {
-            return res.status(400).json({ error: 'Log content is required (entry or content field)' });
+            return res.error('Log content is required (entry or content field)', { code: 'INVALID_REQUEST' }, 400);
         }
         
         // Ensure log directory exists
@@ -153,8 +153,7 @@ router.post('/file', express.json(), (req, res) => {
         // Write to debug log file
         fs.appendFileSync(targetFile, formattedEntry);
         
-        res.json({ 
-            success: true, 
+        res.success('Debug log entry written to file', { 
             message: 'Debug log entry written to file',
             file: targetFile,
             sessionId: sessionId
@@ -162,7 +161,7 @@ router.post('/file', express.json(), (req, res) => {
         
     } catch (error) {
         console.error('Failed to write debug log entry to file:', error);
-        res.status(500).json({ error: 'Failed to write debug log entry to file' });
+        res.error('Failed to write debug log entry to file', { code: 'DEBUG_LOG_ERROR', details: error.message }, 500);
     }
 });
 
@@ -173,11 +172,11 @@ router.delete('/', (req, res) => {
             fs.writeFileSync(DEBUG_LOG_FILE, '');
         }
         
-        res.json({ success: true, message: 'Debug log cleared' });
+        res.success('Debug log cleared', { message: 'Debug log cleared' });
         
     } catch (error) {
         console.error('Failed to clear debug log:', error);
-        res.status(500).json({ error: 'Failed to clear debug log' });
+        res.error('Failed to clear debug log', { code: 'DEBUG_LOG_ERROR', details: error.message }, 500);
     }
 });
 

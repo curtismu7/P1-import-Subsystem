@@ -9,7 +9,7 @@
  * - EventBus for real-time updates
  */
 
-const { JSDOM } = require('jsdom');
+import { JSDOM } from 'jsdom';
 
 describe('Swagger UI Integration with Subsystems', () => {
   let dom;

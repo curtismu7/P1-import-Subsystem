@@ -61,11 +61,7 @@ export function initializeCredentialRoutes(authInstance) {
  */
 function requireAuth(req, res, next) {
     if (!enhancedAuth) {
-        return res.status(503).json({
-            success: false,
-            error: 'Authentication system not initialized',
-            message: 'Server authentication system is not available'
-        });
+        return res.error('Authentication system not initialized', { code: 'AUTH_NOT_INITIALIZED', message: 'Server authentication system is not available' }, 503);
     }
     next();
 }
@@ -78,18 +74,10 @@ router.get('/status', requireAuth, async (req, res) => {
     try {
         const status = enhancedAuth.getAuthenticationStatus();
         
-        res.json({
-            success: true,
-            ...status,
-            serverTime: new Date().toISOString()
-        });
+        res.success('Authentication status retrieved successfully', { ...status, serverTime: new Date().toISOString() });
     } catch (error) {
         apiLogger.error('Error getting auth status:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to get authentication status',
-            message: error.message
-        });
+        res.error('Failed to get authentication status', { code: 'AUTH_STATUS_ERROR', message: error.message }, 500);
     }
 });
 
@@ -102,10 +90,7 @@ router.get('/current-credentials', requireAuth, async (req, res) => {
         const credentials = await enhancedAuth.getCredentials();
         if (!credentials) {
             apiLogger.error('[🗝️ CREDENTIAL-MANAGER] No credentials currently configured');
-            return res.json({
-                success: false,
-                message: 'No credentials currently configured'
-            });
+            return res.error('No credentials currently configured', { code: 'NO_CREDENTIALS' }, 404);
         }
 
         // Return sanitized credentials (no secrets)
@@ -120,10 +105,7 @@ router.get('/current-credentials', requireAuth, async (req, res) => {
 
         apiLogger.info(`[🗝️ CREDENTIAL-MANAGER] [${new Date().toISOString()}] Credential source: ${sanitizedCredentials.credentialSource}, ClientID: ${sanitizedCredentials.clientId ? '***' + sanitizedCredentials.clientId.slice(-4) : 'missing'}, EnvID: ${sanitizedCredentials.environmentId ? '***' + sanitizedCredentials.environmentId.slice(-4) : 'missing'}, Region: ${sanitizedCredentials.region}, TokenStatus: ${sanitizedCredentials.tokenStatus}`);
 
-        res.json({
-            success: true,
-            credentials: sanitizedCredentials
-        });
+        res.success('Credentials retrieved successfully', { credentials: sanitizedCredentials });
     } catch (error) {
         apiLogger.error('[🗝️ CREDENTIAL-MANAGER] Error getting current credentials:', error);
         res.status(500).json({
@@ -144,11 +126,7 @@ router.post('/validate-credentials', requireAuth, async (req, res) => {
 
         // Validate input
         if (!clientId || !clientSecret || !environmentId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required credentials',
-                message: 'Client ID, Client Secret, and Environment ID are required'
-            });
+            return res.error('Missing required credentials', { code: 'VALIDATION_ERROR', message: 'Client ID, Client Secret, and Environment ID are required' }, 400);
         }
 
         // Test credentials
@@ -159,9 +137,7 @@ router.post('/validate-credentials', requireAuth, async (req, res) => {
             region: region || 'NorthAmerica'
         });
 
-        res.json({
-            success: validation.success,
-            message: validation.message,
+        res.success(validation.message, {
             details: validation.success ? {
                 clientId: clientId,
                 environmentId: environmentId,
@@ -171,11 +147,7 @@ router.post('/validate-credentials', requireAuth, async (req, res) => {
         });
     } catch (error) {
         apiLogger.error('Error validating credentials:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Credential validation failed',
-            message: error.message
-        });
+        res.error('Credential validation failed', { code: 'CREDENTIAL_VALIDATION_ERROR', message: error.message }, 500);
     }
 });
 
@@ -189,19 +161,11 @@ router.post('/save-credentials', requireAuth, async (req, res) => {
 
         // Validate input
         if (!credentials || !credentials.clientId || !credentials.clientSecret || !credentials.environmentId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid credentials',
-                message: 'Client ID, Client Secret, and Environment ID are required'
-            });
+            return res.error('Invalid credentials', { code: 'INVALID_CREDENTIALS', message: 'Client ID, Client Secret, and Environment ID are required' }, 400);
         }
 
         if (!targets || !Array.isArray(targets) || targets.length === 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid targets',
-                message: 'At least one storage target must be specified'
-            });
+            return res.error('Invalid targets', { code: 'INVALID_TARGETS', message: 'At least one storage target must be specified' }, 400);
         }
 
         // Validate credentials before saving
@@ -213,11 +177,7 @@ router.post('/save-credentials', requireAuth, async (req, res) => {
         });
 
         if (!validation.success) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid credentials',
-                message: `Credentials failed validation: ${validation.message}`
-            });
+            return res.error('Invalid credentials', { code: 'INVALID_CREDENTIALS', message: `Credentials failed validation: ${validation.message}` }, 400);
         }
 
         // Save to specified locations
@@ -230,20 +190,10 @@ router.post('/save-credentials', requireAuth, async (req, res) => {
         const hasSuccess = Object.values(saveResults).some(result => result.success);
         const hasFailures = Object.values(saveResults).some(result => !result.success);
 
-        res.json({
-            success: hasSuccess,
-            message: hasSuccess ? 
-                (hasFailures ? 'Credentials saved with some failures' : 'Credentials saved successfully') :
-                'Failed to save credentials to any location',
-            results: saveResults
-        });
+        res.success(hasSuccess ? (hasFailures ? 'Credentials saved with some failures' : 'Credentials saved successfully') : 'Failed to save credentials to any location', { results: saveResults });
     } catch (error) {
         apiLogger.error('Error saving credentials:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to save credentials',
-            message: error.message
-        });
+        res.error('Failed to save credentials', { code: 'SAVE_CREDENTIALS_ERROR', message: error.message }, 500);
     }
 });
 
@@ -267,19 +217,10 @@ router.post('/clear-credentials', requireAuth, async (req, res) => {
             ['env', 'settings']
         );
 
-        res.json({
-            success: true,
-            message: 'Credentials cleared from server storage',
-            results: clearResults,
-            note: 'Client-side localStorage must be cleared separately'
-        });
+        res.success('Credentials cleared from server storage', { results: clearResults, note: 'Client-side localStorage must be cleared separately' });
     } catch (error) {
         apiLogger.error('Error clearing credentials:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to clear credentials',
-            message: error.message
-        });
+        res.error('Failed to clear credentials', { code: 'CLEAR_CREDENTIALS_ERROR', message: error.message }, 500);
     }
 });
 
@@ -290,19 +231,13 @@ router.post('/clear-credentials', requireAuth, async (req, res) => {
 router.post('/refresh-token', requireAuth, async (req, res) => {
     try {
         if (!enhancedAuth.isInitialized) {
-            return res.status(400).json({
-                success: false,
-                error: 'Authentication not initialized',
-                message: 'Server authentication must be initialized before refreshing tokens'
-            });
+            return res.error('Authentication not initialized', { code: 'AUTH_NOT_INITIALIZED', message: 'Server authentication must be initialized before refreshing tokens' }, 400);
         }
 
         const token = await enhancedAuth.refreshStartupToken();
         const tokenInfo = enhancedAuth.getTokenInfo();
 
-        res.json({
-            success: true,
-            message: 'Token refreshed successfully',
+        res.success('Token refreshed successfully', {
             tokenInfo: {
                 expiresAt: tokenInfo.expiresAt,
                 expiresIn: tokenInfo.expiresIn,
@@ -312,11 +247,7 @@ router.post('/refresh-token', requireAuth, async (req, res) => {
         });
     } catch (error) {
         apiLogger.error('Error refreshing token:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to refresh token',
-            message: error.message
-        });
+        res.error('Failed to refresh token', { code: 'TOKEN_REFRESH_ERROR', message: error.message }, 500);
     }
 });
 
@@ -329,14 +260,10 @@ router.get('/token-info', requireAuth, async (req, res) => {
         const tokenInfo = enhancedAuth.getTokenInfo();
         
         if (!tokenInfo) {
-            return res.json({
-                success: false,
-                message: 'No token available'
-            });
+            return res.error('No token available', { code: 'NO_TOKEN' }, 404);
         }
 
-        res.json({
-            success: true,
+        res.success('Token info retrieved successfully', {
             tokenInfo: {
                 expiresAt: tokenInfo.expiresAt,
                 expiresIn: tokenInfo.expiresIn,
@@ -347,11 +274,7 @@ router.get('/token-info', requireAuth, async (req, res) => {
         });
     } catch (error) {
         apiLogger.error('Error getting token info:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to get token information',
-            message: error.message
-        });
+        res.error('Failed to get token information', { code: 'TOKEN_INFO_ERROR', message: error.message }, 500);
     }
 });
 
@@ -370,17 +293,10 @@ router.get('/setup-recommendations', (req, res) => {
                 '4. Restart the server after configuration changes'
             ];
 
-        res.json({
-            success: true,
-            recommendations: recommendations
-        });
+        res.success('Setup recommendations retrieved successfully', { recommendations });
     } catch (error) {
         apiLogger.error('Error getting setup recommendations:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to get setup recommendations',
-            message: error.message
-        });
+        res.error('Failed to get setup recommendations', { code: 'SETUP_RECOMMENDATION_ERROR', message: error.message }, 500);
     }
 });
 
@@ -391,11 +307,7 @@ router.get('/setup-recommendations', (req, res) => {
 router.post('/test-connection', requireAuth, async (req, res) => {
     try {
         if (!enhancedAuth.isInitialized) {
-            return res.status(400).json({
-                success: false,
-                error: 'Authentication not initialized',
-                message: 'Server authentication must be initialized before testing connection'
-            });
+            return res.error('Authentication not initialized', { code: 'AUTH_NOT_INITIALIZED', message: 'Server authentication must be initialized before testing connection' }, 400);
         }
 
         // Get current token to test connection
@@ -403,11 +315,7 @@ router.post('/test-connection', requireAuth, async (req, res) => {
         const environmentId = await enhancedAuth.getEnvironmentId();
         
         if (!token || !environmentId) {
-            return res.status(400).json({
-                success: false,
-                error: 'No valid credentials',
-                message: 'Valid credentials are required to test connection'
-            });
+            return res.error('No valid credentials', { code: 'NO_VALID_CREDENTIALS', message: 'Valid credentials are required to test connection' }, 400);
         }
 
         // Test API connectivity by making a simple API call
@@ -424,9 +332,7 @@ router.post('/test-connection', requireAuth, async (req, res) => {
 
         if (response.ok) {
             const data = await response.json();
-            res.json({
-                success: true,
-                message: 'Connection test successful',
+            res.success('Connection test successful', {
                 details: {
                     environmentId: environmentId,
                     environmentName: data.name || 'Unknown',
@@ -436,19 +342,11 @@ router.post('/test-connection', requireAuth, async (req, res) => {
                 }
             });
         } else {
-            res.status(response.status).json({
-                success: false,
-                error: 'Connection test failed',
-                message: `API returned ${response.status}: ${response.statusText}`
-            });
+            res.error('Connection test failed', { code: 'CONNECTION_TEST_ERROR', details: `API returned ${response.status}: ${response.statusText}` }, response.status);
         }
     } catch (error) {
         apiLogger.error('Error testing connection:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Connection test failed',
-            message: error.message
-        });
+        res.error('Connection test failed', { code: 'CONNECTION_TEST_ERROR', message: error.message }, 500);
     }
 });
 

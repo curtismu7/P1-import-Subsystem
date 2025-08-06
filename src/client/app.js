@@ -28,6 +28,12 @@ import { createBulletproofTokenManager } from './utils/bulletproof-token-manager
 import { createBulletproofSubsystemWrapper } from './utils/bulletproof-subsystem-wrapper.js';
 import './utils/bulletproof-global-handler.js'; // Auto-initializes
 
+// 🔧 UNIFIED TOKEN MANAGEMENT SYSTEM
+import { initializePingOneTokenManager, createBulletproofAPIWrapper } from './token-manager-init.js';
+import { TokenAccess } from '../shared/token-integration-helper.js';
+import TokenManagerUIIntegration from '../../public/js/services/token-management.js';
+import StatusWidgetIntegration from '../../public/js/services/ui-management.js';
+
 // Core utilities
 import { Logger } from '../../public/js/modules/logger.js';
 import { FileLogger } from '../../public/js/modules/file-logger.js';
@@ -121,7 +127,6 @@ class App {
         
         // Log application start
         this.logger.info('🚀 PingOne Import Tool starting...', {
-            ...getVersionInfo(),
             userAgent: navigator.userAgent,
             url: window.location.href
         });
@@ -239,8 +244,7 @@ class App {
             // Set up event listeners
             this.setupEventListeners();
             
-            // Set up modal completion listeners
-            this.setupModalCompletionListeners();
+
             this.uiManager.updateStartupMessage('Finalizing user interface...');
             
             // Initialize UI
@@ -511,6 +515,30 @@ class App {
         this.realtimeComm = new RealtimeCommunicationSubsystem(this.logger.child({ subsystem: 'realtime-comm' }), this.uiManager);
         this.logger.debug('Realtime communication subsystem initialized as a core component');
 
+        // Initialize Unified Token Management System
+        try {
+            this.logger.info('🔧 Initializing Unified Token Management System...');
+            this.tokenManager = await initializePingOneTokenManager(this);
+            this.apiWrapper = createBulletproofAPIWrapper(this);
+            
+            // Make TokenAccess globally available
+            window.TokenAccess = TokenAccess;
+            window.PingOneTokenManager = this.tokenManager;
+            
+            // Initialize Token Manager UI Integration
+            this.tokenManagerUI = new TokenManagerUIIntegration();
+            window.TokenManagerUIIntegration = this.tokenManagerUI;
+            
+            // Initialize Status Widget Integration
+            this.statusWidgetUI = new StatusWidgetIntegration();
+            window.StatusWidgetIntegration = this.statusWidgetUI;
+            
+            this.logger.info('✅ Unified Token Management System initialized successfully');
+        } catch (error) {
+            this.logger.error('❌ Failed to initialize Unified Token Management System:', error);
+            // Continue with fallback - existing token managers will still work
+        }
+
         this.logger.debug('Core components initialized');
     }
 
@@ -543,7 +571,7 @@ class App {
             // The main logger instance is passed directly to ensure stability.
 
             const subsystemsToInit = [
-                { name: 'logging', flag: true, constructor: LoggingSubsystem, deps: [this.eventBus, this.logger] },
+                
                 { name: 'navigation', flag: FEATURE_FLAGS.USE_NAVIGATION_SUBSYSTEM, constructor: NavigationSubsystem, deps: [this.logger, this.uiManager, this.subsystems.settings] },
                 { name: 'connectionManager', flag: FEATURE_FLAGS.USE_CONNECTION_MANAGER, constructor: ConnectionManagerSubsystem, deps: [this.logger, this.uiManager, this.subsystems.settings, this.localClient] },
                 { name: 'realtimeManager', flag: FEATURE_FLAGS.USE_REALTIME_SUBSYSTEM, constructor: RealtimeCommunicationSubsystem, deps: [this.logger, this.uiManager] },
