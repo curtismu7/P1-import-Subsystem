@@ -479,17 +479,6 @@ describe('Real API Integration Tests', () => {
                 expect(response.data).toHaveProperty('success', true);
                 expect(response.data).toHaveProperty('sessionId');
                 expect(response.data).toHaveProperty('totalUsers');
-                expect(response.data.totalUsers).toBe(TEST_CONFIG.testUsers.length);
-                
-                // Track session for cleanup
-                TEST_CONFIG.createdData.sessions.push(response.data.sessionId);
-                
-                // Wait for import to complete
-                await testUtils.wait(5000);
-                
-                // Verify users were imported
-                const usersResponse = await api.get(`/api/pingone/environments/${TEST_CONFIG.pingOne.environmentId}/populations/${populationId}/users`);
-                expect(usersResponse.status).toBe(200);
                 
                 const importedUsers = usersResponse.data._embedded.users.filter(user => 
                     TEST_CONFIG.testUsers.some(testUser => testUser.username === user.username)

@@ -1,6 +1,6 @@
 {
   "name": "pingone-import-cursor",
-  "version": "7.1.1",
+  "version": "8.0.0",
   "description": "A modern web application for importing users into PingOne using the PingOne Admin API.",
   "main": "server.js",
   "type": "module",
@@ -52,8 +52,6 @@
     "dev": "nodemon --experimental-modules --experimental-json-modules server.js",
     "stop": "pkill -f 'node.*server.js' || true",
     "build": "echo 'No build step needed - using import maps'",
-
-
     "verify:modules": "node -e \"console.log('Import maps ready - no build needed')\"",
     "fix:population-dropdown": "node --experimental-modules --experimental-json-modules scripts/fix-population-dropdown.js",
     "fix:token-status": "node --experimental-modules --experimental-json-modules scripts/fix-token-status-widget.js",
@@ -73,16 +71,10 @@
     "restart:force": "node scripts/restart-server.js --no-kill",
     "restart:port": "node scripts/restart-server.js --port",
     "check:port": "node -e \"import('./server/port-checker.js').then(m => m.checkPortStatus(4000)).then(console.log)\"",
-
-
-
-
     "import-maps:analyze": "node scripts/import-maps-migration.js analyze",
     "import-maps:migrate": "node scripts/import-maps-migration.js convert",
     "import-maps:migration-status": "node scripts/import-maps-migration.js status",
     "import-maps:migration-test": "node scripts/import-maps-migration.js test",
-
-
     "module:convert": "node scripts/module-converter.js"
   },
   "keywords": [
@@ -99,7 +91,6 @@
     "@socket.io/redis-adapter": "^8.2.1",
     "axios": "^1.11.0",
     "bcryptjs": "^2.4.3",
-
     "compression": "^1.7.4",
     "connect-redis": "^7.1.0",
     "cors": "^2.8.5",
@@ -157,6 +148,7 @@
     "@babel/runtime-corejs3": "^7.28.2",
     "@eslint/js": "^9.31.0",
     "@jest/globals": "^30.0.5",
+    "@playwright/test": "^1.54.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "^16.3.0",
@@ -168,6 +160,7 @@
     "chai": "^5.2.0",
     "chai-http": "^4.4.0",
     "cross-env": "^7.0.3",
+    "cypress": "^14.5.3",
     "eslint": "^8.57.1",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "^9.1.0",
@@ -191,6 +184,7 @@
     "morgan": "^1.10.0",
     "nodemon": "^3.1.10",
     "nyc": "^15.1.0",
+    "playwright": "^1.54.2",
     "prettier": "^3.2.4",
     "sinon": "^17.0.1",
     "supertest": "^6.3.4",

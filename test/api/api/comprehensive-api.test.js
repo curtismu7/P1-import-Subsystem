@@ -13,6 +13,7 @@ import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { TextEncoder, TextDecoder } from 'util';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

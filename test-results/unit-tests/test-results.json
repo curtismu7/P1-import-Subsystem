@@ -1,7 +1,0 @@
-{
-  "success": false,
-  "code": 1,
-  "stdout": "",
-  "stderr": "\u001b[31mSyntaxError: Unexpected token ','\u001b[39m\n\u001b[31m    at compileSourceTextModule (node:internal/modules/esm/utils:344:16)\u001b[39m\n\u001b[31m    at ModuleLoader.importSyncForRequire (node:internal/modules/esm/loader:420:18)\u001b[39m\n\u001b[31m    at loadESMFromCJS (node:internal/modules/cjs/loader:1561:24)\u001b[39m\n\u001b[31m    at Module._compile (node:internal/modules/cjs/loader:1712:5)\u001b[39m\n\u001b[31m    at Object..js (node:internal/modules/cjs/loader:1895:10)\u001b[39m\n\u001b[31m    at Module.load (node:internal/modules/cjs/loader:1465:32)\u001b[39m\n\u001b[31m    at Function._load (node:internal/modules/cjs/loader:1282:12)\u001b[39m\n\u001b[31m    at TracingChannel.traceSync (node:diagnostics_channel:322:14)\u001b[39m\n\u001b[31m    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)\u001b[39m\n\u001b[31m    at Module.require (node:internal/modules/cjs/loader:1487:12)\u001b[39m\n",
-  "output": "Tests failed with code 1"
-}

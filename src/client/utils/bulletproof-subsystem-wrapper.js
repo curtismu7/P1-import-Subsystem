@@ -34,6 +34,14 @@ export class BulletproofSubsystemWrapper {
                 get(target, prop, receiver) {
                     try {
                         // Get the original property
+                        if (!(prop in target)) {
+                            // If property does not exist, return fallback
+                            // If property is a function (method call), return fallback method
+                            // Otherwise, return undefined
+                            return typeof prop === 'string' && prop.match(/init|start|destroy|stop|reset|connect|disconnect|perform|async/i)
+                                ? wrapper.createFallbackMethod(prop)
+                                : undefined;
+                        }
                         const originalValue = Reflect.get(target, prop, receiver);
                         
                         // If it's not a function, return as-is with safety check
@@ -207,14 +215,15 @@ export class BulletproofSubsystemWrapper {
                 return false;
             }
             
-            if (methodName.includes('init') || methodName.includes('start') || methodName.includes('connect')) {
-                return true;
+            // For async-like methods, return a resolved Promise (false)
+            if (methodName.match(/init|start|destroy|stop|reset|connect|disconnect|perform|async/i)) {
+                return Promise.resolve(false);
             }
             
-            // Default fallback
-            return null;
+            // Default fallback: undefined
+            return undefined;
         } catch (e) {
-            return null;
+            return undefined;
         }
     }
     
@@ -448,6 +457,10 @@ export class BulletproofSubsystemWrapper {
     createFallbackMethod(methodName) {
         return (...args) => {
             this.logger.debug(`🛡️ BULLETPROOF: Using fallback method for ${this.name}.${methodName}`);
+            // For async-like methods, always return a resolved Promise
+            if (methodName.match(/init|start|destroy|stop|reset|connect|disconnect|perform|async/i)) {
+                return Promise.resolve(false);
+            }
             return this.getFallbackResult(methodName);
         };
     }

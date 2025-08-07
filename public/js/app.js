@@ -12,7 +12,7 @@
  * - Token management and authentication
  * - Centralized state management for improved reliability
  * 
- * @version 7.1.0
+ * @version 7.2.0
  * @author PingOne Import Tool Team
  */
 
