@@ -12,19 +12,21 @@ export default {
   
   // Test file patterns
   testMatch: [
-    '**/test/**/*.test.mjs',
-    '**/test/**/*.spec.mjs',
-    '**/__tests__/**/*.mjs',
-    '**/?(*.)+(spec|test).mjs'
+    '**/test/**/*.test.{js,mjs}',
+    '**/test/**/*.spec.{js,mjs}',
+    '**/__tests__/**/*.{js,mjs}',
+    '**/?(*.)+(spec|test).{js,mjs}'
   ],
 
-  // Polyfill setup
-  setupFiles: ['./jest.setup.mjs'],
+
+
+  // No transform for pure JS/ESM (uncomment if using Babel)
+  transform: {},
 
   
   // File extensions to test
   moduleFileExtensions: ['js', 'mjs', 'jsx', 'json', 'node'],
-  
+
   // Transform settings for ESM
   // transform: {
   //   // Transform JS files with babel-jest

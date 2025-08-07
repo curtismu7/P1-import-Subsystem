@@ -7,6 +7,8 @@
 
 import express from 'express';
 import fetch from 'node-fetch';
+import { promises as fs } from 'fs';
+import path from 'path';
 import { apiLogger } from '../../server/winston-config.js';
 
 const router = express.Router();
@@ -142,21 +144,45 @@ router.post('/token', async (req, res) => {
     const startTime = Date.now();
     
     try {
-        const { environmentId, clientId, clientSecret, region } = req.body;
+        // Read credentials from settings file
+        const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
+        let credentials;
+        
+        try {
+            const settingsContent = await fs.readFile(settingsPath, 'utf8');
+            const settings = JSON.parse(settingsContent);
+            
+            credentials = {
+                environmentId: settings.environmentId || settings.pingone_environment_id || settings['environment-id'],
+                clientId: settings.apiClientId || settings.pingone_client_id || settings['api-client-id'],
+                clientSecret: settings.apiSecret || settings.pingone_client_secret || settings['api-secret'],
+                region: settings.region || settings.pingone_region || 'NorthAmerica'
+            };
+        } catch (error) {
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to load credentials from settings'
+            });
+        }
+        
+        const { environmentId, clientId, clientSecret, region } = credentials;
         
         // Validate required fields
         if (!environmentId || !clientId || !clientSecret || !region) {
             return res.status(400).json({
                 success: false,
-                error: 'Missing required credentials'
+                error: 'Missing required credentials in settings'
             });
         }
         
         // Determine the correct PingOne domain
         const regionDomains = {
             'NA': 'auth.pingone.com',
+            'NORTHAMERICA': 'auth.pingone.com',
             'EU': 'auth.pingone.eu',
-            'APAC': 'auth.pingone.asia'
+            'EUROPE': 'auth.pingone.eu',
+            'APAC': 'auth.pingone.asia',
+            'ASIAPACIFIC': 'auth.pingone.asia'
         };
         
         const domain = regionDomains[region.toUpperCase()];

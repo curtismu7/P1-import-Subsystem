@@ -309,13 +309,14 @@ class LayoutManager {
     }
 }
 
+// Export the class for ES modules
+export { LayoutManager };
+
 // Auto-initialize layout manager
 const layoutManager = new LayoutManager();
 
 // Make it globally available
 window.LayoutManager = layoutManager;
 
-// Export for module usage
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = LayoutManager;
-}
+// Export default instance
+export default layoutManager;

@@ -140,9 +140,4 @@ function addRequestId(req, res, next) {
   next();
 }
 
-module.exports = {
-  standardizeResponse,
-  addRequestId,
-  createSuccessResponse,
-  createErrorResponse
-};
+export { standardizeResponse, addRequestId, createSuccessResponse, createErrorResponse };

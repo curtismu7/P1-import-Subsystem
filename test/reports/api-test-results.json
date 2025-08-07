@@ -1,0 +1,80 @@
+{
+  "timestamp": "2025-08-06T21:59:29.459Z",
+  "totalDuration": 7143,
+  "summary": {
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "total": 0,
+    "suites": [
+      {
+        "name": "Comprehensive API Tests",
+        "status": "failed",
+        "duration": 1404,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "total": 0
+      },
+      {
+        "name": "Endpoints API Tests",
+        "status": "failed",
+        "duration": 1011,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "total": 0
+      },
+      {
+        "name": "Integration API Tests",
+        "status": "failed",
+        "duration": 1014,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "total": 0
+      },
+      {
+        "name": "Performance Tests",
+        "status": "failed",
+        "duration": 1077,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "total": 0
+      },
+      {
+        "name": "Security Tests",
+        "status": "failed",
+        "duration": 868,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "total": 0
+      },
+      {
+        "name": "Load Tests",
+        "status": "failed",
+        "duration": 902,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "total": 0
+      },
+      {
+        "name": "Mock API Tests",
+        "status": "failed",
+        "duration": 858,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "total": 0
+      }
+    ]
+  },
+  "environment": {
+    "node": "v22.16.0",
+    "platform": "darwin",
+    "arch": "arm64"
+  }
+}

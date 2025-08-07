@@ -160,8 +160,8 @@
         layoutManager.init();
         
         // Import and start main application
-        import('app').then(({ default: App }) => {
-            const app = new App();
+        import('app').then((module) => {
+            const app = module.default; // Use the default exported instance
             app.init();
             
             // Hide loading spinner

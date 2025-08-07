@@ -8,6 +8,7 @@
  * @version 4.9
  */
 
+import { TextEncoder, TextDecoder } from 'util';
 import request from 'supertest';
 import { jest, describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import path from 'path';

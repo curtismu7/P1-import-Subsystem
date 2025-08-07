@@ -2888,4 +2888,15 @@ router.get('/pingone/users', async (req, res) => {
 
 // ============================================================================
 // Export the configured router with all API endpoints
+// Module info endpoint for version manager
+router.get('/module-info', (req, res) => {
+    res.json({
+        success: true,
+        version: '7.1.1',
+        name: 'PingOne Import Tool',
+        description: 'User import/export tool for PingOne',
+        timestamp: new Date().toISOString()
+    });
+});
+
 export default router;

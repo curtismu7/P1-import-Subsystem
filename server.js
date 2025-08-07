@@ -396,6 +396,17 @@ app.use(responseWrapper);
 //     message: 'Too many requests, please try again later.'
 // }));
 
+// Direct API routes (before middleware that might interfere)
+app.get('/api/module-info', (req, res) => {
+    res.json({
+        success: true,
+        version: '7.1.1',
+        name: 'PingOne Import Tool',
+        description: 'User import/export tool for PingOne',
+        timestamp: new Date().toISOString()
+    });
+});
+
 // --- Auth routes ---
 app.get('/auth/login', (req, res) => {
   res.send('<h2>Login Required</h2><p>Please log in to continue.</p>');
@@ -519,6 +530,24 @@ app.use(express.static(path.join(__dirname, 'public'), {
         }
     }
 }));
+
+// Serve SPA routes - all serve index.html for client-side routing
+app.get('/history', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'history.html'));
+});
+
+app.get('/import', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/export', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/settings', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 
 // Serve source files for Import Maps
 app.use('/src', express.static(path.join(__dirname, 'src'), {
