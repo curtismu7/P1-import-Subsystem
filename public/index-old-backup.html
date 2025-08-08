@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PingOne User Import</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
+    
+    <!-- Ping Identity Official CSS -->
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css">
+    
+    <!-- Bootstrap CSS -->
+    <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    
+    
+    <!-- Consolidated CSS -->
+    
+    
+    <!-- Import Maps Configuration -->
+    <script type="importmap" src="/import-maps.json"></script>
+    
+    <!-- Fallback for browsers that don't support external import maps -->
+    <script type="importmap">
+    {
+        "imports": {
+            "@/": "/",
+            "@/js/": "/js/",
+            "@/components/": "/js/components/",
+            "@/pages/": "/js/pages/",
+            "@/services/": "/js/services/",
+            "@/utils/": "/js/utils/",
+            "@/state/": "/js/state/",
+            "@/src/": "/src/",
+            "@/src/client/": "/src/client/",
+            
+            "app": "/js/app.js",
+            "app-state": "/js/state/app-state.js",
+            "layout-manager": "/js/components/layout-manager.js",
+            "version-manager": "/js/utils/version-manager.js",
+            
+            "socket.io-client": "https://esm.sh/socket.io-client@4.7.5",
+            "axios": "https://esm.sh/axios@1.6.7"
+        }
+    }
+    </script>
+    <!-- Consolidated CSS -->
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/themes.css">
+    <link rel="stylesheet" href="/css/vendor.css">\n</head>
+<body>
+    <!-- App Layout Container -->
+    <div class="app-layout" id="app-layout">
+        <!-- Sidebar -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>PingOne Import</h2>
+                <button class="sidebar-toggle d-md-none" id="sidebar-toggle" aria-label="Toggle sidebar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="/" class="nav-link active" data-page="dashboard">
+                        <i class="fas fa-home nav-link-icon"></i>
+                        <span class="nav-link-text">Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/import" class="nav-link" data-page="import">
+                        <i class="fas fa-upload nav-link-icon"></i>
+                        <span class="nav-link-text">Import Users</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/export" class="nav-link" data-page="export">
+                        <i class="fas fa-download nav-link-icon"></i>
+                        <span class="nav-link-text">Export Users</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/history" class="nav-link" data-page="history">
+                        <i class="fas fa-history nav-link-icon"></i>
+                        <span class="nav-link-text">History</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/settings" class="nav-link" data-page="settings">
+                        <i class="fas fa-cog nav-link-icon"></i>
+                        <span class="nav-link-text">Settings</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="header-left">
+                    <button class="sidebar-toggle d-md-none" id="mobile-sidebar-toggle" aria-label="Toggle sidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 id="page-title">Dashboard</h1>
+                </div>
+                
+                <div class="header-right">
+                    <div class="version-display" data-version></div>
+                    <div class="connection-status" id="connection-status">
+                        <i class="fas fa-circle text-success"></i>
+                        <span>Connected</span>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Content Body -->
+            <div class="content-body" id="content-body">
+                <!-- Dynamic content will be loaded here -->
+                <div class="loading-spinner" id="loading-spinner">
+                    <div class="spinner-border" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <p>Loading application...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Mobile Overlay -->
+    <div class="mobile-overlay" id="mobile-overlay"></div>
+    
+    <!-- Notification Container -->
+    <div class="notification-container" id="notification-container"></div>
+    
+    <!-- Modal Container -->
+    <div class="modal-container" id="modal-container"></div>
+    
+    <!-- Socket.IO Client Library -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- Core Application Modules -->
+    <script type="module">
+        // Import and initialize core modules
+        import { appState } from 'app-state';
+        import { LayoutManager } from 'layout-manager';
+        import { VersionManager } from 'version-manager';
+        
+        // Initialize version display
+        const versionManager = new VersionManager();
+        versionManager.init();
+        
+        // Initialize layout manager
+        const layoutManager = new LayoutManager();
+        layoutManager.init();
+        
+        // Import and start main application
+        import('app').then((module) => {
+            const app = module.default; // Use the default exported instance
+            app.init();
+            
+            // Hide loading spinner
+            const spinner = document.getElementById('loading-spinner');
+            if (spinner) {
+                spinner.style.display = 'none';
+            }
+        }).catch(error => {
+            console.error('Failed to load application:', error);
+            
+            // Show error message
+            const contentBody = document.getElementById('content-body');
+            if (contentBody) {
+                contentBody.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h4>Application Load Error</h4>
+                        <p>Failed to load the application. Please refresh the page or contact support.</p>
+                        <details>
+                            <summary>Error Details</summary>
+                            <pre>${error.message}</pre>
+                        </details>
+                    </div>
+                `;
+            }
+        });
+    </script>
+    
+    <!-- Error Handling -->
+    <script>
+        window.addEventListener('error', function(e) {
+            console.error('Global error:', e.error);
+            
+            // Show user-friendly error message
+            const notification = document.createElement('div');
+            notification.className = 'alert alert-warning alert-dismissible fade show';
+            notification.innerHTML = `
+                <strong>Warning:</strong> An error occurred. The application may not function correctly.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            const container = document.getElementById('notification-container');
+            if (container) {
+                container.appendChild(notification);
+            }
+        });
+        
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Unhandled promise rejection:', e.reason);
+        });
+    </script>
+</body>
+</html>

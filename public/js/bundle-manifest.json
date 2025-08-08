@@ -1,0 +1,26 @@
+{
+  "version": "7.0.1.0",
+  "timestamp": 1754651385873,
+  "bundleName": "bundle-1754651385873.js",
+  "modules": [
+    "pages/home-page.js",
+    "pages/import-page.js",
+    "pages/export-page.js",
+    "pages/delete-page.js",
+    "pages/modify-page.js",
+    "pages/settings-page.js",
+    "pages/token-manager-page.js",
+    "services/population-loader.js",
+    "utils/centralized-logger.js",
+    "utils/safe-dom.js"
+  ],
+  "importMaps": {
+    "enabled": true,
+    "fallbackBundle": true
+  },
+  "buildInfo": {
+    "buildTime": "2025-08-08T11:09:45.873Z",
+    "nodeVersion": "v22.16.0",
+    "environment": "development"
+  }
+}

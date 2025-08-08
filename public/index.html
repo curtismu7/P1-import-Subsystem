@@ -3,101 +3,420 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PingOne User Import</title>
+    <title>PingOne User Management</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
     
     <!-- Ping Identity Official CSS -->
     <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css">
     <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css">
     
-    <!-- Bootstrap CSS -->
-    <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Font Awesome -->
-    
-    
-    <!-- Consolidated CSS -->
-    
+    <!-- Custom PingOne UI CSS -->
+    <link rel="stylesheet" href="/css/pingone-ui-custom.css?v=2025080719215">
     
     <!-- Import Maps Configuration -->
-    <script type="importmap" src="/import-maps.json"></script>
-    
-    <!-- Fallback for browsers that don't support external import maps -->
     <script type="importmap">
     {
         "imports": {
             "@/": "/",
             "@/js/": "/js/",
             "@/components/": "/js/components/",
-            "@/pages/": "/js/pages/",
-            "@/services/": "/js/services/",
+            "@/modules/": "/js/modules/",
             "@/utils/": "/js/utils/",
             "@/state/": "/js/state/",
-            "@/src/": "/src/",
-            "@/src/client/": "/src/client/",
-            
             "app": "/js/app.js",
-            "app-state": "/js/state/app-state.js",
-            "layout-manager": "/js/components/layout-manager.js",
-            "version-manager": "/js/utils/version-manager.js",
-            
-            "socket.io-client": "https://esm.sh/socket.io-client@4.7.5",
-            "axios": "https://esm.sh/axios@1.6.7"
+            "ui-manager": "/js/modules/ui-manager.js",
+            "api-client": "/js/modules/api-client.js",
+            "settings-manager": "/js/modules/settings-manager.js",
+            "home-page": "./js/pages/home-page.js",
+            "settings-page": "./js/pages/settings-page.js",
+            "import-page": "./js/pages/import-page.js",
+            "export-page": "./js/pages/export-page.js"
         }
     }
     </script>
-    <!-- Consolidated CSS -->
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/themes.css">
-    <link rel="stylesheet" href="/css/vendor.css">\n</head>
+</head>
 <body>
-    <!-- App Layout Container -->
-    <div class="app-layout" id="app-layout">
-        <!-- Sidebar -->
-        <nav class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <h2>PingOne Import</h2>
-                <button class="sidebar-toggle d-md-none" id="sidebar-toggle" aria-label="Toggle sidebar">
-                    <i class="fas fa-times"></i>
+    <!-- Browser frame removed -->
+
+    <!-- Status Message Area -->
+    <div class="status-message-bar" id="status-message-bar">
+        <div class="status-message-content">
+            <div class="status-message" id="status-message">
+                <i class="icon-check-circle" id="status-icon"></i>
+                <span id="status-text">System Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Header Bar -->
+    <div class="top-status-bar" id="top-status-bar">
+        <div class="status-content">
+            <div class="status-left">
+                <span class="token-info" id="token-info">
+                    <span class="token-indicator" id="token-indicator"></span>
+                    <span class="token-text" id="token-text">Token: Checking...</span>
+                    <span class="token-time" id="token-time"></span>
+                </span>
+            </div>
+            <div class="status-center">
+                <h1 class="header-title">PingOne User Management</h1>
+            </div>
+            <div class="status-right">
+                <span class="version-info" id="version-info">v7.0.1.0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Layout -->
+    <div class="app-container">
+        <!-- Left Navigation -->
+        <nav class="left-nav" id="left-nav">
+            <div class="nav-header">
+                <img src="/ping-identity-logo.svg" alt="Ping Identity" class="nav-logo">
+                <h3 class="nav-title">User Management</h3>
+                <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">
+                    <i class="icon-menu"></i>
                 </button>
             </div>
             
             <ul class="nav-menu">
                 <li class="nav-item">
-                    <a href="/" class="nav-link active" data-page="dashboard">
-                        <i class="fas fa-home nav-link-icon"></i>
-                        <span class="nav-link-text">Dashboard</span>
+                    <a href="#home" class="nav-link active" data-page="home">
+                        <i class="icon-home"></i>
+                        <span class="nav-text">Home</span>
+                    </a>
+                </li>
+                <li class="nav-divider"></li>
+                <li class="nav-item">
+                    <a href="#export" class="nav-link" data-page="export">
+                        <i class="icon-download"></i>
+                        <span class="nav-text">Export Users</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/import" class="nav-link" data-page="import">
-                        <i class="fas fa-upload nav-link-icon"></i>
-                        <span class="nav-link-text">Import Users</span>
+                    <a href="#import" class="nav-link" data-page="import">
+                        <i class="icon-upload"></i>
+                        <span class="nav-text">Import Users</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/export" class="nav-link" data-page="export">
-                        <i class="fas fa-download nav-link-icon"></i>
-                        <span class="nav-link-text">Export Users</span>
+                    <a href="#delete" class="nav-link" data-page="delete">
+                        <i class="icon-trash"></i>
+                        <span class="nav-text">Delete Users</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/history" class="nav-link" data-page="history">
-                        <i class="fas fa-history nav-link-icon"></i>
-                        <span class="nav-link-text">History</span>
+                    <a href="#modify" class="nav-link" data-page="modify">
+                        <i class="icon-edit"></i>
+                        <span class="nav-text">Modify Users</span>
+                    </a>
+                </li>
+                <li class="nav-divider"></li>
+                <li class="nav-item">
+                    <a href="#logs" class="nav-link" data-page="logs">
+                        <i class="icon-file-text"></i>
+                        <span class="nav-text">Logs</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/settings" class="nav-link" data-page="settings">
-                        <i class="fas fa-cog nav-link-icon"></i>
-                        <span class="nav-link-text">Settings</span>
+                    <a href="#token-management" class="nav-link" data-page="token-management">
+                        <i class="icon-key"></i>
+                        <span class="nav-text">Token Management</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#history" class="nav-link" data-page="history">
+                        <i class="icon-clock"></i>
+                        <span class="nav-text">History</span>
+                    </a>
+                </li>
+                <li class="nav-item" id="swagger-nav" style="display: none;">
+                    <a href="#swagger" class="nav-link" data-page="swagger">
+                        <i class="icon-code"></i>
+                        <span class="nav-text">Swagger</span>
+                    </a>
+                </li>
+                <li class="nav-divider"></li>
+                <li class="nav-item">
+                    <a href="#settings" class="nav-link" data-page="settings">
+                        <i class="icon-settings"></i>
+                        <span class="nav-text">Settings</span>
                     </a>
                 </li>
             </ul>
         </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content" id="main-content">
+            <!-- Home Page -->
+            <div class="page" id="home-page" data-page="home">
+                <div class="page-header">
+                    <p class="page-subtitle">Manage users across your PingOne environment</p>
+                </div>
+                
+                <div class="home-grid">
+                    <div class="home-section">
+                        <div class="section-header">
+                            <h2>Settings</h2>
+                        </div>
+                        <div class="action-card" data-action="settings">
+                            <div class="card-icon">
+                                <i class="icon-settings"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Settings</h3>
+                                <p>Configure PingOne credentials and preferences</p>
+                                <div class="card-status" id="settings-status">Ready</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="home-divider"></div>
+                    
+                    <div class="home-section">
+                        <div class="section-header">
+                            <h2>User Operations</h2>
+                        </div>
+                        <div class="action-cards">
+                            <div class="action-card" data-action="export">
+                                <div class="card-icon">
+                                    <i class="icon-download"></i>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Export Users</h3>
+                                    <p>Export users to CSV file</p>
+                                    <div class="card-status" id="export-status">Ready</div>
+                                </div>
+                            </div>
+                            
+                            <div class="action-card" data-action="import">
+                                <div class="card-icon">
+                                    <i class="icon-upload"></i>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Import Users</h3>
+                                    <p>Import users from CSV file</p>
+                                    <div class="card-status" id="import-status">Ready</div>
+                                </div>
+                            </div>
+                            
+                            <div class="action-card" data-action="delete">
+                                <div class="card-icon">
+                                    <i class="icon-trash"></i>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Delete Users</h3>
+                                    <p>Delete users from CSV file</p>
+                                    <div class="card-status" id="delete-status">Ready</div>
+                                </div>
+                            </div>
+                            
+                            <div class="action-card" data-action="modify">
+                                <div class="card-icon">
+                                    <i class="icon-edit"></i>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Modify Users</h3>
+                                    <p>Update user attributes from CSV</p>
+                                    <div class="card-status" id="modify-status">Ready</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="home-divider"></div>
+                    
+                    <div class="home-section">
+                        <div class="section-header">
+                            <h2>Management</h2>
+                        </div>
+                        <div class="action-cards">
+                            <div class="action-card" data-action="logs">
+                                <div class="card-icon">
+                                    <i class="icon-file-text"></i>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Logs</h3>
+                                    <p>View application logs and errors</p>
+                                    <div class="card-status" id="logs-status">Ready</div>
+                                </div>
+                            </div>
+                            
+                            <div class="action-card" data-action="token-management">
+                                <div class="card-icon">
+                                    <i class="icon-key"></i>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Token Management</h3>
+                                    <p>Manage API tokens and authentication</p>
+                                    <div class="card-status" id="token-management-status">Ready</div>
+                                </div>
+                            </div>
+                            
+                            <div class="action-card" data-action="history">
+                                <div class="card-icon">
+                                    <i class="icon-clock"></i>
+                                </div>
+                                <div class="card-content">
+                                    <h3>History</h3>
+                                    <p>View past operations and activities</p>
+                                    <div class="card-status" id="history-status">Ready</div>
+                                </div>
+                            </div>
+                            
+                            <div class="action-card" id="swagger-card" data-action="swagger" style="display: none;">
+                                <div class="card-icon">
+                                    <i class="icon-code"></i>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Swagger</h3>
+                                    <p>API documentation and testing</p>
+                                    <div class="card-status" id="swagger-status">Ready</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other pages will be loaded dynamically -->
+            <div class="page" id="settings-page" data-page="settings" style="display: none;"></div>
+            <div class="page" id="export-page" data-page="export" style="display: none;"></div>
+            <div class="page" id="import-page" data-page="import" style="display: none;"></div>
+            <div class="page" id="delete-page" data-page="delete" style="display: none;"></div>
+            <div class="page" id="modify-page" data-page="modify" style="display: none;"></div>
+            <div class="page" id="logs-page" data-page="logs" style="display: none;"></div>
+            <div class="page" id="token-management-page" data-page="token-management" style="display: none;"></div>
+            <div class="page" id="history-page" data-page="history" style="display: none;"></div>
+            <div class="page" id="swagger-page" data-page="swagger" style="display: none;"></div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer" id="app-footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <span class="copyright">© PingIdentity 2025</span>
+                <span class="server-status" id="footer-server-status">
+                    <span class="status-indicator" id="footer-server-indicator"></span>
+                    <span class="status-text" id="footer-server-text">Starting...</span>
+                </span>
+            </div>
+            <div class="footer-center">
+                <span class="token-status-footer" id="footer-token-status">
+                    <span class="status-indicator" id="footer-token-indicator"></span>
+                    <span class="status-text" id="footer-token-text">Token: Checking...</span>
+                    <span class="token-time" id="footer-token-time"></span>
+                </span>
+            </div>
+            <div class="footer-right">
+                <span class="version-info" id="footer-version">v7.0.1.0</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modals -->
+    <!-- Disclaimer Modal -->
+    <div class="modal-overlay" id="disclaimer-modal" style="display: none;">
+        <div class="modal disclaimer-modal">
+            <div class="modal-header">
+                <h2>Important Disclaimer</h2>
+            </div>
+            <div class="modal-body">
+                <div class="disclaimer-content">
+                    <div class="warning-icon">
+                        <i class="icon-alert-triangle"></i>
+                    </div>
+                    <p>This application is provided as-is and is not officially supported by Ping Identity.</p>
+                    <p>Use at your own risk. Always test in a non-production environment first.</p>
+                    <p>By continuing, you acknowledge that you understand and accept these terms.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="disclaimer-quit">Quit</button>
+                <button class="btn btn-primary" id="disclaimer-accept">Accept</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Credentials Modal -->
+    <div class="modal-overlay" id="credentials-modal" style="display: none;">
+        <div class="modal credentials-modal">
+            <div class="modal-header">
+                <h2>PingOne Credentials</h2>
+                <p>Configure your PingOne API credentials to get started</p>
+            </div>
+            <div class="modal-body">
+                <form id="credentials-form" novalidate>
+                    <div class="form-group">
+                        <label for="cred-environment-id">Environment ID</label>
+                        <input type="text" id="cred-environment-id" name="environmentId" 
+                               autocomplete="off" 
+                               spellcheck="false"
+                               required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cred-client-id">Client ID</label>
+                        <input type="text" id="cred-client-id" name="clientId" 
+                               autocomplete="username"
+                               spellcheck="false"
+                               required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cred-client-secret">Client Secret</label>
+                        <div class="input-group">
+                            <input type="password" id="cred-client-secret" name="clientSecret" 
+                                   autocomplete="current-password"
+                                   spellcheck="false"
+                                   title="Show/hide client secret"
+                                   aria-describedby="toggle-secret"
+                                   required>
+                            <button type="button" class="btn btn-icon" id="toggle-secret"
+                                    title="Toggle secret visibility"
+                                    aria-label="Show client secret">
+                                <i class="icon-eye" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="cred-region">Region</label>
+                        <select id="cred-region" name="region" autocomplete="country">
+                            <option value="NorthAmerica">North America</option>
+                            <option value="Europe">Europe</option>
+                            <option value="Asia">Asia Pacific</option>
+                            <option value="Canada">Canada</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cred-population">Default Population (Optional)</label>
+                        <select id="cred-population" name="populationId">
+                            <option value="">Select a population...</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="credentials-skip">Continue to Home</button>
+                <button class="btn btn-secondary" id="credentials-settings">Go to Settings</button>
+                <button class="btn btn-primary" id="credentials-save">Save & Get Token</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loading-text">Loading...</div>
+        </div>
+    </div>
+
+    <!-- Main Application Script -->
+    <script type="module" src="/js/app.js"></script>
+</body>
+</html>
         
         <!-- Main Content -->
         <main class="main-content">
@@ -144,47 +463,19 @@
     <!-- Socket.IO Client Library -->
     <script src="/socket.io/socket.io.js"></script>
     
-    <!-- Core Application Modules -->
+    <!-- Core Application Module -->
     <script type="module">
-        // Import and initialize core modules
-        import { appState } from 'app-state';
-        import { LayoutManager } from 'layout-manager';
-        import { VersionManager } from 'version-manager';
+        // Import main application
+        import { PingOneApp } from './js/app.js';
         
-        // Initialize version display
-        const versionManager = new VersionManager();
-        versionManager.init();
-        
-        // Initialize layout manager
-        const layoutManager = new LayoutManager();
-        layoutManager.init();
-        
-        // Import and start main application
-        import('app').then((module) => {
-            const app = module.default; // Use the default exported instance
-            app.init();
-            
-            // Hide loading spinner
-            const spinner = document.getElementById('loading-spinner');
-            if (spinner) {
-                spinner.style.display = 'none';
-            }
-        }).catch(error => {
-            console.error('Failed to load application:', error);
-            
-            // Show error message
-            const contentBody = document.getElementById('content-body');
-            if (contentBody) {
-                contentBody.innerHTML = `
-                    <div class="alert alert-danger">
-                        <h4>Application Load Error</h4>
-                        <p>Failed to load the application. Please refresh the page or contact support.</p>
-                        <details>
-                            <summary>Error Details</summary>
-                            <pre>${error.message}</pre>
-                        </details>
-                    </div>
-                `;
+        // Initialize application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🌟 DOM loaded, starting PingOne User Management App...');
+            try {
+                window.pingOneApp = new PingOneApp();
+                await window.pingOneApp.init();
+            } catch (error) {
+                console.error('💥 Failed to start application:', error);
             }
         });
     </script>

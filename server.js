@@ -101,6 +101,7 @@ import {
 import pingoneProxyRouter from './routes/pingone-proxy-fixed.js';
 // Import token management services
 import { tokenService } from './server/services/token-service.js';
+import { populationCacheService } from './server/services/population-cache-service.js';
 import { webSocketService } from './server/services/websocket-service.js';
 
 // Import routes
@@ -1128,6 +1129,28 @@ const startServer = async () => {
                     serverUrl
                 });
                 
+                // 🗃️ INITIALIZE POPULATION CACHE SERVICE
+                try {
+                    logger.info('🗃️ Initializing population cache service...');
+                    populationCacheService.initialize({
+                        logger: logger,
+                        tokenManager: tokenManager
+                    });
+                    
+                    // Cache populations during startup for fast loading
+                    const cacheResult = await populationCacheService.cachePopulationsOnStartup();
+                    if (cacheResult) {
+                        logger.info('✅ Population cache initialized successfully');
+                        console.log('🗃️ POPULATION CACHE: READY - Fast home page loading enabled');
+                    } else {
+                        logger.warn('⚠️ Population cache initialization failed - will use API fallback');
+                        console.log('⚠️ POPULATION CACHE: FALLBACK MODE - Using API calls for population data');
+                    }
+                } catch (error) {
+                    logger.error('❌ Error initializing population cache service:', error);
+                    console.log('❌ POPULATION CACHE: ERROR - Using API fallback mode');
+                }
+                
                 // Run automated startup tests
                 const testResults = await runStartupTests({
                     port,
@@ -1670,6 +1693,14 @@ const gracefulShutdown = (signal) => {
         } catch (error) {
             logger.error('⚠️ Error during monitoring cleanup:', error);
         }
+    }
+    
+    // 🗃️ Cleanup population cache service
+    try {
+        populationCacheService.cleanup();
+        logger.info('✅ Population cache service stopped');
+    } catch (error) {
+        logger.error('⚠️ Error during population cache cleanup:', error);
     }
     
     logger.info('👋 Graceful shutdown completed');

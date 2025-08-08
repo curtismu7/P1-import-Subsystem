@@ -1524,6 +1524,33 @@ router.get('/populations', async (req, res) => {
     apiLogger.debug(`${functionName} - Entry`, { requestId: req.requestId });
 
     try {
+        // Import population cache service dynamically
+        const { populationCacheService } = await import('../../server/services/population-cache-service.js');
+        
+        // Try to get cached populations first for fast response
+        const cachedData = await populationCacheService.getCachedPopulations();
+        if (cachedData && cachedData.populations) {
+            apiLogger.debug(`${functionName} - Returning cached populations`, { 
+                requestId: req.requestId, 
+                count: cachedData.count,
+                cachedAt: cachedData.cachedAt 
+            });
+            
+            console.log(`[Populations] ⚡ Using cached data: ${cachedData.count} populations (cached at ${cachedData.cachedAt})`);
+            
+            return res.success('Populations retrieved from cache', {
+                populations: cachedData.populations,
+                total: cachedData.count,
+                fromCache: true,
+                cachedAt: cachedData.cachedAt,
+                expiresAt: cachedData.expiresAt
+            });
+        }
+        
+        // Cache miss or expired - fetch from API
+        apiLogger.debug(`${functionName} - Cache miss, fetching from PingOne API`, { requestId: req.requestId });
+        console.log(`[Populations] 🔄 Cache miss, fetching from PingOne API...`);
+        
         // Get token manager from Express app context
         const tokenManager = req.app.get('tokenManager');
         if (!tokenManager) {
@@ -1588,9 +1615,22 @@ router.get('/populations', async (req, res) => {
             userCount: population.userCount || 0
         }));
         
+        // Cache the fresh data for future requests
+        try {
+            await populationCacheService.savePopulationsToCache(formattedPopulations);
+            console.log(`[Populations] 💾 Cached ${formattedPopulations.length} populations for future requests`);
+        } catch (cacheError) {
+            apiLogger.warn(`${functionName} - Failed to cache populations`, { 
+                requestId: req.requestId, 
+                error: cacheError.message 
+            });
+        }
+        
         res.success('Populations retrieved successfully', {
             populations: formattedPopulations,
-            total: formattedPopulations.length
+            total: formattedPopulations.length,
+            fromCache: false,
+            fetchedAt: new Date().toISOString()
         });
         
     } catch (error) {
@@ -1600,6 +1640,84 @@ router.get('/populations', async (req, res) => {
             error: 'Failed to fetch populations',
             details: error.message
         });
+    }
+});
+
+/**
+ * @swagger
+ * /api/populations/cache-status:
+ *   get:
+ *     summary: Get population cache status
+ *     description: |
+ *       Returns information about the current population cache status including
+ *       whether data is cached, expiration times, and cache statistics.
+ *       
+ *       ## Cache Information
+ *       - Cache availability and expiration status
+ *       - Number of cached populations
+ *       - Cache creation and expiration timestamps
+ *       - Background refresh status
+ *       
+ *       ## Debugging
+ *       Useful for debugging cache performance and troubleshooting
+ *       population loading issues.
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Cache status retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     hasCachedData:
+ *                       type: boolean
+ *                     isExpired:
+ *                       type: boolean
+ *                     count:
+ *                       type: integer
+ *                     cachedAt:
+ *                       type: string
+ *                       format: date-time
+ *                     expiresAt:
+ *                       type: string
+ *                       format: date-time
+ *                     backgroundRefreshActive:
+ *                       type: boolean
+ */
+router.get('/populations/cache-status', async (req, res) => {
+    const functionName = 'GET /api/populations/cache-status';
+    apiLogger.debug(`${functionName} - Entry`, { requestId: req.requestId });
+
+    try {
+        // Import population cache service dynamically
+        const { populationCacheService } = await import('../../server/services/population-cache-service.js');
+        
+        // Get cache status
+        const cacheStatus = await populationCacheService.getCacheStatus();
+        
+        apiLogger.debug(`${functionName} - Cache status retrieved`, { 
+            requestId: req.requestId, 
+            status: cacheStatus 
+        });
+        
+        res.success('Population cache status retrieved', cacheStatus);
+        
+    } catch (error) {
+        apiLogger.error(`${functionName} - Error getting cache status`, {
+            requestId: req.requestId,
+            error: error.message
+        });
+        
+        res.error('Failed to get cache status', { 
+            code: 'CACHE_STATUS_ERROR', 
+            message: error.message 
+        }, 500);
     }
 });
 
