@@ -283,7 +283,9 @@ class PingOneApp {
         
         const actionCard = event.target.closest('.action-card');
         if (actionCard) {
-            const action = actionCard.dataset.action;
+            event.preventDefault();
+            // Check for both data-action and data-page attributes
+            const action = actionCard.dataset.action || actionCard.dataset.page;
             if (action) this.showPage(action);
         }
     }
