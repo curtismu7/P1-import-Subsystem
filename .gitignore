@@ -4,6 +4,9 @@ node_modules/
 # Environment variables
 .env
 
+# Runtime configuration (contains sensitive data and cache)
+data/settings.json
+
 # Logs
 logs
 *.log
