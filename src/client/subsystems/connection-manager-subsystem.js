@@ -173,19 +173,19 @@ export class ConnectionManagerSubsystem {
             // Validate credentials
             this.validateCredentials(tokenCredentials);
             
-            // Make token request
-            const response = await this.apiClient.post('/api/auth/token', {
+            // Make token request using the correct endpoint
+            const response = await this.apiClient.post('/api/pingone/get-token', {
                 clientId: tokenCredentials.clientId,
                 clientSecret: tokenCredentials.clientSecret,
                 environmentId: tokenCredentials.environmentId,
                 region: tokenCredentials.region
             });
             
-            if (response.success && response.token) {
+            if (response.success && response.data?.access_token) {
                 // Store token info
                 this.tokenInfo = {
-                    token: response.token,
-                    expiresAt: Date.now() + (response.expiresIn * 1000),
+                    token: response.data.access_token,
+                    expiresAt: Date.now() + (response.data.expires_in * 1000),
                     isValid: true,
                     acquiredAt: Date.now()
                 };
@@ -210,8 +210,8 @@ export class ConnectionManagerSubsystem {
                 
                 return {
                     success: true,
-                    token: response.token,
-                    expiresIn: response.expiresIn
+                    token: response.data.access_token,
+                    expiresIn: response.data.expires_in
                 };
             } else {
                 throw new Error(response.error || 'Failed to acquire token');

@@ -10,6 +10,9 @@
 export class ModifyPage {
     constructor(app) {
         this.app = app;
+        this.isLoaded = false;
+        this.selectedFile = null;
+        this.isUploading = false;
         this.selectedPopulation = '';
         this.lastTokenValidity = null; // Track token validity changes
         this.selectedUsers = [];
@@ -34,6 +37,48 @@ export class ModifyPage {
             </div>
 
             <div class="modify-container">
+                <!-- File Upload -->
+                <section class="modify-section">
+                    <div class="modify-box">
+                        <h3 class="section-title">File Upload</h3>
+                        <p>Select or drag and drop your CSV file containing users to modify</p>
+                        
+                        <div class="file-upload-area" id="upload-area">
+                            <div class="upload-icon">
+                                <i class="mdi mdi-cloud-upload"></i>
+                            </div>
+                            <div class="upload-text">Drag & Drop CSV File Here</div>
+                            <div class="upload-hint">or <button type="button" id="browse-files" class="btn btn-link">Choose CSV File</button></div>
+                            <input type="file" id="file-input" accept=".csv" style="display: none;">
+                        </div>
+                        
+                        <div class="upload-requirements">
+                            <h4>File Requirements:</h4>
+                            <ul>
+                                <li>CSV format only</li>
+                                <li>Maximum file size: 10MB</li>
+                                <li>Required columns: email, username</li>
+                                <li>Optional columns: name.given, name.family, etc.</li>
+                            </ul>
+                        </div>
+                        
+                        <!-- File Info -->
+                        <div class="file-info" id="file-info" style="display: none;">
+                            <div class="file-details">
+                                <i class="mdi mdi-file-document"></i>
+                                <div class="file-meta">
+                                    <div class="file-name" id="file-name"></div>
+                                    <div class="file-size" id="file-size"></div>
+                                </div>
+                                <button type="button" id="remove-file" class="btn btn-danger btn-sm">
+                                    <i class="mdi mdi-delete"></i> Remove
+                                </button>
+                            </div>
+                            <div class="file-preview" id="file-preview"></div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Population Selection -->
                 <section class="modify-section">
                     <div class="modify-box">
@@ -48,7 +93,7 @@ export class ModifyPage {
                                         <option value="">Select a population...</option>
                                     </select>
                                     <button type="button" id="refresh-populations" class="btn btn-outline-secondary">
-                                        <i class="icon-refresh"></i>
+                                        <i class="mdi mdi-refresh"></i>
                                     </button>
                                 </div>
                                 <div class="form-help">Select the population containing users to modify</div>
@@ -57,7 +102,7 @@ export class ModifyPage {
                         
                         <div class="export-actions">
                             <button id="load-users-btn" class="btn btn-primary" disabled>
-                                <i class="fas fa-users"></i> Load Users
+                                <i class="mdi mdi-account-group"></i> Modify users
                             </button>
                         </div>
                     </div>
@@ -71,10 +116,10 @@ export class ModifyPage {
                         
                         <div class="export-actions mb-3">
                             <button id="select-all-btn" class="btn btn-outline-secondary">
-                                <i class="icon-check-square"></i> Select All
+                                <i class="mdi mdi-check-box"></i> Select All
                             </button>
                             <button id="deselect-all-btn" class="btn btn-outline-secondary">
-                                <i class="icon-square"></i> Deselect All
+                                <i class="mdi mdi-square"></i> Deselect All
                             </button>
                         </div>
                         
@@ -123,13 +168,13 @@ export class ModifyPage {
                         </div>
                         
                         <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i>
+                            <i class="mdi mdi-information"></i>
                             Only fill in the fields you want to modify. Empty fields will be ignored.
                         </div>
                         
                         <div class="export-actions">
                             <button id="start-modify-btn" class="btn btn-primary" disabled>
-                                <i class="fas fa-edit"></i> Start Modification
+                                <i class="mdi mdi-pencil"></i> Start Modification
                             </button>
                         </div>
                     </div>
@@ -169,10 +214,10 @@ export class ModifyPage {
                         
                         <div class="export-actions">
                             <button id="cancel-modify-btn" class="btn btn-warning" style="display: none;">
-                                <i class="fas fa-stop"></i> Cancel Modification
+                                <i class="mdi mdi-stop"></i> Cancel Modification
                             </button>
                             <button id="reset-modify-btn" class="btn btn-secondary" style="display: none;">
-                                <i class="fas fa-redo"></i> Start Over
+                                <i class="mdi mdi-undo"></i> Start Over
                             </button>
                         </div>
                         
@@ -204,10 +249,10 @@ export class ModifyPage {
                         
                         <div class="export-actions">
                             <button type="button" id="download-modify-log" class="btn btn-outline-info">
-                                <i class="icon-download"></i> Download Log
+                                <i class="mdi mdi-download"></i> Download Log
                             </button>
                             <button type="button" id="new-modification" class="btn btn-outline-primary">
-                                <i class="icon-refresh"></i> New Modification
+                                <i class="mdi mdi-refresh"></i> New Modification
                             </button>
                         </div>
                     </div>
@@ -219,9 +264,38 @@ export class ModifyPage {
     }
 
     setupEventListeners() {
+        // File upload events
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const browseFiles = document.getElementById('browse-files');
+        const removeFile = document.getElementById('remove-file');
+        
+        if (uploadArea) {
+            uploadArea.addEventListener('dragover', this.handleDragOver.bind(this));
+            uploadArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
+            uploadArea.addEventListener('drop', this.handleDrop.bind(this));
+        }
+        
+        if (fileInput) {
+            fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+        }
+        
+        if (browseFiles) {
+            browseFiles.addEventListener('click', () => fileInput?.click());
+        }
+        
+        if (removeFile) {
+            removeFile.addEventListener('click', this.handleRemoveFile.bind(this));
+        }
+
         // Population selection
         document.getElementById('modify-population-select')?.addEventListener('change', (e) => {
             this.handlePopulationChange(e.target.value);
+        });
+
+        // Refresh populations button
+        document.getElementById('refresh-populations')?.addEventListener('click', () => {
+            this.loadPopulations();
         });
 
         document.getElementById('load-users-btn')?.addEventListener('click', () => {
@@ -257,6 +331,158 @@ export class ModifyPage {
         document.getElementById('reset-modify-btn')?.addEventListener('click', () => {
             this.resetModification();
         });
+
+        // Download log and new modification buttons
+        document.getElementById('download-modify-log')?.addEventListener('click', () => {
+            this.downloadLog();
+        });
+
+        document.getElementById('new-modification')?.addEventListener('click', () => {
+            this.resetModification();
+        });
+    }
+
+    // File handling methods
+    handleDragOver(event) {
+        event.preventDefault();
+        event.currentTarget.classList.add('dragover');
+    }
+    
+    handleDragLeave(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('dragover');
+    }
+    
+    handleDrop(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('dragover');
+        
+        const files = event.dataTransfer.files;
+        if (files.length > 0) {
+            this.handleFileSelection(files[0]);
+        }
+    }
+    
+    handleFileSelect(event) {
+        const files = event.target.files;
+        if (files.length > 0) {
+            this.handleFileSelection(files[0]);
+        }
+    }
+    
+    handleFileSelection(file) {
+        // Validate file
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+            this.app.showError('Please select a CSV file');
+            return;
+        }
+        
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            this.app.showError('File size must be less than 10MB');
+            return;
+        }
+        
+        this.selectedFile = file;
+        this.displayFileInfo(file);
+        this.previewFile(file);
+        
+        // Enable load users button if either population is selected OR file is picked
+        const loadUsersBtn = document.getElementById('load-users-btn');
+        if (loadUsersBtn) {
+            loadUsersBtn.disabled = !this.selectedPopulation && !this.selectedFile;
+        }
+    }
+    
+    displayFileInfo(file) {
+        const fileInfo = document.getElementById('file-info');
+        const fileName = document.getElementById('file-name');
+        const fileSize = document.getElementById('file-size');
+        const uploadArea = document.getElementById('upload-area');
+        
+        if (fileInfo && fileName && fileSize && uploadArea) {
+            fileName.textContent = file.name;
+            fileSize.textContent = this.formatFileSize(file.size);
+            
+            fileInfo.style.display = 'block';
+            uploadArea.style.display = 'none';
+        }
+    }
+    
+    async previewFile(file) {
+        try {
+            const text = await this.readFileAsText(file);
+            const lines = text.split('\n').slice(0, 6); // Show first 5 lines + header
+            
+            const preview = document.getElementById('file-preview');
+            if (preview) {
+                const table = document.createElement('table');
+                table.className = 'file-preview-table';
+                
+                lines.forEach((line, index) => {
+                    if (line.trim()) {
+                        const row = table.insertRow();
+                        const cells = line.split(',');
+                        
+                        cells.forEach(cell => {
+                            const cellElement = row.insertCell();
+                            cellElement.textContent = cell.trim().replace(/"/g, '');
+                            if (index === 0) {
+                                cellElement.className = 'header-cell';
+                            }
+                        });
+                    }
+                });
+                
+                preview.innerHTML = '<h4>File Preview:</h4>';
+                preview.appendChild(table);
+                
+                if (lines.length === 6) {
+                    const moreRows = document.createElement('p');
+                    moreRows.textContent = '... and more rows';
+                    moreRows.className = 'preview-more';
+                    preview.appendChild(moreRows);
+                }
+            }
+        } catch (error) {
+            console.error('Error previewing file:', error);
+        }
+    }
+    
+    handleRemoveFile() {
+        this.selectedFile = null;
+        
+        const fileInfo = document.getElementById('file-info');
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        
+        if (fileInfo && uploadArea && fileInput) {
+            fileInfo.style.display = 'none';
+            uploadArea.style.display = 'flex';
+            fileInput.value = '';
+        }
+        
+        // Update button state based on remaining conditions
+        const loadUsersBtn = document.getElementById('load-users-btn');
+        if (loadUsersBtn) {
+            loadUsersBtn.disabled = !this.selectedPopulation && !this.selectedFile;
+        }
+    }
+    
+    readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(e);
+            reader.readAsText(file);
+        });
+    }
+    
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
     async loadPopulations() {
@@ -273,13 +499,11 @@ export class ModifyPage {
 
     handlePopulationChange(populationId) {
         this.selectedPopulation = populationId;
-        document.getElementById('load-users-btn').disabled = !populationId;
-
-        // Hide subsequent sections
-        this.hideSection('user-selection-section');
-        this.hideSection('modify-options-section');
-        this.hideSection('modify-progress-section');
-        this.hideSection('results-section');
+        const loadUsersBtn = document.getElementById('load-users-btn');
+        if (loadUsersBtn) {
+            // Enable button if either population is selected OR file is picked
+            loadUsersBtn.disabled = !this.selectedPopulation && !this.selectedFile;
+        }
     }
 
     async loadUsers() {
@@ -293,15 +517,14 @@ export class ModifyPage {
             usersLoading.style.display = 'block';
             usersList.innerHTML = '';
 
-            // Simulate loading users
-            const users = [
-                { id: '1', name: 'John Doe', email: 'john@example.com' },
-                { id: '2', name: 'Jane Smith', email: 'jane@example.com' },
-                { id: '3', name: 'Bob Johnson', email: 'bob@example.com' }
-            ];
-            
-            usersLoading.style.display = 'none';
-            this.renderUsers(users);
+            const response = await fetch(`/api/populations/${this.selectedPopulation}/users`);
+            if (response.ok) {
+                const users = await response.json();
+                usersLoading.style.display = 'none';
+                this.renderUsers(users);
+            } else {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
         } catch (error) {
             console.error('❌ Error loading users:', error);
             usersLoading.style.display = 'none';

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icon Test</title>
+    
+    <!-- Ping Identity Official CSS -->
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css">
+    
+    <style>
+        .test-container {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .icon-test {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .icon-test i {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        .card-icon {
+            width: 64px;
+            height: 64px;
+            background: #E6F2FF;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        .card-icon i {
+            font-size: 24px;
+            color: #0066CC;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Icon Loading Test</h1>
+        
+        <h2>Direct Icon Tests:</h2>
+        <div class="icon-test">
+            <i class="mdi mdi-cog"></i> Settings Icon (mdi-cog)
+        </div>
+        <div class="icon-test">
+            <i class="mdi mdi-upload"></i> Upload Icon (mdi-upload)
+        </div>
+        <div class="icon-test">
+            <i class="mdi mdi-download"></i> Download Icon (mdi-download)
+        </div>
+        <div class="icon-test">
+            <i class="mdi mdi-pencil"></i> Edit Icon (mdi-pencil)
+        </div>
+        <div class="icon-test">
+            <i class="mdi mdi-delete"></i> Delete Icon (mdi-delete)
+        </div>
+        <div class="icon-test">
+            <i class="mdi mdi-book-open"></i> Book Icon (mdi-book-open)
+        </div>
+        
+        <h2>Card Icon Tests:</h2>
+        <div class="card-icon">
+            <i class="mdi mdi-cog"></i>
+        </div>
+        <div class="card-icon">
+            <i class="mdi mdi-upload"></i>
+        </div>
+        <div class="card-icon">
+            <i class="mdi mdi-download"></i>
+        </div>
+        
+        <h2>Font Loading Status:</h2>
+        <div id="font-status">Checking...</div>
+        
+        <script>
+            // Test if the MDI font is loading
+            document.addEventListener('DOMContentLoaded', function() {
+                const statusDiv = document.getElementById('font-status');
+                
+                // Test if the font is loaded
+                const testElement = document.createElement('span');
+                testElement.className = 'mdi mdi-cog';
+                testElement.style.position = 'absolute';
+                testElement.style.left = '-9999px';
+                document.body.appendChild(testElement);
+                
+                // Check if the font is loaded by comparing computed styles
+                const computedStyle = window.getComputedStyle(testElement, ':before');
+                const fontFamily = computedStyle.getPropertyValue('font-family');
+                
+                if (fontFamily.includes('webfont') || fontFamily.includes('mdi')) {
+                    statusDiv.innerHTML = '✅ MDI Font loaded successfully';
+                    statusDiv.style.color = 'green';
+                } else {
+                    statusDiv.innerHTML = '❌ MDI Font not loaded. Font family: ' + fontFamily;
+                    statusDiv.style.color = 'red';
+                }
+                
+                // Clean up
+                document.body.removeChild(testElement);
+            });
+        </script>
+    </div>
+</body>
+</html>

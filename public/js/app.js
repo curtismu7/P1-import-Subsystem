@@ -201,7 +201,7 @@ class PingOneApp {
     handleDisclaimerAccept() {
         this.hideDisclaimerModal();
         this.settings.showDisclaimerModal = false;
-        this.saveSettings();
+        this.saveSettings({ showDisclaimerModal: false });
         if (this.shouldShowCredentialsModal()) {
             this.showCredentialsModal();
         } else {

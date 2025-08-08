@@ -5,6 +5,9 @@ export class SettingsPage {
     constructor(app) {
         this.app = app;
         this.isLoaded = false;
+        this.signageSystem = new SignageSystem(this);
+        this.tokenMonitor = null;
+        this.systemHealthCheck = null;
     }
     
     async load() {
@@ -14,141 +17,117 @@ export class SettingsPage {
         
         const pageContent = `
             <div class="page-header">
-                <h1><i class="icon-settings"></i> Settings</h1>
-                <p>Configure your PingOne environment and application preferences</p>
+                <h1><i class="mdi mdi-cog"></i> Settings</h1>
+                <p>Configure your PingOne environment settings and credentials</p>
             </div>
             
             <div class="settings-container">
-                <!-- PingOne Configuration -->
+                <!-- Credentials Section -->
                 <section class="settings-section">
                     <div class="settings-box">
-                        <h3 class="section-title">PingOne Configuration</h3>
+                        <h3 class="section-title">PingOne Credentials</h3>
                         <p>Configure your PingOne environment connection settings</p>
                         
-                        <form id="pingone-config-form" novalidate>
-                            <div class="config-grid">
-                                <div class="form-group">
-                                    <label for="settings-environment-id"><i class="icon-globe"></i> PingOne Environment ID *</label>
-                                    <input type="text" id="settings-environment-id" name="environmentId" class="form-control"
-                                           placeholder="Enter your PingOne Environment ID" 
-                                           autocomplete="off" 
-                                           spellcheck="false"
-                                           required>
-                                    <div class="form-help">Your PingOne Environment ID from the admin console</div>
+                        <form id="settings-form" class="settings-form">
+                            <div class="form-group">
+                                <label for="settings-environment-id"><i class="mdi mdi-earth"></i> PingOne Environment ID *</label>
+                                <input type="text" id="settings-environment-id" name="environmentId" class="form-control" required>
+                                <div class="form-help">Your PingOne environment identifier</div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="settings-client-id"><i class="mdi mdi-account"></i> PingOne Client ID *</label>
+                                <input type="text" id="settings-client-id" name="clientId" class="form-control" required>
+                                <div class="form-help">Your PingOne API client identifier</div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="settings-client-secret"><i class="mdi mdi-key"></i> PingOne Client Secret *</label>
+                                <div class="input-with-button">
+                                    <input type="password" id="settings-client-secret" name="clientSecret" class="form-control" required>
+                                    <button type="button" class="btn-icon" id="settings-toggle-secret" title="Toggle password visibility">
+                                        <i class="mdi mdi-eye" aria-hidden="true"></i>
+                                    </button>
                                 </div>
-                                
-                                <div class="form-group">
-                                    <label for="settings-client-id"><i class="icon-user"></i> PingOne Client ID *</label>
-                                    <input type="text" id="settings-client-id" name="clientId" class="form-control"
-                                           placeholder="Enter your PingOne Client ID" 
-                                           autocomplete="username"
-                                           spellcheck="false"
-                                           required>
-                                    <div class="form-help">OAuth 2.0 Client ID for API access</div>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="settings-client-secret"><i class="icon-key"></i> PingOne Client Secret *</label>
-                                    <div class="input-group">
-                                        <input type="password" id="settings-client-secret" name="clientSecret" class="form-control"
-                                               placeholder="Enter your PingOne Client Secret" 
-                                               autocomplete="current-password"
-                                               spellcheck="false"
-                                               title="Show/hide client secret"
-                                               aria-describedby="settings-toggle-secret"
-                                               required>
-                                        <button type="button" id="settings-toggle-secret" class="btn btn-outline-secondary"
-                                                title="Show secret" 
-                                                aria-label="Show client secret">
-                                            <i class="icon-eye" aria-hidden="true"></i>
-                                        </button>
-                                    </div>
-                                    <div class="form-help">OAuth 2.0 Client Secret (keep secure)</div>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="settings-region"><i class="icon-map-pin"></i> PingOne Region *</label>
-                                    <select id="settings-region" name="region" class="form-control" 
-                                            autocomplete="country"
-                                            required>
-                                        <option value="NA" selected>North America</option>
-                                        <option value="EU">Europe</option>
-                                        <option value="AP">Asia Pacific</option>
-                                        <option value="CA">Canada</option>
+                                <div class="form-help">Your PingOne API client secret</div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="settings-region"><i class="mdi mdi-map-marker"></i> PingOne Region *</label>
+                                <select id="settings-region" name="region" class="form-control" required>
+                                    <option value="">Select Region</option>
+                                    <option value="NorthAmerica">North America</option>
+                                    <option value="Europe">Europe</option>
+                                    <option value="AsiaPacific">Asia Pacific</option>
+                                    <option value="Canada">Canada</option>
+                                </select>
+                                <div class="form-help">Your PingOne environment region</div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><i class="mdi mdi-account-group"></i> PingOne Population</label>
+                                <div class="input-group">
+                                    <select id="settings-population" name="populationId" class="form-control">
+                                        <option value="">Select Population</option>
                                     </select>
-                                    <div class="form-help">Your PingOne deployment region</div>
+                                    <button type="button" id="refresh-populations" class="btn btn-outline-secondary">
+                                        <i class="mdi mdi-refresh"></i>
+                                    </button>
                                 </div>
-                                
-                                <div class="form-group population-group">
-                                    <label><i class="icon-users"></i> PingOne Population</label>
-                                    <div class="population-fields">
-                                        <div class="population-input-group">
-                                            <label for="settings-population-id" class="field-label">Population ID</label>
-                                            <input type="text" id="settings-population-id" name="populationId" class="form-control"
-                                                   placeholder="Enter PingOne Population ID"
-                                                   autocomplete="off"
-                                                   spellcheck="false">
-                                        </div>
-                                        <div class="population-dropdown-group">
-                                            <label for="settings-population-select">Select Population</label>
-                                            <div class="population-dropdown-container">
-                                                <select id="settings-population-select" class="form-control">
-                                                    <option value="">Loading populations...</option>
-                                                </select>
-                                                <button type="button" id="refresh-populations" class="btn btn-sm btn-outline-secondary" title="Refresh populations">
-                                                    ↻
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <div class="form-help">Default population for operations (optional)</div>
                             </div>
                             
                             <div class="form-actions">
                                 <button type="submit" id="save-settings" class="btn btn-primary">
-                                    <i class="icon-save"></i> Save Settings
+                                    <i class="mdi mdi-content-save"></i> Save Settings
                                 </button>
                                 <button type="button" id="test-connection" class="btn btn-outline-info">
-                                    <i class="icon-test-tube"></i> Test Connection
+                                    <i class="mdi mdi-test-tube"></i> Test Connection
                                 </button>
                             </div>
                         </form>
                     </div>
                 </section>
                 
-                <!-- Token Information -->
-                <section class="settings-section" id="token-information-section">
+                <!-- Token Management Section -->
+                <section class="settings-section">
                     <div class="settings-box">
-                        <h3 class="section-title">Token Information</h3>
-                        <p>Current authentication token status and management</p>
-                        
-                        <div class="token-info-grid">
-                            <div class="token-status-item">
-                                <span class="label">Status:</span>
-                                <div class="token-status-display">
-                                    <div class="token-indicator" id="settings-token-indicator"></div>
-                                    <span id="settings-token-text" class="value">Loading...</span>
-                                </div>
-                            </div>
-                            <div class="token-expiry-item">
-                                <div class="expiry-info">
-                                    <span class="label">Expires:</span>
-                                    <span id="settings-token-expires" class="value">-</span>
-                                </div>
-                                <div class="time-left-info">
-                                    <span class="label">Time Left:</span>
-                                    <span id="settings-token-time" class="value">-</span>
-                                </div>
-                            </div>
-                        </div>
+                        <h3 class="section-title">Token Management</h3>
+                        <p>Manage your PingOne access tokens and authentication</p>
                         
                         <div class="token-actions">
-                            <button type="button" id="refresh-token" class="btn btn-outline-info btn-sm">
-                                <i class="icon-refresh"></i> Refresh Token
+                            <button type="button" id="refresh-token" class="btn btn-primary btn-sm" title="Get a new token using current credentials">
+                                <i class="mdi mdi-refresh"></i> Refresh Token
                             </button>
-                            <button type="button" id="clear-token" class="btn btn-outline-danger btn-sm">
-                                <i class="icon-trash"></i> Clear Token
+                            <button type="button" id="validate-token" class="btn btn-outline-success btn-sm" title="Check if current token is valid">
+                                <i class="mdi mdi-check-circle"></i> Validate Token
                             </button>
+                            <button type="button" id="test-connection-token" class="btn btn-outline-info btn-sm" title="Test connection with current token">
+                                <i class="mdi mdi-connection"></i> Test Connection
+                            </button>
+                            <button type="button" id="revoke-token" class="btn btn-outline-warning btn-sm" title="Revoke current token">
+                                <i class="mdi mdi-block-helper"></i> Revoke Token
+                            </button>
+                            <button type="button" id="clear-token" class="btn btn-outline-danger btn-sm" title="Clear stored token">
+                                <i class="mdi mdi-delete"></i> Clear Token
+                            </button>
+                        </div>
+                        
+                        <div class="token-status-display" id="token-status-display" style="display: none;">
+                            <div class="token-details">
+                                <div class="detail-row">
+                                    <strong>Status:</strong>
+                                    <span id="token-status-text">Checking...</span>
+                                </div>
+                                <div class="detail-row">
+                                    <strong>Expires:</strong>
+                                    <span id="token-expires-text">-</span>
+                                </div>
+                                <div class="detail-row">
+                                    <strong>Time Remaining:</strong>
+                                    <span id="token-remaining-text">-</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -195,21 +174,21 @@ export class SettingsPage {
             // Load populations for the dropdown with a small delay to ensure settings are loaded
             setTimeout(() => {
                 // Force clear dropdown first
-                const populationSelect = document.getElementById('settings-population-select');
+                const populationSelect = document.getElementById('settings-population');
                 if (populationSelect) {
-                    populationSelect.innerHTML = '<option value="">Loading populations...</option>';
+                    populationSelect.innerHTML = '<option value="">Select Population</option>';
                 }
                 this.loadPopulations();
                 // Also try again after a longer delay in case settings are still loading
                 setTimeout(() => {
                     this.loadPopulations();
-                }, 1500);
-            }, 500);
-            
-            // Update token info after a delay to ensure app token status is loaded
-            setTimeout(() => {
-                this.updateTokenInfo();
+                }, 2000);
             }, 1000);
+            
+            // Show signage window after a short delay
+            setTimeout(() => {
+                this.signageSystem.show();
+            }, 2000);
             
             this.isLoaded = true;
         }
@@ -217,7 +196,7 @@ export class SettingsPage {
     
     setupEventListeners() {
         // Form submission handling
-        const configForm = document.getElementById('pingone-config-form');
+        const configForm = document.getElementById('settings-form');
         if (configForm) {
             configForm.addEventListener('submit', (e) => {
                 e.preventDefault(); // Prevent default form submission
@@ -246,26 +225,35 @@ export class SettingsPage {
             testConnection.addEventListener('click', this.handleTestConnection.bind(this));
         }
         
-        // Token actions
-        const refreshToken = document.getElementById('refresh-token');
-        const clearToken = document.getElementById('clear-token');
-        
-        if (refreshToken) {
-            refreshToken.addEventListener('click', this.handleRefreshToken.bind(this));
-        }
-        
-        if (clearToken) {
-            clearToken.addEventListener('click', this.handleClearToken.bind(this));
-        }
+        // Token action buttons
+        document.getElementById('refresh-token')?.addEventListener('click', async () => {
+            await this.handleRefreshToken();
+        });
+
+        document.getElementById('validate-token')?.addEventListener('click', async () => {
+            await this.handleValidateToken();
+        });
+
+        document.getElementById('test-connection-token')?.addEventListener('click', async () => {
+            await this.handleTestConnection();
+        });
+
+        document.getElementById('revoke-token')?.addEventListener('click', async () => {
+            await this.handleRevokeToken();
+        });
+
+        document.getElementById('clear-token')?.addEventListener('click', () => {
+            this.handleClearToken();
+        });
         
         // Population dropdown selection
-        const populationSelect = document.getElementById('settings-population-select');
+        const populationSelect = document.getElementById('settings-population');
         if (populationSelect) {
             populationSelect.addEventListener('change', this.handlePopulationSelect.bind(this));
         }
         
         // Population ID input changes
-        const populationInput = document.getElementById('settings-population-id');
+        const populationInput = document.getElementById('settings-population');
         if (populationInput) {
             populationInput.addEventListener('input', this.handlePopulationInput.bind(this));
         }
@@ -386,8 +374,8 @@ export class SettingsPage {
             console.log('🔧 Settings page updating token info from server:', tokenStatus);
             
             // Update token indicator
-            const indicator = document.getElementById('settings-token-indicator');
-            const text = document.getElementById('settings-token-text');
+            const indicator = document.getElementById('token-status-text');
+            const text = document.getElementById('token-status-text');
             
             if (indicator && text) {
                 indicator.className = 'token-indicator ' + (tokenStatus.isValid ? 'valid' : 'invalid');
@@ -396,7 +384,7 @@ export class SettingsPage {
                 // Add focus management for invalid tokens
                 if (!tokenStatus.isValid) {
                     // Highlight the token section to draw attention
-                    const tokenSection = document.querySelector('.settings-section:has-text("Token Information")');
+                    const tokenSection = document.querySelector('.settings-section:has-text("Token Management")');
                     if (tokenSection) {
                         tokenSection.style.border = '2px solid #dc3545';
                         tokenSection.style.backgroundColor = '#fff5f5';
@@ -412,7 +400,7 @@ export class SettingsPage {
                     }
                 } else {
                     // Remove highlighting for valid tokens
-                    const tokenSection = document.querySelector('.settings-section:has-text("Token Information")');
+                    const tokenSection = document.querySelector('.settings-section:has-text("Token Management")');
                     if (tokenSection) {
                         tokenSection.style.border = '';
                         tokenSection.style.backgroundColor = '';
@@ -421,8 +409,8 @@ export class SettingsPage {
             }
             
             // Update token details
-            const expires = document.getElementById('settings-token-expires');
-            const timeLeft = document.getElementById('settings-token-time');
+            const expires = document.getElementById('token-expires-text');
+            const timeLeft = document.getElementById('token-remaining-text');
             
             if (expires) {
                 expires.textContent = tokenStatus.expiresAt ? 
@@ -493,8 +481,8 @@ export class SettingsPage {
         console.log('🔧 Settings page using app token status as fallback:', tokenStatus);
         
         // Update token indicator
-        const indicator = document.getElementById('settings-token-indicator');
-        const text = document.getElementById('settings-token-text');
+        const indicator = document.getElementById('token-status-text');
+        const text = document.getElementById('token-status-text');
         
         if (indicator && text) {
             indicator.className = 'token-indicator ' + (tokenStatus.isValid ? 'valid' : 'invalid');
@@ -502,8 +490,8 @@ export class SettingsPage {
         }
         
         // Update token details
-        const expires = document.getElementById('settings-token-expires');
-        const timeLeft = document.getElementById('settings-token-time');
+        const expires = document.getElementById('token-expires-text');
+        const timeLeft = document.getElementById('token-remaining-text');
         
         if (expires) {
             expires.textContent = tokenStatus.expiresAt ? 
@@ -543,22 +531,29 @@ export class SettingsPage {
     
     updateTokenButtonStates(isValid) {
         const refreshBtn = document.getElementById('refresh-token');
+        const validateBtn = document.getElementById('validate-token');
+        const testConnectionBtn = document.getElementById('test-connection-token');
+        const revokeBtn = document.getElementById('revoke-token');
         const clearBtn = document.getElementById('clear-token');
         
         if (refreshBtn) {
-            if (isValid) {
-                refreshBtn.disabled = false;
-                refreshBtn.title = 'Refresh the current token';
-                refreshBtn.style.opacity = '1';
-            } else {
-                refreshBtn.disabled = false;
-                refreshBtn.title = 'Get a new token using current credentials';
-                refreshBtn.style.opacity = '1';
-                // Add visual emphasis for invalid token
-                refreshBtn.style.backgroundColor = '#fff3cd';
-                refreshBtn.style.borderColor = '#ffc107';
-                refreshBtn.style.color = '#856404';
-            }
+            refreshBtn.disabled = !isValid;
+            refreshBtn.style.opacity = isValid ? '1' : '0.5';
+        }
+        
+        if (validateBtn) {
+            validateBtn.disabled = !isValid;
+            validateBtn.style.opacity = isValid ? '1' : '0.5';
+        }
+        
+        if (testConnectionBtn) {
+            testConnectionBtn.disabled = !isValid;
+            testConnectionBtn.style.opacity = isValid ? '1' : '0.5';
+        }
+        
+        if (revokeBtn) {
+            revokeBtn.disabled = !isValid;
+            revokeBtn.style.opacity = isValid ? '1' : '0.5';
         }
         
         if (clearBtn) {
@@ -576,7 +571,7 @@ export class SettingsPage {
             if (secretInput.type === 'password') {
                 // Showing secret
                 secretInput.type = 'text';
-                toggleIcon.className = 'icon-eye-off';
+                toggleIcon.className = 'mdi mdi-eye-off';
                 toggleButton.title = 'Hide secret';
                 toggleButton.setAttribute('aria-label', 'Hide client secret');
                 
@@ -587,7 +582,7 @@ export class SettingsPage {
             } else {
                 // Hiding secret
                 secretInput.type = 'password';
-                toggleIcon.className = 'icon-eye';
+                toggleIcon.className = 'mdi mdi-eye';
                 toggleButton.title = 'Show secret';
                 toggleButton.setAttribute('aria-label', 'Show client secret');
                 
@@ -600,261 +595,126 @@ export class SettingsPage {
     }
     
     async handleSaveSettings() {
+        console.log('💾 Saving settings...');
+        
+        this.setButtonLoading('save-settings', true);
+        this.showTokenStatus('Saving settings...', 'info', 'Updating application configuration');
+        
         try {
-            console.log('💾 Starting Save Settings process...');
-            this.app.showLoading('Validating and saving settings...');
-            
-            // Clear previous validation messages and highlighting
-            this.clearValidationMessages();
-            this.clearFieldHighlighting();
-            
-            // Validate required fields exist and collect form data
-            const requiredFields = [
-                { id: 'settings-environment-id', name: 'Environment ID', key: 'pingone_environment_id' },
-                { id: 'settings-client-id', name: 'Client ID', key: 'pingone_client_id' },
-                { id: 'settings-client-secret', name: 'Client Secret', key: 'pingone_client_secret' },
-                { id: 'settings-region', name: 'Region', key: 'pingone_region' }
-            ];
-            
-            const missingFields = [];
-            const emptyFields = [];
-            const formData = {};
-            
-            // Check required fields
-            for (const field of requiredFields) {
-                const element = document.getElementById(field.id);
-                if (!element) {
-                    missingFields.push(field.name);
-                    continue;
-                }
-                
-                let value = element.value ? element.value.trim() : '';
-                
-                // Handle masked Client Secret field
-                if (field.id === 'settings-client-secret' && element.dataset.isMasked === 'true' && element.dataset.actualValue) {
-                    // If field is masked and contains asterisks, use the actual stored value
-                    if (value.match(/^\*+$/)) {
-                        value = element.dataset.actualValue;
-                    } else {
-                        // User has typed new value, clear the masked state
-                        delete element.dataset.isMasked;
-                        delete element.dataset.actualValue;
-                    }
-                }
-                
-                if (!value) {
-                    emptyFields.push(field.name);
-                    this.highlightField(element, true);
-                } else {
-                    this.highlightField(element, false);
-                }
-                formData[field.key] = value;
+            const form = document.getElementById('settings-form');
+            if (!form) {
+                throw new Error('Settings form not found');
             }
             
-            // Check optional fields
-            const populationElement = document.getElementById('settings-population-id');
-            if (populationElement) {
-                formData.pingone_population_id = populationElement.value ? populationElement.value.trim() : '';
-            }
+            const formData = new FormData(form);
+            const settings = {
+                pingone_environment_id: formData.get('environmentId'),
+                pingone_client_id: formData.get('clientId'),
+                pingone_client_secret: formData.get('clientSecret'),
+                pingone_region: formData.get('region'),
+                pingone_population_id: formData.get('populationId')
+            };
             
-            // Check preference fields (with safe defaults)
-            const rateLimitElement = document.getElementById('rate-limit');
-            formData.rateLimit = rateLimitElement ? (parseInt(rateLimitElement.value) || 100) : 100;
+            // Validate required fields
+            const requiredFields = ['pingone_environment_id', 'pingone_client_id', 'pingone_client_secret', 'pingone_region'];
+            const missingFields = requiredFields.filter(field => !settings[field]);
             
-            const disclaimerElement = document.getElementById('show-disclaimer-modal');
-            formData.showDisclaimerModal = disclaimerElement ? disclaimerElement.checked : false;
-            
-            const swaggerElement = document.getElementById('show-swagger');
-            formData.showSwaggerPage = swaggerElement ? swaggerElement.checked : false;
-            
-            const autoRefreshElement = document.getElementById('auto-refresh-token');
-            formData.autoRefreshToken = autoRefreshElement ? autoRefreshElement.checked : false;
-            
-            console.log('💾 Form data collected:', formData);
-            console.log('💾 Missing fields:', missingFields);
-            console.log('💾 Empty fields:', emptyFields);
-            
-            // Show user-friendly error messages
             if (missingFields.length > 0) {
-                console.error('💾 Save failed: Missing form fields:', missingFields);
-                this.showValidationErrors([`Missing form fields: ${missingFields.join(', ')}. Please refresh the page.`]);
-                return;
+                throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
             }
             
-            if (emptyFields.length > 0) {
-                console.error('💾 Save failed: Empty required fields:', emptyFields);
-                this.showValidationErrors([`Please fill in all required fields: ${emptyFields.join(', ')}`]);
-                return;
-            }
+            this.showTokenStatus('Validating settings...', 'info', 'Checking configuration validity');
             
-            console.log('💾 Validating credentials...');
-            // Validate credentials before saving
-            const validation = await this.validateCredentials(formData);
-            console.log('💾 Validation result:', validation);
+            // Save settings
+            const response = await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            });
             
-            if (!validation.success) {
-                console.error('💾 Save failed: Validation failed:', validation.errors);
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showTokenStatus('Settings saved successfully!', 'success', 
+                    'Configuration has been updated\nEnvironment ID: ' + settings.pingone_environment_id + '\nRegion: ' + settings.pingone_region);
                 
-                // Convert technical validation errors to user-friendly messages
-                const userFriendlyErrors = validation.errors.map(error => {
-                    if (error.includes('Environment ID') && error.includes('required')) {
-                        return 'Environment ID is required. Please enter your PingOne Environment ID.';
-                    } else if (error.includes('Environment ID') && error.includes('UUID')) {
-                        return 'Environment ID must be a valid UUID format (e.g., 12345678-1234-1234-1234-123456789012).';
-                    } else if (error.includes('Client ID') && error.includes('required')) {
-                        return 'Client ID is required. Please enter your PingOne Client ID.';
-                    } else if (error.includes('Client ID') && error.includes('UUID')) {
-                        return 'Client ID must be a valid UUID format (e.g., 12345678-1234-1234-1234-123456789012).';
-                    } else if (error.includes('Client Secret') && error.includes('required')) {
-                        return 'Client Secret is required. Please enter your PingOne Client Secret.';
-                    } else if (error.includes('Client Secret') && error.includes('characters')) {
-                        return 'Client Secret must be at least 10 characters long.';
-                    } else if (error.includes('Region') && error.includes('Invalid')) {
-                        return 'Invalid region specified. Please select a valid region (NA, EU, AP, CA).';
-                    } else if (error.includes('credentials') || error.includes('Credential')) {
-                        return 'Invalid credentials: Please verify your PingOne Environment ID, Client ID, and Client Secret.';
-                    } else if (error.includes('connection') || error.includes('Connection')) {
-                        return 'Connection failed: Please verify your credentials and try again.';
-                    } else if (error.includes('authentication') || error.includes('Authentication')) {
-                        return 'Authentication failed: Please check your PingOne credentials.';
-                    } else if (error.includes('permission') || error.includes('Permission')) {
-                        return 'Access denied: Your credentials may not have the required permissions.';
-                    } else {
-                        // Keep original error if no specific mapping found
-                        return error;
-                    }
-                });
+                // Update app settings
+                if (this.app && this.app.settings) {
+                    Object.assign(this.app.settings, settings);
+                }
                 
-                this.showValidationErrors(userFriendlyErrors);
-                return;
+                // Update token info
+                this.updateTokenInfo();
+                
+            } else {
+                throw new Error(result.error || 'Failed to save settings');
             }
-            
-            // Show warnings if any
-            if (validation.warnings && validation.warnings.length > 0) {
-                this.showValidationWarnings(validation.warnings);
-            }
-            
-            console.log('💾 Updating app settings...');
-            // Update app settings
-            Object.assign(this.app.settings, formData);
-            console.log('💾 Updated app settings:', this.app.settings);
-            
-            // Save to localStorage
-            localStorage.setItem('pingone-settings', JSON.stringify(this.app.settings));
-            console.log('💾 Saved to localStorage');
-            
-            // Save to server
-            console.log('💾 Saving to server...');
-            const saveResult = await this.app.saveSettings();
-            console.log('💾 Server save result:', saveResult);
-            
-            // Update UI based on new settings
-            this.updateUIBasedOnSettings();
-            
-            // Show success message with validation info
-            let successMessage = 'Settings saved successfully!';
-            if (validation.connectionTest?.success) {
-                successMessage += ' Connection test passed.';
-            } else if (validation.connectionTest) {
-                successMessage += ' (Note: Connection test failed - please verify credentials)';
-            }
-            
-            this.app.showSuccess(successMessage);
-            
-            // Update last updated time
-            const lastUpdated = document.getElementById('settings-last-updated');
-            if (lastUpdated) {
-                lastUpdated.textContent = new Date().toLocaleString();
-            }
-            
-            // Clear any previous validation messages
-            this.clearValidationMessages();
             
         } catch (error) {
-            console.error('💾 Save Settings failed with error:', error);
-            console.error('💾 Error stack:', error.stack);
-            
-            let errorMessage = 'Failed to save settings: ' + error.message;
-            
-            // Enhanced error handling with user-friendly messages
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                errorMessage = 'Network error: Could not connect to server. Please check your connection and try again.';
-            } else if (error.message.includes('400') || error.message.includes('Bad Request')) {
-                errorMessage = 'Invalid settings: Please check your credentials and try again.';
-            } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
-                errorMessage = 'Authentication failed: Please verify your PingOne credentials.';
-            } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
-                errorMessage = 'Access denied: Your credentials may not have the required permissions.';
-            } else if (error.message.includes('404') || error.message.includes('Not Found')) {
-                errorMessage = 'Service not found: Please check your environment configuration.';
-            } else if (error.message.includes('500') || error.message.includes('Internal Server Error')) {
-                errorMessage = 'Server error: Please try again later or contact support.';
-            } else if (error.message.includes('timeout') || error.message.includes('timeout')) {
-                errorMessage = 'Request timeout: Please check your connection and try again.';
-            } else if (error.message.includes('credentials') || error.message.includes('Credential')) {
-                errorMessage = 'Invalid credentials: Please check your PingOne Environment ID, Client ID, and Client Secret.';
-            } else if (error.message.includes('validation') || error.message.includes('Validation')) {
-                errorMessage = 'Validation error: Please check your settings and ensure all required fields are filled correctly.';
-            } else if (error.message.includes('network') || error.message.includes('Network')) {
-                errorMessage = 'Network error: Please check your internet connection and try again.';
-            }
-            
-            // Show the error message
-            this.app.showError(errorMessage);
-            
-            // Also show validation errors if available
-            if (error.validationErrors) {
-                this.showValidationErrors(error.validationErrors);
-            }
+            console.error('❌ Failed to save settings:', error);
+            this.showTokenStatus('Failed to save settings', 'error', 
+                `${error.message}\n\nPlease check all required fields are filled correctly.`);
         } finally {
-            this.app.hideLoading();
+            this.setButtonLoading('save-settings', false);
         }
     }
     
     async handleTestConnection() {
+        console.log('🔌 Testing connection...');
+        
         try {
-            this.app.showLoading('Testing connection...');
+            this.signageSystem.addMessage('🔌 Testing connection...', 'info');
             
-            const credentials = {
-                pingone_environment_id: document.getElementById('settings-environment-id').value,
-                pingone_client_id: document.getElementById('settings-client-id').value,
-                pingone_client_secret: document.getElementById('settings-client-secret').value,
-                pingone_region: document.getElementById('settings-region').value
-            };
-            
-            if (!credentials.pingone_environment_id || !credentials.pingone_client_id || !credentials.pingone_client_secret) {
-                throw new Error('Please fill in all required fields before testing');
+            const credentials = this.getFormCredentials();
+            if (!credentials) {
+                this.signageSystem.addMessage('❌ Please fill in all required credentials', 'error');
+                return;
             }
             
-            const result = await this.app.getToken(credentials);
+            const response = await fetch('/api/pingone/test-connection', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const result = await response.json();
             
             if (result.success) {
-                this.app.showSuccess('Connection test successful! Token acquired.');
-                this.app.updateTokenStatus(result.token);
-                this.updateTokenInfo();
+                this.signageSystem.addMessage('✅ Connection test successful!', 'success');
+                
+                if (result.token && result.token.timeLeft) {
+                    this.signageSystem.addMessage(`⏰ Token acquired - Time left: ${result.token.timeLeft}`, 'info');
+                }
             } else {
-                throw new Error(result.error || 'Connection test failed');
+                this.signageSystem.addMessage(`❌ Connection test failed: ${result.error || 'Unknown error'}`, 'error');
             }
-            
         } catch (error) {
-            this.app.showError('Connection test failed: ' + error.message);
-        } finally {
-            this.app.hideLoading();
+            console.error('❌ Error testing connection:', error);
+            this.signageSystem.addMessage(`❌ Error testing connection: ${error.message}`, 'error');
         }
     }
     
     async handleRefreshToken() {
+        console.log('🔄 Refreshing token...');
+        
         try {
-            this.app.showLoading('Refreshing token...');
+            // Show status in signage
+            this.signageSystem.addMessage('🔄 Refreshing token...', 'info');
             
-            const credentials = {
-                pingone_environment_id: this.app.settings.pingone_environment_id,
-                pingone_client_id: this.app.settings.pingone_client_id,
-                pingone_client_secret: this.app.settings.pingone_client_secret,
-                pingone_region: this.app.settings.pingone_region
-            };
+            // Get credentials from form
+            const credentials = this.getFormCredentials();
+            if (!credentials) {
+                this.signageSystem.addMessage('❌ Please fill in all required credentials', 'error');
+                return;
+            }
             
-            // Use the proper API endpoint like other subsystems
+            // Validate credentials first
+            const validationResult = await this.validateCredentials(credentials);
+            if (!validationResult.isValid) {
+                this.signageSystem.addMessage(`❌ Invalid credentials: ${validationResult.errors.join(', ')}`, 'error');
+                return;
+            }
+            
+            // Get new token
             const response = await fetch('/api/v1/auth/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -863,33 +723,90 @@ export class SettingsPage {
             
             const result = await response.json();
             
-            if (result.success && result.tokenInfo) {
-                // Update app token status
-                this.app.updateTokenStatus({
-                    access_token: result.token,
-                    expires_in: result.tokenInfo.timeLeft || 3600
-                });
-                
-                // Refresh the token info display
+            if (result.success) {
+                this.signageSystem.addMessage('✅ Token refreshed successfully!', 'success');
+                // Update token info
                 this.updateTokenInfo();
-                
-                this.app.showSuccess('Token refreshed successfully!');
             } else {
-                throw new Error(result.message || 'Failed to refresh token');
+                this.signageSystem.addMessage(`❌ Failed to refresh token: ${result.error || 'Unknown error'}`, 'error');
             }
-            
         } catch (error) {
-            this.app.showError('Failed to refresh token: ' + error.message);
-        } finally {
-            this.app.hideLoading();
+            console.error('❌ Error refreshing token:', error);
+            this.signageSystem.addMessage(`❌ Error refreshing token: ${error.message}`, 'error');
         }
     }
-    
+
+    async handleValidateToken() {
+        console.log('✅ Validating token...');
+        
+        try {
+            this.signageSystem.addMessage('🔍 Validating token...', 'info');
+            
+            const response = await fetch('/api/v1/auth/token', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success && result.token && result.token.isValid) {
+                const timeLeft = result.token.timeLeft || 'Unknown';
+                this.signageSystem.addMessage('✅ Token is valid!', 'success');
+                this.signageSystem.addMessage(`⏰ Time remaining: ${timeLeft}`, 'info');
+            } else {
+                this.signageSystem.addMessage('❌ Token is invalid or expired', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Error validating token:', error);
+            this.signageSystem.addMessage(`❌ Error validating token: ${error.message}`, 'error');
+        }
+    }
+
+    async handleRevokeToken() {
+        console.log('🚫 Revoking token...');
+        
+        try {
+            this.signageSystem.addMessage('🚫 Revoking token...', 'warning');
+            
+            const response = await fetch('/api/v1/auth/token', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.signageSystem.addMessage('✅ Token revoked successfully!', 'success');
+                this.signageSystem.addMessage('🗑️ Token has been invalidated', 'info');
+                // Update token info
+                this.updateTokenInfo();
+            } else {
+                this.signageSystem.addMessage(`❌ Failed to revoke token: ${result.error || 'Unknown error'}`, 'error');
+            }
+        } catch (error) {
+            console.error('❌ Error revoking token:', error);
+            this.signageSystem.addMessage(`❌ Error revoking token: ${error.message}`, 'error');
+        }
+    }
+
     handleClearToken() {
-        if (confirm('Are you sure you want to clear the current token?')) {
-            this.app.updateTokenStatus(null);
+        console.log('🗑️ Clearing token...');
+        
+        try {
+            this.signageSystem.addMessage('🗑️ Clearing token...', 'warning');
+            
+            // Clear token from localStorage
+            localStorage.removeItem('pingone_token');
+            localStorage.removeItem('pingone_token_expiry');
+            
+            // Update token info display
             this.updateTokenInfo();
-            this.app.showInfo('Token cleared successfully');
+            
+            this.signageSystem.addMessage('✅ Token cleared successfully!', 'success');
+            this.signageSystem.addMessage('🗑️ Token has been removed from local storage', 'info');
+        } catch (error) {
+            console.error('❌ Error clearing token:', error);
+            this.signageSystem.addMessage(`❌ Error clearing token: ${error.message}`, 'error');
         }
     }
     
@@ -904,8 +821,8 @@ export class SettingsPage {
      * Handle population dropdown selection
      */
     handlePopulationSelect() {
-        const populationSelect = document.getElementById('settings-population-select');
-        const populationInput = document.getElementById('settings-population-id');
+        const populationSelect = document.getElementById('settings-population');
+        const populationInput = document.getElementById('settings-population');
         
         if (populationSelect && populationInput) {
             const selectedValue = populationSelect.value;
@@ -920,8 +837,8 @@ export class SettingsPage {
      * Handle population ID input changes
      */
     handlePopulationInput() {
-        const populationSelect = document.getElementById('settings-population-select');
-        const populationInput = document.getElementById('settings-population-id');
+        const populationSelect = document.getElementById('settings-population');
+        const populationInput = document.getElementById('settings-population');
         
         if (populationSelect && populationInput) {
             const inputValue = populationInput.value.trim();
@@ -946,10 +863,10 @@ export class SettingsPage {
      */
     async handleRefreshPopulations() {
         console.log('🏘️ Refresh populations button clicked');
-        const populationSelect = document.getElementById('settings-population-select');
+        const populationSelect = document.getElementById('settings-population');
         if (populationSelect) {
             // Clear existing options to force reload
-            populationSelect.innerHTML = '<option value="">Loading populations...</option>';
+            populationSelect.innerHTML = '<option value="">Select Population</option>';
         }
         
         // Force reload populations
@@ -960,16 +877,16 @@ export class SettingsPage {
      * Load populations into the dropdown
      */
     async loadPopulations() {
-        const populationSelect = document.getElementById('settings-population-select');
+        const populationSelect = document.getElementById('settings-population');
         if (!populationSelect) {
-            console.warn('🏘️ Population select element not found');
+            console.warn('��️ Population select element not found');
             return;
         }
         
         // Check if dropdown already has populations (avoid duplicate loading)
         // Only skip if we have actual population options, not just "Loading..." or "No populations"
         const hasRealPopulations = Array.from(populationSelect.options).some(option => 
-            option.value && option.value !== "" && !option.textContent.includes("Loading") && !option.textContent.includes("No populations")
+            option.value && option.value !== "" && !option.textContent.includes("Select Population") && !option.textContent.includes("No populations")
         );
         
         if (hasRealPopulations) {
@@ -1036,7 +953,7 @@ export class SettingsPage {
      * Populate the dropdown with population options
      */
     populateDropdown(populations) {
-        const populationSelect = document.getElementById('settings-population-select');
+        const populationSelect = document.getElementById('settings-population');
         if (!populationSelect) {
             console.warn('🏘️ Population select element not found in populateDropdown');
             return;
@@ -1044,7 +961,7 @@ export class SettingsPage {
         
         if (!populations || !Array.isArray(populations)) {
             console.warn('🏘️ Invalid populations data:', populations);
-            populationSelect.innerHTML = '<option value="">No populations available</option>';
+            populationSelect.innerHTML = '<option value="">Select a population...</option>';
             return;
         }
         
@@ -1259,7 +1176,7 @@ export class SettingsPage {
             if (secretInput.type === 'password') {
                 // Showing secret
                 secretInput.type = 'text';
-                toggleIcon.className = 'icon-eye-off';
+                toggleIcon.className = 'mdi mdi-eye-off';
                 toggleButton.title = 'Hide secret';
                 toggleButton.setAttribute('aria-label', 'Hide client secret');
                 
@@ -1270,7 +1187,7 @@ export class SettingsPage {
             } else {
                 // Hiding secret
                 secretInput.type = 'password';
-                toggleIcon.className = 'icon-eye';
+                toggleIcon.className = 'mdi mdi-eye';
                 toggleButton.title = 'Show secret';
                 toggleButton.setAttribute('aria-label', 'Show client secret');
                 
@@ -1325,6 +1242,9 @@ export class SettingsPage {
         };
 
         wire(document.getElementById('refresh-token'));
+        wire(document.getElementById('validate-token'));
+        wire(document.getElementById('test-connection-token'));
+        wire(document.getElementById('revoke-token'));
         wire(document.getElementById('clear-token'));
     }
 
@@ -1392,5 +1312,523 @@ export class SettingsPage {
                 }
             }, 500);
         }
+    }
+
+    /**
+     * Show token action status
+     */
+    showTokenStatus(message, type = 'info', details = '') {
+        const statusWindow = document.getElementById('token-status-window');
+        const statusMessage = document.getElementById('token-status-message');
+        const statusDetails = document.getElementById('token-status-details');
+        
+        if (statusWindow && statusMessage && statusDetails) {
+            // Update message and type
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+            
+            // Update details if provided
+            if (details) {
+                statusDetails.textContent = details;
+                statusDetails.style.display = 'block';
+            } else {
+                statusDetails.style.display = 'none';
+            }
+            
+            // Show the status window with animation
+            statusWindow.style.display = 'block';
+            statusWindow.classList.add('show');
+            
+            // Auto-hide after 5 seconds for success/info, 10 seconds for warnings/errors
+            const hideDelay = (type === 'success' || type === 'info') ? 5000 : 10000;
+            setTimeout(() => {
+                this.hideTokenStatus();
+            }, hideDelay);
+        }
+    }
+
+    /**
+     * Hide token status window
+     */
+    hideTokenStatus() {
+        const statusWindow = document.getElementById('token-status-window');
+        if (statusWindow) {
+            statusWindow.classList.add('hide');
+            setTimeout(() => {
+                statusWindow.style.display = 'none';
+                statusWindow.classList.remove('hide');
+            }, 300);
+        }
+    }
+
+    /**
+     * Set button loading state
+     */
+    setButtonLoading(buttonId, loading = true) {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            if (loading) {
+                button.classList.add('loading');
+                button.disabled = true;
+            } else {
+                button.classList.remove('loading');
+                button.disabled = false;
+            }
+        }
+    }
+
+    /**
+     * Show status in the token action status window
+     */
+    showTokenActionStatus(message, type = 'info', details = '') {
+        const statusWindow = document.getElementById('token-status-window');
+        const statusMessage = document.getElementById('token-status-message');
+        const statusDetails = document.getElementById('token-status-details');
+        
+        if (statusWindow && statusMessage) {
+            // Show the status window
+            statusWindow.style.display = 'block';
+            
+            // Update message
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message status-${type}`;
+            
+            // Update details if provided
+            if (statusDetails) {
+                statusDetails.textContent = details;
+                statusDetails.style.display = details ? 'block' : 'none';
+            }
+            
+            // Auto-hide after 5 seconds for success/info messages
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    statusWindow.style.display = 'none';
+                }, 5000);
+            }
+        }
+    }
+
+    /**
+     * Get credentials from the form
+     */
+    getFormCredentials() {
+        const form = document.getElementById('settings-form');
+        if (!form) {
+            return null;
+        }
+        
+        const formData = new FormData(form);
+        const credentials = {
+            pingone_environment_id: formData.get('environmentId'),
+            pingone_client_id: formData.get('clientId'),
+            pingone_client_secret: formData.get('clientSecret'),
+            pingone_region: formData.get('region')
+        };
+        
+        // Check if all required fields are filled
+        if (!credentials.pingone_environment_id || !credentials.pingone_client_id || !credentials.pingone_client_secret) {
+            return null;
+        }
+        
+        return credentials;
+    }
+}
+
+/**
+ * Comprehensive Signage System for Real-time System Information
+ */
+class SignageSystem {
+    constructor(settingsPage) {
+        this.settingsPage = settingsPage;
+        this.signageContainer = null;
+        this.messages = [];
+        this.maxMessages = 20;
+        this.isVisible = false;
+        this.tokenWarningThreshold = 5 * 60; // 5 minutes in seconds
+        this.lastTokenCheck = null;
+        this.lastSystemCheck = null;
+        
+        // Initialize when settings page loads
+        this.init();
+    }
+    
+    init() {
+        this.signageContainer = document.getElementById('scrolling-signage');
+        if (this.signageContainer) {
+            this.startMonitoring();
+            this.addMessage('System initialized - monitoring token status and system health', 'info');
+        }
+    }
+    
+    /**
+     * Add a message to the scrolling signage
+     */
+    addMessage(text, type = 'info', details = '') {
+        const message = {
+            id: Date.now() + Math.random(),
+            text,
+            type,
+            details,
+            timestamp: new Date(),
+            timeAgo: 'Just now'
+        };
+        
+        this.messages.unshift(message);
+        
+        // Keep only the latest messages
+        if (this.messages.length > this.maxMessages) {
+            this.messages = this.messages.slice(0, this.maxMessages);
+        }
+        
+        this.renderMessages();
+        this.updateTimeAgo();
+        
+        // Auto-show window for urgent messages
+        if (type === 'error' || type === 'warning') {
+            this.show();
+            this.addUrgentClass();
+        }
+    }
+    
+    /**
+     * Add urgent class to status window
+     */
+    addUrgentClass() {
+        const statusWindow = document.getElementById('token-status-window');
+        if (statusWindow) {
+            statusWindow.classList.add('has-urgent-messages');
+            
+            // Remove class after 10 seconds
+            setTimeout(() => {
+                statusWindow.classList.remove('has-urgent-messages');
+            }, 10000);
+        }
+    }
+    
+    /**
+     * Render all messages in the signage
+     */
+    renderMessages() {
+        if (!this.signageContainer) return;
+        
+        let html = '';
+        this.messages.forEach(message => {
+            const icon = this.getIconForType(message.type);
+            const timeAgo = this.formatTimeAgo(message.timestamp);
+            
+            html += `
+                <div class="signage-item" data-type="${message.type}" data-id="${message.id}">
+                    <i class="${icon}"></i>
+                    <span class="signage-text">${this.escapeHtml(message.text)}</span>
+                    <span class="signage-time">${timeAgo}</span>
+                </div>
+            `;
+        });
+        
+        this.signageContainer.innerHTML = html;
+    }
+    
+    /**
+     * Get icon for message type
+     */
+    getIconForType(type) {
+        const icons = {
+            info: 'icon-info-circle',
+            success: 'icon-check-circle',
+            warning: 'icon-alert-triangle',
+            error: 'icon-x-circle',
+            token: 'icon-key',
+            system: 'icon-server',
+            github: 'icon-github',
+            network: 'icon-wifi',
+            security: 'icon-shield'
+        };
+        return icons[type] || 'icon-info-circle';
+    }
+    
+    /**
+     * Format time ago
+     */
+    formatTimeAgo(timestamp) {
+        const now = new Date();
+        const diff = Math.floor((now - timestamp) / 1000);
+        
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+        return `${Math.floor(diff / 86400)}d ago`;
+    }
+    
+    /**
+     * Update time ago for all messages
+     */
+    updateTimeAgo() {
+        const timeElements = this.signageContainer?.querySelectorAll('.signage-time');
+        if (timeElements) {
+            timeElements.forEach((element, index) => {
+                if (this.messages[index]) {
+                    element.textContent = this.formatTimeAgo(this.messages[index].timestamp);
+                }
+            });
+        }
+    }
+    
+    /**
+     * Start comprehensive monitoring
+     */
+    startMonitoring() {
+        // Token monitoring
+        this.startTokenMonitoring();
+        
+        // System health monitoring
+        this.startSystemHealthMonitoring();
+        
+        // GitHub status monitoring
+        this.startGitHubStatusMonitoring();
+        
+        // Network connectivity monitoring
+        this.startNetworkMonitoring();
+        
+        // Security monitoring
+        this.startSecurityMonitoring();
+        
+        // Update time ago every minute
+        setInterval(() => {
+            this.updateTimeAgo();
+        }, 60000);
+    }
+    
+    /**
+     * Monitor token status and expiration
+     */
+    startTokenMonitoring() {
+        const checkToken = async () => {
+            try {
+                const response = await fetch('/api/v1/auth/token');
+                const result = await response.json();
+                
+                if (result.success && result.token) {
+                    const token = result.token;
+                    
+                    if (token.isValid) {
+                        const timeLeft = token.expiresIn || 0;
+                        
+                        if (timeLeft <= this.tokenWarningThreshold && timeLeft > 0) {
+                            this.addMessage(`⚠️ Token expires in ${Math.floor(timeLeft / 60)} minutes`, 'warning');
+                        } else if (timeLeft <= 0) {
+                            this.addMessage('🚨 Token has expired - please refresh', 'error');
+                        } else if (timeLeft > 3600) {
+                            // Only show valid status every hour to avoid spam
+                            const hoursLeft = Math.floor(timeLeft / 3600);
+                            if (!this.lastTokenCheck || (Date.now() - this.lastTokenCheck) > 3600000) {
+                                this.addMessage(`✅ Token valid - ${hoursLeft}h remaining`, 'success');
+                                this.lastTokenCheck = Date.now();
+                            }
+                        }
+                    } else {
+                        this.addMessage('❌ Token is invalid', 'error');
+                    }
+                } else {
+                    this.addMessage('⚠️ No valid token found', 'warning');
+                }
+            } catch (error) {
+                this.addMessage(`🔌 Token check failed: ${error.message}`, 'error');
+            }
+        };
+        
+        // Check immediately
+        checkToken();
+        
+        // Check every 30 seconds
+        setInterval(checkToken, 30000);
+    }
+    
+    /**
+     * Monitor system health
+     */
+    startSystemHealthMonitoring() {
+        const checkSystemHealth = async () => {
+            try {
+                const response = await fetch('/api/health');
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    const health = result.data;
+                    
+                    // Check memory usage
+                    if (health.system?.memory?.memoryUsage) {
+                        const memoryUsage = parseInt(health.system.memory.memoryUsage);
+                        if (memoryUsage > 90) {
+                            this.addMessage(`⚠️ High memory usage: ${memoryUsage}%`, 'warning');
+                        }
+                    }
+                    
+                    // Check server status
+                    if (health.system?.uptime) {
+                        const uptime = health.system.uptime;
+                        const hours = Math.floor(uptime / 3600);
+                        if (hours > 24) {
+                            this.addMessage(`🖥️ Server uptime: ${hours}h`, 'info');
+                        }
+                    }
+                    
+                    // Check PingOne connection
+                    if (health.optimization?.pingOneConnected) {
+                        if (health.optimization.pingOneConnected === 'ok') {
+                            this.addMessage('✅ PingOne connection healthy', 'success');
+                        } else {
+                            this.addMessage('⚠️ PingOne connection issues', 'warning');
+                        }
+                    }
+                }
+            } catch (error) {
+                this.addMessage(`🔌 System health check failed: ${error.message}`, 'error');
+            }
+        };
+        
+        // Check every 2 minutes
+        setInterval(checkSystemHealth, 120000);
+    }
+    
+    /**
+     * Monitor GitHub status
+     */
+    startGitHubStatusMonitoring() {
+        const checkGitHubStatus = async () => {
+            try {
+                // Check if we're in a git repository
+                const response = await fetch('/api/system/git-status');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const gitInfo = result.data;
+                    
+                    if (gitInfo.isGitRepo) {
+                        if (gitInfo.branch) {
+                            this.addMessage(`📦 Git branch: ${gitInfo.branch}`, 'info');
+                        }
+                        
+                        if (gitInfo.hasUncommittedChanges) {
+                            this.addMessage('📝 Uncommitted changes detected', 'warning');
+                        }
+                        
+                        if (gitInfo.behindRemote) {
+                            this.addMessage(`⬇️ ${gitInfo.behindRemote} commits behind remote`, 'warning');
+                        }
+                        
+                        if (gitInfo.aheadRemote) {
+                            this.addMessage(`⬆️ ${gitInfo.aheadRemote} commits ahead of remote`, 'info');
+                        }
+                    }
+                }
+            } catch (error) {
+                // GitHub status check is optional, don't show errors
+                console.log('GitHub status check not available');
+            }
+        };
+        
+        // Check every 5 minutes
+        setInterval(checkGitHubStatus, 300000);
+    }
+    
+    /**
+     * Monitor network connectivity
+     */
+    startNetworkMonitoring() {
+        const checkNetwork = () => {
+            if (navigator.onLine) {
+                this.addMessage('🌐 Network connection stable', 'success');
+            } else {
+                this.addMessage('🌐 Network connection lost', 'error');
+            }
+        };
+        
+        // Check network status
+        window.addEventListener('online', () => {
+            this.addMessage('🌐 Network connection restored', 'success');
+        });
+        
+        window.addEventListener('offline', () => {
+            this.addMessage('🌐 Network connection lost', 'error');
+        });
+        
+        // Check every 5 minutes
+        setInterval(checkNetwork, 300000);
+    }
+    
+    /**
+     * Monitor security status
+     */
+    startSecurityMonitoring() {
+        const checkSecurity = () => {
+            // Check if running on HTTPS
+            if (window.location.protocol === 'https:') {
+                this.addMessage('🔒 Secure connection (HTTPS)', 'success');
+            } else {
+                this.addMessage('⚠️ Insecure connection (HTTP)', 'warning');
+            }
+            
+            // Check for security headers
+            this.checkSecurityHeaders();
+        };
+        
+        // Check every 10 minutes
+        setInterval(checkSecurity, 600000);
+    }
+    
+    /**
+     * Check security headers
+     */
+    async checkSecurityHeaders() {
+        try {
+            const response = await fetch('/api/system/security-headers');
+            const result = await response.json();
+            
+            if (result.success) {
+                const headers = result.data;
+                
+                if (!headers.contentSecurityPolicy) {
+                    this.addMessage('⚠️ Missing Content Security Policy', 'warning');
+                }
+                
+                if (!headers.xFrameOptions) {
+                    this.addMessage('⚠️ Missing X-Frame-Options', 'warning');
+                }
+            }
+        } catch (error) {
+            // Security headers check is optional
+            console.log('Security headers check not available');
+        }
+    }
+    
+    /**
+     * Show the signage window
+     */
+    show() {
+        const statusWindow = document.getElementById('token-status-window');
+        if (statusWindow) {
+            statusWindow.style.display = 'block';
+            this.isVisible = true;
+        }
+    }
+    
+    /**
+     * Hide the signage window
+     */
+    hide() {
+        const statusWindow = document.getElementById('token-status-window');
+        if (statusWindow) {
+            statusWindow.style.display = 'none';
+            this.isVisible = false;
+        }
+    }
+    
+    /**
+     * Escape HTML to prevent XSS
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }
