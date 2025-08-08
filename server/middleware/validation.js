@@ -146,12 +146,34 @@ export const schemas = {
   
   // Settings
   settingsUpdate: Joi.object({
+    // Standard keys (preferred)
+    pingone_environment_id: Joi.string().uuid({ version: ['uuidv4', 'uuidv1'] }).optional(),
+    pingone_client_id: Joi.string().uuid({ version: ['uuidv4', 'uuidv1'] }).optional(),
+    pingone_client_secret: Joi.string().min(8).optional(),
+    pingone_population_id: Joi.string().optional(), // Population ID can be any string
+    pingone_region: Joi.string().valid('NorthAmerica', 'Europe', 'AsiaPacific', 'Canada', 'NA', 'EU', 'AP', 'CA').optional(),
+    
+    // Legacy keys (for backward compatibility)
     environmentId: Joi.string().uuid({ version: ['uuidv4', 'uuidv1'] }).optional(),
     apiClientId: Joi.string().uuid({ version: ['uuidv4', 'uuidv1'] }).optional(),
     apiSecret: Joi.string().min(8).optional(),
-    populationId: Joi.string().uuid({ version: ['uuidv4', 'uuidv1'] }).optional(),
-    region: Joi.string().valid('NorthAmerica', 'Europe', 'AsiaPacific', 'Canada').optional(),
-    rateLimit: Joi.number().integer().min(1).max(1000).optional()
+    populationId: Joi.string().optional(),
+    region: Joi.string().valid('NorthAmerica', 'Europe', 'AsiaPacific', 'Canada', 'NA', 'EU', 'AP', 'CA').optional(),
+    
+    // Additional legacy variations
+    'environment-id': Joi.string().uuid({ version: ['uuidv4', 'uuidv1'] }).optional(),
+    'api-client-id': Joi.string().uuid({ version: ['uuidv4', 'uuidv1'] }).optional(),
+    'api-secret': Joi.string().min(8).optional(),
+    'client-id': Joi.string().uuid({ version: ['uuidv4', 'uuidv1'] }).optional(),
+    'client-secret': Joi.string().min(8).optional(),
+    clientId: Joi.string().uuid({ version: ['uuidv4', 'uuidv1'] }).optional(),
+    clientSecret: Joi.string().min(8).optional(),
+    
+    // Application preferences
+    rateLimit: Joi.number().integer().min(1).max(1000).optional(),
+    showDisclaimerModal: Joi.boolean().optional(),
+    showSwaggerPage: Joi.boolean().optional(),
+    autoRefreshToken: Joi.boolean().optional()
   }).min(1), // At least one field must be provided
   
   // Logging

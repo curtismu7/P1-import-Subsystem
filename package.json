@@ -1,6 +1,6 @@
 {
   "name": "pingone-import-cursor",
-  "version": "7.0.1.0",
+  "version": "7.0.1.1",
   "description": "A modern web application for importing users into PingOne using the PingOne Admin API.",
   "main": "server.js",
   "type": "module",
@@ -71,10 +71,13 @@
     "restart:force": "node scripts/restart-server.js --no-kill",
     "restart:port": "node scripts/restart-server.js --port",
     "check:port": "node -e \"import('./server/port-checker.js').then(m => m.checkPortStatus(4000)).then(console.log)\"",
+    "build:bundle": "node scripts/build-bundle.js",
     "import-maps:analyze": "node scripts/import-maps-migration.js analyze",
     "import-maps:migrate": "node scripts/import-maps-migration.js convert",
     "import-maps:migration-status": "node scripts/import-maps-migration.js status",
     "import-maps:migration-test": "node scripts/import-maps-migration.js test",
+    "import-maps:update": "node scripts/import-maps-migration.js update",
+    "import-maps:summary": "node scripts/import-maps-migration.js summary",
     "module:convert": "node scripts/module-converter.js"
   },
   "keywords": [

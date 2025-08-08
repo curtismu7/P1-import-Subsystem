@@ -30,7 +30,7 @@ class TokenService {
      */
     async getToken(credentials = null) {
         // If we have a valid cached token, return it
-        if (this.tokenCache.accessToken && Date.now() < this.tokenCache.expiresAt - 30000) {
+        if (this.tokenCache.accessToken && Date.now() < this.tokenCache.expiresAt - 300000) {
             return this.tokenCache.accessToken;
         }
 
@@ -138,8 +138,8 @@ class TokenService {
             this.refreshTimeout = null;
         }
 
-        // Refresh token 1 minute before it expires
-        const refreshTime = Math.max(0, (expiresIn - 60) * 1000);
+        // Refresh token 5 minutes before it expires
+        const refreshTime = Math.max(0, (expiresIn - 300) * 1000);
         
         this.refreshTimeout = setTimeout(async () => {
             try {
@@ -148,7 +148,7 @@ class TokenService {
             } catch (error) {
                 logger.error('Failed to refresh access token', { error: error.message });
                 // Retry after a delay
-                this.scheduleTokenRefresh(60); // Retry in 1 minute
+                this.scheduleTokenRefresh(300); // Retry in 5 minutes
             }
         }, refreshTime);
     }
