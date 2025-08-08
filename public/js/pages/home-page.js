@@ -34,7 +34,7 @@ export class HomePage {
                     
                     <div class="status-card">
                         <div class="status-icon">
-                            <i class="mdi mdi-key" id="token-icon"></i>
+                            <i class="icon-key" id="token-icon"></i>
                         </div>
                         <div>
                             <div class="status-label">Token Status</div>
@@ -251,11 +251,11 @@ export class HomePage {
             const timeLeft = this.app.formatTimeLeft(this.app.tokenStatus.timeLeft);
             if (tokenStatus) tokenStatus.textContent = `Valid (${timeLeft})`;
             if (tokenIndicator) tokenIndicator.className = 'status-indicator valid';
-            if (tokenIcon) tokenIcon.className = 'mdi mdi-key';
+            if (tokenIcon) tokenIcon.className = 'icon-key';
         } else {
             if (tokenStatus) tokenStatus.textContent = 'Invalid or Expired';
             if (tokenIndicator) tokenIndicator.className = 'status-indicator invalid';
-            if (tokenIcon) tokenIcon.className = 'mdi mdi-key-off';
+            if (tokenIcon) tokenIcon.className = 'icon-key-off';
         }
     }
     
