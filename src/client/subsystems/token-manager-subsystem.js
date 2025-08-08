@@ -589,21 +589,37 @@ class TokenManagerSubsystem {
                 button.textContent = 'Refreshing...';
             }
             
-            const response = await this.retryFetch('/api/v1/auth/refresh', { method: 'POST' });
+            // Get current settings for the refresh request
+            const settingsResponse = await this.retryFetch('/api/settings');
+            const settingsData = await settingsResponse.json();
+            const settings = settingsData.data;
+            
+            const response = await this.retryFetch('/api/pingone/get-token', { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    clientId: settings.apiClientId,
+                    clientSecret: settings.apiSecret,
+                    environmentId: settings.environmentId,
+                    region: settings.region
+                })
+            });
             const data = await response.json();
             
-            if (data.success && data.token) {
+            if (data.success && data.data?.access_token) {
                 const tokenTextarea = document.getElementById('raw-token-display');
                 if (tokenTextarea) {
-                    tokenTextarea.value = data.token;
+                    tokenTextarea.value = data.data.access_token;
                 }
                 
                 // Store refreshed token
                 const tokenInfo = this.storeToken({
-                    token: data.token,
-                    expiresAt: data.tokenInfo?.expiresAt,
-                    environmentId: data.tokenInfo?.environmentId,
-                    region: data.tokenInfo?.region
+                    token: data.data.access_token,
+                    expiresAt: new Date(Date.now() + (data.data.expires_in * 1000)).toISOString(),
+                    environmentId: settings.environmentId,
+                    region: settings.region
                 });
                 
                 this.logTokenManager('success', 'Token refreshed successfully');

@@ -180,15 +180,24 @@ export class AuthManagementSubsystem {
             this.logger.info('Refreshing authentication token');
             this.showTokenProgress('Refreshing token...');
             
-            const response = await this.localClient.post('/api/v1/auth/refresh');
+            // Get current settings for the refresh request
+            const settings = await this.settingsSubsystem.loadCurrentSettings();
+            
+            // Use the correct endpoint for token acquisition
+            const response = await this.localClient.post('/api/pingone/get-token', {
+                clientId: settings.apiClientId,
+                clientSecret: settings.apiSecret,
+                environmentId: settings.environmentId,
+                region: settings.region
+            });
             
             if (!response.success) {
                 throw new Error(response.error || 'Failed to refresh token');
             }
             
             // Update token status
-            this.tokenStatus = response.token;
-            this.tokenExpiry = response.expiry;
+            this.tokenStatus = response.data.access_token;
+            this.tokenExpiry = response.data.expires_in;
             this.isAuthenticated = true;
             
             // Update UI

@@ -910,11 +910,41 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Token management endpoints
-app.get('/api/token/status', (req, res) => {
+app.get('/api/token/status', async (req, res) => {
     try {
-        const status = tokenService.getTokenStatus();
+        // First check the server-side token service
+        let status = tokenService.getTokenStatus();
+        
+        // If server-side token is invalid, try to get a new token using settings
+        if (!status.isValid && status.expiresIn <= 0) {
+            try {
+                // Load settings from file
+                const settingsPath = path.join(__dirname, 'data', 'settings.json');
+                const settingsData = await fs.readFile(settingsPath, 'utf8');
+                const settings = JSON.parse(settingsData);
+                
+                // Try to acquire a new token using settings
+                if (settings.pingone_environment_id && settings.pingone_client_id && settings.pingone_client_secret) {
+                    logger.info('Attempting to acquire token using settings for status check');
+                    
+                    const newToken = await tokenService.getToken({
+                        environmentId: settings.pingone_environment_id,
+                        clientId: settings.pingone_client_id,
+                        clientSecret: settings.pingone_client_secret,
+                        region: settings.pingone_region || 'NA'
+                    });
+                    
+                    // Update status with the new token
+                    status = tokenService.getTokenStatus();
+                }
+            } catch (settingsError) {
+                logger.warn('Could not acquire token using settings for status check', { error: settingsError.message });
+            }
+        }
+        
         res.json(status);
     } catch (error) {
+        logger.error('Token status check failed', { error: error.message });
         res.status(500).json({
             success: false,
             error: error.message

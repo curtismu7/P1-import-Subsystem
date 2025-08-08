@@ -11,6 +11,9 @@
 export class DeletePage {
     constructor(app) {
         this.app = app;
+        this.isLoaded = false;
+        this.selectedFile = null;
+        this.isUploading = false;
         this.selectedPopulation = '';
         this.lastTokenValidity = null; // Track token validity changes
         this.deleteInProgress = false;
@@ -34,6 +37,48 @@ export class DeletePage {
             </div>
 
             <div class="delete-container">
+                <!-- File Upload -->
+                <section class="delete-section">
+                    <div class="delete-box">
+                        <h3 class="section-title">File Upload</h3>
+                        <p>Select or drag and drop your CSV file containing users to delete</p>
+                        
+                        <div class="file-upload-area" id="upload-area">
+                            <div class="upload-icon">
+                                <i class="mdi mdi-cloud-upload"></i>
+                            </div>
+                            <div class="upload-text">Drag & Drop CSV File Here</div>
+                            <div class="upload-hint">or <button type="button" id="browse-files" class="btn btn-link">Choose CSV File</button></div>
+                            <input type="file" id="file-input" accept=".csv" style="display: none;">
+                        </div>
+                        
+                        <div class="upload-requirements">
+                            <h4>File Requirements:</h4>
+                            <ul>
+                                <li>CSV format only</li>
+                                <li>Maximum file size: 10MB</li>
+                                <li>Required columns: email, username</li>
+                                <li>Optional columns: name.given, name.family, etc.</li>
+                            </ul>
+                        </div>
+                        
+                        <!-- File Info -->
+                        <div class="file-info" id="file-info" style="display: none;">
+                            <div class="file-details">
+                                <i class="mdi mdi-file-document"></i>
+                                <div class="file-meta">
+                                    <div class="file-name" id="file-name"></div>
+                                    <div class="file-size" id="file-size"></div>
+                                </div>
+                                <button type="button" id="remove-file" class="btn btn-danger btn-sm">
+                                    <i class="mdi mdi-delete"></i> Remove
+                                </button>
+                            </div>
+                            <div class="file-preview" id="file-preview"></div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Population Selection -->
                 <section class="delete-section">
                     <div class="delete-box">
@@ -48,7 +93,7 @@ export class DeletePage {
                                         <option value="">Select a population...</option>
                                     </select>
                                     <button type="button" id="refresh-populations" class="btn btn-outline-secondary">
-                                        <i class="icon-refresh"></i>
+                                        <i class="mdi mdi-refresh"></i>
                                     </button>
                                 </div>
                                 <div class="form-help">Select the population containing users to delete</div>
@@ -57,7 +102,7 @@ export class DeletePage {
                         
                         <div class="export-actions">
                             <button id="load-users-btn" class="btn btn-primary" disabled>
-                                <i class="fas fa-users"></i> Load Users
+                                <i class="mdi mdi-account-group"></i> Delete users
                             </button>
                         </div>
                     </div>
@@ -71,10 +116,10 @@ export class DeletePage {
                         
                         <div class="export-actions mb-3">
                             <button id="select-all-users" class="btn btn-outline-secondary">
-                                <i class="icon-check-square"></i> Select All
+                                <i class="mdi mdi-check-box-outline"></i> Select All
                             </button>
                             <button id="deselect-all-users" class="btn btn-outline-secondary">
-                                <i class="icon-square"></i> Deselect All
+                                <i class="mdi mdi-square-outline"></i> Deselect All
                             </button>
                         </div>
                         
@@ -117,7 +162,7 @@ export class DeletePage {
                         
                         <div class="export-actions">
                             <button id="start-delete-btn" class="btn btn-danger" disabled>
-                                <i class="fas fa-trash"></i> Delete Selected Users
+                                <i class="mdi mdi-delete"></i> Delete Selected Users
                             </button>
                         </div>
                     </div>
@@ -157,10 +202,10 @@ export class DeletePage {
                         
                         <div class="export-actions">
                             <button id="cancel-delete-btn" class="btn btn-warning" style="display: none;">
-                                <i class="fas fa-stop"></i> Cancel Delete
+                                <i class="mdi mdi-stop"></i> Cancel Delete
                             </button>
                             <button id="reset-delete-btn" class="btn btn-secondary" style="display: none;">
-                                <i class="fas fa-redo"></i> Start Over
+                                <i class="mdi mdi-undo"></i> Start Over
                             </button>
                         </div>
                         
@@ -191,10 +236,10 @@ export class DeletePage {
                         
                         <div class="export-actions">
                             <button type="button" id="download-delete-log" class="btn btn-outline-info">
-                                <i class="icon-download"></i> Download Log
+                                <i class="mdi mdi-download"></i> Download Log
                             </button>
                             <button type="button" id="new-delete" class="btn btn-outline-primary">
-                                <i class="icon-refresh"></i> New Delete
+                                <i class="mdi mdi-refresh"></i> New Delete
                             </button>
                         </div>
                     </div>
@@ -207,13 +252,38 @@ export class DeletePage {
     }
 
     setupEventListeners() {
+        // File upload events
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const browseFiles = document.getElementById('browse-files');
+        const removeFile = document.getElementById('remove-file');
+        
+        if (uploadArea) {
+            uploadArea.addEventListener('dragover', this.handleDragOver.bind(this));
+            uploadArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
+            uploadArea.addEventListener('drop', this.handleDrop.bind(this));
+        }
+        
+        if (fileInput) {
+            fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+        }
+        
+        if (browseFiles) {
+            browseFiles.addEventListener('click', () => fileInput?.click());
+        }
+        
+        if (removeFile) {
+            removeFile.addEventListener('click', this.handleRemoveFile.bind(this));
+        }
+
         // Population selection
         document.getElementById('delete-population-select')?.addEventListener('change', (e) => {
-            this.selectedPopulation = e.target.value;
-            const loadUsersBtn = document.getElementById('load-users-btn');
-            if (loadUsersBtn) {
-                loadUsersBtn.disabled = !this.selectedPopulation;
-            }
+            this.handlePopulationChange(e.target.value);
+        });
+
+        // Refresh populations button
+        document.getElementById('refresh-populations')?.addEventListener('click', () => {
+            this.loadPopulations();
         });
 
         // Load users button
@@ -230,7 +300,7 @@ export class DeletePage {
             this.selectAllUsers(false);
         });
 
-        // Confirmation checkboxes
+        // Delete confirmation checkboxes
         document.getElementById('confirm-delete')?.addEventListener('change', () => {
             this.updateDeleteButton();
         });
@@ -239,18 +309,176 @@ export class DeletePage {
             this.updateDeleteButton();
         });
 
-        // Delete actions
+        // Start delete button
         document.getElementById('start-delete-btn')?.addEventListener('click', () => {
             this.startDelete();
         });
 
+        // Cancel delete button
         document.getElementById('cancel-delete-btn')?.addEventListener('click', () => {
             this.cancelDelete();
         });
 
+        // Reset delete button
         document.getElementById('reset-delete-btn')?.addEventListener('click', () => {
             this.resetDelete();
         });
+
+        // Download log button
+        document.getElementById('download-delete-log')?.addEventListener('click', () => {
+            this.downloadLog();
+        });
+
+        // New delete button
+        document.getElementById('new-delete')?.addEventListener('click', () => {
+            this.resetDelete();
+        });
+    }
+
+    // File handling methods
+    handleDragOver(event) {
+        event.preventDefault();
+        event.currentTarget.classList.add('dragover');
+    }
+    
+    handleDragLeave(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('dragover');
+    }
+    
+    handleDrop(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('dragover');
+        
+        const files = event.dataTransfer.files;
+        if (files.length > 0) {
+            this.handleFileSelection(files[0]);
+        }
+    }
+    
+    handleFileSelect(event) {
+        const files = event.target.files;
+        if (files.length > 0) {
+            this.handleFileSelection(files[0]);
+        }
+    }
+    
+    handleFileSelection(file) {
+        // Validate file
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+            this.app.showError('Please select a CSV file');
+            return;
+        }
+        
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            this.app.showError('File size must be less than 10MB');
+            return;
+        }
+        
+        this.selectedFile = file;
+        this.displayFileInfo(file);
+        this.previewFile(file);
+        
+        // Enable load users button
+        document.getElementById('load-users-btn').disabled = false;
+    }
+    
+    displayFileInfo(file) {
+        const fileInfo = document.getElementById('file-info');
+        const fileName = document.getElementById('file-name');
+        const fileSize = document.getElementById('file-size');
+        const uploadArea = document.getElementById('upload-area');
+        
+        if (fileInfo && fileName && fileSize && uploadArea) {
+            fileName.textContent = file.name;
+            fileSize.textContent = this.formatFileSize(file.size);
+            
+            fileInfo.style.display = 'block';
+            uploadArea.style.display = 'none';
+        }
+    }
+    
+    async previewFile(file) {
+        try {
+            const text = await this.readFileAsText(file);
+            const lines = text.split('\n').slice(0, 6); // Show first 5 lines + header
+            
+            const preview = document.getElementById('file-preview');
+            if (preview) {
+                const table = document.createElement('table');
+                table.className = 'file-preview-table';
+                
+                lines.forEach((line, index) => {
+                    if (line.trim()) {
+                        const row = table.insertRow();
+                        const cells = line.split(',');
+                        
+                        cells.forEach(cell => {
+                            const cellElement = row.insertCell();
+                            cellElement.textContent = cell.trim().replace(/"/g, '');
+                            if (index === 0) {
+                                cellElement.className = 'header-cell';
+                            }
+                        });
+                    }
+                });
+                
+                preview.innerHTML = '<h4>File Preview:</h4>';
+                preview.appendChild(table);
+                
+                if (lines.length === 6) {
+                    const moreRows = document.createElement('p');
+                    moreRows.textContent = '... and more rows';
+                    moreRows.className = 'preview-more';
+                    preview.appendChild(moreRows);
+                }
+            }
+        } catch (error) {
+            console.error('Error previewing file:', error);
+        }
+    }
+    
+    handleRemoveFile() {
+        this.selectedFile = null;
+        
+        const fileInfo = document.getElementById('file-info');
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        
+        if (fileInfo && uploadArea && fileInput) {
+            fileInfo.style.display = 'none';
+            uploadArea.style.display = 'flex';
+            fileInput.value = '';
+        }
+        
+        // Disable load users button
+        document.getElementById('load-users-btn').disabled = true;
+    }
+    
+    readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(e);
+            reader.readAsText(file);
+        });
+    }
+    
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    handlePopulationChange(populationId) {
+        this.selectedPopulation = populationId;
+        const loadUsersBtn = document.getElementById('load-users-btn');
+        if (loadUsersBtn) {
+            // Enable button if either population is selected OR file is picked
+            loadUsersBtn.disabled = !this.selectedPopulation && !this.selectedFile;
+        }
     }
 
     async loadPopulations() {
@@ -277,7 +505,7 @@ export class DeletePage {
             usersList.innerHTML = '<div class="text-center"><div class="spinner-border"></div><p>Loading users...</p></div>';
             userSelectionSection.style.display = 'block';
 
-            const response = await fetch(`/api/pingone/populations/${this.selectedPopulation}/users`);
+            const response = await fetch(`/api/populations/${this.selectedPopulation}/users`);
             if (response.ok) {
                 const users = await response.json();
                 this.renderUsers(users);

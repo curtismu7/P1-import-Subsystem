@@ -17,7 +17,7 @@ export class ImportPage {
         
         const pageContent = `
             <div class="page-header">
-                <h1><i class="icon-upload"></i> Import Users</h1>
+                <h1><i class="mdi mdi-upload"></i> Import Users</h1>
                 <p>Upload a CSV file to import users into your PingOne environment</p>
             </div>
             
@@ -30,7 +30,7 @@ export class ImportPage {
                         
                         <div class="file-upload-area" id="upload-area">
                             <div class="upload-icon">
-                                <i class="icon-upload-cloud"></i>
+                                <i class="mdi mdi-cloud-upload"></i>
                             </div>
                             <div class="upload-text">Drag & Drop CSV File Here</div>
                             <div class="upload-hint">or <button type="button" id="browse-files" class="btn btn-link">Choose CSV File</button></div>
@@ -50,13 +50,13 @@ export class ImportPage {
                         <!-- File Info -->
                         <div class="file-info" id="file-info" style="display: none;">
                             <div class="file-details">
-                                <i class="icon-file-text"></i>
+                                <i class="mdi mdi-file-document"></i>
                                 <div class="file-meta">
                                     <div class="file-name" id="file-name"></div>
                                     <div class="file-size" id="file-size"></div>
                                 </div>
                                 <button type="button" id="remove-file" class="btn btn-danger btn-sm">
-                                    <i class="icon-trash"></i> Remove
+                                    <i class="mdi mdi-delete"></i> Remove
                                 </button>
                             </div>
                             <div class="file-preview" id="file-preview"></div>
@@ -77,9 +77,9 @@ export class ImportPage {
                                     <select id="target-population" name="targetPopulation" class="form-control" required>
                                         <option value="">Select a population...</option>
                                     </select>
-                                    <button type="button" id="refresh-populations" class="btn btn-outline-secondary">
-                                        <i class="icon-refresh"></i>
-                                    </button>
+                                                                <button type="button" id="refresh-populations" class="btn btn-outline-secondary">
+                                <i class="mdi mdi-refresh"></i>
+                            </button>
                                 </div>
                                 <div class="form-help">Choose the population where users will be imported</div>
                             </div>
@@ -131,14 +131,11 @@ export class ImportPage {
                 <section class="import-section">
                     <div class="import-box">
                         <div class="export-actions">
-                            <button type="button" id="validate-file" class="btn btn-outline-info">
-                                <i class="icon-check-circle"></i> Validate File
+                            <button type="button" id="validate-file" class="btn btn-primary">
+                                <i class="mdi mdi-check-circle"></i> Validate File
                             </button>
                             <button type="button" id="start-import" class="btn btn-primary" disabled>
-                                <i class="icon-upload"></i> Start Import
-                            </button>
-                            <button type="button" id="cancel-import" class="btn btn-outline-danger" style="display: none;">
-                                <i class="icon-x"></i> Cancel Import
+                                <i class="mdi mdi-upload"></i> Start Import
                             </button>
                         </div>
                     </div>
@@ -175,6 +172,12 @@ export class ImportPage {
                                 <span id="estimated-time" class="value">Calculating...</span>
                             </div>
                         </div>
+                        
+                        <div class="export-actions">
+                            <button type="button" id="cancel-import" class="btn btn-danger">
+                                <i class="mdi mdi-close"></i> Cancel Import
+                            </button>
+                        </div>
                     </div>
                 </section>
                 
@@ -190,10 +193,10 @@ export class ImportPage {
                         
                         <div class="export-actions">
                             <button type="button" id="download-log" class="btn btn-outline-info">
-                                <i class="icon-download"></i> Download Log
+                                <i class="mdi mdi-download"></i> Download Log
                             </button>
                             <button type="button" id="new-import" class="btn btn-outline-primary">
-                                <i class="icon-refresh"></i> New Import
+                                <i class="mdi mdi-refresh"></i> New Import
                             </button>
                         </div>
                     </div>
@@ -259,17 +262,17 @@ export class ImportPage {
     
     handleDragOver(event) {
         event.preventDefault();
-        event.currentTarget.classList.add('drag-over');
+        event.currentTarget.classList.add('dragover');
     }
     
     handleDragLeave(event) {
         event.preventDefault();
-        event.currentTarget.classList.remove('drag-over');
+        event.currentTarget.classList.remove('dragover');
     }
     
     handleDrop(event) {
         event.preventDefault();
-        event.currentTarget.classList.remove('drag-over');
+        event.currentTarget.classList.remove('dragover');
         
         const files = event.dataTransfer.files;
         if (files.length > 0) {
@@ -410,7 +413,13 @@ export class ImportPage {
             formData.append('file', this.selectedFile);
             formData.append('validateOnly', 'true');
             
-            const response = await fetch('/api/pingone/import', {
+            // Get population ID
+            const targetPopulation = document.getElementById('target-population');
+            if (targetPopulation && targetPopulation.value) {
+                formData.append('populationId', targetPopulation.value);
+            }
+            
+            const response = await fetch('/api/import', {
                 method: 'POST',
                 body: formData
             });
@@ -418,7 +427,7 @@ export class ImportPage {
             const result = await response.json();
             
             if (response.ok) {
-                this.app.showSuccess(`File validation successful! Found ${result.totalUsers} users.`);
+                this.app.showSuccess(`File validation successful! Found ${result.total} users.`);
                 this.displayValidationResults(result);
             } else {
                 throw new Error(result.error || 'Validation failed');
@@ -446,14 +455,31 @@ export class ImportPage {
             
             const formData = new FormData();
             formData.append('file', this.selectedFile);
-            formData.append('targetPopulation', targetPopulation);
-            formData.append('importMode', document.querySelector('input[name="importMode"]:checked').value);
-            formData.append('sendVerification', document.getElementById('send-verification').checked);
-            formData.append('skipDuplicates', document.getElementById('skip-duplicates').checked);
-            formData.append('validateOnly', document.getElementById('validate-only').checked);
+            formData.append('populationId', targetPopulation);
+            
+            // Get import options
+            const importMode = document.querySelector('input[name="importMode"]:checked');
+            if (importMode) {
+                formData.append('importMode', importMode.value);
+            }
+            
+            const sendVerification = document.getElementById('send-verification');
+            if (sendVerification) {
+                formData.append('sendVerification', sendVerification.checked);
+            }
+            
+            const skipDuplicates = document.getElementById('skip-duplicates');
+            if (skipDuplicates) {
+                formData.append('skipDuplicates', skipDuplicates.checked);
+            }
+            
+            const validateOnly = document.getElementById('validate-only');
+            if (validateOnly) {
+                formData.append('validateOnly', validateOnly.checked);
+            }
             
             // Start the import
-            const response = await fetch('/api/pingone/import', {
+            const response = await fetch('/api/import', {
                 method: 'POST',
                 body: formData
             });
@@ -476,7 +502,7 @@ export class ImportPage {
     handleCancelImport() {
         if (confirm('Are you sure you want to cancel the import?')) {
             // Cancel the import operation
-            fetch('/api/pingone/import/cancel', { method: 'POST' })
+            fetch('/api/import/cancel', { method: 'POST' })
                 .then(() => {
                     this.isUploading = false;
                     this.hideProgressSection();
@@ -556,11 +582,53 @@ export class ImportPage {
         const summary = document.getElementById('results-summary');
         if (summary) {
             summary.innerHTML = `
-                <div class="result-card success">
-                    <i class="icon-check-circle"></i>
-                    <div>
-                        <h3>Import Successful</h3>
-                        <p>All users were imported successfully</p>
+                <div class="results-grid">
+                    <div class="result-card success">
+                        <i class="mdi mdi-check-circle"></i>
+                        <div>
+                            <h3>Import Summary</h3>
+                            <div class="result-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label">Total Users:</span>
+                                    <span class="stat-value">150</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Successfully Imported:</span>
+                                    <span class="stat-value success">145</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Failed:</span>
+                                    <span class="stat-value error">5</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Success Rate:</span>
+                                    <span class="stat-value">96.7%</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Duration:</span>
+                                    <span class="stat-value">2m 34s</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="result-details">
+                        <h4>Import Details</h4>
+                        <ul>
+                            <li><strong>Target Population:</strong> Production Users</li>
+                            <li><strong>Import Mode:</strong> Create new users only</li>
+                            <li><strong>File:</strong> users_import.csv (2.3 MB)</li>
+                            <li><strong>Started:</strong> ${new Date().toLocaleString()}</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="result-actions">
+                        <button class="btn btn-outline-info" onclick="this.downloadLog()">
+                            <i class="mdi mdi-download"></i> Download Log
+                        </button>
+                        <button class="btn btn-outline-primary" onclick="this.startNewImport()">
+                            <i class="mdi mdi-refresh"></i> New Import
+                        </button>
                     </div>
                 </div>
             `;

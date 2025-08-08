@@ -37,10 +37,10 @@ export class ExportPage {
                                 <label for="export-population-select">Population *</label>
                                 <div class="input-group">
                                     <select id="export-population-select" class="form-control" required>
-                                        <option value="">Loading populations...</option>
+                                        <option value="">Select a population...</option>
                                     </select>
                                     <button type="button" id="refresh-populations" class="btn btn-outline-secondary">
-                                        <i class="icon-refresh"></i>
+                                        <i class="mdi mdi-refresh"></i>
                                     </button>
                                 </div>
                                 <div class="form-help">Select the population containing the users you want to export</div>
@@ -150,11 +150,11 @@ export class ExportPage {
                 <section class="export-section">
                     <div class="export-box">
                         <div class="export-actions">
-                            <button id="preview-export" class="btn btn-outline-primary" disabled>
-                                <i class="icon-eye"></i> Preview Export
+                            <button type="button" id="preview-export" class="btn btn-outline-info">
+                                <i class="mdi mdi-eye"></i> Preview Export
                             </button>
-                            <button id="start-export" class="btn btn-primary" disabled>
-                                <i class="icon-download"></i> Start Export
+                            <button type="button" id="start-export" class="btn btn-primary" disabled>
+                                <i class="mdi mdi-download"></i> Start Export
                             </button>
                         </div>
                     </div>
@@ -193,29 +193,25 @@ export class ExportPage {
                         </div>
                         
                         <div class="export-actions">
-                            <button id="cancel-export" class="btn btn-warning" style="display: none;">
-                                <i class="icon-x"></i> Cancel Export
+                            <button type="button" id="cancel-export" class="btn btn-danger" style="display: none;">
+                                <i class="mdi mdi-close"></i> Cancel Export
                             </button>
                         </div>
                     </div>
                 </section>
-
-                <!-- Export Results -->
-                <section id="export-results" class="export-section" style="display: none;">
+                
+                <!-- Results Section -->
+                <section class="export-section" id="export-results" style="display: none;">
                     <div class="export-box">
                         <h3 class="section-title">Export Complete</h3>
                         <p>Your export has been completed successfully</p>
                         
-                        <div id="export-summary" class="results-container">
-                            <!-- Results will be populated here -->
-                        </div>
-                        
                         <div class="export-actions">
-                            <button id="download-export" class="btn btn-success">
-                                <i class="icon-download"></i> Download Export File
+                            <button type="button" id="download-export" class="btn btn-success">
+                                <i class="mdi mdi-download"></i> Download Export File
                             </button>
-                            <button id="new-export" class="btn btn-outline-primary">
-                                <i class="icon-refresh"></i> Start New Export
+                            <button type="button" id="new-export" class="btn btn-outline-primary">
+                                <i class="mdi mdi-refresh"></i> Start New Export
                             </button>
                         </div>
                     </div>
@@ -402,7 +398,7 @@ export class ExportPage {
             <div class="modal-overlay" id="preview-modal" style="display: flex;">
                 <div class="modal preview-modal" style="max-width: 800px; width: 90%;">
                     <div class="modal-header">
-                        <h2><i class="icon-eye"></i> Export Preview</h2>
+                        <h2><i class="mdi mdi-eye"></i> Export Preview</h2>
                         <button type="button" class="btn-close" id="close-preview">&times;</button>
                     </div>
                     <div class="modal-body">
@@ -444,7 +440,7 @@ export class ExportPage {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" id="close-preview">Close</button>
                         <button type="button" class="btn btn-primary" id="start-export-from-preview">
-                            <i class="icon-download"></i> Start Export
+                            <i class="mdi mdi-download"></i> Start Export
                         </button>
                     </div>
                 </div>
@@ -486,28 +482,74 @@ export class ExportPage {
 
     generateSampleData() {
         const format = this.exportOptions.format;
-        const includeHeaders = this.exportOptions.includeHeaders;
+        
+        // Get checkbox states
+        const includeHeaders = document.getElementById('include-headers')?.checked ?? true;
+        const includeDisabled = document.getElementById('include-disabled')?.checked ?? false;
+        const includeMetadata = document.getElementById('include-metadata')?.checked ?? false;
+        
+        // Get selected attributes from checkboxes
+        const selectedAttributes = this.getSelectedAttributes();
+        
+        // Add metadata attributes if selected
+        if (includeMetadata) {
+            selectedAttributes.push('created_date', 'last_updated', 'last_login');
+        }
         
         if (format === 'csv') {
             let csv = '';
             if (includeHeaders) {
-                csv += 'User ID,Username,Email,First Name,Last Name,Status\n';
+                const headers = selectedAttributes.map(attr => this.getAttributeDisplayName(attr));
+                csv += headers.join(',') + '\n';
             }
-            csv += 'user_001,john.doe,john.doe@example.com,John,Doe,Active\n';
-            csv += 'user_002,jane.smith,jane.smith@example.com,Jane,Smith,Active\n';
-            csv += 'user_003,bob.wilson,bob.wilson@example.com,Bob,Wilson,Active\n';
-            csv += 'user_004,alice.brown,alice.brown@example.com,Alice,Brown,Active\n';
-            csv += 'user_005,charlie.davis,charlie.davis@example.com,Charlie,Davis,Active\n';
+            
+            // Generate sample rows
+            const sampleUsers = [
+                { index: 1, status: 'Active' },
+                { index: 2, status: 'Active' },
+                { index: 3, status: 'Active' },
+                { index: 4, status: 'Disabled' },
+                { index: 5, status: 'Active' }
+            ];
+            
+            sampleUsers.forEach(user => {
+                // Skip disabled users if not included
+                if (!includeDisabled && user.status === 'Disabled') {
+                    return;
+                }
+                
+                const row = selectedAttributes.map(attr => {
+                    if (attr === 'status') return user.status;
+                    return this.getAttributeValue(attr, user.index);
+                });
+                csv += row.join(',') + '\n';
+            });
+            
             return csv;
         } else if (format === 'json') {
-            const sampleData = [
-                { user_id: 'user_001', username: 'john.doe', email: 'john.doe@example.com', first_name: 'John', last_name: 'Doe', status: 'Active' },
-                { user_id: 'user_002', username: 'jane.smith', email: 'jane.smith@example.com', first_name: 'Jane', last_name: 'Smith', status: 'Active' },
-                { user_id: 'user_003', username: 'bob.wilson', email: 'bob.wilson@example.com', first_name: 'Bob', last_name: 'Wilson', status: 'Active' },
-                { user_id: 'user_004', username: 'alice.brown', email: 'alice.brown@example.com', first_name: 'Alice', last_name: 'Brown', status: 'Active' },
-                { user_id: 'user_005', username: 'charlie.davis', email: 'charlie.davis@example.com', first_name: 'Charlie', last_name: 'Davis', status: 'Active' }
+            const sampleUsers = [
+                { index: 1, status: 'Active' },
+                { index: 2, status: 'Active' },
+                { index: 3, status: 'Active' },
+                { index: 4, status: 'Disabled' },
+                { index: 5, status: 'Active' }
             ];
-            return JSON.stringify(sampleData, null, 2);
+            
+            const users = sampleUsers
+                .filter(user => includeDisabled || user.status !== 'Disabled')
+                .map(user => {
+                    const userObj = {};
+                    selectedAttributes.forEach(attr => {
+                        if (attr === 'status') {
+                            userObj[this.getAttributeKey(attr)] = user.status;
+                        } else {
+                            userObj[this.getAttributeKey(attr)] = this.getAttributeValue(attr, user.index);
+                        }
+                    });
+                    return userObj;
+                });
+            
+            return JSON.stringify(users, null, 2);
         } else if (format === 'xlsx') {
             return 'Excel file preview not available in browser.\nFile would contain the same data as CSV format.';
         }
@@ -700,18 +742,39 @@ export class ExportPage {
 
     generateExportData() {
         const format = this.exportOptions.format;
-        const includeHeaders = this.exportOptions.includeHeaders;
+        
+        // Get checkbox states
+        const includeHeaders = document.getElementById('include-headers')?.checked ?? true;
+        const includeDisabled = document.getElementById('include-disabled')?.checked ?? false;
+        const includeMetadata = document.getElementById('include-metadata')?.checked ?? false;
+        
+        // Get selected attributes from checkboxes
+        const selectedAttributes = this.getSelectedAttributes();
+        
+        // Add metadata attributes if selected
+        if (includeMetadata) {
+            selectedAttributes.push('created_date', 'last_updated', 'last_login');
+        }
         
         if (format === 'csv') {
             let csv = '';
             if (includeHeaders) {
-                csv += 'User ID,Username,Email,First Name,Last Name,Status,Population\n';
+                // Build header row based on selected attributes
+                const headers = selectedAttributes.map(attr => this.getAttributeDisplayName(attr));
+                csv += headers.join(',') + '\n';
             }
             
             // Generate sample data based on population size
             const userCount = this.selectedPopulation.userCount || 100;
             for (let i = 1; i <= userCount; i++) {
-                csv += `user_${String(i).padStart(3, '0')},user${i}@example.com,user${i}@example.com,User,${i},Active,${this.selectedPopulation.name}\n`;
+                // Skip disabled users if not included
+                const userStatus = this.getAttributeValue('status', i);
+                if (!includeDisabled && userStatus === 'Disabled') {
+                    continue;
+                }
+                
+                const row = selectedAttributes.map(attr => this.getAttributeValue(attr, i));
+                csv += row.join(',') + '\n';
             }
             
             return { content: csv, type: 'csv' };
@@ -721,15 +784,17 @@ export class ExportPage {
             const users = [];
             
             for (let i = 1; i <= userCount; i++) {
-                users.push({
-                    user_id: `user_${String(i).padStart(3, '0')}`,
-                    username: `user${i}`,
-                    email: `user${i}@example.com`,
-                    first_name: 'User',
-                    last_name: i.toString(),
-                    status: 'Active',
-                    population: this.selectedPopulation.name
+                // Skip disabled users if not included
+                const userStatus = this.getAttributeValue('status', i);
+                if (!includeDisabled && userStatus === 'Disabled') {
+                    continue;
+                }
+                
+                const user = {};
+                selectedAttributes.forEach(attr => {
+                    user[this.getAttributeKey(attr)] = this.getAttributeValue(attr, i);
                 });
+                users.push(user);
             }
             
             return { content: JSON.stringify(users, null, 2), type: 'json' };
@@ -738,18 +803,121 @@ export class ExportPage {
             // For XLSX, we'll create a CSV-like format that Excel can open
             let xlsxContent = '';
             if (includeHeaders) {
-                xlsxContent += 'User ID\tUsername\tEmail\tFirst Name\tLast Name\tStatus\tPopulation\n';
+                const headers = selectedAttributes.map(attr => this.getAttributeDisplayName(attr));
+                xlsxContent += headers.join('\t') + '\n';
             }
             
             const userCount = this.selectedPopulation.userCount || 100;
             for (let i = 1; i <= userCount; i++) {
-                xlsxContent += `user_${String(i).padStart(3, '0')}\tuser${i}\tuser${i}@example.com\tUser\t${i}\tActive\t${this.selectedPopulation.name}\n`;
+                // Skip disabled users if not included
+                const userStatus = this.getAttributeValue('status', i);
+                if (!includeDisabled && userStatus === 'Disabled') {
+                    continue;
+                }
+                
+                const row = selectedAttributes.map(attr => this.getAttributeValue(attr, i));
+                xlsxContent += row.join('\t') + '\n';
             }
             
             return { content: xlsxContent, type: 'xlsx' };
         }
         
         return { content: 'Export data not available', type: 'txt' };
+    }
+    
+    /**
+     * Get selected attributes from checkboxes
+     */
+    getSelectedAttributes() {
+        const attributes = [];
+        
+        // Always include username (required)
+        attributes.push('username');
+        
+        // Check other attribute checkboxes
+        const attributeCheckboxes = [
+            { id: 'attr-email', key: 'email' },
+            { id: 'attr-firstname', key: 'firstname' },
+            { id: 'attr-lastname', key: 'lastname' },
+            { id: 'attr-status', key: 'status' },
+            { id: 'attr-groups', key: 'groups' },
+            { id: 'attr-roles', key: 'roles' },
+            { id: 'attr-custom', key: 'custom' }
+        ];
+        
+        attributeCheckboxes.forEach(({ id, key }) => {
+            const checkbox = document.getElementById(id);
+            if (checkbox && checkbox.checked) {
+                attributes.push(key);
+            }
+        });
+        
+        return attributes;
+    }
+    
+    /**
+     * Get display name for attribute
+     */
+    getAttributeDisplayName(attr) {
+        const displayNames = {
+            'username': 'Username',
+            'email': 'Email',
+            'firstname': 'First Name',
+            'lastname': 'Last Name',
+            'status': 'Status',
+            'groups': 'Groups',
+            'roles': 'Roles',
+            'custom': 'Custom Attributes',
+            'created_date': 'Created Date',
+            'last_updated': 'Last Updated',
+            'last_login': 'Last Login'
+        };
+        return displayNames[attr] || attr;
+    }
+    
+    /**
+     * Get attribute key for JSON
+     */
+    getAttributeKey(attr) {
+        const keys = {
+            'username': 'username',
+            'email': 'email',
+            'firstname': 'first_name',
+            'lastname': 'last_name',
+            'status': 'status',
+            'groups': 'groups',
+            'roles': 'roles',
+            'custom': 'custom_attributes',
+            'created_date': 'created_date',
+            'last_updated': 'last_updated',
+            'last_login': 'last_login'
+        };
+        return keys[attr] || attr;
+    }
+    
+    /**
+     * Get sample value for attribute
+     */
+    getAttributeValue(attr, index) {
+        const now = new Date();
+        const createdDate = new Date(now.getTime() - (Math.random() * 365 * 24 * 60 * 60 * 1000));
+        const lastUpdated = new Date(createdDate.getTime() + (Math.random() * 30 * 24 * 60 * 60 * 1000));
+        const lastLogin = new Date(lastUpdated.getTime() + (Math.random() * 7 * 24 * 60 * 60 * 1000));
+        
+        const values = {
+            'username': `user${index}`,
+            'email': `user${index}@example.com`,
+            'firstname': 'User',
+            'lastname': index.toString(),
+            'status': index % 10 === 0 ? 'Disabled' : 'Active', // 10% disabled
+            'groups': 'Default Group',
+            'roles': 'User',
+            'custom': 'Custom Value',
+            'created_date': createdDate.toISOString().split('T')[0],
+            'last_updated': lastUpdated.toISOString().split('T')[0],
+            'last_login': lastLogin.toISOString().split('T')[0]
+        };
+        return values[attr] || '';
     }
 
     generateFileName() {

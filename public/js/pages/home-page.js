@@ -23,9 +23,9 @@ export class HomePage {
                 <div class="status-overview">
                     <div class="status-card">
                         <div class="status-icon">
-                            <i class="icon-shield" id="connection-icon"></i>
+                            <i class="mdi mdi-shield" id="connection-icon"></i>
                         </div>
-                        <div class="status-info">
+                        <div>
                             <div class="status-label">Connection Status</div>
                             <div class="status-value" id="connection-status">Checking...</div>
                         </div>
@@ -34,9 +34,9 @@ export class HomePage {
                     
                     <div class="status-card">
                         <div class="status-icon">
-                            <i class="icon-key" id="token-icon"></i>
+                            <i class="mdi mdi-key" id="token-icon"></i>
                         </div>
-                        <div class="status-info">
+                        <div>
                             <div class="status-label">Token Status</div>
                             <div class="status-value" id="token-status">Checking...</div>
                         </div>
@@ -45,108 +45,95 @@ export class HomePage {
                     
                     <div class="status-card">
                         <div class="status-icon">
-                            <i class="icon-users" id="population-icon"></i>
+                            <i class="mdi mdi-account-group" id="population-icon"></i>
                         </div>
-                        <div class="status-info">
-                            <div class="status-label">Populations</div>
-                            <div class="status-value" id="population-count">Loading...</div>
+                        <div>
+                            <div class="status-label">Population</div>
+                            <div class="status-value" id="population-status">Checking...</div>
                         </div>
                         <div class="status-indicator" id="population-indicator"></div>
                     </div>
                     
                     <div class="status-card">
                         <div class="status-icon">
-                            <i class="icon-globe" id="environment-icon"></i>
+                            <i class="mdi mdi-earth" id="environment-icon"></i>
                         </div>
-                        <div class="status-info">
-                            <div class="status-label">Environment ID</div>
-                            <div class="status-value" id="environment-id">Loading...</div>
+                        <div>
+                            <div class="status-label">Environment</div>
+                            <div class="status-value" id="environment-status">Checking...</div>
                         </div>
                         <div class="status-indicator" id="environment-indicator"></div>
                     </div>
                 </div>
                 
-                <!-- Quick Actions -->
                 <div class="quick-actions">
                     <h2>Quick Actions</h2>
                     <div class="action-grid">
-                        <div class="action-card" data-action="settings">
-                            <div class="action-icon">
-                                <i class="icon-settings"></i>
+                        <a href="#settings" class="action-card" data-page="settings">
+                            <div class="card-icon">
+                                <i class="mdi mdi-cog" data-icon="⚙️"></i>
                             </div>
-                            <div class="action-content">
+                            <div class="card-content">
                                 <h3>Settings</h3>
-                                <p>Configure PingOne connection and preferences</p>
+                                <p>Configure your PingOne environment</p>
+                                <i class="mdi mdi-chevron-right"></i>
                             </div>
-                            <div class="action-arrow">
-                                <i class="icon-chevron-right"></i>
-                            </div>
-                        </div>
+                        </a>
                         
-                        <div class="action-card" data-action="import">
-                            <div class="action-icon">
-                                <i class="icon-upload"></i>
+                        <a href="#import" class="action-card" data-page="import">
+                            <div class="card-icon">
+                                <i class="mdi mdi-upload" data-icon="📤"></i>
                             </div>
-                            <div class="action-content">
+                            <div class="card-content">
                                 <h3>Import Users</h3>
-                                <p>Upload a CSV file to import users into PingOne</p>
+                                <p>Upload CSV files to import users</p>
+                                <i class="mdi mdi-chevron-right"></i>
                             </div>
-                            <div class="action-arrow">
-                                <i class="icon-chevron-right"></i>
-                            </div>
-                        </div>
+                        </a>
                         
-                        <div class="action-card" data-action="export">
-                            <div class="action-icon">
-                                <i class="icon-download"></i>
+                        <a href="#export" class="action-card" data-page="export">
+                            <div class="card-icon">
+                                <i class="mdi mdi-download" data-icon="📥"></i>
                             </div>
-                            <div class="action-content">
+                            <div class="card-content">
                                 <h3>Export Users</h3>
-                                <p>Download user data from a population</p>
+                                <p>Download user data from populations</p>
+                                <i class="mdi mdi-chevron-right"></i>
                             </div>
-                            <div class="action-arrow">
-                                <i class="icon-chevron-right"></i>
-                            </div>
-                        </div>
+                        </a>
                         
-                        <div class="action-card" data-action="modify">
-                            <div class="action-icon">
-                                <i class="icon-edit"></i>
+                        <a href="#modify" class="action-card" data-page="modify">
+                            <div class="card-icon">
+                                <i class="mdi mdi-pencil" data-icon="✏️"></i>
                             </div>
-                            <div class="action-content">
+                            <div class="card-content">
                                 <h3>Modify Users</h3>
-                                <p>Update user attributes in bulk</p>
+                                <p>Update user information in bulk</p>
+                                <i class="mdi mdi-chevron-right"></i>
                             </div>
-                            <div class="action-arrow">
-                                <i class="icon-chevron-right"></i>
-                            </div>
-                        </div>
+                        </a>
                         
-                        <div class="action-card" data-action="delete">
-                            <div class="action-icon">
-                                <i class="icon-trash"></i>
+                        <a href="#delete-csv" class="action-card" data-page="delete-csv">
+                            <div class="card-icon">
+                                <i class="mdi mdi-delete" data-icon="🗑️"></i>
                             </div>
-                            <div class="action-content">
+                            <div class="card-content">
                                 <h3>Delete Users</h3>
-                                <p>Remove users from a population</p>
+                                <p>Remove users from populations</p>
+                                <i class="mdi mdi-chevron-right"></i>
                             </div>
-                            <div class="action-arrow">
-                                <i class="icon-chevron-right"></i>
-                            </div>
-                        </div>
+                        </a>
                         
-                        <div class="action-card" data-action="logs" id="swagger-card" style="display: none;">
-                            <div class="action-icon">
-                                <i class="icon-book"></i>
+                        <a href="#logs" class="action-card" data-page="logs">
+                            <div class="card-icon">
+                                <i class="mdi mdi-book-open" data-icon="📖"></i>
                             </div>
-                            <div class="action-content">
-                                <h3>API Documentation</h3>
-                                <p>View interactive API documentation</p>
+                            <div class="card-content">
+                                <h3>Logs</h3>
+                                <p>View operation history and logs</p>
+                                <i class="mdi mdi-chevron-right"></i>
                             </div>
-                            <div class="action-arrow">
-                                <i class="icon-chevron-right"></i>
-                            </div>
-                        </div>
+                        </a>
                     </div>
                 </div>
                 
@@ -240,17 +227,17 @@ export class HomePage {
         if (hasSettings && hasValidToken) {
             if (connectionStatus) connectionStatus.textContent = 'Connected';
             if (connectionIndicator) connectionIndicator.className = 'status-indicator valid';
-            if (connectionIcon) connectionIcon.className = 'icon-shield';
+            if (connectionIcon) connectionIcon.className = 'mdi mdi-shield';
             // Connection status set to Connected
         } else if (hasSettings) {
             if (connectionStatus) connectionStatus.textContent = 'Configured';
             if (connectionIndicator) connectionIndicator.className = 'status-indicator warning';
-            if (connectionIcon) connectionIcon.className = 'icon-shield';
+            if (connectionIcon) connectionIcon.className = 'mdi mdi-shield';
             // Connection status set to Configured
         } else {
             if (connectionStatus) connectionStatus.textContent = 'Not Configured';
             if (connectionIndicator) connectionIndicator.className = 'status-indicator invalid';
-            if (connectionIcon) connectionIcon.className = 'icon-shield-off';
+            if (connectionIcon) connectionIcon.className = 'mdi mdi-shield-off';
             // Connection status set to Not Configured
         }
     }
@@ -264,16 +251,16 @@ export class HomePage {
             const timeLeft = this.app.formatTimeLeft(this.app.tokenStatus.timeLeft);
             if (tokenStatus) tokenStatus.textContent = `Valid (${timeLeft})`;
             if (tokenIndicator) tokenIndicator.className = 'status-indicator valid';
-            if (tokenIcon) tokenIcon.className = 'icon-key';
+            if (tokenIcon) tokenIcon.className = 'mdi mdi-key';
         } else {
             if (tokenStatus) tokenStatus.textContent = 'Invalid or Expired';
             if (tokenIndicator) tokenIndicator.className = 'status-indicator invalid';
-            if (tokenIcon) tokenIcon.className = 'icon-key-off';
+            if (tokenIcon) tokenIcon.className = 'mdi mdi-key-off';
         }
     }
     
     async loadPopulationCount() {
-        const populationCount = document.getElementById('population-count');
+        const populationStatus = document.getElementById('population-status');
         const populationIndicator = document.getElementById('population-indicator');
         const populationIcon = document.getElementById('population-icon');
         
@@ -283,18 +270,18 @@ export class HomePage {
             // Check if we have the required settings
             if (!this.app.settings.pingone_environment_id) {
                 console.log('⚠️ No environment ID configured');
-                if (populationCount) populationCount.textContent = 'Not configured';
+                if (populationStatus) populationStatus.textContent = 'Not configured';
                 if (populationIndicator) populationIndicator.className = 'status-indicator invalid';
-                if (populationIcon) populationIcon.className = 'icon-users-x';
+                if (populationIcon) populationIcon.className = 'mdi mdi-account-group-x';
                 return;
             }
             
             // Check if we have a valid token
             if (!this.app.tokenStatus || !this.app.tokenStatus.isValid) {
                 console.log('⚠️ No valid token available');
-                if (populationCount) populationCount.textContent = 'No valid token';
+                if (populationStatus) populationStatus.textContent = 'No valid token';
                 if (populationIndicator) populationIndicator.className = 'status-indicator invalid';
-                if (populationIcon) populationIcon.className = 'icon-users-x';
+                if (populationIcon) populationIcon.className = 'mdi mdi-account-group-x';
                 return;
             }
             
@@ -309,23 +296,23 @@ export class HomePage {
             console.log('📦 Population API response received:', result);
             
             if (response.ok && result.success) {
-                // Try different locations for populations data
-                const populations = result.data?.populations || result.message?.populations || [];
+                // Try different locations for populations data based on actual API response structure
+                const populations = result.data?.message?.populations || result.data?.populations || result.message?.populations || [];
                 const count = populations.length;
-                const source = result.data?.fromCache || result.message?.fromCache ? 'cache' : 'API';
-                const cacheInfo = result.data?.fromCache || result.message?.fromCache ? 
-                    ` (cached at ${new Date(result.data?.cachedAt || result.message?.cachedAt).toLocaleTimeString()})` : '';
+                const source = result.data?.message?.fromCache || result.data?.fromCache || result.message?.fromCache ? 'cache' : 'API';
+                const cacheInfo = result.data?.message?.fromCache || result.data?.fromCache || result.message?.fromCache ? 
+                    ` (cached at ${new Date(result.data?.message?.fetchedAt || result.data?.cachedAt || result.message?.cachedAt).toLocaleTimeString()})` : '';
                 
                 console.log(`✅ Populations loaded successfully: ${count} populations from ${source} in ${loadTime}ms${cacheInfo}`);
                 
-                if (populationCount) populationCount.textContent = `${count} population${count !== 1 ? 's' : ''}`;
+                if (populationStatus) populationStatus.textContent = `${count} population${count !== 1 ? 's' : ''}`;
                 if (populationIndicator) populationIndicator.className = 'status-indicator valid';
-                if (populationIcon) populationIcon.className = 'icon-users';
+                if (populationIcon) populationIcon.className = 'mdi mdi-account-group';
                 
                 // Add cache indicator to the UI if loaded from cache
-                if (result.data?.fromCache || result.message?.fromCache) {
-                    if (populationCount) {
-                        populationCount.title = `Loaded from cache in ${loadTime}ms\nCached at: ${new Date(result.data?.cachedAt || result.message?.cachedAt).toLocaleString()}`;
+                if (result.data?.message?.fromCache || result.data?.fromCache || result.message?.fromCache) {
+                    if (populationStatus) {
+                        populationStatus.title = `Loaded from cache in ${loadTime}ms\nCached at: ${new Date(result.data?.message?.fetchedAt || result.data?.cachedAt || result.message?.cachedAt).toLocaleString()}`;
                     }
                 }
             } else {
@@ -333,30 +320,30 @@ export class HomePage {
             }
         } catch (error) {
             console.error('❌ Error loading population count:', error);
-            if (populationCount) populationCount.textContent = 'Unable to load';
+            if (populationStatus) populationStatus.textContent = 'Unable to load';
             if (populationIndicator) populationIndicator.className = 'status-indicator invalid';
-            if (populationIcon) populationIcon.className = 'icon-users-x';
+            if (populationIcon) populationIcon.className = 'mdi mdi-account-group-x';
         }
     }
     
     loadEnvironmentInfo() {
         const environmentInfo = document.getElementById('environment-info');
         const regionInfo = document.getElementById('region-info');
-        const environmentId = document.getElementById('environment-id');
+        const environmentStatus = document.getElementById('environment-status');
         const environmentIndicator = document.getElementById('environment-indicator');
         const environmentIcon = document.getElementById('environment-icon');
         
-        // Update the new Environment ID card
-        if (environmentId) {
+        // Update the Environment Status card
+        if (environmentStatus) {
             const envId = this.app.settings.pingone_environment_id;
             if (envId) {
-                environmentId.textContent = envId;
+                environmentStatus.textContent = envId;
                 if (environmentIndicator) environmentIndicator.className = 'status-indicator valid';
-                if (environmentIcon) environmentIcon.className = 'icon-globe';
+                if (environmentIcon) environmentIcon.className = 'mdi mdi-earth';
             } else {
-                environmentId.textContent = 'Not configured';
+                environmentStatus.textContent = 'Not configured';
                 if (environmentIndicator) environmentIndicator.className = 'status-indicator invalid';
-                if (environmentIcon) environmentIcon.className = 'icon-globe-x';
+                if (environmentIcon) environmentIcon.className = 'mdi mdi-earth-x';
             }
         }
         
