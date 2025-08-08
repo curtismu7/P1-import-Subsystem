@@ -113,7 +113,7 @@ export class HomePage {
                             </div>
                         </a>
                         
-                        <a href="#delete-csv" class="action-card" data-page="delete-csv">
+                        <a href="#delete" class="action-card" data-page="delete">
                             <div class="card-icon">
                                 <i class="mdi mdi-delete" data-icon="🗑️"></i>
                             </div>
