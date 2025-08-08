@@ -72,7 +72,7 @@
   ],
   "ignorePatterns": [
     "node_modules/",
-    "public/js/bundle*.js",
+
     "public/vendor/",
     "logs/",
     "coverage/"

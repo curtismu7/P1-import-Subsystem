@@ -276,16 +276,8 @@ class App {
      */
     showInitializationSuccessStatus() {
         try {
-            // Get current bundle info
-            const scripts = document.querySelectorAll('script[src*="bundle-"]');
-            let bundleVersion = 'Unknown';
-            if (scripts.length > 0) {
-                const bundleSrc = scripts[scripts.length - 1].src;
-                const match = bundleSrc.match(/bundle-(\d+)\.js/);
-                if (match) {
-                    bundleVersion = match[1];
-                }
-            }
+            // Using Import Maps - no bundle version needed
+            const moduleVersion = 'Import Maps';
             
             // Get token status
             let tokenStatus = 'No Token';
@@ -311,7 +303,7 @@ class App {
             }
             
             // Create status message
-            const statusMessage = `✅ v${this.version} Ready | Bundle: ${bundleVersion} | Last Update: UIManager & SafeDOM fixes | Token: ${tokenStatus}${tokenTimeLeft}`;
+            const statusMessage = `✅ v${this.version} Ready | Modules: ${moduleVersion} | Last Update: UIManager & SafeDOM fixes | Token: ${tokenStatus}${tokenTimeLeft}`;
             
             // Show green success status bar
             if (this.uiManager && this.uiManager.showStatusBar) {
@@ -323,7 +315,7 @@ class App {
             
             this.logger.info('Initialization success status displayed', {
                 version: this.version,
-                bundleVersion,
+                moduleVersion,
                 tokenStatus,
                 tokenTimeLeft
             });
@@ -1631,7 +1623,7 @@ handleFileDrop(event) {
     }
 }
 
-// Export App class for bundle
+// Export App class for Import Maps
 export { App };
 export default App;
 
