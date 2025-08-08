@@ -929,15 +929,31 @@ export class SettingsPage {
                 const result = await response.json();
                 console.log('🏘️ API response data:', result);
                 
-                if (result.success && result.data && result.data.populations) {
-                    this.populateDropdown(result.data.populations);
-                    console.log('🏘️ Loaded populations from API:', result.data.populations.length);
+                // Handle the actual API response structure
+                let populations = null;
+                
+                if (result.success && result.data && result.data.message && result.data.message.populations) {
+                    populations = result.data.message.populations;
+                    console.log('🏘️ Loaded populations from API (nested format):', populations.length);
+                } else if (result.success && result.data && result.data.populations) {
+                    populations = result.data.populations;
+                    console.log('🏘️ Loaded populations from API (data format):', populations.length);
+                } else if (result.message && result.message.populations) {
+                    populations = result.message.populations;
+                    console.log('🏘️ Loaded populations from API (message format):', populations.length);
                 } else if (result.populations) {
-                    // Handle different response format
-                    this.populateDropdown(result.populations);
-                    console.log('🏘️ Loaded populations from API (alt format):', result.populations.length);
+                    populations = result.populations;
+                    console.log('🏘️ Loaded populations from API (direct format):', populations.length);
                 } else {
+                    console.error('🏘️ Could not find populations in response:', result);
                     throw new Error('Invalid populations response format: ' + JSON.stringify(result));
+                }
+                
+                if (populations && Array.isArray(populations)) {
+                    this.populateDropdown(populations);
+                    console.log('🏘️ Successfully populated dropdown with', populations.length, 'populations');
+                } else {
+                    throw new Error('Populations data is not an array: ' + JSON.stringify(populations));
                 }
             } else {
                 throw new Error(`Failed to fetch populations: ${response.status}`);
@@ -953,9 +969,11 @@ export class SettingsPage {
      * Populate the dropdown with population options
      */
     populateDropdown(populations) {
+        console.log('🏘️ populateDropdown called with:', populations);
+        
         const populationSelect = document.getElementById('settings-population');
         if (!populationSelect) {
-            console.warn('🏘️ Population select element not found in populateDropdown');
+            console.error('🏘️ Population select element not found in populateDropdown');
             return;
         }
         
@@ -994,6 +1012,11 @@ export class SettingsPage {
             populationSelect.value = currentPopulationId;
             console.log('🏘️ Set current population selection:', currentPopulationId);
         }
+        
+        // Verify the dropdown was populated
+        const options = populationSelect.querySelectorAll('option');
+        console.log('🏘️ Final dropdown options count:', options.length);
+        console.log('🏘️ Dropdown options:', Array.from(options).map(opt => ({ value: opt.value, text: opt.textContent })));
     }
     
     updateUIBasedOnSettings() {
