@@ -420,13 +420,17 @@ export class LogsPage {
                 this.logs = [];
                 this.filterLogs();
                 this.updateStatistics();
-                alert('Logs cleared successfully');
+                if (this.app && this.app.showSuccess) {
+                    this.app.showSuccess('Logs cleared successfully');
+                }
             } else {
                 throw new Error('Failed to clear logs');
             }
         } catch (error) {
             console.error('❌ Error clearing logs:', error);
-            alert('Error clearing logs. Please try again.');
+            if (this.app && this.app.showError) {
+                this.app.showError('Error clearing logs. Please try again.');
+            }
         }
     }
 
@@ -434,7 +438,9 @@ export class LogsPage {
         const logsToExport = this.filteredLogs.length > 0 ? this.filteredLogs : this.logs;
         
         if (logsToExport.length === 0) {
-            alert('No logs to export');
+            if (this.app && this.app.showError) {
+                this.app.showError('No logs to export');
+            }
             return;
         }
 
@@ -476,7 +482,9 @@ export class LogsPage {
                 const files = await response.json();
                 
                 if (files.length === 0) {
-                    alert('No log files available for download');
+                    if (this.app && this.app.showError) {
+                        this.app.showError('No log files available for download');
+                    }
                     return;
                 }
 
@@ -501,7 +509,9 @@ export class LogsPage {
             }
         } catch (error) {
             console.error('❌ Error downloading log files:', error);
-            alert('Error accessing log files. Please try again.');
+            if (this.app && this.app.showError) {
+                this.app.showError('Error accessing log files. Please try again.');
+            }
         }
     }
 

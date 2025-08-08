@@ -708,11 +708,11 @@ class PingOneApp {
     showStatusMessage(message, type = 'info') {
         // Use the green status message bar at the top
         const statusBar = document.getElementById('status-message-bar');
-        const statusMessage = document.getElementById('status-message-text');
-        const statusIcon = document.getElementById('status-message-icon');
+        const statusText = document.getElementById('status-text');
+        const statusIcon = document.getElementById('status-icon');
         
-        if (statusBar && statusMessage) {
-            statusMessage.textContent = message;
+        if (statusBar && statusText) {
+            statusText.textContent = message;
             
             // Update icon based on message type
             if (statusIcon) {
@@ -735,13 +735,14 @@ class PingOneApp {
             statusBar.style.display = 'flex';
             statusBar.className = `status-message-bar ${type}`;
             
-            // Auto-hide after 5 seconds
+            // Auto-clear after 4 seconds and return to default system status
             setTimeout(() => {
-                statusMessage.textContent = 'Ready';
+                const currentTime = new Date().toLocaleTimeString();
+                statusText.textContent = `System Status - ${currentTime}`;
                 if (statusIcon) statusIcon.className = 'icon-check-circle';
                 statusBar.className = 'status-message-bar';
                 // Keep it visible but with default styling
-            }, 5000);
+            }, 4000);
         }
     }
 }

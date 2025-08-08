@@ -469,7 +469,9 @@ export class HistoryPage {
         const historyToExport = this.filteredHistory.length > 0 ? this.filteredHistory : this.history;
         
         if (historyToExport.length === 0) {
-            alert('No history to export');
+            if (this.app && this.app.showError) {
+                this.app.showError('No history to export');
+            }
             return;
         }
 
@@ -526,7 +528,9 @@ export class HistoryPage {
         
         this.filterHistory();
         this.updateStatistics();
-        alert('Operation history cleared successfully');
+        if (this.app && this.app.showSuccess) {
+            this.app.showSuccess('Operation history cleared successfully');
+        }
     }
 
     saveHistoryToLocal() {

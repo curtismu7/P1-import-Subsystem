@@ -356,22 +356,60 @@ export class TokenManagementPage {
      */
     decodeJWT(token) {
         try {
+            console.log('🔍 Attempting to decode JWT token...');
+            
             const parts = token.split('.');
             if (parts.length !== 3) {
-                throw new Error('Invalid JWT format');
+                throw new Error('Invalid JWT format - expected 3 parts separated by dots');
             }
             
-            const header = JSON.parse(atob(parts[0]));
-            const payload = JSON.parse(atob(parts[1]));
+            // Handle base64 decoding with proper padding
+            const decodeBase64 = (str) => {
+                try {
+                    // Add padding if needed
+                    while (str.length % 4) {
+                        str += '=';
+                    }
+                    return atob(str);
+                } catch (e) {
+                    throw new Error('Invalid base64 encoding');
+                }
+            };
             
-            document.getElementById('jwt-header').textContent = JSON.stringify(header, null, 2);
-            document.getElementById('jwt-payload').textContent = JSON.stringify(payload, null, 2);
+            const headerStr = decodeBase64(parts[0]);
+            const payloadStr = decodeBase64(parts[1]);
+            
+            console.log('📋 Decoded header string:', headerStr);
+            console.log('📋 Decoded payload string:', payloadStr);
+            
+            const header = JSON.parse(headerStr);
+            const payload = JSON.parse(payloadStr);
+            
+            const headerElement = document.getElementById('jwt-header');
+            const payloadElement = document.getElementById('jwt-payload');
+            
+            if (headerElement) {
+                headerElement.textContent = JSON.stringify(header, null, 2);
+            }
+            if (payloadElement) {
+                payloadElement.textContent = JSON.stringify(payload, null, 2);
+            }
             
             console.log('✅ JWT decoded successfully');
+            console.log('📋 Header:', header);
+            console.log('📋 Payload:', payload);
+            
         } catch (error) {
             console.error('❌ Failed to decode JWT', error);
-            document.getElementById('jwt-header').textContent = 'Failed to decode header';
-            document.getElementById('jwt-payload').textContent = 'Failed to decode payload';
+            const headerElement = document.getElementById('jwt-header');
+            const payloadElement = document.getElementById('jwt-payload');
+            
+            if (headerElement) {
+                headerElement.textContent = `Failed to decode header: ${error.message}`;
+            }
+            if (payloadElement) {
+                payloadElement.textContent = `Failed to decode payload: ${error.message}`;
+            }
         }
     }
     
@@ -382,8 +420,13 @@ export class TokenManagementPage {
         const tokenString = document.getElementById('token-string');
         if (tokenString && tokenString.value) {
             this.decodeJWT(tokenString.value);
+            if (this.app && this.app.showSuccess) {
+                this.app.showSuccess('JWT token decoded successfully');
+            }
         } else {
-            alert('No token available to decode');
+            if (this.app && this.app.showError) {
+                this.app.showError('No token available to decode');
+            }
         }
     }
     
@@ -396,13 +439,19 @@ export class TokenManagementPage {
             try {
                 await navigator.clipboard.writeText(tokenString.value);
                 console.log('✅ Token copied to clipboard');
-                alert('Token copied to clipboard!');
+                if (this.app && this.app.showSuccess) {
+                    this.app.showSuccess('Token copied to clipboard!');
+                }
             } catch (error) {
                 console.error('❌ Failed to copy token', error);
-                alert('Failed to copy token to clipboard');
+                if (this.app && this.app.showError) {
+                    this.app.showError('Failed to copy token to clipboard');
+                }
             }
         } else {
-            alert('No token available to copy');
+            if (this.app && this.app.showError) {
+                this.app.showError('No token available to copy');
+            }
         }
     }
     
@@ -410,7 +459,9 @@ export class TokenManagementPage {
      * Encode JWT (placeholder for future functionality)
      */
     encodeJWT() {
-        alert('JWT encoding functionality will be implemented in a future update');
+        if (this.app && this.app.showInfo) {
+            this.app.showInfo('JWT encoding functionality will be implemented in a future update');
+        }
     }
 
     async refreshToken() {
@@ -460,7 +511,9 @@ export class TokenManagementPage {
                         this.refreshPopulationsOnAllPages();
                         
                         this.updateTokenDisplay();
-                        alert('Token refreshed successfully! Populations are being updated...');
+                        if (this.app && this.app.showSuccess) {
+                            this.app.showSuccess('Token refreshed successfully! Populations are being updated...');
+                        }
                     } else {
                         throw new Error('Invalid token data received from server');
                     }
@@ -473,7 +526,9 @@ export class TokenManagementPage {
         } catch (error) {
             console.error('❌ Error refreshing token:', error);
             this.addToTokenHistory(`Token refresh failed: ${error.message}`, 'error');
-            alert('Failed to refresh token. Please check your settings.');
+            if (this.app && this.app.showError) {
+                this.app.showError('Failed to refresh token. Please check your settings.');
+            }
         } finally {
             refreshBtn.innerHTML = originalText;
             refreshBtn.disabled = false;
@@ -493,14 +548,18 @@ export class TokenManagementPage {
             if (response.ok) {
                 const result = await response.json();
                 this.addToTokenHistory('Token validation successful', 'success');
-                alert('Token is valid and active');
+                if (this.app && this.app.showSuccess) {
+                    this.app.showSuccess('Token is valid and active');
+                }
             } else {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
         } catch (error) {
             console.error('❌ Error validating token:', error);
             this.addToTokenHistory(`Token validation failed: ${error.message}`, 'error');
-            alert('Token validation failed. Token may be expired or invalid.');
+            if (this.app && this.app.showError) {
+                this.app.showError('Token validation failed. Token may be expired or invalid.');
+            }
         } finally {
             validateBtn.innerHTML = originalText;
             validateBtn.disabled = false;
@@ -599,14 +658,18 @@ export class TokenManagementPage {
                 }
                 
                 this.updateTokenDisplay();
-                alert('Token revoked successfully');
+                if (this.app && this.app.showSuccess) {
+                    this.app.showSuccess('Token revoked successfully');
+                }
             } else {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
         } catch (error) {
             console.error('❌ Error revoking token:', error);
             this.addToTokenHistory(`Token revocation failed: ${error.message}`, 'error');
-            alert('Failed to revoke token. Please try again.');
+            if (this.app && this.app.showError) {
+                this.app.showError('Failed to revoke token. Please try again.');
+            }
         } finally {
             revokeBtn.innerHTML = originalText;
             revokeBtn.disabled = false;
@@ -627,7 +690,9 @@ export class TokenManagementPage {
         
         this.updateTokenDisplay();
         this.addToTokenHistory('Local token cleared', 'info');
-        alert('Local token cleared successfully');
+        if (this.app && this.app.showSuccess) {
+            this.app.showSuccess('Local token cleared successfully');
+        }
     }
 
     loadTokenHistory() {
@@ -682,7 +747,9 @@ export class TokenManagementPage {
         this.tokenHistory = [];
         localStorage.removeItem('token_history');
         this.displayTokenHistory();
-        alert('Token history cleared successfully');
+        if (this.app && this.app.showSuccess) {
+            this.app.showSuccess('Token history cleared successfully');
+        }
     }
 
     startTokenMonitoring() {
