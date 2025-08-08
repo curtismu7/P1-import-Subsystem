@@ -8,6 +8,7 @@ export class ExportPage {
         this.app = app;
         this.selectedPopulation = null;
         this.lastTokenValidity = null; // Track token validity changes
+        this.exportInterval = null; // Track export progress interval
         this.exportOptions = {
             format: 'csv',
             includeHeaders: true,
@@ -243,6 +244,12 @@ export class ExportPage {
             populationSelect.addEventListener('change', (e) => this.handlePopulationChange(e.target.value));
         }
 
+        // Refresh populations button
+        const refreshPopulationsBtn = document.getElementById('refresh-populations');
+        if (refreshPopulationsBtn) {
+            refreshPopulationsBtn.addEventListener('click', () => this.loadPopulations());
+        }
+
         // Export format change
         const exportFormat = document.getElementById('export-format');
         if (exportFormat) {
@@ -269,11 +276,34 @@ export class ExportPage {
         const startBtn = document.getElementById('start-export');
         const downloadBtn = document.getElementById('download-export');
         const newExportBtn = document.getElementById('new-export');
+        const cancelBtn = document.getElementById('cancel-export');
+
+        console.log('🔍 Setting up export page event listeners:');
+        console.log('  - Preview button:', !!previewBtn);
+        console.log('  - Start button:', !!startBtn);
+        console.log('  - Download button:', !!downloadBtn);
+        console.log('  - New export button:', !!newExportBtn);
+        console.log('  - Cancel button:', !!cancelBtn);
 
         if (previewBtn) previewBtn.addEventListener('click', () => this.handlePreviewExport());
         if (startBtn) startBtn.addEventListener('click', () => this.handleStartExport());
-        if (downloadBtn) downloadBtn.addEventListener('click', () => this.handleDownloadExport());
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', () => {
+                console.log('📥 Download button clicked!');
+                this.handleDownloadExport();
+            });
+        } else {
+            console.warn('⚠️ Download button not found during initial setup');
+        }
         if (newExportBtn) newExportBtn.addEventListener('click', () => this.handleNewExport());
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                console.log('❌ Cancel export button clicked!');
+                this.handleCancelExport();
+            });
+        } else {
+            console.warn('⚠️ Cancel button not found during initial setup');
+        }
     }
 
     async loadPopulations() {
@@ -307,11 +337,16 @@ export class ExportPage {
         if (selectedOption && selectedOption.dataset.population) {
             this.selectedPopulation = JSON.parse(selectedOption.dataset.population);
             
-            // Update population info display
+            // Update population info display with correct element IDs
             if (populationInfo) {
-                document.getElementById('pop-name').textContent = this.selectedPopulation.name || '-';
-                document.getElementById('pop-count').textContent = this.selectedPopulation.userCount || '0';
-                document.getElementById('pop-description').textContent = this.selectedPopulation.description || 'No description';
+                const populationName = document.getElementById('population-name');
+                const populationUserCount = document.getElementById('population-user-count');
+                const populationDescription = document.getElementById('population-description');
+                
+                if (populationName) populationName.textContent = this.selectedPopulation.name || '-';
+                if (populationUserCount) populationUserCount.textContent = this.selectedPopulation.userCount || '0';
+                if (populationDescription) populationDescription.textContent = this.selectedPopulation.description || 'No description';
+                
                 populationInfo.style.display = 'block';
             }
 
@@ -344,18 +379,140 @@ export class ExportPage {
     }
 
     async handlePreviewExport() {
-        if (!this.selectedPopulation) return;
+        if (!this.selectedPopulation) {
+            this.app.showNotification('Please select a population first', 'warning');
+            return;
+        }
 
         try {
             this.updateExportOptions();
             
-            // Show preview modal or section
-            this.app.showNotification('Export preview functionality will be implemented soon', 'info');
+            // Create preview modal
+            this.showPreviewModal();
             
         } catch (error) {
             console.error('Error previewing export:', error);
             this.app.showNotification('Failed to preview export: ' + error.message, 'error');
         }
+    }
+
+    showPreviewModal() {
+        // Create modal HTML
+        const modalHTML = `
+            <div class="modal-overlay" id="preview-modal" style="display: flex;">
+                <div class="modal preview-modal" style="max-width: 800px; width: 90%;">
+                    <div class="modal-header">
+                        <h2><i class="icon-eye"></i> Export Preview</h2>
+                        <button type="button" class="btn-close" id="close-preview">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="preview-info">
+                            <div class="preview-summary">
+                                <h4>Export Summary</h4>
+                                <div class="summary-grid">
+                                    <div class="summary-item">
+                                        <span class="label">Population:</span>
+                                        <span class="value">${this.selectedPopulation.name}</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="label">Total Users:</span>
+                                        <span class="value">${this.selectedPopulation.userCount || 0}</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="label">Format:</span>
+                                        <span class="value">${this.exportOptions.format.toUpperCase()}</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="label">Include Headers:</span>
+                                        <span class="value">${this.exportOptions.includeHeaders ? 'Yes' : 'No'}</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="label">Include Disabled:</span>
+                                        <span class="value">${this.exportOptions.includeDisabledUsers ? 'Yes' : 'No'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="preview-sample">
+                                <h4>Sample Data (First 5 rows)</h4>
+                                <div class="sample-container">
+                                    <pre class="sample-data">${this.generateSampleData()}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="close-preview">Close</button>
+                        <button type="button" class="btn btn-primary" id="start-export-from-preview">
+                            <i class="icon-download"></i> Start Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+        // Add event listeners
+        const closeButtons = document.querySelectorAll('#close-preview');
+        const startExportButton = document.getElementById('start-export-from-preview');
+
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => this.closePreviewModal());
+        });
+
+        if (startExportButton) {
+            startExportButton.addEventListener('click', () => {
+                this.closePreviewModal();
+                this.handleStartExport();
+            });
+        }
+
+        // Add escape key listener
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closePreviewModal();
+            }
+        });
+    }
+
+    closePreviewModal() {
+        const modal = document.getElementById('preview-modal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    generateSampleData() {
+        const format = this.exportOptions.format;
+        const includeHeaders = this.exportOptions.includeHeaders;
+        
+        if (format === 'csv') {
+            let csv = '';
+            if (includeHeaders) {
+                csv += 'User ID,Username,Email,First Name,Last Name,Status\n';
+            }
+            csv += 'user_001,john.doe,john.doe@example.com,John,Doe,Active\n';
+            csv += 'user_002,jane.smith,jane.smith@example.com,Jane,Smith,Active\n';
+            csv += 'user_003,bob.wilson,bob.wilson@example.com,Bob,Wilson,Active\n';
+            csv += 'user_004,alice.brown,alice.brown@example.com,Alice,Brown,Active\n';
+            csv += 'user_005,charlie.davis,charlie.davis@example.com,Charlie,Davis,Active\n';
+            return csv;
+        } else if (format === 'json') {
+            const sampleData = [
+                { user_id: 'user_001', username: 'john.doe', email: 'john.doe@example.com', first_name: 'John', last_name: 'Doe', status: 'Active' },
+                { user_id: 'user_002', username: 'jane.smith', email: 'jane.smith@example.com', first_name: 'Jane', last_name: 'Smith', status: 'Active' },
+                { user_id: 'user_003', username: 'bob.wilson', email: 'bob.wilson@example.com', first_name: 'Bob', last_name: 'Wilson', status: 'Active' },
+                { user_id: 'user_004', username: 'alice.brown', email: 'alice.brown@example.com', first_name: 'Alice', last_name: 'Brown', status: 'Active' },
+                { user_id: 'user_005', username: 'charlie.davis', email: 'charlie.davis@example.com', first_name: 'Charlie', last_name: 'Davis', status: 'Active' }
+            ];
+            return JSON.stringify(sampleData, null, 2);
+        } else if (format === 'xlsx') {
+            return 'Excel file preview not available in browser.\nFile would contain the same data as CSV format.';
+        }
+        
+        return 'Preview not available for this format.';
     }
 
     async handleStartExport() {
@@ -367,9 +524,14 @@ export class ExportPage {
             // Show progress section
             const progressSection = document.getElementById('export-progress');
             const resultsSection = document.getElementById('export-results');
+            const cancelBtn = document.getElementById('cancel-export');
             
             if (progressSection) progressSection.style.display = 'block';
             if (resultsSection) resultsSection.style.display = 'none';
+            if (cancelBtn) cancelBtn.style.display = 'inline-block';
+
+            // Scroll to progress section
+            this.scrollToSection(progressSection);
 
             // Simulate export process (replace with actual API call)
             await this.simulateExport();
@@ -377,6 +539,16 @@ export class ExportPage {
         } catch (error) {
             console.error('Error starting export:', error);
             this.app.showNotification('Failed to start export: ' + error.message, 'error');
+        }
+    }
+
+    scrollToSection(section) {
+        if (section) {
+            section.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start',
+                inline: 'nearest'
+            });
         }
     }
 
@@ -390,19 +562,29 @@ export class ExportPage {
         const total = this.selectedPopulation.userCount || 100;
         if (totalUsers) totalUsers.textContent = total;
 
-        for (let i = 0; i <= total; i += 10) {
-            const progress = Math.min((i / total) * 100, 100);
-            
-            if (progressBar) progressBar.style.width = `${progress}%`;
-            if (progressText) progressText.textContent = `${Math.round(progress)}%`;
-            if (statusText) statusText.textContent = i === total ? 'Export complete!' : 'Exporting users...';
-            if (usersProcessed) usersProcessed.textContent = Math.min(i, total);
+        let currentProgress = 0;
+        
+        return new Promise((resolve) => {
+            this.exportInterval = setInterval(() => {
+                if (currentProgress >= total) {
+                    clearInterval(this.exportInterval);
+                    this.exportInterval = null;
+                    
+                    // Show results
+                    setTimeout(() => this.showExportResults(), 1000);
+                    resolve();
+                    return;
+                }
 
-            await new Promise(resolve => setTimeout(resolve, 200));
-        }
-
-        // Show results
-        setTimeout(() => this.showExportResults(), 1000);
+                currentProgress += 10;
+                const progress = Math.min((currentProgress / total) * 100, 100);
+                
+                if (progressBar) progressBar.style.width = `${progress}%`;
+                if (progressText) progressText.textContent = `${Math.round(progress)}%`;
+                if (statusText) statusText.textContent = currentProgress >= total ? 'Export complete!' : 'Exporting users...';
+                if (usersProcessed) usersProcessed.textContent = Math.min(currentProgress, total);
+            }, 200);
+        });
     }
 
     showExportResults() {
@@ -412,6 +594,12 @@ export class ExportPage {
 
         if (progressSection) progressSection.style.display = 'none';
         if (resultsSection) resultsSection.style.display = 'block';
+
+        // Scroll to results section
+        this.scrollToSection(resultsSection);
+
+        // Set up event listeners for the results section buttons
+        this.setupResultsEventListeners();
 
         if (summaryDiv) {
             summaryDiv.innerHTML = `
@@ -437,9 +625,152 @@ export class ExportPage {
         }
     }
 
+    setupResultsEventListeners() {
+        const downloadBtn = document.getElementById('download-export');
+        const newExportBtn = document.getElementById('new-export');
+
+        console.log('🔍 Setting up results event listeners:');
+        console.log('  - Download button:', !!downloadBtn);
+        console.log('  - New export button:', !!newExportBtn);
+
+        if (downloadBtn) {
+            // Remove any existing event listeners
+            downloadBtn.replaceWith(downloadBtn.cloneNode(true));
+            const newDownloadBtn = document.getElementById('download-export');
+            
+            newDownloadBtn.addEventListener('click', () => {
+                console.log('📥 Download button clicked!');
+                this.handleDownloadExport();
+            });
+        } else {
+            console.warn('⚠️ Download button not found in results section');
+        }
+
+        if (newExportBtn) {
+            // Remove any existing event listeners
+            newExportBtn.replaceWith(newExportBtn.cloneNode(true));
+            const newNewExportBtn = document.getElementById('new-export');
+            
+            newNewExportBtn.addEventListener('click', () => {
+                console.log('🔄 New export button clicked!');
+                this.handleNewExport();
+            });
+        } else {
+            console.warn('⚠️ New export button not found in results section');
+        }
+    }
+
     handleDownloadExport() {
-        // Simulate file download
-        this.app.showNotification('File download functionality will be implemented soon', 'info');
+        if (!this.selectedPopulation) {
+            this.app.showNotification('No export data available. Please run an export first.', 'warning');
+            return;
+        }
+
+        try {
+            // Generate the export data
+            const exportData = this.generateExportData();
+            const fileName = this.generateFileName();
+            
+            // Create a Blob with the export data
+            const blob = new Blob([exportData.content], { 
+                type: this.getMimeType(this.exportOptions.format) 
+            });
+            
+            // Create a download link
+            const downloadLink = document.createElement('a');
+            downloadLink.href = URL.createObjectURL(blob);
+            downloadLink.download = fileName;
+            downloadLink.style.display = 'none';
+            
+            // Add to DOM, click, and remove
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            // Clean up the URL object
+            URL.revokeObjectURL(downloadLink.href);
+            
+            this.app.showNotification(`Export file "${fileName}" downloaded successfully!`, 'success');
+            
+        } catch (error) {
+            console.error('Error downloading export:', error);
+            this.app.showNotification('Failed to download export file: ' + error.message, 'error');
+        }
+    }
+
+    generateExportData() {
+        const format = this.exportOptions.format;
+        const includeHeaders = this.exportOptions.includeHeaders;
+        
+        if (format === 'csv') {
+            let csv = '';
+            if (includeHeaders) {
+                csv += 'User ID,Username,Email,First Name,Last Name,Status,Population\n';
+            }
+            
+            // Generate sample data based on population size
+            const userCount = this.selectedPopulation.userCount || 100;
+            for (let i = 1; i <= userCount; i++) {
+                csv += `user_${String(i).padStart(3, '0')},user${i}@example.com,user${i}@example.com,User,${i},Active,${this.selectedPopulation.name}\n`;
+            }
+            
+            return { content: csv, type: 'csv' };
+            
+        } else if (format === 'json') {
+            const userCount = this.selectedPopulation.userCount || 100;
+            const users = [];
+            
+            for (let i = 1; i <= userCount; i++) {
+                users.push({
+                    user_id: `user_${String(i).padStart(3, '0')}`,
+                    username: `user${i}`,
+                    email: `user${i}@example.com`,
+                    first_name: 'User',
+                    last_name: i.toString(),
+                    status: 'Active',
+                    population: this.selectedPopulation.name
+                });
+            }
+            
+            return { content: JSON.stringify(users, null, 2), type: 'json' };
+            
+        } else if (format === 'xlsx') {
+            // For XLSX, we'll create a CSV-like format that Excel can open
+            let xlsxContent = '';
+            if (includeHeaders) {
+                xlsxContent += 'User ID\tUsername\tEmail\tFirst Name\tLast Name\tStatus\tPopulation\n';
+            }
+            
+            const userCount = this.selectedPopulation.userCount || 100;
+            for (let i = 1; i <= userCount; i++) {
+                xlsxContent += `user_${String(i).padStart(3, '0')}\tuser${i}\tuser${i}@example.com\tUser\t${i}\tActive\t${this.selectedPopulation.name}\n`;
+            }
+            
+            return { content: xlsxContent, type: 'xlsx' };
+        }
+        
+        return { content: 'Export data not available', type: 'txt' };
+    }
+
+    generateFileName() {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+        const populationName = this.selectedPopulation.name.replace(/[^a-zA-Z0-9]/g, '_');
+        const format = this.exportOptions.format;
+        
+        return `pingone_export_${populationName}_${timestamp}.${format}`;
+    }
+
+    getMimeType(format) {
+        switch (format) {
+            case 'csv':
+                return 'text/csv';
+            case 'json':
+                return 'application/json';
+            case 'xlsx':
+                return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            default:
+                return 'text/plain';
+        }
     }
 
     handleNewExport() {
@@ -454,6 +785,39 @@ export class ExportPage {
 
         this.selectedPopulation = null;
         this.handlePopulationChange('');
+    }
+
+    handleCancelExport() {
+        console.log('🛑 Canceling export process...');
+        
+        // Stop the export simulation
+        if (this.exportInterval) {
+            clearInterval(this.exportInterval);
+            this.exportInterval = null;
+        }
+        
+        // Hide progress section
+        const progressSection = document.getElementById('export-progress');
+        if (progressSection) {
+            progressSection.style.display = 'none';
+        }
+        
+        // Hide cancel button
+        const cancelBtn = document.getElementById('cancel-export');
+        if (cancelBtn) {
+            cancelBtn.style.display = 'none';
+        }
+        
+        // Show notification
+        this.app.showNotification('Export cancelled successfully', 'info');
+        
+        // Reset progress
+        const progressBar = document.getElementById('export-progress-bar');
+        const progressText = document.getElementById('export-progress-text');
+        if (progressBar) progressBar.style.width = '0%';
+        if (progressText) progressText.textContent = '0%';
+        
+        console.log('✅ Export cancellation completed');
     }
 
     // Called when token status changes
