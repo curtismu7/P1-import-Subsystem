@@ -1,5 +1,5 @@
 // Application version - SINGLE SOURCE OF TRUTH
-export const APP_VERSION = '7.0.1.6';
+export const APP_VERSION = '7.0.1.7';
 
 // Helper functions for version formatting
 export function getFormattedVersion() {
