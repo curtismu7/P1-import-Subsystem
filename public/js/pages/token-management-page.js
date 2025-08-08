@@ -63,16 +63,35 @@ export class TokenManagementPage {
                     </div>
                 </section>
 
+                <!-- Raw Token Section -->
+                <section class="token-section">
+                    <h2 class="section-title">Raw Token</h2>
+                    <div class="token-box">
+                        <div class="raw-token-display">
+                            <div class="token-string-container">
+                                <label for="token-string">Raw Token:</label>
+                                <textarea id="token-string" class="token-string" readonly placeholder="No token available"></textarea>
+                                <div class="token-actions">
+                                    <button id="copy-token-btn" class="btn btn-secondary">
+                                        <i class="fas fa-copy"></i> Copy Token
+                                    </button>
+                                    <button id="decode-token-btn" class="btn btn-info">
+                                        <i class="fas fa-code"></i> Decode JWT
+                                    </button>
+                                    <button id="encode-token-btn" class="btn btn-warning">
+                                        <i class="fas fa-edit"></i> Encode JWT
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Decoded Token Section -->
                 <section class="token-section">
                     <h2 class="section-title">Decoded Token</h2>
                     <div class="token-box">
                         <div class="decoded-token-display">
-                            <div class="token-string-container">
-                                <label for="token-string">Raw Token:</label>
-                                <textarea id="token-string" class="token-string" readonly placeholder="No token available"></textarea>
-                            </div>
-                            
                             <div class="jwt-details">
                                 <div class="jwt-section">
                                     <h4>Header</h4>
@@ -196,10 +215,27 @@ export class TokenManagementPage {
         document.getElementById('clear-history-btn')?.addEventListener('click', () => {
             this.clearTokenHistory();
         });
+        
+        // New token action buttons
+        document.getElementById('copy-token-btn')?.addEventListener('click', () => {
+            this.copyToken();
+        });
+        
+        document.getElementById('decode-token-btn')?.addEventListener('click', () => {
+            this.decodeCurrentToken();
+        });
+        
+        document.getElementById('encode-token-btn')?.addEventListener('click', () => {
+            this.encodeJWT();
+        });
     }
 
     updateTokenDisplay() {
-        const tokenStatus = this.app.tokenStatus;
+        console.log('🔄 Updating token display...');
+        
+        // Load token from localStorage
+        const storedToken = this.loadStoredToken();
+        const tokenString = document.getElementById('token-string');
         const statusIndicator = document.getElementById('token-status-indicator');
         const statusText = document.getElementById('token-status-text');
         const tokenType = document.getElementById('token-type');
@@ -208,26 +244,58 @@ export class TokenManagementPage {
         const tokenScope = document.getElementById('token-scope');
 
         // Check if DOM elements exist (page might not be loaded yet)
-        if (!statusIndicator || !statusText || !tokenType || !tokenExpires || !tokenRemaining || !tokenScope) {
+        if (!statusIndicator || !statusText || !tokenType || !tokenExpires || !tokenRemaining || !tokenScope || !tokenString) {
+            console.log('⚠️ DOM elements not found, skipping update');
             return; // Page not loaded yet, skip update
         }
 
-        if (!tokenStatus || !tokenStatus.isValid) {
+        if (storedToken && storedToken.token) {
+            console.log('✅ Found stored token, updating display');
+            
+            // Display the token
+            tokenString.value = storedToken.token;
+            
+            // Check if token is valid
+            const isTokenValid = this.isTokenValid(storedToken);
+            
+            if (isTokenValid) {
+                statusIndicator.className = 'status-indicator status-valid';
+                statusText.textContent = 'Valid';
+                tokenType.textContent = 'Bearer';
+                tokenExpires.textContent = storedToken.expiresAt ? 
+                    new Date(storedToken.expiresAt).toLocaleString() : 'Unknown';
+                tokenRemaining.textContent = storedToken.expiresAt ? 
+                    this.formatTimeRemaining(Math.floor((new Date(storedToken.expiresAt) - new Date()) / 1000)) : 'Unknown';
+                tokenScope.textContent = 'Default';
+                
+                // Auto-decode the token
+                this.decodeJWT(storedToken.token);
+            } else {
+                statusIndicator.className = 'status-indicator status-invalid';
+                statusText.textContent = 'Expired';
+                tokenType.textContent = 'Bearer';
+                tokenExpires.textContent = storedToken.expiresAt ? 
+                    new Date(storedToken.expiresAt).toLocaleString() : 'Unknown';
+                tokenRemaining.textContent = 'Expired';
+                tokenScope.textContent = 'Default';
+                
+                // Clear decoded sections
+                document.getElementById('jwt-header').textContent = 'Token expired';
+                document.getElementById('jwt-payload').textContent = 'Token expired';
+            }
+        } else {
+            console.log('❌ No stored token found');
             statusIndicator.className = 'status-indicator status-invalid';
-            statusText.textContent = 'Invalid or Expired';
+            statusText.textContent = 'No Token';
             tokenType.textContent = '-';
             tokenExpires.textContent = '-';
             tokenRemaining.textContent = '-';
             tokenScope.textContent = '-';
-        } else {
-            statusIndicator.className = 'status-indicator status-valid';
-            statusText.textContent = 'Valid';
-            tokenType.textContent = tokenStatus.tokenType || 'Bearer';
-            tokenExpires.textContent = tokenStatus.expiresAt ? 
-                new Date(tokenStatus.expiresAt).toLocaleString() : '-';
-            tokenRemaining.textContent = tokenStatus.timeLeft ? 
-                this.formatTimeRemaining(tokenStatus.timeLeft) : '-';
-            tokenScope.textContent = tokenStatus.scope || 'Default';
+            tokenString.value = '';
+            
+            // Clear decoded sections
+            document.getElementById('jwt-header').textContent = 'No token data';
+            document.getElementById('jwt-payload').textContent = 'No token data';
         }
     }
 
@@ -245,6 +313,104 @@ export class TokenManagementPage {
         } else {
             return `${secs}s`;
         }
+    }
+    
+    /**
+     * Load token from localStorage
+     */
+    loadStoredToken() {
+        try {
+            const stored = localStorage.getItem('pingone_token_cache');
+            if (stored) {
+                const tokenInfo = JSON.parse(stored);
+                console.log('📋 Found stored token', { timestamp: tokenInfo.timestamp });
+                return tokenInfo;
+            }
+        } catch (error) {
+            console.error('❌ Failed to load stored token', error);
+        }
+        return null;
+    }
+    
+    /**
+     * Check if a token is valid (not expired)
+     */
+    isTokenValid(tokenInfo) {
+        if (!tokenInfo || !tokenInfo.token) {
+            return false;
+        }
+        
+        // Check if token has expiration
+        if (tokenInfo.expiresAt) {
+            const now = new Date();
+            const expiresAt = new Date(tokenInfo.expiresAt);
+            return expiresAt > now;
+        }
+        
+        // If no expiration info, assume valid for now
+        return true;
+    }
+    
+    /**
+     * Decode JWT token
+     */
+    decodeJWT(token) {
+        try {
+            const parts = token.split('.');
+            if (parts.length !== 3) {
+                throw new Error('Invalid JWT format');
+            }
+            
+            const header = JSON.parse(atob(parts[0]));
+            const payload = JSON.parse(atob(parts[1]));
+            
+            document.getElementById('jwt-header').textContent = JSON.stringify(header, null, 2);
+            document.getElementById('jwt-payload').textContent = JSON.stringify(payload, null, 2);
+            
+            console.log('✅ JWT decoded successfully');
+        } catch (error) {
+            console.error('❌ Failed to decode JWT', error);
+            document.getElementById('jwt-header').textContent = 'Failed to decode header';
+            document.getElementById('jwt-payload').textContent = 'Failed to decode payload';
+        }
+    }
+    
+    /**
+     * Decode current token from textarea
+     */
+    decodeCurrentToken() {
+        const tokenString = document.getElementById('token-string');
+        if (tokenString && tokenString.value) {
+            this.decodeJWT(tokenString.value);
+        } else {
+            alert('No token available to decode');
+        }
+    }
+    
+    /**
+     * Copy token to clipboard
+     */
+    async copyToken() {
+        const tokenString = document.getElementById('token-string');
+        if (tokenString && tokenString.value) {
+            try {
+                await navigator.clipboard.writeText(tokenString.value);
+                console.log('✅ Token copied to clipboard');
+                alert('Token copied to clipboard!');
+            } catch (error) {
+                console.error('❌ Failed to copy token', error);
+                alert('Failed to copy token to clipboard');
+            }
+        } else {
+            alert('No token available to copy');
+        }
+    }
+    
+    /**
+     * Encode JWT (placeholder for future functionality)
+     */
+    encodeJWT() {
+        alert('JWT encoding functionality will be implemented in a future update');
     }
 
     async refreshToken() {
