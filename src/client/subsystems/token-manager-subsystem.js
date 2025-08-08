@@ -117,54 +117,28 @@ class TokenManagerSubsystem {
         try {
             // Step 1: Try to load from localStorage first
             const storedToken = this.loadStoredToken();
-            if (storedToken) {
-                this.logTokenManager('success', '✅ Token loaded from localStorage');
+            if (storedToken && this.isTokenValid(storedToken)) {
+                this.logTokenManager('success', '✅ Valid token loaded from localStorage');
+                this.updateTokenStatusDisplay({
+                    valid: true,
+                    date: new Date().toLocaleString(),
+                    expiresIn: storedToken.expiresAt ? `Expires ${new Date(storedToken.expiresAt).toLocaleString()}` : 'Not Available',
+                    environmentId: storedToken.environmentId || 'Not Available',
+                    environmentName: storedToken.environmentName || 'Not Available',
+                    region: storedToken.region || 'Not Available'
+                });
                 return storedToken;
             }
             
-            // Step 2: Try to fetch current token from server
-            this.logTokenManager('info', '🌐 Attempting to fetch current token from server...');
-            try {
-                const response = await this.retryFetch('/api/v1/auth/token');
-                const data = await response.json();
-                
-                if (data.success && data.token) {
-                    this.logTokenManager('success', '✅ Current token fetched from server');
-                    
-                    // Store and display the token
-                    const tokenTextarea = document.getElementById('raw-token-display');
-                    if (tokenTextarea) {
-                        tokenTextarea.value = data.token;
-                    }
-                    
-                    // Store token with metadata
-                    const tokenInfo = this.storeToken({
-                        token: data.token,
-                        expiresAt: data.tokenInfo?.expiresAt,
-                        environmentId: data.tokenInfo?.environmentId,
-                        environmentName: data.tokenInfo?.environmentName,
-                        region: data.tokenInfo?.region
-                    });
-                    
-                    // Update status display
-                    this.updateTokenStatusDisplay({
-                        valid: true,
-                        date: new Date().toLocaleString(),
-                        expiresIn: tokenInfo?.expiresAt ? `Expires ${new Date(tokenInfo.expiresAt).toLocaleString()}` : 'Not Available',
-                        environmentId: tokenInfo?.environmentId || 'Not Available',
-                        environmentName: tokenInfo?.environmentName || 'Not Available',
-                        region: tokenInfo?.region || 'Not Available'
-                    });
-                    
-                    return tokenInfo;
-                }
-            } catch (serverError) {
-                this.logTokenManager('warning', '⚠️ Server token fetch failed', { error: serverError.message });
+            // Step 2: Token is invalid or expired - show refresh state
+            if (storedToken) {
+                this.logTokenManager('warning', '⚠️ Stored token is invalid or expired');
+                this.showTokenRefreshState();
+            } else {
+                this.logTokenManager('info', '📭 No token found in localStorage');
+                this.showNoTokenState();
             }
             
-            // Step 3: No token available - show "No token found" state
-            this.logTokenManager('info', '📭 No token found - showing empty state');
-            this.showNoTokenState();
             return null;
             
         } catch (error) {
@@ -183,7 +157,7 @@ class TokenManagerSubsystem {
         // Clear token display
         const tokenTextarea = document.getElementById('raw-token-display');
         if (tokenTextarea) {
-            tokenTextarea.value = 'No token found. Click "Get Current Token" to retrieve a token.';
+            tokenTextarea.value = 'No token found. Click "Refresh Token" to get a new token.';
         }
         
         // Update status display
@@ -196,8 +170,11 @@ class TokenManagerSubsystem {
             region: 'No token found'
         });
         
+        // Show refresh button prominently
+        this.showRefreshButton();
+        
         // Show user-friendly message in UI
-        this.showTemporaryFeedback('No token found. Please retrieve a token to continue.', 'info');
+        this.showTemporaryFeedback('No token found. Click "Refresh Token" to get a new token.', 'info');
     }
     
     /**
@@ -240,6 +217,58 @@ class TokenManagerSubsystem {
         return null;
     }
 
+    /**
+     * Check if a token is valid (not expired)
+     */
+    isTokenValid(tokenInfo) {
+        if (!tokenInfo || !tokenInfo.token) {
+            return false;
+        }
+        
+        // Check if token has expiration
+        if (tokenInfo.expiresAt) {
+            const now = new Date();
+            const expiresAt = new Date(tokenInfo.expiresAt);
+            return expiresAt > now;
+        }
+        
+        // If no expiration info, assume valid for now
+        return true;
+    }
+    
+    /**
+     * Show token refresh state (token exists but is invalid/expired)
+     */
+    showTokenRefreshState() {
+        this.logTokenManager('info', 'Showing token refresh state');
+        
+        // Update status display
+        this.updateTokenStatusDisplay({
+            valid: false,
+            date: new Date().toLocaleString(),
+            expiresIn: 'Token expired - click Refresh Token',
+            environmentId: 'Token expired',
+            environmentName: 'Token expired',
+            region: 'Token expired'
+        });
+        
+        // Show refresh button prominently
+        this.showRefreshButton();
+    }
+    
+    /**
+     * Show refresh button prominently
+     */
+    showRefreshButton() {
+        const refreshButton = document.getElementById('refresh-access-token');
+        if (refreshButton) {
+            refreshButton.style.display = 'inline-block';
+            refreshButton.className = 'btn btn-warning';
+            refreshButton.innerHTML = '<i class="fas fa-sync"></i> Refresh Token';
+            refreshButton.disabled = false;
+        }
+    }
+    
     /**
      * Setup enhanced event listeners for all buttons
      */
@@ -579,21 +608,27 @@ class TokenManagerSubsystem {
      * Refresh access token with enhanced error handling
      */
     async refreshAccessToken() {
-        this.logTokenManager('info', 'Refresh Access Token button clicked');
+        this.logTokenManager('info', '🔄 Refresh Token button clicked');
         
         try {
             // Show loading state
             const button = document.getElementById('refresh-access-token');
             if (button) {
                 button.disabled = true;
-                button.textContent = 'Refreshing...';
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting Token...';
             }
             
-            // Get current settings for the refresh request
+            // Get current settings for the token request
             const settingsResponse = await this.retryFetch('/api/settings');
             const settingsData = await settingsResponse.json();
             const settings = settingsData.data;
             
+            this.logTokenManager('info', '📋 Using settings for token request', {
+                environmentId: settings.environmentId,
+                region: settings.region
+            });
+            
+            // Call PingOne API to get a new token
             const response = await this.retryFetch('/api/pingone/get-token', { 
                 method: 'POST',
                 headers: {
@@ -609,12 +644,9 @@ class TokenManagerSubsystem {
             const data = await response.json();
             
             if (data.success && data.data?.access_token) {
-                const tokenTextarea = document.getElementById('raw-token-display');
-                if (tokenTextarea) {
-                    tokenTextarea.value = data.data.access_token;
-                }
+                this.logTokenManager('success', '✅ New token received from PingOne');
                 
-                // Store refreshed token
+                // Store the new token in localStorage
                 const tokenInfo = this.storeToken({
                     token: data.data.access_token,
                     expiresAt: new Date(Date.now() + (data.data.expires_in * 1000)).toISOString(),
@@ -622,30 +654,46 @@ class TokenManagerSubsystem {
                     region: settings.region
                 });
                 
-                this.logTokenManager('success', 'Token refreshed successfully');
+                // Update token display
+                const tokenTextarea = document.getElementById('raw-token-display');
+                if (tokenTextarea) {
+                    tokenTextarea.value = data.data.access_token;
+                }
                 
-                // Update status
+                // Update status display
                 this.updateTokenStatusDisplay({
                     valid: true,
+                    date: new Date().toLocaleString(),
                     expiresIn: tokenInfo?.expiresAt ? `Expires ${new Date(tokenInfo.expiresAt).toLocaleString()}` : 'Unknown',
                     environmentId: tokenInfo?.environmentId || 'Unknown',
+                    environmentName: settings.environmentName || 'Unknown',
                     region: tokenInfo?.region || 'Unknown'
                 });
                 
+                // Show success message
+                this.showTemporaryFeedback('Token refreshed successfully!', 'success');
+                
             } else {
-                throw new Error(data.message || 'Failed to refresh token');
+                throw new Error(data.message || 'Failed to get new token from PingOne');
             }
             
         } catch (error) {
-            this.logTokenManager('error', 'Token refresh failed', { error: error.message });
-            this.updateTokenStatusDisplay({ valid: false, error: true });
-            alert(`Token refresh failed: ${error.message}`);
+            this.logTokenManager('error', '❌ Token refresh failed', { error: error.message });
+            this.updateTokenStatusDisplay({ 
+                valid: false, 
+                error: true,
+                expiresIn: 'Token refresh failed',
+                environmentId: 'Error',
+                environmentName: 'Error',
+                region: 'Error'
+            });
+            this.showTemporaryFeedback(`Token refresh failed: ${error.message}`, 'error');
         } finally {
             // Restore button state
             const button = document.getElementById('refresh-access-token');
             if (button) {
                 button.disabled = false;
-                button.textContent = 'Refresh Token';
+                button.innerHTML = '<i class="fas fa-sync"></i> Refresh Token';
             }
         }
     }

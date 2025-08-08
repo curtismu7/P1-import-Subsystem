@@ -219,10 +219,19 @@ export class ImportPage {
         const browseFiles = document.getElementById('browse-files');
         const removeFile = document.getElementById('remove-file');
         
+        console.log('🔧 Setting up import page event listeners...');
+        console.log('📁 Upload area found:', !!uploadArea);
+        console.log('📄 File input found:', !!fileInput);
+        console.log('🔍 Browse files button found:', !!browseFiles);
+        console.log('🗑️ Remove file button found:', !!removeFile);
+        
         if (uploadArea) {
             uploadArea.addEventListener('dragover', this.handleDragOver.bind(this));
             uploadArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
             uploadArea.addEventListener('drop', this.handleDrop.bind(this));
+            console.log('✅ Drag and drop listeners attached to upload area');
+        } else {
+            console.error('❌ Upload area not found - drag and drop will not work');
         }
         
         if (fileInput) {
@@ -261,21 +270,26 @@ export class ImportPage {
     }
     
     handleDragOver(event) {
+        console.log('🔄 Drag over event fired');
         event.preventDefault();
         event.currentTarget.classList.add('dragover');
     }
     
     handleDragLeave(event) {
+        console.log('🚪 Drag leave event fired');
         event.preventDefault();
         event.currentTarget.classList.remove('dragover');
     }
     
     handleDrop(event) {
+        console.log('📥 Drop event fired');
         event.preventDefault();
         event.currentTarget.classList.remove('dragover');
         
         const files = event.dataTransfer.files;
+        console.log('📁 Files dropped:', files.length);
         if (files.length > 0) {
+            console.log('📄 Processing file:', files[0].name);
             this.handleFileSelection(files[0]);
         }
     }
