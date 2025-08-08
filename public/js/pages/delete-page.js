@@ -591,7 +591,9 @@ export class DeletePage {
         const userIds = Array.from(checkboxes).map(cb => cb.value);
         
         if (userIds.length === 0) {
-            alert('No users selected for deletion');
+            if (this.app && this.app.showError) {
+                this.app.showError('No users selected for deletion');
+            }
             return;
         }
 

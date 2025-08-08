@@ -464,7 +464,12 @@ class LogManager {
             }
         } catch (error) {
             console.error('Failed to clear logs:', error);
-            alert('Failed to clear logs: ' + error.message);
+            // Use status bar if available, otherwise console
+            if (window.pingOneApp && window.pingOneApp.showError) {
+                window.pingOneApp.showError('Failed to clear logs: ' + error.message);
+            } else {
+                console.error('Failed to clear logs:', error.message);
+            }
         }
     }
     
