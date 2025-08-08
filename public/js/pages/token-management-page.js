@@ -235,6 +235,8 @@ export class TokenManagementPage {
         
         // Load token from localStorage
         const storedToken = this.loadStoredToken();
+        console.log('🔄 Stored token:', storedToken ? 'Found' : 'Not found');
+        
         const tokenString = document.getElementById('token-string');
         const statusIndicator = document.getElementById('token-status-indicator');
         const statusText = document.getElementById('token-status-text');
@@ -242,6 +244,15 @@ export class TokenManagementPage {
         const tokenExpires = document.getElementById('token-expires');
         const tokenRemaining = document.getElementById('token-remaining');
         const tokenScope = document.getElementById('token-scope');
+
+        console.log('🔄 DOM elements found:');
+        console.log('  - tokenString:', !!tokenString);
+        console.log('  - statusIndicator:', !!statusIndicator);
+        console.log('  - statusText:', !!statusText);
+        console.log('  - tokenType:', !!tokenType);
+        console.log('  - tokenExpires:', !!tokenExpires);
+        console.log('  - tokenRemaining:', !!tokenRemaining);
+        console.log('  - tokenScope:', !!tokenScope);
 
         // Check if DOM elements exist (page might not be loaded yet)
         if (!statusIndicator || !statusText || !tokenType || !tokenExpires || !tokenRemaining || !tokenScope || !tokenString) {
@@ -320,12 +331,38 @@ export class TokenManagementPage {
      */
     loadStoredToken() {
         try {
-            const stored = localStorage.getItem('pingone_token_cache');
+            console.log('🔍 Loading stored token from localStorage...');
+            
+            // Try pingone_token_cache first (preferred format)
+            let stored = localStorage.getItem('pingone_token_cache');
+            console.log('🔍 Raw stored data from cache:', stored ? 'Found' : 'Not found');
+            
             if (stored) {
                 const tokenInfo = JSON.parse(stored);
-                console.log('📋 Found stored token', { timestamp: tokenInfo.timestamp });
+                console.log('🔍 Parsed token info from cache:', tokenInfo);
+                console.log('🔍 Token has token property:', !!tokenInfo.token);
+                console.log('🔍 Token length:', tokenInfo.token ? tokenInfo.token.length : 0);
                 return tokenInfo;
             }
+            
+            // Try pingone_token as fallback
+            stored = localStorage.getItem('pingone_token');
+            console.log('🔍 Raw stored data from token:', stored ? 'Found' : 'Not found');
+            
+            if (stored) {
+                const tokenData = JSON.parse(stored);
+                console.log('🔍 Parsed token data:', tokenData);
+                
+                // Convert to cache format
+                const tokenInfo = {
+                    token: tokenData.access_token,
+                    expiresAt: Date.now() + (tokenData.expires_in * 1000)
+                };
+                console.log('🔍 Converted to cache format:', tokenInfo);
+                return tokenInfo;
+            }
+            
+            console.log('🔍 No token found in localStorage');
         } catch (error) {
             console.error('❌ Failed to load stored token', error);
         }
@@ -357,8 +394,12 @@ export class TokenManagementPage {
     decodeJWT(token) {
         try {
             console.log('🔍 Attempting to decode JWT token...');
+            console.log('🔍 Token length:', token.length);
+            console.log('🔍 Token first 50 chars:', token.substring(0, 50));
             
             const parts = token.split('.');
+            console.log('🔍 JWT parts count:', parts.length);
+            
             if (parts.length !== 3) {
                 throw new Error('Invalid JWT format - expected 3 parts separated by dots');
             }
@@ -388,11 +429,21 @@ export class TokenManagementPage {
             const headerElement = document.getElementById('jwt-header');
             const payloadElement = document.getElementById('jwt-payload');
             
+            console.log('🔍 Header element found:', !!headerElement);
+            console.log('🔍 Payload element found:', !!payloadElement);
+            
             if (headerElement) {
                 headerElement.textContent = JSON.stringify(header, null, 2);
+                console.log('✅ Header updated');
+            } else {
+                console.error('❌ Header element not found');
             }
+            
             if (payloadElement) {
                 payloadElement.textContent = JSON.stringify(payload, null, 2);
+                console.log('✅ Payload updated');
+            } else {
+                console.error('❌ Payload element not found');
             }
             
             console.log('✅ JWT decoded successfully');
@@ -417,13 +468,23 @@ export class TokenManagementPage {
      * Decode current token from textarea
      */
     decodeCurrentToken() {
+        console.log('🔍 decodeCurrentToken called');
         const tokenString = document.getElementById('token-string');
+        console.log('🔍 tokenString element:', tokenString);
+        
+        if (tokenString) {
+            console.log('🔍 tokenString value:', tokenString.value ? 'Has value' : 'No value');
+            console.log('🔍 tokenString value length:', tokenString.value ? tokenString.value.length : 0);
+        }
+        
         if (tokenString && tokenString.value) {
+            console.log('🔍 Calling decodeJWT with token');
             this.decodeJWT(tokenString.value);
             if (this.app && this.app.showSuccess) {
                 this.app.showSuccess('JWT token decoded successfully');
             }
         } else {
+            console.log('🔍 No token available to decode');
             if (this.app && this.app.showError) {
                 this.app.showError('No token available to decode');
             }
