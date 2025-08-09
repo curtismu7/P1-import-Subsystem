@@ -34,16 +34,16 @@ export class HistoryPage {
 
             <div class="history-container">
                 <!-- History Controls -->
-                <div class="card mb-4">
+                <div class="card mb-3">
                     <div class="card-header">
                         <h3>History Controls</h3>
                     </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
+                    <div class="card-body" style="background:#f3f7fb; border:1px solid rgba(0,0,0,0.06); border-radius:12px;">
+                        <div class="row" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                            <div class="col-md-3" style="flex:0 0 260px; max-width:260px;">
                                 <div class="form-group">
                                     <label for="operation-filter">Filter by Operation:</label>
-                                    <select id="operation-filter" class="form-control">
+                                    <select id="operation-filter" class="form-control" style="height:36px;">
                                         <option value="all">All Operations</option>
                                         <option value="import">Import Users</option>
                                         <option value="export">Export Users</option>
@@ -54,10 +54,10 @@ export class HistoryPage {
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3" style="flex:0 0 220px; max-width:220px;">
                                 <div class="form-group">
                                     <label for="status-filter">Filter by Status:</label>
-                                    <select id="status-filter" class="form-control">
+                                    <select id="status-filter" class="form-control" style="height:36px;">
                                         <option value="all">All Status</option>
                                         <option value="success">Success</option>
                                         <option value="error">Error</option>
@@ -66,16 +66,16 @@ export class HistoryPage {
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-4" style="flex:1 1 320px; max-width:420px;">
                                 <div class="form-group">
                                     <label for="history-search">Search History:</label>
-                                    <input type="text" id="history-search" class="form-control" placeholder="Search operations...">
+                                    <input type="text" id="history-search" class="form-control" placeholder="Search operations..." style="height:36px;">
                                 </div>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-2" style="flex:0 0 180px; max-width:180px;">
                                 <div class="form-group">
                                     <label for="date-range">Date Range:</label>
-                                    <select id="date-range" class="form-control">
+                                    <select id="date-range" class="form-control" style="height:36px;">
                                         <option value="all">All Time</option>
                                         <option value="today">Today</option>
                                         <option value="week">This Week</option>
@@ -85,15 +85,25 @@ export class HistoryPage {
                             </div>
                         </div>
                         
-                        <div class="btn-toolbar">
-                            <button id="refresh-history-btn" class="btn btn-primary mr-2">
-                                <i class="fas fa-sync"></i> Refresh History
+                        
+                    </div>
+                </div>
+
+                <!-- History Actions -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3>History Actions</h3>
+                    </div>
+                    <div class="card-body" style="display:flex; justify-content:center;">
+                        <div class="btn-group" role="group" aria-label="History actions" style="background:#edf2f7; border:2px solid rgba(0,0,0,0.08); border-radius:12px; padding:10px 14px; gap:12px;">
+                            <button id="refresh-history-btn" class="btn btn-primary">
+                                <i class="fas fa-sync me-1"></i><span>Refresh History</span>
                             </button>
-                            <button id="export-history-btn" class="btn btn-success mr-2">
-                                <i class="fas fa-download"></i> Export History
+                            <button id="export-history-btn" class="btn btn-success">
+                                <i class="fas fa-download me-1"></i><span>Export History</span>
                             </button>
                             <button id="clear-history-btn" class="btn btn-warning">
-                                <i class="fas fa-trash"></i> Clear History
+                                <i class="fas fa-trash me-1"></i><span>Clear History</span>
                             </button>
                         </div>
                     </div>
@@ -105,29 +115,29 @@ export class HistoryPage {
                         <h3>History Statistics</h3>
                     </div>
                     <div class="card-body">
-                        <div class="stats-section" style="background: var(--ping-gray-50, #f7f9fc); border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; padding: 16px;">
-                            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; align-items: stretch;">
-                                <div class="stat-card" style="height: 100%;">
+                        <div class="stats-section" style="background: #f6fafe; border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; padding: 12px;">
+                            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: stretch;">
+                                <div class="stat-card" style="height: 100%; border:2px solid #1e88e5; border-radius:10px; padding:8px;">
                                     <div class="stat-number" id="total-operations">0</div>
                                     <div class="stat-label">Total Operations</div>
                                 </div>
-                                <div class="stat-card success" style="height: 100%;">
+                                <div class="stat-card success" style="height: 100%; border:2px solid #28a745; border-radius:10px; padding:8px;">
                                     <div class="stat-number" id="successful-operations">0</div>
                                     <div class="stat-label">Successful</div>
                                 </div>
-                                <div class="stat-card error" style="height: 100%;">
+                                <div class="stat-card error" style="height: 100%; border:2px solid #dc3545; border-radius:10px; padding:8px;">
                                     <div class="stat-number" id="failed-operations">0</div>
                                     <div class="stat-label">Failed</div>
                                 </div>
-                                <div class="stat-card info" style="height: 100%;">
+                                <div class="stat-card info" style="height: 100%; border:2px solid #1e88e5; border-radius:10px; padding:8px;">
                                     <div class="stat-number" id="users-processed">0</div>
                                     <div class="stat-label">Users Processed</div>
                                 </div>
-                                <div class="stat-card warning" style="height: 100%;">
+                                <div class="stat-card warning" style="height: 100%; border:2px solid #f59e0b; border-radius:10px; padding:8px;">
                                     <div class="stat-number" id="operations-today">0</div>
                                     <div class="stat-label">Today</div>
                                 </div>
-                                <div class="stat-card" style="height: 100%;">
+                                <div class="stat-card" style="height: 100%; border:2px solid #1e88e5; border-radius:10px; padding:8px;">
                                     <div class="stat-number" id="avg-duration">0s</div>
                                     <div class="stat-label">Avg Duration</div>
                                 </div>
