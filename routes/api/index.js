@@ -2810,6 +2810,64 @@ router.post('/users/modify', express.json(), async (req, res) => {
     }
 });
 
+// --- USER SCHEMA (SCIM) → possible headers for CSV ---
+router.get('/user-schema', async (req, res) => {
+    try {
+        const tokenManager = req.app.get('tokenManager');
+        if (!tokenManager) return res.status(500).json({ success: false, error: 'Token manager not available' });
+        const token = await tokenManager.getAccessToken();
+        if (!token) return res.status(401).json({ success: false, error: 'Failed to get access token' });
+        const environmentId = await tokenManager.getEnvironmentId();
+        const apiBaseUrl = tokenManager.getApiBaseUrl();
+        const scimBase = `${apiBaseUrl}/environments/${environmentId}/scim/v2/Schemas`;
+
+        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        // Fetch all schemas
+        const listResp = await fetch(scimBase, { headers });
+        if (!listResp.ok) {
+            const txt = await listResp.text().catch(() => '');
+            return res.status(listResp.status).json({ success: false, error: `Failed to list schemas: ${listResp.statusText}`, details: txt });
+        }
+        const listJson = await listResp.json();
+        const resources = listJson?.Resources || listJson?.schemas || [];
+
+        // Helper to flatten SCIM attributes to dot paths
+        const flat = [];
+        const walk = (attrs, prefix = '') => {
+            if (!Array.isArray(attrs)) return;
+            for (const a of attrs) {
+                const name = a?.name || a?.id;
+                if (!name) continue;
+                const path = prefix ? `${prefix}.${name}` : name;
+                flat.push(path);
+                if (Array.isArray(a.subAttributes)) walk(a.subAttributes, path);
+            }
+        };
+
+        // Filter to user-related schemas
+        const userSchemas = resources.filter(s => {
+            const id = s?.id || s?.schema || '';
+            return /User$/i.test(id) || /:User/.test(id) || /core:2\.0:User/.test(id);
+        });
+
+        for (const s of userSchemas) {
+            if (Array.isArray(s.attributes)) walk(s.attributes);
+        }
+
+        // Common extras used by PingOne Admin API that map well to CSV headers
+        const common = [
+            'username', 'emails.value', 'name.given', 'name.family', 'enabled', 'status',
+            'phoneNumbers.value', 'externalId', 'address.streetAddress', 'address.locality', 'address.region',
+            'address.postalCode', 'address.country'
+        ];
+
+        const unique = Array.from(new Set([...flat, ...common])).sort();
+        return res.json({ success: true, count: unique.length, headers: unique, schemas: userSchemas.map(s => s.id || s.schema) });
+    } catch (error) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // --- DELETE USERS ENDPOINT ---
 router.post('/delete-users', upload.single('file'), async (req, res) => {
     try {
