@@ -77,24 +77,24 @@ export class LogsPage {
                             </div>
                         </div>
                         
-                        <div class="btn-toolbar" style="display:flex; gap: 16px; align-items: center; justify-content:center; background: #edf2f7; border: 2px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 12px 16px; max-width: 100%; margin: 6px auto;">
-                            <button id="refresh-logs-btn" class="btn btn-primary">
-                                <i class="fas fa-sync me-1"></i><span>Refresh Logs</span>
-                            </button>
-                            <button id="clear-logs-btn" class="btn btn-primary">
-                                <i class="fas fa-trash me-1"></i><span>Clear Logs</span>
-                            </button>
-                            <div class="dropdown" id="export-logs-group">
-                                <button id="export-logs-btn" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="btn-toolbar" style="display:flex; align-items:center; justify-content:space-between; background: #edf2f7; border: 2px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 12px 16px; max-width: 100%; margin: 6px auto;">
+                            <div class="btn-row-left" style="display:flex; gap:16px; align-items:center;">
+                                <button id="refresh-logs-btn" class="btn btn-primary">
+                                    <i class="fas fa-sync me-1"></i><span>Refresh Logs</span>
+                                </button>
+                                <button id="clear-logs-btn" class="btn btn-primary">
+                                    <i class="fas fa-trash me-1"></i><span>Clear Logs</span>
+                                </button>
+                                <button id="export-logs-btn" class="btn btn-success">
                                     <i class="fas fa-download me-1"></i><span>Export Logs</span>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="#" id="export-logs-json" title="Structured JSON file (for backup/sharing)">Export JSON (structured)</a></li>
-                                    <li><a class="dropdown-item" href="#" id="export-logs-csv" title="Spreadsheet-friendly CSV (Excel/Sheets)">Export CSV (spreadsheet)</a></li>
-                                    <li><a class="dropdown-item" href="#" id="export-logs-ndjson" title="Newline-delimited JSON for Splunk/ELK/Logstash">Export NDJSON (Splunk/ELK)</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item" href="#" id="export-logs-all" title="Download JSON, CSV, and NDJSON together">Export All Formats</a></li>
-                                </ul>
+                            </div>
+                            <div class="btn-row-right" style="display:flex; gap:12px; align-items:center;">
+                                <span style="font-weight:600; color:#374151;">Formats:</span>
+                                <a href="#" id="export-logs-json" class="btn btn-link p-0" title="Structured JSON file (for backup/sharing)">JSON</a>
+                                <a href="#" id="export-logs-csv" class="btn btn-link p-0" title="Spreadsheet-friendly CSV (Excel/Sheets)">CSV</a>
+                                <a href="#" id="export-logs-ndjson" class="btn btn-link p-0" title="Newline-delimited JSON for Splunk/ELK/Logstash">NDJSON</a>
+                                <a href="#" id="export-logs-all" class="btn btn-link p-0" title="Download JSON, CSV, and NDJSON together">All</a>
                             </div>
                         </div>
                     </div>
