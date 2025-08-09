@@ -90,6 +90,16 @@ export class ExportPage {
 
                         <div class="options-group">
                             <h4>Export Options</h4>
+                            <div class="mb-2" style="display:flex; gap:12px; align-items:center;">
+                                <div class="form-check">
+                                    <input type="checkbox" id="options-select-all" class="form-check-input">
+                                    <label for="options-select-all" class="form-check-label">Select All</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" id="options-unselect-all" class="form-check-input">
+                                    <label for="options-unselect-all" class="form-check-label">Unselect All</label>
+                                </div>
+                            </div>
                             <div class="checkbox-grid">
                                 <div class="form-check">
                                     <input type="checkbox" id="include-headers" class="form-check-input" checked>
@@ -108,6 +118,16 @@ export class ExportPage {
 
                         <div class="attributes-group">
                             <h4>User Attributes to Export</h4>
+                            <div class="mb-2" style="display:flex; gap:12px; align-items:center;">
+                                <div class="form-check">
+                                    <input type="checkbox" id="attrs-select-all" class="form-check-input">
+                                    <label for="attrs-select-all" class="form-check-label">Select All</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" id="attrs-unselect-all" class="form-check-input">
+                                    <label for="attrs-unselect-all" class="form-check-label">Unselect All</label>
+                                </div>
+                            </div>
                             <div id="attributes-selection" class="attributes-grid">
                                 <div class="form-check">
                                     <input type="checkbox" id="attr-username" class="form-check-input" checked disabled>
@@ -261,10 +281,38 @@ export class ExportPage {
         if (includeDisabled) includeDisabled.addEventListener('change', () => this.updateExportOptions());
         if (includeMetadata) includeMetadata.addEventListener('change', () => this.updateExportOptions());
 
+        // Select All / Unselect All for options
+        const optionIds = ['include-headers','include-disabled','include-metadata'];
+        const toggleGroup = (ids, checked) => ids.forEach(id => { const el = document.getElementById(id); if (el) el.checked = checked; });
+        const optionsSelectAll = document.getElementById('options-select-all');
+        const optionsUnselectAll = document.getElementById('options-unselect-all');
+        if (optionsSelectAll) optionsSelectAll.addEventListener('change', (e) => { if (e.target.checked) { toggleGroup(optionIds, true); if (optionsUnselectAll) optionsUnselectAll.checked = false; this.updateExportOptions(); } });
+        if (optionsUnselectAll) optionsUnselectAll.addEventListener('change', (e) => { if (e.target.checked) { toggleGroup(optionIds, false); if (optionsSelectAll) optionsSelectAll.checked = false; this.updateExportOptions(); } });
+
         // Attribute selection
         const attributeCheckboxes = document.querySelectorAll('#attributes-selection input[type="checkbox"]');
         attributeCheckboxes.forEach(checkbox => {
             checkbox.addEventListener('change', () => this.updateExportOptions());
+        });
+
+        // Select All / Unselect All for attributes (exclude required username)
+        const attrsSelectAll = document.getElementById('attrs-select-all');
+        const attrsUnselectAll = document.getElementById('attrs-unselect-all');
+        if (attrsSelectAll) attrsSelectAll.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                document.querySelectorAll('#attributes-selection input[type="checkbox"]:not(#attr-username)')
+                    .forEach(cb => { cb.checked = true; });
+                if (attrsUnselectAll) attrsUnselectAll.checked = false;
+                this.updateExportOptions();
+            }
+        });
+        if (attrsUnselectAll) attrsUnselectAll.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                document.querySelectorAll('#attributes-selection input[type="checkbox"]:not(#attr-username)')
+                    .forEach(cb => { cb.checked = false; });
+                if (attrsSelectAll) attrsSelectAll.checked = false;
+                this.updateExportOptions();
+            }
         });
 
         // Action buttons
