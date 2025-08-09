@@ -191,7 +191,7 @@ export class ExportPage {
                                 <div id="export-progress-bar" class="progress-fill" style="width: 0%;"></div>
                             </div>
                             <!-- Animated beer mug icon that fills with progress -->
-                            <svg id="beer-mug-svg" class="beer-mug" width="36" height="36" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
+                            <svg id="beer-mug-svg" class="beer-mug" width="56" height="56" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
                                 <defs>
                                     <clipPath id="beer-clip">
                                         <!-- Inner mug shape used to clip the fill -->
@@ -206,7 +206,7 @@ export class ExportPage {
                                 <!-- Beer fill rectangle (position updated by JS) -->
                                 <rect id="beer-fill" x="9" y="26" width="16" height="0" fill="#f59e0b" clip-path="url(#beer-clip)"/>
                                 <!-- Foam cap sits on top of beer fill (position updated by JS) -->
-                                <rect id="beer-foam" x="9" y="26" width="16" height="0.001" fill="#ffffff" opacity="0.95" clip-path="url(#beer-clip)"/>
+                                <rect id="beer-foam" x="9" y="26" width="16" height="3" fill="#ffffff" opacity="0.95" clip-path="url(#beer-clip)"/>
                             </svg>
                             <div id="export-progress-text" class="progress-text">0%</div>
                         </div>
@@ -720,7 +720,7 @@ export class ExportPage {
                     beerFill.setAttribute('height', String(height));
                 }
                 if (beerFoam) {
-                    const foamHeight = progress > 0 ? 3 : 0.001;
+                    const foamHeight = progress > 0 ? 4 : 0.001;
                     const yFoam = 26 - Math.max(0, Math.min(16, (progress / 100) * 16)) - foamHeight;
                     beerFoam.setAttribute('y', String(yFoam));
                     beerFoam.setAttribute('height', String(foamHeight));

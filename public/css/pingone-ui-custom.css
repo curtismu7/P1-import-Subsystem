@@ -1943,7 +1943,7 @@ button#clear-token,
   backdrop-filter: blur(4px);
 }
 
-/* Modern blue progress bar styling (applies across Import/Export/Modify) */
+/* Modern blue progress bar styling (applies across Import/Export/Modify/Delete) */
 .progress-container {
   display: flex;
   align-items: center;
@@ -1996,9 +1996,26 @@ button#clear-token,
   box-shadow: 0 1px 6px rgba(21, 101, 192, 0.18);
 }
 
+/* Match other progress sections to export style */
+#modify-progress-section .progress-bar,
+#delete-progress-section .progress-bar,
+#progress-section .progress-bar { /* import */
+  height: 20px;
+  background: rgba(15, 76, 129, 0.12);
+  border: 2px solid rgba(15, 76, 129, 0.35);
+}
+
+#modify-progress-section .progress-text,
+#delete-progress-section .progress-text,
+#progress-section .progress-text { /* import */
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
 /* Beer mug icon sizing/alignment */
 #export-progress .beer-mug {
   flex: 0 0 auto;
+  margin-left: 8px;
 }
 
 /* Taller, animated bar and fun "beer mug" theme for Export */
