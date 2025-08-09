@@ -767,14 +767,9 @@ export class TokenManagementPage {
                             this.tokenAnalytics.trackTokenRefresh(true);
                         }
                         
-                        // Update app token status
+                        // Update app token status (single source of truth)
                         if (this.app.updateTokenStatus) {
                             this.app.updateTokenStatus(tokenData);
-                        }
-                        
-                        // Also trigger stored token check for additional validation
-                        if (this.app.checkStoredToken) {
-                            await this.app.checkStoredToken();
                         }
                         
                         // Refresh populations on all pages that have population lists

@@ -680,8 +680,17 @@ class PingOneApp {
     updateTokenStatus(tokenData) {
         if (tokenData && tokenData.access_token) {
             this.tokenStatus.isValid = true;
-            this.tokenStatus.expiresAt = new Date(Date.now() + (tokenData.expires_in * 1000));
-            this.tokenStatus.timeLeft = tokenData.expires_in;
+            // Prefer absolute expiry if provided; else derive from expires_in
+            const abs = tokenData.expires_at || tokenData.expiresAt;
+            if (abs) {
+                const n = typeof abs === 'string' && !/^[0-9]+$/.test(abs) ? Date.parse(abs) : Number(abs);
+                const ms = Number.isFinite(n) ? (n < 1e12 ? n * 1000 : n) : Date.now() + (tokenData.expires_in * 1000);
+                this.tokenStatus.expiresAt = new Date(ms);
+                this.tokenStatus.timeLeft = Math.max(0, Math.floor((this.tokenStatus.expiresAt - new Date()) / 1000));
+            } else {
+                this.tokenStatus.expiresAt = new Date(Date.now() + (tokenData.expires_in * 1000));
+                this.tokenStatus.timeLeft = tokenData.expires_in;
+            }
             localStorage.setItem('pingone_token', JSON.stringify(tokenData));
         } else {
             this.tokenStatus.isValid = false;
