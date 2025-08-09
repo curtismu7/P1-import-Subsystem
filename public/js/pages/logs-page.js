@@ -77,21 +77,18 @@ export class LogsPage {
                             </div>
                         </div>
                         
-                        <div class="btn-toolbar" style="display: inline-flex; gap: 20px; flex-wrap: wrap; align-items: center; background: #edf2f7; border: 2px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 16px 20px; max-width: 100%; margin: 6px 0;">
-                            <button id="refresh-logs-btn" class="btn btn-primary mr-2">
-                                <i class="fas fa-sync"></i> Refresh Logs
+                        <div class="btn-toolbar" style="display:flex; gap: 16px; align-items: center; justify-content:center; background: #edf2f7; border: 2px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 12px 16px; max-width: 100%; margin: 6px auto;">
+                            <button id="refresh-logs-btn" class="btn btn-primary">
+                                <i class="fas fa-sync me-1"></i><span>Refresh Logs</span>
                             </button>
-                            <button id="clear-logs-btn" class="btn btn-primary mr-2">
-                                <i class="fas fa-trash"></i> Clear Logs
+                            <button id="clear-logs-btn" class="btn btn-primary">
+                                <i class="fas fa-trash me-1"></i><span>Clear Logs</span>
                             </button>
-                            <div class="btn-group" id="export-logs-group">
-                                <button id="export-logs-btn" class="btn btn-success">
-                                    <i class="fas fa-download"></i> Export Logs
+                            <div class="dropdown" id="export-logs-group">
+                                <button id="export-logs-btn" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-download me-1"></i><span>Export Logs</span>
                                 </button>
-                                <button type="button" class="btn btn-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <span class="visually-hidden">Toggle Dropdown</span>
-                                </button>
-                                <ul class="dropdown-menu">
+                                <ul class="dropdown-menu dropdown-menu-end">
                                     <li><a class="dropdown-item" href="#" id="export-logs-json" title="Structured JSON file (for backup/sharing)">Export JSON (structured)</a></li>
                                     <li><a class="dropdown-item" href="#" id="export-logs-csv" title="Spreadsheet-friendly CSV (Excel/Sheets)">Export CSV (spreadsheet)</a></li>
                                     <li><a class="dropdown-item" href="#" id="export-logs-ndjson" title="Newline-delimited JSON for Splunk/ELK/Logstash">Export NDJSON (Splunk/ELK)</a></li>
