@@ -91,6 +91,11 @@ export class ModifyPage {
                                 <div class="file-meta">
                                     <div class="file-name" id="file-name"></div>
                                     <div class="file-size" id="file-size"></div>
+                                    <div class="file-extra" style="font-size: 0.9rem; color:#374151; margin-top:4px;">
+                                        <span>Records: <strong id="file-records">-</strong></span>
+                                        <span style="margin-left:12px;">Last Modified: <strong id="file-last-modified">-</strong></span>
+                                        <span style="margin-left:12px;">Created: <strong id="file-created">Unavailable</strong></span>
+                                    </div>
                                 </div>
                                 <button type="button" id="remove-file" class="btn btn-danger btn-sm">
                                     <i class="mdi mdi-delete"></i> Remove
@@ -452,11 +457,16 @@ export class ModifyPage {
         const fileInfo = document.getElementById('file-info');
         const fileName = document.getElementById('file-name');
         const fileSize = document.getElementById('file-size');
+        const fileRecords = document.getElementById('file-records');
+        const fileLastModified = document.getElementById('file-last-modified');
+        const fileCreated = document.getElementById('file-created');
         const uploadArea = document.getElementById('upload-area');
         
         if (fileInfo && fileName && fileSize && uploadArea) {
             fileName.textContent = file.name;
             fileSize.textContent = this.formatFileSize(file.size);
+            if (fileLastModified) fileLastModified.textContent = new Date(file.lastModified).toLocaleString();
+            if (fileCreated) fileCreated.textContent = 'Unavailable';
             
             fileInfo.style.display = 'block';
             uploadArea.style.display = 'none';
@@ -467,6 +477,10 @@ export class ModifyPage {
         try {
             const text = await this.readFileAsText(file);
             const lines = text.split('\n').slice(0, 6); // Show first 5 lines + header
+            const allLines = text.split('\n');
+            const numRecords = Math.max(0, allLines.length - 1);
+            const fileRecords = document.getElementById('file-records');
+            if (fileRecords) fileRecords.textContent = String(numRecords);
             
             const preview = document.getElementById('file-preview');
             if (preview) {
