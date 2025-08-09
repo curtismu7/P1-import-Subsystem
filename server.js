@@ -215,11 +215,11 @@ async function loadSettingsFromFile() {
             logger.warn(`[🗝️ CREDENTIAL-MANAGER] [${new Date().toISOString()}] [server] WARN: settings.json not found or invalid, falling back to .env`);
         }
 
-        // Fallback logic: settings.json → .env
-        const environmentId = settings.environmentId || process.env.PINGONE_ENVIRONMENT_ID || '';
-        const apiClientId = settings.apiClientId || process.env.PINGONE_CLIENT_ID || '';
-        const apiSecret = settings.apiSecret || process.env.PINGONE_CLIENT_SECRET || '';
-        let region = settings.region || process.env.PINGONE_REGION || 'NA';
+        // Fallback logic: settings.json → .env (support legacy pingone_* keys)
+        const environmentId = settings.environmentId || settings.pingone_environment_id || process.env.PINGONE_ENVIRONMENT_ID || '';
+        const apiClientId = settings.apiClientId || settings.pingone_client_id || process.env.PINGONE_CLIENT_ID || '';
+        const apiSecret = settings.apiSecret || settings.pingone_client_secret || process.env.PINGONE_CLIENT_SECRET || '';
+        let region = settings.region || settings.pingone_region || process.env.PINGONE_REGION || 'NA';
         if (region === 'NorthAmerica' || region === 'NA') region = 'NA';
         else if (region === 'Europe' || region === 'EU') region = 'EU';
         else if (region === 'AsiaPacific' || region === 'APAC') region = 'APAC';
@@ -531,6 +531,27 @@ app.use(express.static(path.join(__dirname, 'public'), {
         }
     }
 }));
+
+// SECURE settings endpoint: expose a sanitized view of settings for Swagger only
+// Do NOT serve /data/settings.json publicly.
+app.get('/api/settings/public', async (req, res) => {
+    try {
+        const settingsPath = path.join(__dirname, 'data', 'settings.json');
+        const raw = await fs.readFile(settingsPath, 'utf-8').catch(() => '{}');
+        const json = JSON.parse(raw || '{}');
+        // Pick only safe fields (populations + default id)
+        const safe = {
+            populations: Array.isArray(json.populations) ? json.populations : [],
+            populationCache: json.populationCache && Array.isArray(json.populationCache.populations)
+                ? { populations: json.populationCache.populations } : undefined,
+            pingone_population_id: json.pingone_population_id || json.populationId || undefined
+        };
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.json({ success: true, data: safe });
+    } catch (e) {
+        res.status(200).json({ success: true, data: { populations: [] } });
+    }
+});
 
 // Serve SPA routes - all serve index.html for client-side routing
 app.get('/history', (req, res) => {
@@ -1119,6 +1140,14 @@ const startServer = async () => {
             }
         }
         
+        // Load settings into environment before starting server/auth
+        try {
+            await loadSettingsFromFile();
+            logger.info('🔧 Settings loaded into environment');
+        } catch (e) {
+            logger.warn('⚠️ Failed to load settings into environment, continuing with current env', { error: e.message });
+        }
+
         // Initialize the server
         server.listen(process.env.PORT || 4000, async () => {
             const serverUrl = `http://localhost:${process.env.PORT || 4000}`;

@@ -147,13 +147,13 @@ class TokenManager {
                     this.logger.debug(` Converting legacy region format in credentials: ${rawRegion} → ${region}`);
                 }
                 
-                // Accept both camelCase and kebab-case
-                clientId = clientId || getSetting(settings, 'apiClientId', 'api-client-id');
-                environmentId = environmentId || getSetting(settings, 'environmentId', 'environment-id');
-                region = region || getSetting(settings, 'region') || 'NA';
+                // Accept multiple naming conventions, including legacy pingone_* keys
+                clientId = clientId || getSetting(settings, 'apiClientId', 'api-client-id', 'pingone_client_id');
+                environmentId = environmentId || getSetting(settings, 'environmentId', 'environment-id', 'pingone_environment_id');
+                region = region || getSetting(settings, 'region', 'pingone_region') || 'NA';
 
-                // Prefer plain api-secret if both exist
-                let apiSecret = getSetting(settings, 'api-secret', 'apiSecret');
+                // Prefer plain api-secret if both exist; also support legacy pingone_client_secret
+                let apiSecret = getSetting(settings, 'api-secret', 'apiSecret', 'pingone_client_secret');
                 
                 this.logger.debug('API secret selected:', apiSecret ? (apiSecret.startsWith('enc:') ? '[ENCRYPTED]' : '[PLAIN]') : 'not found');
                 if (!clientSecret && apiSecret) {

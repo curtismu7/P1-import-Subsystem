@@ -31,10 +31,9 @@
   <link rel="icon" href="/favicon.ico" />
   
   <!-- Modern Application Styles -->
-  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
-  <link rel="stylesheet" href="../css/styles.css">
-  <link rel="stylesheet" href="../css/ping-identity.css">
-  <link rel="stylesheet" href="../css/swagger-custom.css">
+  <!-- Use existing public CSS files -->
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/pingone-ui-custom.css">
   <style>
     /* High-Contrast Light Theme Swagger API Tool Styles */
     body { 
@@ -257,7 +256,10 @@
       border: 1px solid #dee2e6;
       border-radius: 6px;
       padding: 16px;
-      margin-bottom: 16px;
+      margin: 16px auto; /* center */
+      width: 50%;
+      max-width: 560px;
+      min-width: 320px;
     }
     
     .token-status-row {
@@ -365,7 +367,7 @@
     }
     
     .population-selector select {
-      width: 100%;
+      width: 280px;
       padding: 12px 16px;
       border: 2px solid #dee2e6;
       border-radius: 6px;
@@ -374,6 +376,13 @@
       color: #212529;
       transition: all 0.3s ease;
       font-weight: 500;
+    }
+
+    .selector-inline {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      max-width: 420px;
     }
     
     .population-selector select:focus {
@@ -473,9 +482,10 @@
   <!-- Professional Swagger API Tool Header -->
   <div class="swagger-header">
     <div style="position: relative;">
-      <div class="swagger-version-widget" style="text-align: center; margin-bottom: 10px; background-color: red; color: black; padding: 5px 10px; border-radius: 5px; font-family: monospace; font-size: 14px; font-weight: bold; display: inline-block;">v6.4</div>
+          <div class="swagger-version-widget" style="text-align: center; margin-bottom: 10px; background-color: red; color: black; padding: 5px 10px; border-radius: 5px; font-family: monospace; font-size: 14px; font-weight: bold; display: inline-block;">v7.0.1.0</div>
       <h1>📚 Swagger API Tool</h1>
       <p>Professional API documentation and testing interface for PingOne Import Tool</p>
+      <div id="status-toast" style="display:none; margin-top:8px; font-weight:600;"></div>
     </div>
   </div>
 
@@ -493,6 +503,7 @@
     <div class="token-status-display">
       <div class="token-status-row">
         <span class="token-label">Status:</span>
+        <span id="token-status-indicator" class="status-indicator status-info" aria-hidden="true" style="margin-right:8px;"></span>
         <span id="token-status" class="token-status-badge status-unknown">Unknown</span>
       </div>
       <div class="token-status-row">
@@ -524,9 +535,14 @@
     <label for="population-selector" id="population-selector-label" style="font-size: 14px; font-weight: 500; display: block; margin-bottom: 8px; color: #6c757d;">
       Select a population for API operations <span style="color: #dc3545; font-weight: 600;">(Required)</span>
     </label>
-    <select id="population-selector">
-      <option value="">🔄 Loading populations from subsystem...</option>
-    </select>
+    <div class="selector-inline">
+      <select id="population-selector">
+        <option value="">🔄 Loading populations from subsystem...</option>
+      </select>
+      <button id="refresh-populations-btn" class="btn btn-primary" title="Refresh populations">
+        <span class="mdi mdi-refresh"></span> Refresh
+      </button>
+    </div>
     <div class="population-info">
       <span id="population-status" class="loading-populations">
         <div class="loading-spinner"></div>
@@ -559,6 +575,7 @@
     let currentToken = null;
     let tokenExpiryTime = null;
     let tokenUpdateInterval = null;
+    let tokenStatusRefreshInterval = null; // 5-minute refresh timer
     let tokenStatusElements = {
       status: document.getElementById('token-status'),
       expiry: document.getElementById('token-expiry'),
@@ -570,6 +587,39 @@
     /**
      * Secure Token Management Functions
      */
+
+    function getTokenFromLocalStorage() {
+      try {
+        // Preferred cache format
+        const cache = localStorage.getItem('pingone_token_cache');
+        if (cache) {
+          const obj = JSON.parse(cache);
+          const exp = obj.expiresAt ? new Date(obj.expiresAt) : null;
+          return { token: obj.token, expiresAt: exp };
+        }
+        // Legacy token storage
+        const raw = localStorage.getItem('pingone_token');
+        if (raw) {
+          const obj = JSON.parse(raw);
+          // Try companion expiry key if present
+          const expiresKey = localStorage.getItem('pingone_token_expires');
+          const exp = expiresKey ? new Date(expiresKey) : null;
+          return { token: obj.access_token, expiresAt: exp };
+        }
+        // Worker token simple
+        const worker = localStorage.getItem('pingone_worker_token');
+        if (worker) {
+          return { token: worker, expiresAt: null };
+        }
+        const access = localStorage.getItem('accessToken');
+        if (access) {
+          return { token: access, expiresAt: null };
+        }
+      } catch (e) {
+        console.log('Local token read failed', e.message);
+      }
+      return null;
+    }
     
     /**
      * Retrieve PingOne worker token using secure HTTPS communication
@@ -585,8 +635,45 @@
         retrieveBtn.textContent = '🔄 Retrieving...';
         hideTokenError();
         
-        console.log('🔐 Retrieving PingOne worker token...');
-        
+        console.log('🔐 Attempting to read token from localStorage...');
+
+        const local = getTokenFromLocalStorage();
+        if (local && local.token) {
+          // Use local token immediately
+          currentToken = local.token;
+          tokenExpiryTime = local.expiresAt || null;
+          // If we have a future expiry, mark valid; if missing/expired, verify with server
+          if (tokenExpiryTime && tokenExpiryTime > new Date()) {
+            updateTokenStatus('valid');
+            updateTokenExpiry(tokenExpiryTime);
+            tokenStatusElements.remaining.textContent = 'Calculating…';
+            startTokenMonitoring();
+          } else {
+            const info = await fetchServerTokenInfo();
+            if (info && info.isValid) {
+              tokenExpiryTime = info.expiresAt ? new Date(info.expiresAt) : null;
+              updateTokenStatus('valid');
+              updateTokenExpiry(tokenExpiryTime);
+              tokenStatusElements.remaining.textContent = tokenExpiryTime ? 'Calculating…' : 'Unknown';
+              if (tokenExpiryTime) startTokenMonitoring();
+            } else {
+              updateTokenStatus('expired');
+              updateTokenExpiry(null);
+            }
+          }
+          refreshBtn.disabled = false;
+          clearBtn.disabled = false;
+
+          // Dispatch event for Swagger UI integration
+          window.dispatchEvent(new CustomEvent('worker-token-updated', {
+            detail: { token: currentToken, expiresAt: tokenExpiryTime }
+          }));
+          console.log('✅ Using token from localStorage');
+          return; // Done
+        }
+
+        console.log('🔐 No local token found; requesting from API...');
+
         // Make secure HTTPS request to refresh token endpoint (existing subsystem)
         const response = await fetch('/api/pingone/get-token', {
           method: 'POST',
@@ -596,34 +683,36 @@
           },
           credentials: 'same-origin'
         });
-        
+
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: 'Network error' }));
           throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const tokenData = await response.json();
-        
-        if (!tokenData.success || !tokenData.access_token) {
-          throw new Error(tokenData.error || 'Invalid token response');
+        const payload = tokenData && (tokenData.data || tokenData.message || tokenData) || {};
+        const accessToken = payload.access_token || payload.token || payload.workerToken || payload.accessToken;
+        const expiresInSec = payload.expires_in || payload.expiresIn || 3600;
+        if (!accessToken) {
+          throw new Error(payload.error || 'Invalid token response');
         }
-        
-        // Store token data securely
-        currentToken = tokenData.access_token;
-        // Calculate expiry time from expires_in (seconds)
-        const expiresInMs = (tokenData.expires_in || 3600) * 1000;
+
+        // Use API token
+        currentToken = accessToken;
+        const expiresInMs = expiresInSec * 1000;
         tokenExpiryTime = new Date(Date.now() + expiresInMs);
         
         // Update UI with success state
         updateTokenStatus('valid');
         updateTokenExpiry(tokenExpiryTime);
+        tokenStatusElements.remaining.textContent = 'Calculating…';
+        startTokenMonitoring();
         
         // Enable refresh and clear buttons
         refreshBtn.disabled = false;
         clearBtn.disabled = false;
         
-        // Start token monitoring
-        startTokenMonitoring();
+        // monitoring started above
         
         console.log('✅ Worker token retrieved successfully');
         
@@ -648,6 +737,26 @@
         retrieveBtn.disabled = false;
         retrieveBtn.textContent = 'Retrieve Token';
       }
+    }
+
+    /**
+     * Ask server for current token status/expiry
+     */
+    async function fetchServerTokenInfo() {
+      try {
+        const response = await fetch('/api/auth/token-info', { method: 'GET', headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+        if (!response.ok) return null;
+        const data = await response.json();
+        const tokenInfo = data?.tokenInfo || data?.message?.tokenInfo || data?.data?.message?.tokenInfo || data?.data?.tokenInfo;
+        if (data?.success && tokenInfo) {
+          return {
+            isValid: !!(tokenInfo.isValid ?? tokenInfo.hasValidToken),
+            expiresAt: tokenInfo.expiresAt || tokenInfo.expires_at || null,
+            timeLeft: tokenInfo.expiresIn || tokenInfo.timeLeft || 0
+          };
+        }
+      } catch (e) { /* ignore */ }
+      return null;
     }
     
     /**
@@ -683,15 +792,17 @@
         }
         
         const tokenData = await response.json();
-        
-        if (!tokenData.success || !tokenData.access_token) {
-          throw new Error(tokenData.error || 'Invalid refresh response');
+        const payload = tokenData && (tokenData.data || tokenData.message || tokenData) || {};
+        const accessToken = payload.access_token || payload.token || payload.workerToken || payload.accessToken;
+        const expiresInSec = payload.expires_in || payload.expiresIn || 3600;
+        if (!accessToken) {
+          throw new Error(payload.error || 'Invalid refresh response');
         }
         
         // Update token data
-        currentToken = tokenData.access_token;
+        currentToken = accessToken;
         // Calculate expiry time from expires_in (seconds)
-        const expiresInMs = (tokenData.expires_in || 3600) * 1000;
+        const expiresInMs = (expiresInSec) * 1000;
         tokenExpiryTime = new Date(Date.now() + expiresInMs);
         
         // Update UI
@@ -772,6 +883,7 @@
      */
     function updateTokenStatus(status) {
       const statusElement = tokenStatusElements.status;
+      const indicatorEl = document.getElementById('token-status-indicator');
       
       // Remove existing status classes
       statusElement.classList.remove('status-valid', 'status-expired', 'status-error', 'status-unknown');
@@ -781,18 +893,22 @@
         case 'valid':
           statusElement.classList.add('status-valid');
           statusElement.textContent = 'Valid';
+          if (indicatorEl) indicatorEl.className = 'status-indicator status-success';
           break;
         case 'expired':
           statusElement.classList.add('status-expired');
           statusElement.textContent = 'Expired';
+          if (indicatorEl) indicatorEl.className = 'status-indicator status-error';
           break;
         case 'error':
           statusElement.classList.add('status-error');
           statusElement.textContent = 'Error';
+          if (indicatorEl) indicatorEl.className = 'status-indicator status-error';
           break;
         default:
           statusElement.classList.add('status-unknown');
           statusElement.textContent = 'Unknown';
+          if (indicatorEl) indicatorEl.className = 'status-indicator status-info';
       }
     }
     
@@ -886,6 +1002,7 @@
     function showTokenError(message) {
       tokenStatusElements.errorMessage.textContent = message;
       tokenStatusElements.errorDisplay.style.display = 'flex';
+      showToast(message, 'error');
     }
     
     /**
@@ -893,6 +1010,18 @@
      */
     function hideTokenError() {
       tokenStatusElements.errorDisplay.style.display = 'none';
+    }
+
+    function showToast(message, type = 'info') {
+      const el = document.getElementById('status-toast');
+      if (!el) return;
+      el.style.display = 'inline-block';
+      el.textContent = message;
+      el.style.padding = '6px 10px';
+      el.style.borderRadius = '8px';
+      el.style.background = type === 'error' ? '#f8d7da' : type === 'success' ? '#d4edda' : '#e2e3e5';
+      el.style.color = '#111';
+      setTimeout(() => { el.style.display = 'none'; }, 4000);
     }
     
     /**
@@ -913,36 +1042,81 @@
         `;
         indicatorEl.className = 'status-indicator status-info';
         
-        // Load populations from subsystem API
-        const response = await fetch('/api/populations');
-        
-        if (!response.ok) {
-          throw new Error(`Failed to load populations: ${response.status} ${response.statusText}`);
+        // Attempt 1: server-sanitized settings (first source)
+        let loaded = false;
+        try {
+          const settingsResp = await fetch('/api/settings/public', { cache: 'no-cache' });
+          if (settingsResp.ok) {
+            const settings = await settingsResp.json();
+            // Server wraps payload as { success, message?, data: { data: {...} } }
+            const payload = (settings && settings.data && (settings.data.data || settings.data)) || {};
+            const fromSettings = payload.populations || payload.populationCache?.populations;
+            if (Array.isArray(fromSettings) && fromSettings.length) {
+              populations = fromSettings;
+              loaded = true;
+              console.log('✅ Loaded populations from /api/settings/public');
+            }
+          }
+        } catch (e) { /* ignore */ }
+
+        // Attempt 2: API /api/populations (robust shapes)
+        if (!loaded) {
+          const response = await fetch('/api/populations');
+          if (response.ok) {
+            const result = await response.json();
+            let pops = [];
+            if (Array.isArray(result)) {
+              pops = result;
+            } else {
+              pops = result.data?.message?.populations ||
+                     result.message?.populations ||
+                     result.data?.populations ||
+                     result.populations || [];
+            }
+            if (Array.isArray(pops) && pops.length) {
+              populations = pops;
+              loaded = true;
+              console.log('✅ Loaded populations from /api/populations');
+            }
+          }
+        }
+
+        // Attempt 3: API /api/settings populationCache
+        if (!loaded) {
+          const resp = await fetch('/api/settings', { cache: 'no-cache' });
+          if (resp.ok) {
+            const result = await resp.json();
+            const data = (result && result.data && result.data.data) || result.data || result.message || {};
+            const pops = data.populationCache?.populations || data.populations || [];
+            if (Array.isArray(pops) && pops.length) {
+              populations = pops;
+              loaded = true;
+              console.log('✅ Loaded populations from /api/settings');
+            }
+          }
         }
         
-        const data = await response.json();
-        
-        if (data.success && Array.isArray(data.populations)) {
-          populations = data.populations;
+        if (loaded) {
           
           // Update selector with populations
           selectorEl.innerHTML = '<option value="">🎯 Select a population...</option>';
           
           populations.forEach(pop => {
             const option = document.createElement('option');
-            option.value = pop.id;
-            option.textContent = `${pop.name} (${pop.id})`;
+            const id = pop.id || pop.populationId || pop.value || '';
+            option.value = id;
+            option.textContent = `${pop.name || pop.label || 'Population'} (${id})`;
             selectorEl.appendChild(option);
           });
           
           // Update status
           statusEl.innerHTML = `
             <span class="status-indicator status-success"></span>
-            <span>✅ Loaded ${populations.length} populations from subsystem</span>
+            <span>✅ Loaded ${populations.length} populations</span>
           `;
           indicatorEl.className = 'status-indicator status-success';
           
-          console.log(`✅ Loaded ${populations.length} populations from subsystem`);
+          console.log(`✅ Loaded ${populations.length} populations`);
           
         } else {
           throw new Error('Invalid populations response from subsystem');
@@ -1029,6 +1203,13 @@
         if (selectorEl) {
           selectorEl.addEventListener('change', handlePopulationSelection);
         }
+
+        const refreshBtn = document.getElementById('refresh-populations-btn');
+        if (refreshBtn) {
+          refreshBtn.addEventListener('click', async () => {
+            await loadPopulationsFromSubsystem();
+          });
+        }
         
         // Setup event listeners for subsystem integration
         window.addEventListener('auth-token-updated', (event) => {
@@ -1056,6 +1237,12 @@
           }
         });
         
+        // Start 5-minute token status refresh
+        if (tokenStatusRefreshInterval) clearInterval(tokenStatusRefreshInterval);
+        tokenStatusRefreshInterval = setInterval(async () => {
+          try { await checkExistingToken(); } catch {}
+        }, 5 * 60 * 1000);
+
         // Mark subsystems as ready
         subsystemsReady = true;
         
@@ -1087,9 +1274,8 @@
       
       if (clearBtn) {
         clearBtn.addEventListener('click', () => {
-          if (confirm('Are you sure you want to clear the current worker token?')) {
-            clearWorkerToken();
-          }
+          showToast('Clearing worker token...', 'info');
+          clearWorkerToken();
         });
       }
       
@@ -1127,9 +1313,11 @@
         
         if (response.ok) {
           const tokenData = await response.json();
+          const tokenInfo = tokenData?.tokenInfo || tokenData?.message?.tokenInfo || tokenData?.data?.message?.tokenInfo || tokenData?.data?.tokenInfo;
           
-          if (tokenData.success && tokenData.tokenInfo && tokenData.tokenInfo.expiresAt) {
-            const expiryTime = new Date(tokenData.tokenInfo.expiresAt);
+          if (tokenData.success && tokenInfo && (tokenInfo.expiresAt || tokenInfo.expires_at)) {
+            const expiryEpoch = tokenInfo.expiresAt || tokenInfo.expires_at;
+            const expiryTime = new Date(expiryEpoch);
             
             if (expiryTime > new Date()) {
               // Token is still valid
@@ -1173,6 +1361,7 @@
     // Cleanup on page unload
     window.addEventListener('beforeunload', () => {
       stopTokenMonitoring();
+      if (tokenStatusRefreshInterval) clearInterval(tokenStatusRefreshInterval);
     });
     
     // Handle visibility changes to pause/resume monitoring

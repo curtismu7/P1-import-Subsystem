@@ -9,6 +9,7 @@ import { ModifyPage } from './pages/modify-page.js';
 import { LogsPage } from './pages/logs-page.js';
 import { TokenManagementPage } from './pages/token-management-page.js';
 import { HistoryPage } from './pages/history-page.js';
+import { SwaggerPage } from './pages/swagger-page.js';
 
 class PingOneApp {
     constructor() {
@@ -16,6 +17,15 @@ class PingOneApp {
         this.currentPage = 'home';
         this.settings = {};
         this.tokenStatus = { isValid: false, expiresAt: null, timeLeft: null };
+        
+        // File state persistence across pages
+        this.fileState = {
+            selectedFile: null,
+            fileName: null,
+            fileSize: null,
+            fileType: null,
+            lastModified: null
+        };
         
         // Initialize page modules
         this.pages = {
@@ -27,7 +37,8 @@ class PingOneApp {
             modify: new ModifyPage(this),
             logs: new LogsPage(this),
             'token-management': new TokenManagementPage(this),
-            history: new HistoryPage(this)
+            history: new HistoryPage(this),
+            swagger: new SwaggerPage(this)
         };
         
         console.log('🚀 PingOne User Management App v' + this.version + ' initializing...');
@@ -67,12 +78,36 @@ class PingOneApp {
                 // Fallback to the entire result if structure is different
                 this.settings = result;
             }
+            // Ensure credentials modal flag defaults to true unless explicitly disabled
+            if (typeof this.settings.showCredentialsModal === 'undefined') {
+                this.settings.showCredentialsModal = true;
+            }
             
             console.log('🔧 Settings loaded from server:', this.settings);
             this.updateVersionDisplay();
         } catch (error) {
             console.warn('⚠️ Could not load settings:', error.message);
-            this.settings = { showDisclaimerModal: true, showCredentialsModal: true, showSwaggerPage: false };
+            // Soft fallback: use injected window.settingsJson if available
+            const injected = (typeof window !== 'undefined' && window.settingsJson) ? window.settingsJson : {};
+            this.settings = {
+                pingone_environment_id: injected.pingone_environment_id || '',
+                pingone_client_id: injected.pingone_client_id || '',
+                pingone_client_secret: injected.pingone_client_secret || '',
+                pingone_region: injected.pingone_region || 'NorthAmerica',
+                pingone_population_id: injected.pingone_population_id || '',
+                populations: injected.populations || injected.populationCache || [],
+                showDisclaimerModal: injected.showDisclaimerModal !== false,
+                showCredentialsModal: true,
+                showSwaggerPage: injected.showSwaggerPage === true,
+                rateLimit: injected.rateLimit || 100
+            };
+            console.log('🔧 Using injected settingsJson fallback:', this.settings);
+        }
+
+        // Merge any locally saved credentials as a last resort so fields aren't blank
+        const localCreds = this.getLocalCredentials();
+        if (localCreds) {
+            this.settings = { ...this.settings, ...localCreds };
         }
     }
     
@@ -105,6 +140,7 @@ class PingOneApp {
         } catch (error) {
             console.warn('⚠️ Could not load token status:', error.message);
             // Keep default invalid status
+            this.showInfo('Please enter credentials for your PingOne Environment');
         }
     }
     
@@ -117,13 +153,23 @@ class PingOneApp {
     setupModalEventListeners() {
         const disclaimerAccept = document.getElementById('disclaimer-accept');
         const disclaimerQuit = document.getElementById('disclaimer-quit');
+        const disclaimerAgree = document.getElementById('disclaimer-agree');
         const credentialsSkip = document.getElementById('credentials-skip');
+        const credentialsSettings = document.getElementById('credentials-settings');
         const credentialsSave = document.getElementById('credentials-save');
         const toggleSecret = document.getElementById('toggle-secret');
         
         if (disclaimerAccept) disclaimerAccept.addEventListener('click', this.handleDisclaimerAccept.bind(this));
         if (disclaimerQuit) disclaimerQuit.addEventListener('click', this.handleDisclaimerQuit.bind(this));
+        // Enable Accept only when Terms checkbox is checked
+        if (disclaimerAgree && disclaimerAccept) {
+            disclaimerAccept.disabled = true;
+            disclaimerAgree.addEventListener('change', (e) => {
+                disclaimerAccept.disabled = !e.target.checked;
+            });
+        }
         if (credentialsSkip) credentialsSkip.addEventListener('click', this.handleCredentialsSkip.bind(this));
+        if (credentialsSettings) credentialsSettings.addEventListener('click', this.handleCredentialsSettings.bind(this));
         if (credentialsSave) credentialsSave.addEventListener('click', this.handleCredentialsSave.bind(this));
         if (toggleSecret) toggleSecret.addEventListener('click', this.handleToggleSecret.bind(this));
     }
@@ -131,7 +177,11 @@ class PingOneApp {
     initializeUI() {
         this.updateNavigation();
         this.initializeResponsiveNav();
-        this.showPage(this.currentPage);
+        // Restore page from URL hash or sessionStorage
+        const hashPage = (window.location.hash || '').replace(/^#/, '');
+        const storedPage = sessionStorage.getItem('currentPage');
+        const initialPage = (hashPage && this.pages[hashPage]) ? hashPage : (storedPage && this.pages[storedPage] ? storedPage : this.currentPage);
+        this.showPage(initialPage);
         
         // Show/hide Swagger based on settings
         const swaggerNav = document.getElementById('swagger-nav');
@@ -157,8 +207,8 @@ class PingOneApp {
     }
     
     shouldShowCredentialsModal() {
-        return this.settings.showCredentialsModal && 
-               (!this.settings.pingone_environment_id || !this.settings.pingone_client_id || !this.settings.pingone_client_secret);
+        // Default to showing credentials modal unless explicitly disabled
+        return this.settings.showCredentialsModal !== false;
     }
     
     // Modal handlers
@@ -177,31 +227,179 @@ class PingOneApp {
         if (modal) {
             this.populateCredentialsForm();
             modal.style.display = 'flex';
+            // Prevent background page scrolling while modal is open
+            try { document.body.style.overflow = 'hidden'; } catch (_) {}
+            // If a valid token already exists, inform the user
+            if (this.tokenStatus && this.tokenStatus.isValid) {
+                // Inline banner inside the credentials modal (so it is visible above the overlay)
+                const body = modal.querySelector('.modal-body');
+                if (body) {
+                    let banner = modal.querySelector('#credentials-token-banner');
+                    if (!banner) {
+                        banner = document.createElement('div');
+                        banner.id = 'credentials-token-banner';
+                        banner.setAttribute('role', 'status');
+                        banner.style.margin = '0 0 12px 0';
+                        banner.style.padding = '10px 12px';
+                        banner.style.borderRadius = '8px';
+                        banner.style.background = 'var(--ping-success-light, #E6F7ED)';
+                        banner.style.border = '1px solid var(--ping-success, #00AA44)';
+                        banner.style.color = 'var(--ping-gray-800, #2D2D2D)';
+                        banner.style.fontWeight = '600';
+                        // insert at top of body
+                        body.insertBefore(banner, body.firstChild);
+                    }
+                    banner.textContent = 'Token Obtained. If this is the not the right PingOne environment, please enter credentials below.';
+                    banner.style.display = 'block';
+                }
+                // Also show global status bar for consistency
+                this.showSuccess('Token Obtained. If this is the not the right PingOne environment, please enter credentials below.');
+            } else {
+                // Hide banner if previously created
+                const existing = modal.querySelector('#credentials-token-banner');
+                if (existing) existing.style.display = 'none';
+            }
         }
     }
     
     hideCredentialsModal() {
         const modal = document.getElementById('credentials-modal');
         if (modal) modal.style.display = 'none';
+        try { document.body.style.overflow = ''; } catch (_) {}
     }
     
     populateCredentialsForm() {
         const fields = {
-            'cred-environment-id': this.settings.pingone_environment_id || '',
-            'cred-client-id': this.settings.pingone_client_id || '',
-            'cred-region': this.settings.pingone_region || 'NA'
+            'cred-environment-id': (this.settings.pingone_environment_id || (this.getLocalCredentials()?.pingone_environment_id)) || '',
+            'cred-client-id': (this.settings.pingone_client_id || (this.getLocalCredentials()?.pingone_client_id)) || '',
+            'cred-client-secret': (this.getLocalCredentials()?.pingone_client_secret || this.settings.pingone_client_secret) || '',
+            'cred-region': this.settings.pingone_region || 'NorthAmerica'
         };
         Object.entries(fields).forEach(([id, value]) => {
             const element = document.getElementById(id);
-            if (element) element.value = value;
+            if (element && value !== undefined) element.value = value;
         });
+
+        // Populate populations in credentials modal
+        this.loadCredentialsPopulations().catch(err => {
+            console.warn('⚠️ Could not load populations for credentials modal:', err.message);
+        });
+
+        // Try secure credentials endpoint to ensure fields are populated
+        (async () => {
+            try {
+                const resp = await fetch('/api/settings/credentials');
+                const result = await resp.json().catch(() => ({}));
+                if (resp.ok && result && (result.data || result.environmentId)) {
+                    const creds = result.data || result;
+                    const map = {
+                        'cred-environment-id': creds.environmentId,
+                        'cred-client-id': creds.clientId,
+                        'cred-client-secret': creds.clientSecret,
+                        'cred-region': creds.region
+                    };
+                    Object.entries(map).forEach(([id, value]) => {
+                        const el = document.getElementById(id);
+                        if (el && value) el.value = value;
+                    });
+                }
+            } catch (_) {
+                // Fallback: read public backup if available
+                try {
+                    const resp = await fetch('/data/settings.json');
+                    if (resp.ok) {
+                        const json = await resp.json();
+                        const map = {
+                            'cred-environment-id': json.pingone_environment_id,
+                            'cred-client-id': json.pingone_client_id,
+                            'cred-client-secret': json.pingone_client_secret,
+                            'cred-region': json.pingone_region
+                        };
+                        Object.entries(map).forEach(([id, value]) => {
+                            const el = document.getElementById(id);
+                            if (el && value) el.value = value;
+                        });
+                    }
+                } catch (_) {}
+            }
+        })();
+    }
+
+    /**
+     * Load populations into the credentials modal dropdown with sensible fallbacks
+     */
+    async loadCredentialsPopulations() {
+        const select = document.getElementById('cred-population');
+        if (!select) return;
+
+        const setOptions = (populations = []) => {
+            select.innerHTML = '';
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = 'Select a population...';
+            select.appendChild(placeholder);
+            for (const p of populations) {
+                if (!p) continue;
+                const opt = document.createElement('option');
+                opt.value = p.id || p.populationId || p.value || '';
+                opt.textContent = p.name || p.label || p.text || 'Unnamed Population';
+                select.appendChild(opt);
+            }
+            const selected = this.settings.pingone_population_id || '';
+            if (selected) select.value = selected;
+        };
+
+        // Try public settings first (sanitized)
+        try {
+            const resp = await fetch('/api/settings/public');
+            if (resp.ok) {
+                const data = await resp.json().catch(() => ({}));
+                const pops = (data && (data.populations || (data.data && data.data.populations))) || [];
+                if (Array.isArray(pops) && pops.length) {
+                    setOptions(pops);
+                    return;
+                }
+            }
+        } catch (_) { /* ignore */ }
+
+        // Fallback to direct populations endpoint
+        try {
+            const resp = await fetch('/api/populations');
+            if (resp.ok) {
+                const data = await resp.json().catch(() => ({}));
+                const pops = data && (data.populations || data.data || data.items || []);
+                if (Array.isArray(pops) && pops.length) {
+                    setOptions(pops);
+                    return;
+                }
+            }
+        } catch (_) { /* ignore */ }
+
+        // Final fallback: server settings (may include cached list)
+        try {
+            const resp = await fetch('/api/settings');
+            if (resp.ok) {
+                const payload = await resp.json().catch(() => ({}));
+                const settings = payload && ((payload.success && (payload.data && (payload.data.data || payload.data))) || payload);
+                const pops = (settings && (settings.populationCache || settings.populations || (settings.data && settings.data.populations))) || [];
+                setOptions(Array.isArray(pops) ? pops : []);
+            }
+        } catch (err) {
+            console.warn('Population fallback failed:', err.message);
+            setOptions([]);
+        }
     }
     
     // Event handlers
-    handleDisclaimerAccept() {
+    async handleDisclaimerAccept() {
         this.hideDisclaimerModal();
         this.settings.showDisclaimerModal = false;
-        this.saveSettings({ showDisclaimerModal: false });
+        try {
+            await this.saveSettings({ showDisclaimerModal: false });
+        } catch (err) {
+            // Non-blocking: show a friendly prompt instead of surfacing errors
+            this.showInfo('Please enter credentials for your PingOne Environment');
+        }
         if (this.shouldShowCredentialsModal()) {
             this.showCredentialsModal();
         } else {
@@ -210,14 +408,32 @@ class PingOneApp {
     }
     
     handleDisclaimerQuit() {
-        if (confirm('Are you sure you want to quit the application?')) {
-            window.close();
-        }
+        const confirmed = confirm('Are you sure you want to quit the application?');
+        if (!confirmed) return;
+        // Keep user on the disclaimer: reset and ensure it stays visible
+        const checkbox = document.getElementById('disclaimer-agree');
+        const acceptBtn = document.getElementById('disclaimer-accept');
+        if (checkbox) checkbox.checked = false;
+        if (acceptBtn) acceptBtn.disabled = true;
+        this.showDisclaimerModal();
+        this.showWarning('You must accept the disclaimer to continue');
     }
     
     handleCredentialsSkip() {
         this.hideCredentialsModal();
         this.showPage('home');
+    }
+    
+    handleCredentialsSettings() {
+        this.hideCredentialsModal();
+        this.showPage('settings');
+        // Proactively load populations on the settings page after navigation
+        setTimeout(() => {
+            const settingsPage = this.pages && this.pages['settings'];
+            if (settingsPage && typeof settingsPage.loadPopulations === 'function') {
+                settingsPage.loadPopulations();
+            }
+        }, 200);
     }
     
     async handleCredentialsSave() {
@@ -229,7 +445,8 @@ class PingOneApp {
             pingone_environment_id: formData.get('environmentId'),
             pingone_client_id: formData.get('clientId'),
             pingone_client_secret: formData.get('clientSecret'),
-            pingone_region: formData.get('region')
+            pingone_region: formData.get('region'),
+            pingone_population_id: formData.get('populationId') || ''
         };
         
         if (!credentials.pingone_environment_id || !credentials.pingone_client_id || !credentials.pingone_client_secret) {
@@ -239,14 +456,23 @@ class PingOneApp {
         
         try {
             this.showLoading('Saving credentials...');
+            // Update in-memory settings and persist to server (settings.json)
             Object.assign(this.settings, credentials);
-            await this.saveSettings();
+            try {
+                await this.saveSettings(this.settings);
+            } catch (persistErr) {
+                // In environments where saving is blocked (e.g., read-only), continue gracefully
+                this.showInfo('Saved locally. Please ensure server settings are configured.');
+            }
             
+            // Acquire new token from server using saved credentials
             const tokenResult = await this.getToken(credentials);
-            if (tokenResult.success) {
+            if (tokenResult.success && tokenResult.token) {
+                // Keep a local copy so the modal stays populated on reload
+                this.setLocalCredentials(credentials);
                 this.updateTokenStatus(tokenResult.token);
                 this.hideCredentialsModal();
-                this.showSuccess('Credentials saved successfully!');
+                this.showSuccess('Credentials saved and new token acquired');
                 this.showPage('home');
             } else {
                 throw new Error(tokenResult.error || 'Failed to acquire token');
@@ -255,6 +481,31 @@ class PingOneApp {
             this.showError('Failed to save credentials: ' + error.message);
         } finally {
             this.hideLoading();
+        }
+    }
+
+    // Local credentials helpers for resilience when server rejects settings
+    getLocalCredentials() {
+        try {
+            const raw = localStorage.getItem('pingone_local_credentials');
+            return raw ? JSON.parse(raw) : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    setLocalCredentials(creds) {
+        try {
+            const safe = {
+                pingone_environment_id: creds.pingone_environment_id || '',
+                pingone_client_id: creds.pingone_client_id || '',
+                pingone_client_secret: creds.pingone_client_secret || '',
+                pingone_region: creds.pingone_region || 'NorthAmerica',
+                pingone_population_id: creds.pingone_population_id || ''
+            };
+            localStorage.setItem('pingone_local_credentials', JSON.stringify(safe));
+        } catch (_) {
+            // ignore
         }
     }
     
@@ -299,6 +550,11 @@ class PingOneApp {
         const pages = document.querySelectorAll('.page');
         pages.forEach(page => page.style.display = 'none');
         
+        // Clear Import page transient state when navigating away so it resets on return
+        if (this.currentPage === 'import' && pageName !== 'import') {
+            this.setFileState(null);
+        }
+
         const targetPage = document.getElementById(pageName + '-page');
         if (targetPage) {
             targetPage.style.display = 'block';
@@ -308,6 +564,7 @@ class PingOneApp {
         
         this.updateNavigation();
         window.location.hash = pageName;
+        sessionStorage.setItem('currentPage', pageName);
     }
     
     async loadPageContent(pageName) {
@@ -615,6 +872,36 @@ class PingOneApp {
         const versionElements = document.querySelectorAll('#version-info, #footer-version');
         versionElements.forEach(element => element.textContent = 'v' + this.version);
     }
+
+  // Record an operation in History (falls back to localStorage if page not loaded)
+  addHistoryEntry(operation, status, description, usersProcessed = 0, duration = 0) {
+    try {
+      const historyPage = this.pages && this.pages['history'];
+      if (historyPage && typeof historyPage.addHistoryEntry === 'function') {
+        historyPage.addHistoryEntry(operation, status, description, usersProcessed, duration);
+        return;
+      }
+
+      // Fallback: persist to localStorage so History page can load it later
+      const entry = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        operation,
+        status,
+        description,
+        usersProcessed,
+        duration,
+        details: `Operation ${operation} ${status}`,
+        user: 'Current User'
+      };
+      const existing = JSON.parse(localStorage.getItem('operation_history') || '[]');
+      existing.unshift(entry);
+      if (existing.length > 100) existing.length = 100;
+      localStorage.setItem('operation_history', JSON.stringify(existing));
+    } catch (err) {
+      console.warn('History entry failed:', err);
+    }
+  }
     
     async saveSettings(updated = null) {
         try {
@@ -638,6 +925,7 @@ class PingOneApp {
                 // App preferences
                 'rateLimit',
                 'showDisclaimerModal',
+                'showCredentialsModal',
                 'showSwaggerPage',
                 'autoRefreshToken'
             ];
@@ -707,6 +995,37 @@ class PingOneApp {
     showWarning(message) { this.showStatusMessage(message, 'warning'); }
     showInfo(message) { this.showStatusMessage(message, 'info'); }
     
+    // File state management
+    setFileState(file) {
+        if (file) {
+            this.fileState = {
+                selectedFile: file,
+                fileName: file.name,
+                fileSize: file.size,
+                fileType: file.type,
+                lastModified: file.lastModified
+            };
+            console.log('📁 File state updated:', this.fileState.fileName);
+        } else {
+            this.fileState = {
+                selectedFile: null,
+                fileName: null,
+                fileSize: null,
+                fileType: null,
+                lastModified: null
+            };
+            console.log('📁 File state cleared');
+        }
+    }
+    
+    getFileState() {
+        return this.fileState;
+    }
+    
+    hasFileState() {
+        return this.fileState.selectedFile !== null;
+    }
+    
     showStatusMessage(message, type = 'info') {
         // Use the green status message bar at the top
         const statusBar = document.getElementById('status-message-bar');
@@ -746,6 +1065,65 @@ class PingOneApp {
                 // Keep it visible but with default styling
             }, 4000);
         }
+    }
+
+    // Show a status bar message with an inline action button (e.g., Undo)
+    showUndoable(message, type = 'info', actionText = 'Undo', onAction = () => {}, timeoutMs = 4000) {
+        const statusBar = document.getElementById('status-message-bar');
+        const statusText = document.getElementById('status-text');
+        const statusIcon = document.getElementById('status-icon');
+        const statusMessage = document.querySelector('#status-message-bar .status-message');
+        if (!statusBar || !statusText || !statusMessage) return;
+
+        statusText.textContent = message;
+        if (statusIcon) {
+            switch (type) {
+                case 'success': statusIcon.className = 'icon-check-circle'; break;
+                case 'error': statusIcon.className = 'icon-x-circle'; break;
+                case 'warning': statusIcon.className = 'icon-alert-triangle'; break;
+                default: statusIcon.className = 'icon-info';
+            }
+        }
+
+        // Create/attach action button
+        let actionBtn = document.getElementById('status-action-btn');
+        if (!actionBtn) {
+            actionBtn = document.createElement('button');
+            actionBtn.id = 'status-action-btn';
+            actionBtn.type = 'button';
+            actionBtn.className = 'btn btn-link btn-sm';
+            actionBtn.style.marginLeft = '12px';
+            actionBtn.style.textDecoration = 'underline';
+            actionBtn.style.color = 'white';
+            statusMessage.appendChild(actionBtn);
+        }
+        actionBtn.textContent = actionText;
+
+        // Show bar
+        statusBar.style.display = 'flex';
+        statusBar.className = `status-message-bar ${type}`;
+
+        const cleanup = () => {
+            if (actionBtn && actionBtn.parentElement) {
+                actionBtn.remove();
+            }
+        };
+
+        let cleared = false;
+        actionBtn.onclick = () => {
+            if (cleared) return;
+            cleared = true;
+            try { onAction(); } finally { cleanup(); }
+        };
+
+        setTimeout(() => {
+            if (cleared) return;
+            cleanup();
+            const currentTime = new Date().toLocaleTimeString();
+            statusText.textContent = `System Status - ${currentTime}`;
+            if (statusIcon) statusIcon.className = 'icon-check-circle';
+            statusBar.className = 'status-message-bar';
+        }, timeoutMs);
     }
 }
 

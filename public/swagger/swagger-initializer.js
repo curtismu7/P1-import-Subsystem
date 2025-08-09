@@ -31,7 +31,7 @@ class SwaggerUIManager {
       await this.loadAuthToken();
       
       // Initialize Swagger UI with enhanced configuration
-      this.initializeSwaggerUI();
+      await this.initializeSwaggerUI();
       
       // Setup event listeners for real-time updates
       this.setupEventListeners();
@@ -100,9 +100,11 @@ class SwaggerUIManager {
   /**
    * Initialize Swagger UI with enhanced configuration
    */
-  initializeSwaggerUI() {
+  async initializeSwaggerUI() {
+    const spec = await this.fetchOpenApiSpec();
     const config = {
-      url: 'http://localhost:4000/swagger.json', // Use our local OpenAPI spec from main server
+      // Pass resolved spec directly to avoid server response envelope
+      spec,
       dom_id: '#swagger-ui',
       deepLinking: true,
       presets: [
@@ -149,11 +151,12 @@ class SwaggerUIManager {
   /**
    * Initialize fallback UI if subsystem integration fails
    */
-  initializeFallbackUI() {
+  async initializeFallbackUI() {
     console.log('🔄 Initializing fallback Swagger UI');
     
+    const spec = await this.fetchOpenApiSpec();
     window.ui = SwaggerUIBundle({
-      url: 'http://localhost:4000/swagger.json',
+      spec,
       dom_id: '#swagger-ui',
       deepLinking: true,
       presets: [
@@ -165,6 +168,31 @@ class SwaggerUIManager {
       ],
       layout: 'StandaloneLayout'
     });
+  }
+
+  /**
+   * Fetch OpenAPI spec and unwrap server envelope if present
+   */
+  async fetchOpenApiSpec() {
+    const tryFetch = async (path) => {
+      try {
+        const res = await fetch(path, { cache: 'no-cache' });
+        if (!res.ok) return null;
+        const json = await res.json();
+        // Unwrap { success, data: { data: spec } } → spec
+        const candidate = (json && (json.data?.data || json.data)) || json;
+        if (candidate && (candidate.openapi || candidate.swagger)) return candidate;
+        return null;
+      } catch {
+        return null;
+      }
+    };
+
+    // Try primary then fallback endpoint
+    const spec = (await tryFetch('/swagger.json')) || (await tryFetch('/api-docs.json'));
+    if (spec) return spec;
+    // Final empty spec fallback to prevent hard failure
+    return { openapi: '3.0.0', info: { title: 'API', version: '0.0.0' }, paths: {} };
   }
 
   /**

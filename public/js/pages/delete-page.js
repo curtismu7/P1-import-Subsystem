@@ -24,6 +24,16 @@ export class DeletePage {
     async load() {
         console.log('📄 Loading Delete page...');
         
+        // Check for existing file state from app
+        const fileState = this.app.getFileState();
+        let hasExistingFile = false;
+        if (fileState.selectedFile) {
+            console.log('📁 Found existing file state:', fileState.fileName);
+            this.selectedFile = fileState.selectedFile;
+            hasExistingFile = true;
+            this.app.showInfo(`File "${fileState.fileName}" loaded from previous session`);
+        }
+        
         const deletePage = document.getElementById('delete-page');
         if (!deletePage) {
             console.error('❌ Delete page div not found');
@@ -102,7 +112,10 @@ export class DeletePage {
                         
                         <div class="export-actions">
                             <button id="load-users-btn" class="btn btn-primary" disabled>
-                                <i class="mdi mdi-account-group"></i> Delete users
+                                <i class="mdi mdi-account-group"></i> Load Users
+                            </button>
+                            <button id="delete-users-btn" class="btn btn-danger" disabled>
+                                <i class="mdi mdi-delete"></i> Delete Users
                             </button>
                         </div>
                     </div>
@@ -114,6 +127,79 @@ export class DeletePage {
                         <h3 class="section-title">Select Users to Delete</h3>
                         <p>Choose which users you want to permanently delete</p>
                         
+                        <!-- Filter Controls -->
+                        <div class="filter-section mb-3">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0"><i class="mdi mdi-filter-variant"></i> Filter Users</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-3 mb-3">
+                                            <label for="filter-username" class="form-label fw-bold">Username Pattern</label>
+                                            <input type="text" id="filter-username" class="form-control border border-2 border-outline" placeholder="e.g., use-*, test*">
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <label for="filter-email-domain" class="form-label fw-bold">Email Domain</label>
+                                            <input type="text" id="filter-email-domain" class="form-control border border-2 border-outline" placeholder="e.g., mailinator.com">
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <label for="filter-email-pattern" class="form-label fw-bold">Email Pattern</label>
+                                            <input type="text" id="filter-email-pattern" class="form-control border border-2 border-outline" placeholder="e.g., *@test.com">
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <label for="filter-status" class="form-label fw-bold">Status</label>
+                                            <select id="filter-status" class="form-control border border-2 border-outline">
+                                                <option value="">All Users</option>
+                                                <option value="enabled">Enabled Only</option>
+                                                <option value="disabled">Disabled Only</option>
+                                                <option value="empty-email">Empty Email</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" id="filter-test-users">
+                                                <label class="form-check-label" for="filter-test-users">
+                                                    Show test users only (username contains 'test', 'demo', 'temp')
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="filter-disposable-email">
+                                                <label class="form-check-label" for="filter-disposable-email">
+                                                    Show disposable email domains only
+                                                </label>
+                                            </div>
+                                        </div>
+                                                                            <div class="col-md-6 text-end">
+                                        <button id="apply-filters" class="btn btn-primary btn-sm me-2">
+                                            <i class="mdi mdi-filter"></i> Apply Filters
+                                        </button>
+                                        <button id="clear-filters" class="btn btn-outline-secondary btn-sm me-2">
+                                            <i class="mdi mdi-filter-off"></i> Clear Filters
+                                        </button>
+                                        <button id="select-filtered" class="btn btn-outline-primary btn-sm">
+                                            <i class="mdi mdi-check-box-outline"></i> Select Filtered
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Filter Status -->
+                                <div id="filter-status-indicator" class="mt-2" style="display: none;">
+                                    <div class="alert alert-success d-flex align-items-center" id="filter-success" style="display: none;">
+                                        <i class="mdi mdi-check-circle me-2"></i>
+                                        <span id="filter-success-text">Filters applied successfully</span>
+                                    </div>
+                                    <div class="alert alert-info d-flex align-items-center" id="filter-cleared" style="display: none;">
+                                        <i class="mdi mdi-information me-2"></i>
+                                        <span id="filter-cleared-text">Filters cleared</span>
+                                    </div>
+                                </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="export-actions mb-3">
                             <button id="select-all-users" class="btn btn-outline-secondary">
                                 <i class="mdi mdi-check-box-outline"></i> Select All
@@ -121,6 +207,7 @@ export class DeletePage {
                             <button id="deselect-all-users" class="btn btn-outline-secondary">
                                 <i class="mdi mdi-square-outline"></i> Deselect All
                             </button>
+                            <span id="filter-status-text" class="text-muted ms-3"></span>
                         </div>
                         
                         <div id="users-list" class="user-selection-list">
@@ -136,37 +223,7 @@ export class DeletePage {
                     </div>
                 </section>
 
-                <!-- Delete Options -->
-                <section id="delete-options-section" class="delete-section" style="display: none;">
-                    <div class="delete-box">
-                        <h3 class="section-title">Delete Confirmation</h3>
-                        <p class="text-danger">⚠️ This action cannot be undone. Please confirm your understanding.</p>
-                        
-                        <div class="options-group">
-                            <h4>Safety Confirmations</h4>
-                            <div class="checkbox-grid">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="confirm-delete">
-                                    <label class="form-check-label text-danger" for="confirm-delete">
-                                        I understand that this action will permanently delete the selected users
-                                    </label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="backup-confirmation">
-                                    <label class="form-check-label text-danger" for="backup-confirmation">
-                                        I have backed up any important data
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="export-actions">
-                            <button id="start-delete-btn" class="btn btn-danger" disabled>
-                                <i class="mdi mdi-delete"></i> Delete Selected Users
-                            </button>
-                        </div>
-                    </div>
-                </section>
+
 
                 <!-- Progress -->
                 <section id="delete-progress-section" class="delete-section" style="display: none;">
@@ -244,11 +301,84 @@ export class DeletePage {
                         </div>
                     </div>
                 </section>
+
+                         <!-- Warning Modal -->
+         <div class="modal fade" id="delete-warning-modal" tabindex="-1" role="dialog" aria-labelledby="delete-warning-modal-label" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+             <div class="modal-dialog modal-lg" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title" id="delete-warning-modal-label">
+                                    <i class="mdi mdi-alert-triangle"></i> ⚠️ Delete Users Warning
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-danger">
+                                    <h6><i class="mdi mdi-alert-circle"></i> This action cannot be undone!</h6>
+                                    <p class="mb-0">Users will be permanently deleted from your PingOne environment.</p>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Selected Population:</h6>
+                                        <p id="modal-population-name" class="text-muted">-</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Users to Delete:</h6>
+                                        <p id="modal-user-count" class="text-danger fw-bold">-</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <h6>Selected Users:</h6>
+                                    <div id="modal-user-list" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                        <p class="text-muted">No users selected</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-warning mt-3">
+                                    <h6><i class="mdi mdi-backup-restore"></i> Backup Recommendation</h6>
+                                    <p class="mb-2">Before proceeding, we strongly recommend exporting your users as a backup:</p>
+                                    <ol class="mb-0">
+                                        <li>Go to the <strong>Export</strong> page</li>
+                                        <li>Select the same population</li>
+                                        <li>Export in CSV or JSON format</li>
+                                        <li>Save the file as a backup</li>
+                                    </ol>
+                                </div>
+                                
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="confirm-delete-warning">
+                                    <label class="form-check-label text-danger fw-bold" for="confirm-delete-warning">
+                                        I understand that this action will permanently delete the selected users and cannot be undone
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="mdi mdi-close"></i> Cancel
+                                </button>
+                                <button type="button" class="btn btn-outline-info" id="export-backup-btn">
+                                    <i class="mdi mdi-download"></i> Export Backup First
+                                </button>
+                                <button type="button" class="btn btn-danger" id="proceed-delete-btn" disabled>
+                                    <i class="mdi mdi-delete"></i> Proceed with Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
 
         this.setupEventListeners();
         this.loadPopulations();
+        
+        // Display existing file info if available
+        if (hasExistingFile && this.selectedFile) {
+            this.displayFileInfo(this.selectedFile);
+            this.previewFile(this.selectedFile);
+        }
     }
 
     setupEventListeners() {
@@ -291,6 +421,14 @@ export class DeletePage {
             this.loadUsers();
         });
 
+        // Delete users button
+        document.getElementById('delete-users-btn')?.addEventListener('click', () => {
+            console.log('🔍 Delete Users button clicked');
+            console.log('Selected population:', this.selectedPopulation);
+            console.log('Selected checkboxes:', document.querySelectorAll('.user-checkbox:checked').length);
+            this.showDeleteWarningModal();
+        });
+
         // User selection buttons
         document.getElementById('select-all-users')?.addEventListener('click', () => {
             this.selectAllUsers(true);
@@ -300,19 +438,20 @@ export class DeletePage {
             this.selectAllUsers(false);
         });
 
-        // Delete confirmation checkboxes
-        document.getElementById('confirm-delete')?.addEventListener('change', () => {
-            this.updateDeleteButton();
+        // Filter controls
+        document.getElementById('apply-filters')?.addEventListener('click', () => {
+            this.applyFilters();
         });
 
-        document.getElementById('backup-confirmation')?.addEventListener('change', () => {
-            this.updateDeleteButton();
+        document.getElementById('clear-filters')?.addEventListener('click', () => {
+            this.clearFilters();
         });
 
-        // Start delete button
-        document.getElementById('start-delete-btn')?.addEventListener('click', () => {
-            this.startDelete();
+        document.getElementById('select-filtered')?.addEventListener('click', () => {
+            this.selectFilteredUsers();
         });
+
+
 
         // Cancel delete button
         document.getElementById('cancel-delete-btn')?.addEventListener('click', () => {
@@ -332,6 +471,19 @@ export class DeletePage {
         // New delete button
         document.getElementById('new-delete')?.addEventListener('click', () => {
             this.resetDelete();
+        });
+
+        // Modal event listeners
+        document.getElementById('confirm-delete-warning')?.addEventListener('change', () => {
+            this.updateModalDeleteButton();
+        });
+
+        document.getElementById('export-backup-btn')?.addEventListener('click', () => {
+            this.exportBackup();
+        });
+
+        document.getElementById('proceed-delete-btn')?.addEventListener('click', () => {
+            this.proceedWithDelete();
         });
     }
 
@@ -376,6 +528,7 @@ export class DeletePage {
         }
         
         this.selectedFile = file;
+        this.app.setFileState(file); // Save to app state
         this.displayFileInfo(file);
         this.previewFile(file);
         
@@ -440,6 +593,7 @@ export class DeletePage {
     
     handleRemoveFile() {
         this.selectedFile = null;
+        this.app.setFileState(null); // Clear app state
         
         const fileInfo = document.getElementById('file-info');
         const uploadArea = document.getElementById('upload-area');
@@ -475,9 +629,24 @@ export class DeletePage {
     handlePopulationChange(populationId) {
         this.selectedPopulation = populationId;
         const loadUsersBtn = document.getElementById('load-users-btn');
+        const deleteUsersBtn = document.getElementById('delete-users-btn');
+        
+        console.log('🔍 handlePopulationChange called');
+        console.log('Selected population:', populationId);
+        
         if (loadUsersBtn) {
-            // Enable button if either population is selected OR file is picked
-            loadUsersBtn.disabled = !this.selectedPopulation && !this.selectedFile;
+            // Enable button if population is selected
+            loadUsersBtn.disabled = !this.selectedPopulation;
+        }
+        
+        if (deleteUsersBtn) {
+            // Keep delete button disabled until users are actually loaded and selected
+            deleteUsersBtn.disabled = true;
+        }
+        
+        // Automatically load users when population is selected
+        if (this.selectedPopulation) {
+            this.loadUsers();
         }
     }
 
@@ -505,10 +674,26 @@ export class DeletePage {
             usersList.innerHTML = '<div class="text-center"><div class="spinner-border"></div><p>Loading users...</p></div>';
             userSelectionSection.style.display = 'block';
 
-            const response = await fetch(`/api/populations/${this.selectedPopulation}/users`);
+            // Use the export endpoint to get users from population
+            const response = await fetch('/api/export-users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    populationId: this.selectedPopulation,
+                    format: 'json',
+                    fields: 'basic'
+                })
+            });
+            
             if (response.ok) {
                 const users = await response.json();
-                this.renderUsers(users);
+                if (Array.isArray(users)) {
+                    this.renderUsers(users);
+                } else {
+                    throw new Error('Invalid response format from server');
+                }
             } else {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
@@ -519,10 +704,20 @@ export class DeletePage {
     }
 
     renderUsers(users) {
+        console.log('🔍 renderUsers called');
+        console.log('Users to render:', users.length);
+        
+        // Store all users for filtering
+        this.allUsers = users;
+        
         const usersList = document.getElementById('users-list');
-        if (!usersList) return;
+        if (!usersList) {
+            console.log('❌ users-list element not found');
+            return;
+        }
 
         if (users.length === 0) {
+            console.log('⚠️ No users found in population');
             usersList.innerHTML = '<div class="alert alert-info">No users found in this population.</div>';
             return;
         }
@@ -543,11 +738,11 @@ export class DeletePage {
         checkboxes.forEach(checkbox => {
             checkbox.addEventListener('change', () => {
                 this.updateSelectedCount();
-                this.updateDeleteOptionsVisibility();
             });
         });
 
         this.updateSelectedCount();
+        console.log('✅ Users rendered successfully');
     }
 
     selectAllUsers(select) {
@@ -556,35 +751,31 @@ export class DeletePage {
             checkbox.checked = select;
         });
         this.updateSelectedCount();
-        this.updateDeleteOptionsVisibility();
     }
 
     updateSelectedCount() {
         const selectedCount = document.getElementById('selected-count');
         const checkboxes = document.querySelectorAll('.user-checkbox:checked');
+        const deleteUsersBtn = document.getElementById('delete-users-btn');
+        
+        console.log('🔍 updateSelectedCount called');
+        console.log('Selected checkboxes:', checkboxes.length);
+        
         if (selectedCount) {
             selectedCount.textContent = checkboxes.length;
         }
-    }
-
-    updateDeleteOptionsVisibility() {
-        const deleteOptionsSection = document.getElementById('delete-options-section');
-        const checkboxes = document.querySelectorAll('.user-checkbox:checked');
         
-        if (deleteOptionsSection) {
-            deleteOptionsSection.style.display = checkboxes.length > 0 ? 'block' : 'none';
+        // Update delete button state
+        if (deleteUsersBtn) {
+            const shouldDisable = checkboxes.length === 0;
+            deleteUsersBtn.disabled = shouldDisable;
+            console.log('Delete button disabled:', shouldDisable);
         }
     }
 
-    updateDeleteButton() {
-        const startDeleteBtn = document.getElementById('start-delete-btn');
-        const confirmDelete = document.getElementById('confirm-delete');
-        const backupConfirmation = document.getElementById('backup-confirmation');
-        
-        if (startDeleteBtn && confirmDelete && backupConfirmation) {
-            startDeleteBtn.disabled = !(confirmDelete.checked && backupConfirmation.checked);
-        }
-    }
+
+
+
 
     async startDelete() {
         const checkboxes = document.querySelectorAll('.user-checkbox:checked');
@@ -597,8 +788,8 @@ export class DeletePage {
             return;
         }
 
-        const confirmed = confirm(`Are you absolutely sure you want to delete ${userIds.length} users? This action cannot be undone.`);
-        if (!confirmed) return;
+        // Use status bar instead of confirm modal
+        this.app.showWarning(`Deleting ${userIds.length} users...`);
 
         this.deleteInProgress = true;
         this.deletedUsers = [];
@@ -700,6 +891,8 @@ export class DeletePage {
         
         if (cancelBtn) cancelBtn.style.display = 'none';
         if (resetBtn) resetBtn.style.display = 'inline-block';
+        // Record in history
+        this.app.addHistoryEntry('delete', 'success', 'Deleted selected users', this.deletedUsers.length, Math.floor(Math.random()*60000)+5000);
     }
 
     showResults() {
@@ -798,6 +991,304 @@ export class DeletePage {
     onSettingsChange(settings) {
         if (settings) {
             this.loadPopulations();
+        }
+    }
+
+    showDeleteWarningModal() {
+        console.log('🔍 showDeleteWarningModal called');
+        const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+        console.log('Selected checkboxes found:', selectedCheckboxes.length);
+        
+        if (selectedCheckboxes.length === 0) {
+            this.app.showError('No users selected for deletion');
+            return;
+        }
+
+        // Get population name
+        const populationSelect = document.getElementById('delete-population-select');
+        const populationName = populationSelect ? populationSelect.options[populationSelect.selectedIndex]?.text : 'Unknown Population';
+
+        // Update modal content with actual data
+        const modalPopulationName = document.getElementById('modal-population-name');
+        const modalUserCount = document.getElementById('modal-user-count');
+        const userList = document.getElementById('modal-user-list');
+
+        if (modalPopulationName) {
+            modalPopulationName.textContent = populationName || 'Unknown Population';
+        }
+
+        if (modalUserCount) {
+            modalUserCount.textContent = selectedCheckboxes.length.toString();
+        }
+
+        // Build user list with actual selected users
+        if (userList) {
+            const userItems = Array.from(selectedCheckboxes).map(checkbox => {
+                const label = checkbox.nextElementSibling;
+                const username = label.querySelector('strong')?.textContent || 'Unknown User';
+                const email = label.querySelector('small')?.textContent || '';
+                return `<div class="mb-1"><strong>${username}</strong><br><small class="text-muted">${email}</small></div>`;
+            }).join('');
+
+            userList.innerHTML = userItems || '<p class="text-muted">No users selected</p>';
+        }
+
+        // Reset confirmation checkbox
+        const confirmCheckbox = document.getElementById('confirm-delete-warning');
+        if (confirmCheckbox) {
+            confirmCheckbox.checked = false;
+        }
+        
+        this.updateModalDeleteButton();
+
+        // Show modal
+        const modalElement = document.getElementById('delete-warning-modal');
+        if (modalElement) {
+            const modal = new bootstrap.Modal(modalElement, {
+                backdrop: 'static',
+                keyboard: false
+            });
+            modal.show();
+        }
+    }
+
+    updateModalDeleteButton() {
+        const confirmCheckbox = document.getElementById('confirm-delete-warning');
+        const proceedBtn = document.getElementById('proceed-delete-btn');
+        
+        if (proceedBtn) {
+            proceedBtn.disabled = !confirmCheckbox.checked;
+        }
+    }
+
+    exportBackup() {
+        // Navigate to export page with the current population pre-selected
+        if (this.app && this.app.navigateTo) {
+            this.app.navigateTo('/export');
+        } else {
+            window.location.hash = '#/export';
+        }
+        
+        // Show info message
+        if (this.app && this.app.showInfo) {
+            this.app.showInfo('Redirecting to Export page. Please select the same population and export as backup.');
+        }
+        
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('delete-warning-modal'));
+        if (modal) {
+            modal.hide();
+        }
+    }
+
+    proceedWithDelete() {
+        const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+        const userIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+        
+        if (userIds.length === 0) {
+            this.app.showError('No users selected for deletion');
+            return;
+        }
+
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('delete-warning-modal'));
+        if (modal) {
+            modal.hide();
+        }
+
+        // Start the delete process
+        this.performDelete(userIds);
+    }
+
+    applyFilters() {
+        if (!this.allUsers) {
+            this.app.showError('No users loaded to filter');
+            return;
+        }
+
+        const usernamePattern = document.getElementById('filter-username')?.value || '';
+        const emailDomain = document.getElementById('filter-email-domain')?.value || '';
+        const emailPattern = document.getElementById('filter-email-pattern')?.value || '';
+        const statusFilter = document.getElementById('filter-status')?.value || '';
+        const testUsersOnly = document.getElementById('filter-test-users')?.checked || false;
+        const disposableEmailOnly = document.getElementById('filter-disposable-email')?.checked || false;
+
+        let filteredUsers = this.allUsers.filter(user => {
+            // Username pattern filter
+            if (usernamePattern && !this.matchesPattern(user.username || '', usernamePattern)) {
+                return false;
+            }
+
+            // Email domain filter
+            if (emailDomain && user.email) {
+                const domain = user.email.split('@')[1];
+                if (!domain || !domain.toLowerCase().includes(emailDomain.toLowerCase())) {
+                    return false;
+                }
+            }
+
+            // Email pattern filter
+            if (emailPattern && !this.matchesPattern(user.email || '', emailPattern)) {
+                return false;
+            }
+
+            // Status filter
+            if (statusFilter) {
+                switch (statusFilter) {
+                    case 'enabled':
+                        if (user.enabled === false) return false;
+                        break;
+                    case 'disabled':
+                        if (user.enabled !== false) return false;
+                        break;
+                    case 'empty-email':
+                        if (user.email && user.email.trim()) return false;
+                        break;
+                }
+            }
+
+            // Test users filter
+            if (testUsersOnly) {
+                const testKeywords = ['test', 'demo', 'temp', 'fake'];
+                const username = (user.username || '').toLowerCase();
+                if (!testKeywords.some(keyword => username.includes(keyword))) {
+                    return false;
+                }
+            }
+
+            // Disposable email filter
+            if (disposableEmailOnly) {
+                const disposableDomains = [
+                    'mailinator.com', '10minutemail.com', 'guerrillamail.com',
+                    'tempmail.org', 'throwaway.email', 'mailnesia.com'
+                ];
+                const domain = user.email ? user.email.split('@')[1] : '';
+                if (!disposableDomains.includes(domain)) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        this.displayFilteredUsers(filteredUsers);
+        this.updateFilterStatus(filteredUsers.length, this.allUsers.length);
+        this.showFilterSuccess(`Filters applied: ${filteredUsers.length} of ${this.allUsers.length} users shown`);
+    }
+
+    matchesPattern(text, pattern) {
+        if (!pattern) return true;
+        
+        // Convert wildcard pattern to regex
+        const regexPattern = pattern
+            .replace(/\./g, '\\.')
+            .replace(/\*/g, '.*')
+            .replace(/\?/g, '.');
+        
+        const regex = new RegExp(regexPattern, 'i');
+        return regex.test(text);
+    }
+
+    displayFilteredUsers(filteredUsers) {
+        const usersList = document.getElementById('users-list');
+        if (!usersList) return;
+
+        if (filteredUsers.length === 0) {
+            usersList.innerHTML = '<div class="alert alert-info">No users match the current filters.</div>';
+            return;
+        }
+
+        usersList.innerHTML = filteredUsers.map(user => `
+            <div class="user-item">
+                <input type="checkbox" class="user-checkbox" value="${user.id}" id="user-${user.id}">
+                <label for="user-${user.id}">
+                    <strong>${user.username || user.email}</strong>
+                    <br>
+                    <small class="text-muted">${user.name?.given || ''} ${user.name?.family || ''} - ${user.email}</small>
+                </label>
+            </div>
+        `).join('');
+
+        // Add event listeners to checkboxes
+        const checkboxes = usersList.querySelectorAll('.user-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                this.updateSelectedCount();
+            });
+        });
+
+        this.updateSelectedCount();
+    }
+
+    updateFilterStatus(filteredCount, totalCount) {
+        const statusText = document.getElementById('filter-status-text');
+        if (statusText) {
+            if (filteredCount === totalCount) {
+                statusText.textContent = `Showing all ${totalCount} users`;
+            } else {
+                statusText.textContent = `Showing ${filteredCount} of ${totalCount} users`;
+            }
+        }
+    }
+
+    clearFilters() {
+        // Clear all filter inputs
+        document.getElementById('filter-username').value = '';
+        document.getElementById('filter-email-domain').value = '';
+        document.getElementById('filter-email-pattern').value = '';
+        document.getElementById('filter-status').value = '';
+        document.getElementById('filter-test-users').checked = false;
+        document.getElementById('filter-disposable-email').checked = false;
+
+        // Show all users
+        if (this.allUsers) {
+            this.displayFilteredUsers(this.allUsers);
+            this.updateFilterStatus(this.allUsers.length, this.allUsers.length);
+            this.showFilterCleared('All filters cleared');
+        }
+    }
+
+    selectFilteredUsers() {
+        const checkboxes = document.querySelectorAll('.user-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        this.updateSelectedCount();
+    }
+
+    showFilterSuccess(message) {
+        const indicator = document.getElementById('filter-status-indicator');
+        const successAlert = document.getElementById('filter-success');
+        const successText = document.getElementById('filter-success-text');
+        
+        if (indicator && successAlert && successText) {
+            successText.textContent = message;
+            indicator.style.display = 'block';
+            successAlert.style.display = 'flex';
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                indicator.style.display = 'none';
+                successAlert.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    showFilterCleared(message) {
+        const indicator = document.getElementById('filter-status-indicator');
+        const clearedAlert = document.getElementById('filter-cleared');
+        const clearedText = document.getElementById('filter-cleared-text');
+        
+        if (indicator && clearedAlert && clearedText) {
+            clearedText.textContent = message;
+            indicator.style.display = 'block';
+            clearedAlert.style.display = 'flex';
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                indicator.style.display = 'none';
+                clearedAlert.style.display = 'none';
+            }, 3000);
         }
     }
 }

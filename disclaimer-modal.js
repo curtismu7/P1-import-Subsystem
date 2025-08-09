@@ -33,63 +33,40 @@ class DisclaimerModal {
             <div class="disclaimer-modal" tabindex="-1">
                 <div class="disclaimer-modal-header">
                     <h2 id="disclaimer-title">
-                        <span class="warning-icon" aria-hidden="true">⚠️</span>
+                        <i class="mdi mdi-alert-circle" aria-hidden="true"></i>
                         <span>Important Disclaimer</span>
                     </h2>
+                    <p class="disclaimer-subtitle">Please review and acknowledge before continuing</p>
                 </div>
-                
+
                 <div class="disclaimer-modal-body">
-                    <div id="disclaimer-content" class="disclaimer-content">
-                        <h3>🚨 UNSUPPORTED TOOL WARNING</h3>
-                        <p>
-                            <strong>This tool is NOT an official Ping Identity product</strong> and is provided 
-                            <span class="highlight">without any warranty or support</span>. Use at your own risk.
-                        </p>
-                        
-                        <h3>⚠️ CRITICAL DISCLAIMERS:</h3>
-                        <ul>
-                            <li><strong>No technical support</strong> is available from Ping Identity</li>
-                            <li><strong>No updates or bug fixes</strong> are guaranteed</li>
-                            <li><strong>No compatibility</strong> with future PingOne versions is assured</li>
-                            <li><strong>No documentation or training</strong> is provided by Ping Identity</li>
-                            <li>This tool may <strong>stop working at any time</strong> without notice</li>
-                            <li>Use of this tool is <strong>not recommended for production environments</strong></li>
-                            <li>You are <strong>responsible for testing and validating</strong> all operations</li>
-                            <li><strong>Backup your PingOne account</strong> before using this tool</li>
-                            <li><strong>Test in non-production environments</strong> only</li>
-                        </ul>
-                        
-                        <p>
-                            <strong>By continuing, you acknowledge that:</strong>
-                        </p>
-                        <ul>
-                            <li>You understand this tool is unsupported and use it at your own risk</li>
-                            <li>You have backed up your PingOne account data</li>
-                            <li>You will test operations in non-production environments first</li>
-                            <li>You accept full responsibility for any data loss or issues</li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <div class="disclaimer-modal-footer">
-                    <div class="disclaimer-agreement">
-                        <div class="disclaimer-checkbox">
-                            <input type="checkbox" id="disclaimer-agreement-checkbox" required>
-                            <label for="disclaimer-agreement-checkbox">
-                                <span class="required-indicator">*</span>
-                                I acknowledge and accept the above disclaimer. I understand this tool is unsupported and I use it at my own risk.
-                            </label>
+                    <section class="disclaimer-panel warning">
+                        <div class="panel-icon"><i class="mdi mdi-shield-alert"></i></div>
+                        <div class="panel-content">
+                            <h3>Ping Library Terms of Service</h3>
+                            <p class="updated">Last Updated: October 25, 2024</p>
+                            <p class="lead">This sample code is provided “AS IS” and without warranty of any kind. Use in non‑production environments only.</p>
+                            <div class="tos-box">
+                                <p class="muted">The code provided hereunder shall be deemed "Sample Code." This Sample Code is to be used exclusively in connection with Ping Identity's software or services.</p>
+                                <p class="muted">
+                                    THE CODE HEREUNDER IS PROVIDED “AS IS” AND WITHOUT WARRANTY OF ANY KIND. SUCH CODE IS EXPRESSLY EXCLUDED FROM PING IDENTITY'S INDEMNITY OR SUPPORT OBLIGATIONS, IF ANY, PURSUANT TO THE RELEVANT GOVERNING AGREEMENT. PING IDENTITY AND ITS LICENSORS EXPRESSLY DISCLAIM ALL WARRANTIES, WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND ANY WARRANTY OF NON-INFRINGEMENT. PING IDENTITY SHALL NOT HAVE ANY LIABILITY ARISING OUT OF OR RELATING TO ANY USE, IMPLEMENTATION OR CONFIGURATION OF THE SAMPLE CODE.
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="disclaimer-actions">
-                        <button type="button" class="disclaimer-btn disclaimer-btn-secondary" id="disclaimer-cancel">
-                            Cancel
-                        </button>
-                        <button type="button" class="disclaimer-btn disclaimer-btn-primary" id="disclaimer-continue" disabled>
-                            Continue
-                        </button>
-                    </div>
+                    </section>
+
+                    <section class="disclaimer-ack">
+                        <label class="switch-row">
+                            <input type="checkbox" id="disclaimer-agreement-checkbox" required>
+                            <span class="switch-label"><strong>Terms of Service (Required)</strong></span>
+                        </label>
+                        <p class="ack-note">By selecting Accept, you agree to these terms and our Cookies/Privacy policies.</p>
+                    </section>
+                </div>
+
+                <div class="disclaimer-modal-footer">
+                    <button type="button" class="disclaimer-btn disclaimer-btn-secondary" id="disclaimer-cancel">Quit</button>
+                    <button type="button" class="disclaimer-btn disclaimer-btn-primary" id="disclaimer-continue" disabled>Accept</button>
                 </div>
             </div>
         `;
@@ -190,6 +167,8 @@ class DisclaimerModal {
 
         // Show modal with animation
         this.overlay.classList.add('active');
+        // Soften background styling
+        this.applySoftTheme();
         
         // Focus management
         this.modal.focus();
@@ -199,6 +178,21 @@ class DisclaimerModal {
         
         // Announce to screen readers
         this.announceToScreenReader('Disclaimer modal opened. You must read and accept the disclaimer to continue.');
+    }
+
+    applySoftTheme() {
+        try {
+            const root = document.documentElement;
+            const modal = this.modal;
+            if (!modal) return;
+            modal.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)';
+            modal.style.border = '1px solid rgba(0,0,0,0.08)';
+            const panels = modal.querySelectorAll('.disclaimer-panel');
+            panels.forEach(p => {
+                p.style.background = '#f7f9fc';
+                p.style.border = '1px solid rgba(0,0,0,0.06)';
+            });
+        } catch {}
     }
 
     setupFocusTrap() {

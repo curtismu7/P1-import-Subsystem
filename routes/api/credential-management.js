@@ -260,7 +260,16 @@ router.get('/token-info', requireAuth, async (req, res) => {
         const tokenInfo = enhancedAuth.getTokenInfo();
         
         if (!tokenInfo) {
-            return res.error('No token available', { code: 'NO_TOKEN' }, 404);
+            // Return a normalized 200 response with isValid=false instead of an error
+            return res.success('Token info retrieved successfully', {
+                tokenInfo: {
+                    expiresAt: null,
+                    expiresIn: 0,
+                    isValid: false,
+                    lastRefresh: null,
+                    tokenType: 'Bearer'
+                }
+            });
         }
 
         res.success('Token info retrieved successfully', {

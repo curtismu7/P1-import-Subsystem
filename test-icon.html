@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icon Test</title>
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css">
+    <style>
+        .icon-key::before {
+            font-family: "webfont" !important;
+            content: "\ea01" !important;
+            font-weight: 400 !important;
+            font-style: normal !important;
+            font-variant: normal !important;
+            text-rendering: auto !important;
+            line-height: 1 !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            -webkit-font-smoothing: antialiased !important;
+            display: inline-block !important;
+        }
+        
+        .test-icon {
+            font-size: 24px;
+            color: #333;
+            margin: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>Icon Test Page</h1>
+    <div class="test-icon">
+        <i class="icon-key"></i> This should show a key icon
+    </div>
+    <div class="test-icon">
+        <i class="icon-key" id="token-icon"></i> This should show a key icon with ID
+    </div>
+    <div class="test-icon">
+        <div class="status-icon">
+            <i class="icon-key" id="token-icon"></i>
+        </div>
+    </div>
+</body>
+</html>

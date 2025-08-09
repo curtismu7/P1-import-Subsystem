@@ -35,7 +35,7 @@ export class PopulationLoader {
 
         const dropdown = document.getElementById(dropdownId);
         if (!dropdown) {
-            console.error(`❌ Dropdown element not found: ${dropdownId}`);
+            console.warn(`❌ Dropdown element not found: ${dropdownId}`);
             this.loadingStates.set(dropdownId, false);
             return;
         }
@@ -55,23 +55,57 @@ export class PopulationLoader {
                 return;
             }
 
-            // Fetch from server
+            // Fetch from server (primary)
             console.log(`🌐 Fetching populations from server for ${dropdownId}`);
-            const response = await fetch('/api/populations');
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            let populations = [];
+            try {
+                const response = await fetch('/api/populations');
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log(`📊 Populations response for ${dropdownId}:`, result);
+                    populations = result?.data?.message?.populations
+                        || result?.message?.populations
+                        || result?.data?.populations
+                        || result?.populations
+                        || [];
+                } else {
+                    console.warn(`⚠️ /api/populations returned ${response.status}`);
+                }
+            } catch (e) {
+                console.warn('⚠️ /api/populations request failed:', e.message);
             }
 
-            const result = await response.json();
-            console.log(`📊 Populations response for ${dropdownId}:`, result);
+            // Fallback 1: /api/settings/public (sanitized)
+            if (!Array.isArray(populations) || populations.length === 0) {
+                try {
+                    const resp = await fetch('/api/settings/public');
+                    if (resp.ok) {
+                        const data = await resp.json().catch(() => ({}));
+                        populations = (data && (data.populations || (data.data && data.data.populations))) || [];
+                        console.log('📦 Populations from /api/settings/public:', populations?.length || 0);
+                    }
+                } catch (_) { /* ignore */ }
+            }
 
-            // Extract populations from response
-            const populations = result.data?.message?.populations || 
-                              result.message?.populations || 
-                              result.data?.populations || 
-                              result.populations || 
-                              [];
+            // Fallback 2: /api/settings (may include cache)
+            if (!Array.isArray(populations) || populations.length === 0) {
+                try {
+                    const resp = await fetch('/api/settings');
+                    if (resp.ok) {
+                        const payload = await resp.json().catch(() => ({}));
+                        const settings = payload && ((payload.success && (payload.data && (payload.data.data || payload.data))) || payload);
+                        populations = (settings && (settings.populationCache || settings.populations || (settings.data && settings.data.populations))) || [];
+                        console.log('📦 Populations from /api/settings:', populations?.length || 0);
+                    }
+                } catch (_) { /* ignore */ }
+            }
+
+            // Fallback 3: injected window.settingsJson
+            if ((!Array.isArray(populations) || populations.length === 0) && typeof window !== 'undefined' && window.settingsJson) {
+                const injected = window.settingsJson;
+                populations = injected.populations || injected.populationCache || [];
+                console.log('📦 Populations from window.settingsJson:', populations?.length || 0);
+            }
 
             console.log(`📊 Extracted ${populations.length} populations for ${dropdownId}`);
 
@@ -113,8 +147,9 @@ export class PopulationLoader {
         populations.forEach((population, index) => {
             console.log(`📝 Adding population ${index + 1} to ${dropdown.id}:`, population);
             const option = document.createElement('option');
-            option.value = population.id;
-            option.textContent = `${population.name} (${population.userCount || 0} users)`;
+            option.value = population.id || population.populationId || population.value || '';
+            const name = population.name || population.label || population.text || 'Unnamed Population';
+            option.textContent = `${name}${population.userCount ? ` (${population.userCount} users)` : ''}`;
             option.dataset.population = JSON.stringify(population);
             dropdown.appendChild(option);
         });

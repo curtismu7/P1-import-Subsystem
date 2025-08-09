@@ -574,7 +574,7 @@ router.use(express.json());
 
 // Only apply settings validation to non-auth requests
 router.use((req, res, next) => {
-    if (req.path !== '/as/token' && !req.query.url?.includes('/as/token')) {
+    if (req.path !== '/as/token' && req.path !== '/test-connection' && !req.query.url?.includes('/as/token')) {
         injectSettings(req, res, () => {
             validateSettings(req, res, next);
         });

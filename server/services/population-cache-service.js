@@ -176,6 +176,9 @@ class PopulationCacheService {
                 count: populations.length
             };
 
+            // Also write a flattened copy for easy client consumption
+            settings.populations = populations;
+
             // Update last updated timestamp
             settings.lastUpdated = new Date().toISOString();
 

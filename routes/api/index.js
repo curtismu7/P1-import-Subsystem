@@ -1723,6 +1723,235 @@ router.get('/populations/cache-status', async (req, res) => {
 
 /**
  * @swagger
+ * /api/populations/{populationId}/users:
+ *   get:
+ *     summary: Get users from population
+ *     description: |
+ *       Retrieves all users from a specified PingOne population.
+ *       This endpoint fetches user data from the PingOne API for the
+ *       specified population ID.
+ *       
+ *       ## Response Format
+ *       Returns an array of user objects with basic user information
+ *       including ID, username, email, and name details.
+ *       
+ *       ## Rate Limiting
+ *       This operation is subject to PingOne API rate limits.
+ *     tags: [User Operations]
+ *     parameters:
+ *       - in: path
+ *         name: populationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: PingOne population ID
+ *         example: 3840c98d-202d-4f6a-8871-f3bc66cb3fa8
+ *     responses:
+ *       200:
+ *         description: Users retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Users retrieved successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: User ID
+ *                       username:
+ *                         type: string
+ *                         description: Username
+ *                       email:
+ *                         type: string
+ *                         description: Primary email address
+ *                       name:
+ *                         type: object
+ *                         properties:
+ *                           given:
+ *                             type: string
+ *                             description: First name
+ *                           family:
+ *                             type: string
+ *                             description: Last name
+ *       400:
+ *         description: Invalid population ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Population not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/populations/:populationId/users', async (req, res) => {
+    const functionName = 'GET /api/populations/:populationId/users';
+    const { populationId } = req.params;
+    
+    apiLogger.debug(`${functionName} - Entry`, { 
+        requestId: req.requestId,
+        populationId 
+    });
+
+    try {
+        // Validate population ID
+        if (!populationId) {
+            apiLogger.error(`${functionName} - Missing population ID`, { requestId: req.requestId });
+            return res.error('Population ID is required', { code: 'MISSING_POPULATION_ID' }, 400);
+        }
+
+        // Get token manager from Express app context
+        const tokenManager = req.app.get('tokenManager');
+        if (!tokenManager) {
+            apiLogger.error(`${functionName} - Token manager not available`, { requestId: req.requestId });
+            return res.error('Token manager not available', { code: 'TOKEN_MANAGER_ERROR' }, 500);
+        }
+
+        // Get environment ID and API base URL from token manager
+        const environmentId = await tokenManager.getEnvironmentId();
+        if (!environmentId) {
+            apiLogger.error(`${functionName} - Environment ID not configured`, { requestId: req.requestId });
+            return res.error('Environment ID not configured', { code: 'ENVIRONMENT_ID_ERROR' }, 500);
+        }
+
+        // Get API base URL from token manager
+        const apiBaseUrl = tokenManager.getApiBaseUrl();
+
+        // Get access token
+        const token = await tokenManager.getAccessToken();
+        if (!token) {
+            apiLogger.error(`${functionName} - Failed to get access token`, { requestId: req.requestId });
+            return res.error('Failed to get access token', { code: 'TOKEN_ACCESS_ERROR' }, 401);
+        }
+
+        // Use the same approach as the export functionality
+        let usersUrl = `${apiBaseUrl}/environments/${environmentId}/users`;
+        const params = new URLSearchParams();
+        
+        // Add population filter
+        params.append('population.id', populationId);
+        
+        // Always expand population details to get population name and ID in response
+        params.append('expand', 'population');
+        
+        // Append query parameters
+        usersUrl += `?${params.toString()}`;
+        
+        apiLogger.debug(`${functionName} - Fetching users from PingOne API`, { 
+            requestId: req.requestId, 
+            url: usersUrl 
+        });
+
+        const response = await fetch(usersUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            apiLogger.error(`${functionName} - Failed to fetch users`, {
+                requestId: req.requestId,
+                populationId,
+                status: response.status,
+                statusText: response.statusText,
+                details: errorText
+            });
+            
+            if (response.status === 404) {
+                return res.error('Population not found', { 
+                    code: 'POPULATION_NOT_FOUND',
+                    populationId 
+                }, 404);
+            }
+            
+            return res.status(response.status).json({
+                success: false,
+                error: `Failed to fetch users: ${response.statusText}`,
+                details: errorText
+            });
+        }
+        
+        const data = await response.json();
+        
+        // Handle PingOne API response format variations
+        // PingOne can return users directly as array or nested in _embedded.users
+        let users = [];
+        if (data._embedded && data._embedded.users) {
+            users = data._embedded.users;
+        } else if (Array.isArray(data)) {
+            users = data;
+        }
+        
+        console.log(`[Users] ✅ Fetched ${users.length} users from population ${populationId}`);
+        
+        // Format users for frontend
+        const formattedUsers = users.map(user => ({
+            id: user.id,
+            username: user.username,
+            email: user.primaryEmail?.address || '',
+            name: {
+                given: user.name?.given || '',
+                family: user.name?.family || ''
+            },
+            enabled: user.enabled !== false
+        }));
+        
+        apiLogger.debug(`${functionName} - Users retrieved successfully`, { 
+            requestId: req.requestId,
+            populationId,
+            userCount: formattedUsers.length
+        });
+        
+        res.success('Users retrieved successfully', {
+            users: formattedUsers,
+            total: formattedUsers.length,
+            populationId
+        });
+        
+    } catch (error) {
+        apiLogger.error(`${functionName} - Error fetching users`, {
+            requestId: req.requestId,
+            populationId,
+            error: error.message
+        });
+        
+        res.error('Failed to fetch users', { 
+            code: 'USERS_FETCH_ERROR', 
+            message: error.message 
+        }, 500);
+    }
+});
+
+/**
+ * @swagger
  * /api/export-users:
  *   post:
  *     summary: Export users from population

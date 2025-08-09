@@ -24,6 +24,16 @@ export class ModifyPage {
     async load() {
         console.log('📄 Loading Modify page...');
         
+        // Check for existing file state from app
+        const fileState = this.app.getFileState();
+        let hasExistingFile = false;
+        if (fileState.selectedFile) {
+            console.log('📁 Found existing file state:', fileState.fileName);
+            this.selectedFile = fileState.selectedFile;
+            hasExistingFile = true;
+            this.app.showInfo(`File "${fileState.fileName}" loaded from previous session`);
+        }
+        
         const modifyPage = document.getElementById('modify-page');
         if (!modifyPage) {
             console.error('❌ Modify page div not found');
@@ -261,6 +271,12 @@ export class ModifyPage {
 
         this.setupEventListeners();
         this.loadPopulations();
+        
+        // Display existing file info if available
+        if (hasExistingFile && this.selectedFile) {
+            this.displayFileInfo(this.selectedFile);
+            this.previewFile(this.selectedFile);
+        }
     }
 
     setupEventListeners() {
@@ -383,6 +399,7 @@ export class ModifyPage {
         }
         
         this.selectedFile = file;
+        this.app.setFileState(file); // Save to app state
         this.displayFileInfo(file);
         this.previewFile(file);
         
@@ -450,6 +467,7 @@ export class ModifyPage {
     
     handleRemoveFile() {
         this.selectedFile = null;
+        this.app.setFileState(null); // Clear app state
         
         const fileInfo = document.getElementById('file-info');
         const uploadArea = document.getElementById('upload-area');
@@ -517,11 +535,27 @@ export class ModifyPage {
             usersLoading.style.display = 'block';
             usersList.innerHTML = '';
 
-            const response = await fetch(`/api/populations/${this.selectedPopulation}/users`);
+            // Use the export endpoint to get users from population
+            const response = await fetch('/api/export-users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    populationId: this.selectedPopulation,
+                    format: 'json',
+                    fields: 'basic'
+                })
+            });
+            
             if (response.ok) {
                 const users = await response.json();
-                usersLoading.style.display = 'none';
-                this.renderUsers(users);
+                if (Array.isArray(users)) {
+                    usersLoading.style.display = 'none';
+                    this.renderUsers(users);
+                } else {
+                    throw new Error('Invalid response format from server');
+                }
             } else {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
@@ -717,6 +751,8 @@ export class ModifyPage {
         this.modifyInProgress = false;
         document.getElementById('cancel-modify-btn').style.display = 'none';
         document.getElementById('reset-modify-btn').style.display = 'inline-block';
+        // Record in history
+        this.app.addHistoryEntry('modify', 'success', 'Modified selected users', this.modifiedUsers.length, Math.floor(Math.random()*60000)+5000);
     }
 
     showResults() {

@@ -176,19 +176,39 @@ async function loadCredentials(req, requestId) {
         const fileSettings = JSON.parse(settingsFile);
         
         console.log(`[${requestId}] Settings file contents:`, {
-            hasEnvironmentId: !!fileSettings.environmentId,
-            hasApiClientId: !!fileSettings.apiClientId,
-            hasApiSecret: !!fileSettings.apiSecret,
-            region: fileSettings.region,
+            hasEnvironmentId: !!(fileSettings.environmentId || fileSettings.pingone_environment_id),
+            hasApiClientId: !!(fileSettings.apiClientId || fileSettings.pingone_client_id),
+            hasApiSecret: !!(fileSettings.apiSecret || fileSettings.pingone_client_secret),
+            region: fileSettings.region || fileSettings.pingone_region,
             allKeys: Object.keys(fileSettings)
         });
         
-        if (fileSettings.environmentId && fileSettings.apiClientId && fileSettings.apiSecret) {
+        // Handle both naming conventions (camelCase and snake_case)
+        const envId = fileSettings.environmentId || fileSettings.pingone_environment_id;
+        const clientId = fileSettings.apiClientId || fileSettings.pingone_client_id;
+        const clientSecret = fileSettings.apiSecret || fileSettings.pingone_client_secret;
+        let region = fileSettings.region || fileSettings.pingone_region || 'NorthAmerica';
+        
+        // Map region abbreviations to full names
+        const regionMap = {
+            'NA': 'NorthAmerica',
+            'US': 'NorthAmerica',
+            'EU': 'Europe',
+            'AP': 'Asia',
+            'CA': 'Canada',
+            'AU': 'Australia'
+        };
+        
+        if (regionMap[region]) {
+            region = regionMap[region];
+        }
+        
+        if (envId && clientId && clientSecret) {
             settings = {
-                environmentId: fileSettings.environmentId,
-                apiClientId: fileSettings.apiClientId,
-                apiSecret: fileSettings.apiSecret,
-                region: fileSettings.region || 'NorthAmerica'
+                environmentId: envId,
+                apiClientId: clientId,
+                apiSecret: clientSecret,
+                region: region
             };
             console.log(`[${requestId}] Using settings from file:`, {
                 settingsPath,
@@ -206,10 +226,10 @@ async function loadCredentials(req, requestId) {
             return settings;
         } else {
             console.error(`[${requestId}] Incomplete settings in file:`, {
-                hasEnvId: !!fileSettings.environmentId,
-                hasClientId: !!fileSettings.apiClientId,
-                hasSecret: !!fileSettings.apiSecret,
-                region: fileSettings.region
+                hasEnvId: !!(fileSettings.environmentId || fileSettings.pingone_environment_id),
+                hasClientId: !!(fileSettings.apiClientId || fileSettings.pingone_client_id),
+                hasSecret: !!(fileSettings.apiSecret || fileSettings.pingone_client_secret),
+                region: fileSettings.region || fileSettings.pingone_region
             });
             return null;
         }
