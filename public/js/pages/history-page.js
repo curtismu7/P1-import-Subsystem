@@ -105,39 +105,29 @@ export class HistoryPage {
                         <h3>History Statistics</h3>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-2">
-                                <div class="stat-card">
+                        <div class="stats-section" style="background: var(--ping-gray-50, #f7f9fc); border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; padding: 16px;">
+                            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; align-items: stretch;">
+                                <div class="stat-card" style="height: 100%;">
                                     <div class="stat-number" id="total-operations">0</div>
                                     <div class="stat-label">Total Operations</div>
                                 </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="stat-card success">
+                                <div class="stat-card success" style="height: 100%;">
                                     <div class="stat-number" id="successful-operations">0</div>
                                     <div class="stat-label">Successful</div>
                                 </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="stat-card error">
+                                <div class="stat-card error" style="height: 100%;">
                                     <div class="stat-number" id="failed-operations">0</div>
                                     <div class="stat-label">Failed</div>
                                 </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="stat-card info">
+                                <div class="stat-card info" style="height: 100%;">
                                     <div class="stat-number" id="users-processed">0</div>
                                     <div class="stat-label">Users Processed</div>
                                 </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="stat-card warning">
+                                <div class="stat-card warning" style="height: 100%;">
                                     <div class="stat-number" id="operations-today">0</div>
                                     <div class="stat-label">Today</div>
                                 </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="stat-card">
+                                <div class="stat-card" style="height: 100%;">
                                     <div class="stat-number" id="avg-duration">0s</div>
                                     <div class="stat-label">Avg Duration</div>
                                 </div>
@@ -224,7 +214,16 @@ export class HistoryPage {
             try {
                 const response = await fetch('/api/history');
                 if (response.ok) {
-                    this.history = await response.json();
+                    const raw = await response.json();
+                    // Accept multiple shapes: array or wrapped
+                    const serverHistory = Array.isArray(raw)
+                        ? raw
+                        : (raw.history || raw.data?.history || raw.data?.message?.history || raw.message?.history || raw.items || []);
+                    if (Array.isArray(serverHistory) && serverHistory.length) {
+                        this.history = serverHistory;
+                    } else {
+                        throw new Error('Empty server history');
+                    }
                 } else {
                     throw new Error('Server history not available');
                 }
@@ -509,8 +508,9 @@ export class HistoryPage {
     }
 
     async clearHistory() {
-        const confirmed = confirm('Are you sure you want to clear all operation history? This action cannot be undone.');
-        if (!confirmed) return;
+        if (this.app && this.app.showWarning) {
+            this.app.showWarning('Clearing operation history...');
+        }
 
         try {
             // Try to clear server history

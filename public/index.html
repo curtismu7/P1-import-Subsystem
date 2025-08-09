@@ -80,7 +80,7 @@
         <nav class="left-nav" id="left-nav">
             <div class="nav-header">
                 <img src="/ping-identity-logo.svg" alt="Ping Identity" class="nav-logo">
-                <h3 class="nav-title">User Management</h3>
+                <h3 class="nav-title">Ping Identity<br/>User Management</h3>
                 <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">
                     <i class="icon-menu"></i>
                 </button>
@@ -323,57 +323,70 @@
     </footer>
 
     <!-- Modals -->
-    <!-- Disclaimer Modal -->
+    <!-- Disclaimer Modal (formal style) -->
     <div class="modal-overlay" id="disclaimer-modal" style="display: none;">
-        <div class="modal disclaimer-modal">
+        <div class="modal disclaimer-modal" style="box-shadow: 0 8px 24px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.08);">
             <div class="modal-header">
-                <h2>Important Disclaimer</h2>
+                <h2><i class="icon-alert-circle" aria-hidden="true"></i> Important Disclaimer</h2>
+                <p class="subtitle">Please review and acknowledge before continuing</p>
             </div>
             <div class="modal-body">
-                <div class="disclaimer-content">
-                    <div class="warning-icon">
-                        <i class="icon-alert-triangle"></i>
-                    </div>
-                    <p>This application is provided as-is and is not officially supported by Ping Identity.</p>
-                    <p>Use at your own risk. Always test in a non-production environment first.</p>
-                    <p>By continuing, you acknowledge that you understand and accept these terms.</p>
+                <section class="tos-panel" style="background:#f7f9fc; border:1px solid rgba(0,0,0,0.06); padding:16px; border-radius:8px;">
+                    <h3>Ping Library Terms of Service</h3>
+                    <p class="muted">The code provided hereunder shall be deemed "Sample Code." This Sample Code is to be used exclusively in connection with Ping Identity's software or services.</p>
+                    <p class="muted">
+                        THE CODE HEREUNDER IS PROVIDED “AS IS” AND WITHOUT WARRANTY OF ANY KIND. SUCH CODE IS EXPRESSLY EXCLUDED FROM PING IDENTITY'S INDEMNITY OR SUPPORT OBLIGATIONS, IF ANY, PURSUANT TO THE RELEVANT GOVERNING AGREEMENT. PING IDENTITY AND ITS LICENSORS EXPRESSLY DISCLAIM ALL WARRANTIES, WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND ANY WARRANTY OF NON-INFRINGEMENT. PING IDENTITY SHALL NOT HAVE ANY LIABILITY ARISING OUT OF OR RELATING TO ANY USE, IMPLEMENTATION OR CONFIGURATION OF THE SAMPLE CODE.
+                    </p>
+                </section>
+                <div class="ack-row" style="margin-top:12px; display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" id="disclaimer-agree" required>
+                    <label for="disclaimer-agree"><strong>Terms of Service (Required)</strong></label>
                 </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="disclaimer-quit">Quit</button>
-                <button class="btn btn-primary" id="disclaimer-accept">Accept</button>
+                <button class="btn btn-primary" id="disclaimer-accept" disabled>Accept</button>
             </div>
         </div>
     </div>
 
     <!-- Credentials Modal -->
     <div class="modal-overlay" id="credentials-modal" style="display: none;">
-        <div class="modal credentials-modal">
+        <div class="modal credentials-modal" style="max-width: 820px; width: 90%; max-height: 85vh; overflow: auto;">
             <div class="modal-header">
                 <h2>PingOne Credentials</h2>
                 <p>Configure your PingOne API credentials to get started</p>
             </div>
             <div class="modal-body">
                 <form id="credentials-form" novalidate>
-                    <div class="form-group">
-                        <label for="cred-environment-id">Environment ID</label>
-                        <input type="text" id="cred-environment-id" name="environmentId" 
-                               autocomplete="off" 
+                    <div class="form-group field-control-wrapper">
+                        <label for="cred-environment-id">PingOne Environment ID</label>
+                        <input type="text" id="cred-environment-id" name="environmentId"
+                               class="field-control-input is-default"
+                               maxlength="256" data-pendo-id="Input"
+                               autocomplete="off"
+                               aria-label="PingOne Environment ID"
                                spellcheck="false"
                                required>
                     </div>
-                    <div class="form-group">
-                        <label for="cred-client-id">Client ID</label>
-                        <input type="text" id="cred-client-id" name="clientId" 
+                    <div class="form-group field-control-wrapper">
+                        <label for="cred-client-id">PingOne Client ID</label>
+                        <input type="text" id="cred-client-id" name="clientId"
+                               class="field-control-input is-default"
+                               maxlength="256" data-pendo-id="Input"
                                autocomplete="username"
+                               aria-label="PingOne Client ID"
                                spellcheck="false"
                                required>
                     </div>
-                    <div class="form-group">
-                        <label for="cred-client-secret">Client Secret</label>
+                    <div class="form-group field-control-wrapper">
+                        <label for="cred-client-secret">PingOne Client Secret</label>
                         <div class="input-group">
-                            <input type="password" id="cred-client-secret" name="clientSecret" 
+                            <input type="password" id="cred-client-secret" name="clientSecret"
+                                   class="field-control-input is-default"
+                                   maxlength="256" data-pendo-id="Input"
                                    autocomplete="current-password"
+                                   aria-label="PingOne Client Secret"
                                    spellcheck="false"
                                    title="Show/hide client secret"
                                    aria-describedby="toggle-secret"
@@ -385,8 +398,8 @@
                             </button>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label for="cred-region">Region</label>
+                    <div class="form-group field-control-wrapper">
+                        <label for="cred-region">PingOne Region</label>
                         <select id="cred-region" name="region" autocomplete="country">
                             <option value="NorthAmerica">North America</option>
                             <option value="Europe">Europe</option>
@@ -394,17 +407,17 @@
                             <option value="Canada">Canada</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="cred-population">Default Population (Optional)</label>
+                    <div class="form-group field-control-wrapper">
+                        <label for="cred-population">PingOne Default Population (Optional)</label>
                         <select id="cred-population" name="populationId">
                             <option value="">Select a population...</option>
                         </select>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="credentials-skip">Continue to Home</button>
-                <button class="btn btn-secondary" id="credentials-settings">Go to Settings</button>
+            <div class="modal-footer" style="display:flex; justify-content:center; gap:16px;">
+                <button class="btn btn-secondary" id="credentials-skip" style="background:#f3f4f6; border-color:#e5e7eb; color:#111827;">Continue to Home</button>
+                <button class="btn btn-secondary" id="credentials-settings" style="background:#f3f4f6; border-color:#e5e7eb; color:#111827;">Go to Settings</button>
                 <button class="btn btn-primary" id="credentials-save">Save & Get Token</button>
             </div>
         </div>
@@ -420,88 +433,11 @@
 
     <!-- Main Application Script -->
     <script type="module" src="/js/app.js"></script>
-</body>
-</html>
-        
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Header -->
-            <header class="app-header">
-                <div class="header-left">
-                    <button class="sidebar-toggle d-md-none" id="mobile-sidebar-toggle" aria-label="Toggle sidebar">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <h1 id="page-title">Dashboard</h1>
-                </div>
-                
-                <div class="header-right">
-                    <div class="version-display" data-version></div>
-                    <div class="connection-status" id="connection-status">
-                        <i class="fas fa-circle text-success"></i>
-                        <span>Connected</span>
-                    </div>
-                </div>
-            </header>
-            
-            <!-- Content Body -->
-            <div class="content-body" id="content-body">
-                <!-- Dynamic content will be loaded here -->
-                <div class="loading-spinner" id="loading-spinner">
-                    <div class="spinner-border" role="status">
-                        <span class="sr-only">Loading...</span>
-                    </div>
-                    <p>Loading application...</p>
-                </div>
-            </div>
-        </main>
-    </div>
-    
-    <!-- Mobile Overlay -->
-    <div class="mobile-overlay" id="mobile-overlay"></div>
-    
-    <!-- Notification Container -->
-    <div class="notification-container" id="notification-container"></div>
-    
-    <!-- Modal Container -->
-    <div class="modal-container" id="modal-container"></div>
-    
-    <!-- Socket.IO Client Library -->
-    <script src="/socket.io/socket.io.js"></script>
-    
-    <!-- Core Application Module -->
-    <script type="module">
-        // Import main application
-        import { PingOneApp } from './js/app.js';
-        
-        // Initialize application when DOM is loaded
-        document.addEventListener('DOMContentLoaded', async () => {
-            console.log('🌟 DOM loaded, starting PingOne User Management App...');
-            try {
-                window.pingOneApp = new PingOneApp();
-                await window.pingOneApp.init();
-            } catch (error) {
-                console.error('💥 Failed to start application:', error);
-            }
-        });
-    </script>
     
     <!-- Error Handling -->
     <script>
         window.addEventListener('error', function(e) {
             console.error('Global error:', e.error);
-            
-            // Show user-friendly error message
-            const notification = document.createElement('div');
-            notification.className = 'alert alert-warning alert-dismissible fade show';
-            notification.innerHTML = `
-                <strong>Warning:</strong> An error occurred. The application may not function correctly.
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            
-            const container = document.getElementById('notification-container');
-            if (container) {
-                container.appendChild(notification);
-            }
         });
         
         window.addEventListener('unhandledrejection', function(e) {

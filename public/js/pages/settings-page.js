@@ -224,6 +224,12 @@ export class SettingsPage {
         if (testConnection) {
             testConnection.addEventListener('click', this.handleTestConnection.bind(this));
         }
+
+        // Default region to North America if empty
+        const regionSelect = document.getElementById('settings-region');
+        if (regionSelect && (!regionSelect.value || regionSelect.value === '')) {
+            regionSelect.value = 'NorthAmerica';
+        }
         
         // Token action buttons
         document.getElementById('refresh-token')?.addEventListener('click', async () => {
@@ -598,7 +604,7 @@ export class SettingsPage {
         console.log('💾 Saving settings...');
         
         this.setButtonLoading('save-settings', true);
-        this.showTokenStatus('Saving settings...', 'info', 'Updating application configuration');
+        this.app.showInfo('Saving settings...');
         
         try {
             const form = document.getElementById('settings-form');
@@ -635,8 +641,7 @@ export class SettingsPage {
             const result = await response.json();
             
             if (result.success) {
-                this.showTokenStatus('Settings saved successfully!', 'success', 
-                    'Configuration has been updated\nEnvironment ID: ' + settings.pingone_environment_id + '\nRegion: ' + settings.pingone_region);
+                this.app.showSuccess('Settings saved successfully');
                 
                 // Update app settings
                 if (this.app && this.app.settings) {
@@ -652,8 +657,7 @@ export class SettingsPage {
             
         } catch (error) {
             console.error('❌ Failed to save settings:', error);
-            this.showTokenStatus('Failed to save settings', 'error', 
-                `${error.message}\n\nPlease check all required fields are filled correctly.`);
+            this.app.showError(`Failed to save settings: ${error.message}`);
         } finally {
             this.setButtonLoading('save-settings', false);
         }
@@ -663,7 +667,7 @@ export class SettingsPage {
         console.log('🔌 Testing connection...');
         
         try {
-            this.signageSystem.addMessage('🔌 Testing connection...', 'info');
+            this.app.showInfo('Testing connection...');
             
             const credentials = this.getFormCredentials();
             if (!credentials) {
@@ -679,17 +683,17 @@ export class SettingsPage {
             const result = await response.json();
             
             if (result.success) {
-                this.signageSystem.addMessage('✅ Connection test successful!', 'success');
+                this.app.showSuccess('Connection test successful');
                 
                 if (result.token && result.token.timeLeft) {
                     this.signageSystem.addMessage(`⏰ Token acquired - Time left: ${result.token.timeLeft}`, 'info');
                 }
             } else {
-                this.signageSystem.addMessage(`❌ Connection test failed: ${result.error || 'Unknown error'}`, 'error');
+                this.app.showError(`Connection test failed: ${result.error || 'Unknown error'}`);
             }
         } catch (error) {
             console.error('❌ Error testing connection:', error);
-            this.signageSystem.addMessage(`❌ Error testing connection: ${error.message}`, 'error');
+            this.app.showError(`Error testing connection: ${error.message}`);
         }
     }
     

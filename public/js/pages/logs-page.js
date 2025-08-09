@@ -41,66 +41,57 @@ export class LogsPage {
                         <h3>Log Controls</h3>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="log-level-filter">Filter by Level:</label>
-                                    <select id="log-level-filter" class="form-control">
-                                        <option value="all">All Levels</option>
-                                        <option value="error">Error</option>
-                                        <option value="warn">Warning</option>
-                                        <option value="info">Info</option>
-                                        <option value="debug">Debug</option>
-                                    </select>
-                                </div>
+                        <div class="controls-grid" style="display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 16px; align-items: start;">
+                            <div class="form-group">
+                                <label for="log-level-filter">Filter by Level:</label>
+                                <select id="log-level-filter" class="form-control">
+                                    <option value="all">All Levels</option>
+                                    <option value="error">Error</option>
+                                    <option value="warn">Warning</option>
+                                    <option value="info">Info</option>
+                                    <option value="debug">Debug</option>
+                                </select>
                             </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="log-search">Search Logs:</label>
-                                    <input type="text" id="log-search" class="form-control" placeholder="Search log messages...">
-                                </div>
+                            <div class="form-group">
+                                <label for="log-search">Search Logs:</label>
+                                <input type="text" id="log-search" class="form-control" placeholder="Search log messages...">
                             </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="log-source">Log Source:</label>
-                                    <select id="log-source" class="form-control">
-                                        <option value="all">All Sources</option>
-                                        <option value="application">Application</option>
-                                        <option value="access">Access</option>
-                                        <option value="error">Error</option>
-                                        <option value="performance">Performance</option>
-                                    </select>
-                                </div>
+                            <div class="form-group">
+                                <label for="log-source">Log Source:</label>
+                                <select id="log-source" class="form-control">
+                                    <option value="all">All Sources</option>
+                                    <option value="application">Application</option>
+                                    <option value="access">Access</option>
+                                    <option value="error">Error</option>
+                                    <option value="performance">Performance</option>
+                                </select>
                             </div>
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label>&nbsp;</label>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="auto-refresh">
-                                        <label class="form-check-label" for="auto-refresh">
-                                            Auto Refresh
-                                        </label>
-                                    </div>
+                            <div class="form-group" style="justify-self: start;">
+                                <label>&nbsp;</label>
+                                <div id="auto-refresh-box" style="display: inline-flex; align-items: center; gap: 10px; background: #f5f5f5; border: 3px solid #1e88e5; border-radius: 12px; padding: 6px 12px; height: 40px; box-sizing: border-box;">
+                                    <input class="form-check-input" type="checkbox" id="auto-refresh">
+                                    <label class="form-check-label" for="auto-refresh" style="margin: 0; font-weight: 600;">
+                                        Auto Refresh
+                                    </label>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="btn-toolbar">
+                        <div class="btn-toolbar" style="display: inline-flex; gap: 20px; flex-wrap: wrap; align-items: center; background: #edf2f7; border: 2px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 16px 20px; max-width: 100%; margin: 6px 0;">
                             <button id="refresh-logs-btn" class="btn btn-primary mr-2">
                                 <i class="fas fa-sync"></i> Refresh Logs
                             </button>
-                            <button id="clear-logs-btn" class="btn btn-warning mr-2">
+                            <button id="clear-logs-btn" class="btn btn-primary mr-2">
                                 <i class="fas fa-trash"></i> Clear Logs
                             </button>
-                            <button id="export-logs-btn" class="btn btn-success mr-2">
+                            <button id="export-logs-btn" class="btn btn-success">
                                 <i class="fas fa-download"></i> Export Logs
-                            </button>
-                            <button id="download-logs-btn" class="btn btn-info">
-                                <i class="fas fa-file-download"></i> Download Log Files
                             </button>
                         </div>
                     </div>
                 </div>
+
+                <div class="section-divider" style="height: 2px; background: rgba(0,0,0,0.08); border-radius: 2px; margin: 16px 0 24px;"></div>
 
                 <!-- Log Statistics -->
                 <div class="card mb-4">
@@ -108,27 +99,21 @@ export class LogsPage {
                         <h3>Log Statistics</h3>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="stat-card">
+                        <div class="stats-section" style="background: var(--ping-gray-50, #f7f9fc); border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; padding: 16px;">
+                            <div class="stats-grid" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: stretch;">
+                                <div class="stat-card" style="height: 100%; flex: 1 1 180px; min-width: 180px; border: 2px solid #1e88e5; border-radius: 10px; padding: 10px;">
                                     <div class="stat-number" id="total-logs">0</div>
                                     <div class="stat-label">Total Logs</div>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="stat-card error">
+                                <div class="stat-card error" style="height: 100%; flex: 1 1 180px; min-width: 180px; border: 2px solid #dc3545; border-radius: 10px; padding: 10px; background: #fff3cd;">
                                     <div class="stat-number" id="error-logs">0</div>
                                     <div class="stat-label">Errors</div>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="stat-card warning">
+                                <div class="stat-card warning" style="height: 100%; flex: 1 1 180px; min-width: 180px; border: 2px solid #1e88e5; border-radius: 10px; padding: 10px;">
                                     <div class="stat-number" id="warning-logs">0</div>
                                     <div class="stat-label">Warnings</div>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="stat-card info">
+                                <div class="stat-card info" style="height: 100%; flex: 1 1 180px; min-width: 180px; border: 2px solid #1e88e5; border-radius: 10px; padding: 10px;">
                                     <div class="stat-number" id="info-logs">0</div>
                                     <div class="stat-label">Info</div>
                                 </div>
@@ -136,6 +121,8 @@ export class LogsPage {
                         </div>
                     </div>
                 </div>
+
+                <div class="section-divider" style="height: 2px; background: rgba(0,0,0,0.08); border-radius: 2px; margin: 16px 0 24px;"></div>
 
                 <!-- Log Viewer -->
                 <div class="card">
@@ -217,8 +204,8 @@ export class LogsPage {
             logsLoading.style.display = 'block';
             noLogs.style.display = 'none';
 
-            // Simulate loading logs (replace with actual API call)
-            const response = await fetch('/api/logs');
+            // Load UI logs from server
+            const response = await fetch('/api/logs/ui');
             if (response.ok) {
                 const responseData = await response.json();
                 // Handle different response formats
@@ -335,7 +322,9 @@ export class LogsPage {
         noLogs.style.display = 'none';
         logCountDisplay.textContent = `Showing ${this.filteredLogs.length} logs`;
 
-        logsList.innerHTML = this.filteredLogs.map(log => `
+        logsList.innerHTML = this.filteredLogs.map(log => {
+            const detailsStr = this.formatLogDetails(log);
+            return `
             <div class="log-entry log-${log.level}" data-log-id="${log.id}">
                 <div class="log-header">
                     <span class="log-timestamp">${new Date(log.timestamp).toLocaleString()}</span>
@@ -343,14 +332,14 @@ export class LogsPage {
                     <span class="log-source">${log.source}</span>
                 </div>
                 <div class="log-message">${log.message}</div>
-                <div class="log-details" style="display: none;">${log.details}</div>
+                <pre class="log-details" style="display: none; font-weight: 700; font-size: 0.95rem; margin-top: 6px; white-space: pre-wrap;">${detailsStr}</pre>
                 <div class="log-actions">
                     <button class="btn btn-sm btn-outline-secondary toggle-details-btn">
                         <i class="fas fa-chevron-down"></i> Details
                     </button>
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
 
         // Add event listeners for detail toggles
         const toggleButtons = logsList.querySelectorAll('.toggle-details-btn');
@@ -359,6 +348,16 @@ export class LogsPage {
                 this.toggleLogDetails(e.target.closest('.log-entry'));
             });
         });
+    }
+
+    formatLogDetails(log) {
+        // Show provided details or a simple placeholder
+        if (typeof log?.details === 'string' && log.details.trim().length > 0) return log.details;
+        if (log?.details && typeof log.details === 'object') {
+            try { return JSON.stringify(log.details, null, 2); } catch {}
+        }
+        const idText = typeof log?.id !== 'undefined' ? ` ${log.id}` : '';
+        return `Additional details for log entry${idText}`;
     }
 
     toggleLogDetails(logEntry) {
@@ -466,8 +465,8 @@ export class LogsPage {
                 `"${new Date(log.timestamp).toLocaleString()}"`,
                 `"${log.level}"`,
                 `"${log.source}"`,
-                `"${log.message.replace(/"/g, '""')}"`,
-                `"${log.details.replace(/"/g, '""')}"`
+                `"${String(log.message || '').replace(/"/g, '""')}"`,
+                `"${String(log.details || '').replace(/"/g, '""')}"`
             ];
             csvRows.push(row.join(','));
         });

@@ -88,6 +88,7 @@ function cleanAndDeduplicateSettings(settings) {
         // Application settings
         rateLimit: standardized.rateLimit || 100,
         showDisclaimerModal: standardized.showDisclaimerModal !== false,
+        showCredentialsModal: standardized.showCredentialsModal !== false,
         showSwaggerPage: standardized.showSwaggerPage === true,
         autoRefreshToken: standardized.autoRefreshToken !== false,
         lastUpdated: new Date().toISOString()
@@ -143,6 +144,7 @@ router.get('/', asyncHandler(async (req, res) => {
             // Application preferences
             rateLimit: cleanedSettings.rateLimit || 100,
             showDisclaimerModal: cleanedSettings.showDisclaimerModal !== false,
+            showCredentialsModal: cleanedSettings.showCredentialsModal !== false,
             showSwaggerPage: cleanedSettings.showSwaggerPage === true,
             autoRefreshToken: cleanedSettings.autoRefreshToken !== false,
             
@@ -220,6 +222,7 @@ router.post('/',
             // Application preferences
             rateLimit: standardizedNewSettings.rateLimit || existingSettings.rateLimit || 100,
             showDisclaimerModal: standardizedNewSettings.showDisclaimerModal !== undefined ? standardizedNewSettings.showDisclaimerModal : (existingSettings.showDisclaimerModal !== false),
+            showCredentialsModal: standardizedNewSettings.showCredentialsModal !== undefined ? standardizedNewSettings.showCredentialsModal : (existingSettings.showCredentialsModal !== false),
             showSwaggerPage: standardizedNewSettings.showSwaggerPage !== undefined ? standardizedNewSettings.showSwaggerPage : (existingSettings.showSwaggerPage === true),
             autoRefreshToken: standardizedNewSettings.autoRefreshToken !== undefined ? standardizedNewSettings.autoRefreshToken : (existingSettings.autoRefreshToken !== false)
         };
@@ -264,6 +267,7 @@ router.post('/',
             // Application preferences
             rateLimit: cleanedSettings.rateLimit,
             showDisclaimerModal: cleanedSettings.showDisclaimerModal,
+            showCredentialsModal: cleanedSettings.showCredentialsModal,
             showSwaggerPage: cleanedSettings.showSwaggerPage,
             autoRefreshToken: cleanedSettings.autoRefreshToken,
             
@@ -375,12 +379,29 @@ router.get('/credentials', asyncHandler(async (req, res) => {
         const standardizedSettings = standardizeConfigKeys(rawSettings);
         
         // Return complete credentials including secret for internal use
-        const rawCredentials = {
+        let rawCredentials = {
             environmentId: standardizedSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
             clientId: standardizedSettings[STANDARD_KEYS.CLIENT_ID] || '',
             clientSecret: standardizedSettings[STANDARD_KEYS.CLIENT_SECRET] || '',
             region: standardizedSettings[STANDARD_KEYS.REGION] || DEFAULT_REGION
         };
+
+        // Fallback: if any credential is missing, try data/settings-real.json (developer-local overrides)
+        if (!rawCredentials.environmentId || !rawCredentials.clientId || !rawCredentials.clientSecret) {
+            try {
+                const realPath = path.join(__dirname, '../../data/settings-real.json');
+                const realContent = await fs.readFile(realPath, 'utf8');
+                const realJson = standardizeConfigKeys(JSON.parse(realContent));
+                rawCredentials = {
+                    environmentId: rawCredentials.environmentId || realJson[STANDARD_KEYS.ENVIRONMENT_ID] || '',
+                    clientId: rawCredentials.clientId || realJson[STANDARD_KEYS.CLIENT_ID] || '',
+                    clientSecret: rawCredentials.clientSecret || realJson[STANDARD_KEYS.CLIENT_SECRET] || '',
+                    region: rawCredentials.region || realJson[STANDARD_KEYS.REGION] || DEFAULT_REGION
+                };
+            } catch (_) {
+                // optional fallback file not present; ignore
+            }
+        }
         
         // Apply region configuration with precedence hierarchy
         const regionConfig = getRegionConfig({
@@ -402,19 +423,7 @@ router.get('/credentials', asyncHandler(async (req, res) => {
             precedence: regionConfig.precedence
         });
         
-        // Validate that all required credentials are present
-        if (!credentials.environmentId || !credentials.clientId || !credentials.clientSecret) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required credentials',
-                missing: {
-                    environmentId: !credentials.environmentId,
-                    clientId: !credentials.clientId,
-                    clientSecret: !credentials.clientSecret
-                }
-            });
-        }
-        
+        // Always return what we have; client decides how to display/invalidate
         res.success(credentials, 'Credentials retrieved successfully');
         
     } catch (error) {

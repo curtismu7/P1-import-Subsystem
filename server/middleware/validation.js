@@ -172,6 +172,7 @@ export const schemas = {
     // Application preferences
     rateLimit: Joi.number().integer().min(1).max(1000).optional(),
     showDisclaimerModal: Joi.boolean().optional(),
+    showCredentialsModal: Joi.boolean().optional(),
     showSwaggerPage: Joi.boolean().optional(),
     autoRefreshToken: Joi.boolean().optional()
   }).min(1), // At least one field must be provided

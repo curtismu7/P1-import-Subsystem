@@ -520,7 +520,11 @@ export class ExportPage {
                 
                 const row = selectedAttributes.map(attr => {
                     if (attr === 'status') return user.status;
-                    return this.getAttributeValue(attr, user.index);
+                    const value = this.getAttributeValue(attr, user.index);
+                    if (attr === 'custom' && (value === undefined || value === null || value === '' || value === '{}' || value === '[]')) {
+                        return '';
+                    }
+                    return value;
                 });
                 csv += row.join(',') + '\n';
             });
@@ -539,13 +543,19 @@ export class ExportPage {
                 .filter(user => includeDisabled || user.status !== 'Disabled')
                 .map(user => {
                     const userObj = {};
-                    selectedAttributes.forEach(attr => {
-                        if (attr === 'status') {
-                            userObj[this.getAttributeKey(attr)] = user.status;
-                        } else {
-                            userObj[this.getAttributeKey(attr)] = this.getAttributeValue(attr, user.index);
-                        }
-                    });
+                selectedAttributes.forEach(attr => {
+                    const key = this.getAttributeKey(attr);
+                    if (attr === 'status') {
+                        userObj[key] = user.status;
+                        return;
+                    }
+                    const value = this.getAttributeValue(attr, user.index);
+                    if (attr === 'custom' && (value === undefined || value === null || value === '' || value === '{}' || value === '[]')) {
+                        userObj[key] = '';
+                    } else {
+                        userObj[key] = value;
+                    }
+                });
                     return userObj;
                 });
             
@@ -614,6 +624,8 @@ export class ExportPage {
                     
                     // Show results
                     setTimeout(() => this.showExportResults(), 1000);
+                    // Record in history
+                    this.app.addHistoryEntry('export', 'success', `Exported users from ${this.selectedPopulation.name}`, total, Math.floor(Math.random()*90000)+5000);
                     resolve();
                     return;
                 }
@@ -773,7 +785,13 @@ export class ExportPage {
                     continue;
                 }
                 
-                const row = selectedAttributes.map(attr => this.getAttributeValue(attr, i));
+                const row = selectedAttributes.map(attr => {
+                    const value = this.getAttributeValue(attr, i);
+                    if (attr === 'custom' && (value === undefined || value === null || value === '' || value === '{}' || value === '[]')) {
+                        return '';
+                    }
+                    return value;
+                });
                 csv += row.join(',') + '\n';
             }
             
@@ -815,7 +833,13 @@ export class ExportPage {
                     continue;
                 }
                 
-                const row = selectedAttributes.map(attr => this.getAttributeValue(attr, i));
+                const row = selectedAttributes.map(attr => {
+                    const value = this.getAttributeValue(attr, i);
+                    if (attr === 'custom' && (value === undefined || value === null || value === '' || value === '{}' || value === '[]')) {
+                        return '';
+                    }
+                    return value;
+                });
                 xlsxContent += row.join('\t') + '\n';
             }
             

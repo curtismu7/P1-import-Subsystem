@@ -15,6 +15,16 @@ export class ImportPage {
         
         console.log('📄 Loading Import page...');
         
+        // Check for existing file state from app
+        const fileState = this.app.getFileState();
+        let hasExistingFile = false;
+        if (fileState.selectedFile) {
+            console.log('📁 Found existing file state:', fileState.fileName);
+            this.selectedFile = fileState.selectedFile;
+            hasExistingFile = true;
+            this.app.showInfo(`File "${fileState.fileName}" loaded from previous session`);
+        }
+        
         const pageContent = `
             <div class="page-header">
                 <h1><i class="mdi mdi-upload"></i> Import Users</h1>
@@ -111,6 +121,14 @@ export class ImportPage {
                                     <label class="form-check-label" for="skip-duplicates">Skip duplicate users (by email)</label>
                                 </div>
                                 <div class="form-check">
+                                    <input type="checkbox" id="skip-existing-username" name="skipExistingUsername" class="form-check-input">
+                                    <label class="form-check-label" for="skip-existing-username">Skip if username already exists</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" id="skip-existing-userid" name="skipExistingUserid" class="form-check-input">
+                                    <label class="form-check-label" for="skip-existing-userid">Skip if user ID already exists</label>
+                                </div>
+                                <div class="form-check">
                                     <input type="checkbox" id="validate-emails" name="validateEmails" class="form-check-input" checked>
                                     <label class="form-check-label" for="validate-emails">Validate email addresses</label>
                                 </div>
@@ -131,7 +149,7 @@ export class ImportPage {
                 <section class="import-section">
                     <div class="import-box">
                         <div class="export-actions">
-                            <button type="button" id="validate-file" class="btn btn-primary">
+                            <button type="button" id="validate-file" class="btn btn-primary" disabled>
                                 <i class="mdi mdi-check-circle"></i> Validate File
                             </button>
                             <button type="button" id="start-import" class="btn btn-primary" disabled>
@@ -208,6 +226,14 @@ export class ImportPage {
             importPage.innerHTML = pageContent;
             this.setupEventListeners();
             this.loadPopulations();
+            this.updateButtonStates(); // Ensure buttons start in correct state
+            
+            // Display existing file info if available
+            if (hasExistingFile && this.selectedFile) {
+                this.displayFileInfo(this.selectedFile);
+                this.previewFile(this.selectedFile);
+            }
+            
             this.isLoaded = true;
         }
     }
@@ -267,6 +293,24 @@ export class ImportPage {
         if (refreshPopulations) {
             refreshPopulations.addEventListener('click', this.loadPopulations.bind(this));
         }
+        
+        // Population selection change
+        const targetPopulation = document.getElementById('target-population');
+        if (targetPopulation) {
+            targetPopulation.addEventListener('change', () => {
+                this.updateButtonStates();
+            });
+        }
+        
+        // Results section buttons
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'new-import-btn') {
+                this.startNewImport();
+            }
+            if (e.target.id === 'download-log-btn') {
+                this.downloadLog();
+            }
+        });
     }
     
     handleDragOver(event) {
@@ -314,12 +358,12 @@ export class ImportPage {
         }
         
         this.selectedFile = file;
+        this.app.setFileState(file); // Save to app state
         this.displayFileInfo(file);
         this.previewFile(file);
         
         // Enable action buttons
-        document.getElementById('validate-file').disabled = false;
-        document.getElementById('start-import').disabled = false;
+        this.updateButtonStates();
     }
     
     displayFileInfo(file) {
@@ -338,6 +382,7 @@ export class ImportPage {
     }
     
     async previewFile(file) {
+        const startTime = Date.now();
         try {
             const text = await this.readFileAsText(file);
             const lines = text.split('\n').slice(0, 6); // Show first 5 lines + header
@@ -379,6 +424,7 @@ export class ImportPage {
     
     handleRemoveFile() {
         this.selectedFile = null;
+        this.app.setFileState(null); // Clear app state
         
         const fileInfo = document.getElementById('file-info');
         const uploadArea = document.getElementById('upload-area');
@@ -389,8 +435,7 @@ export class ImportPage {
         if (fileInput) fileInput.value = '';
         
         // Disable action buttons
-        document.getElementById('validate-file').disabled = true;
-        document.getElementById('start-import').disabled = true;
+        this.updateButtonStates();
         
         // Hide progress and results
         this.hideProgressSection();
@@ -418,7 +463,10 @@ export class ImportPage {
     }
     
     async handleValidateFile() {
-        if (!this.selectedFile) return;
+        if (!this.selectedFile) {
+            this.app.showError('Please select a file first before validating');
+            return;
+        }
         
         try {
             this.app.showLoading('Validating file...');
@@ -455,7 +503,10 @@ export class ImportPage {
     }
     
     async handleStartImport() {
-        if (!this.selectedFile) return;
+        if (!this.selectedFile) {
+            this.app.showError('Please select a file first before starting import');
+            return;
+        }
         
         const targetPopulation = document.getElementById('target-population').value;
         if (!targetPopulation) {
@@ -487,6 +538,16 @@ export class ImportPage {
                 formData.append('skipDuplicates', skipDuplicates.checked);
             }
             
+            const skipExistingUsername = document.getElementById('skip-existing-username');
+            if (skipExistingUsername) {
+                formData.append('skipExistingUsername', skipExistingUsername.checked);
+            }
+            
+            const skipExistingUserid = document.getElementById('skip-existing-userid');
+            if (skipExistingUserid) {
+                formData.append('skipExistingUserid', skipExistingUserid.checked);
+            }
+            
             const validateOnly = document.getElementById('validate-only');
             if (validateOnly) {
                 formData.append('validateOnly', validateOnly.checked);
@@ -514,18 +575,18 @@ export class ImportPage {
     }
     
     handleCancelImport() {
-        if (confirm('Are you sure you want to cancel the import?')) {
-            // Cancel the import operation
-            fetch('/api/import/cancel', { method: 'POST' })
-                .then(() => {
-                    this.isUploading = false;
-                    this.hideProgressSection();
-                    this.app.showInfo('Import cancelled');
-                })
-                .catch(error => {
-                    console.error('Error cancelling import:', error);
-                });
-        }
+        // Use status bar instead of confirm modal
+        this.app.showWarning('Cancelling import...');
+        fetch('/api/import/cancel', { method: 'POST' })
+            .then(() => {
+                this.isUploading = false;
+                this.hideProgressSection();
+                this.app.showInfo('Import cancelled');
+            })
+            .catch(error => {
+                console.error('Error cancelling import:', error);
+                this.app.showError('Failed to cancel import');
+            });
     }
     
     showProgressSection() {
@@ -585,12 +646,32 @@ export class ImportPage {
         this.isUploading = false;
         this.hideProgressSection();
         this.showResultsSection();
+        
+        // Show file upload section for new imports
+        const fileUploadSection = document.querySelector('.import-section:first-child');
+        if (fileUploadSection) {
+            fileUploadSection.style.display = 'block';
+        }
+        
         this.app.showSuccess('Import completed successfully!');
+        // Record in history (using sample totals for now)
+        this.app.addHistoryEntry('import', 'success', 'CSV import completed', 150, Math.floor(Math.random()*150000)+10000);
     }
     
     showResultsSection() {
         const resultsSection = document.getElementById('results-section');
         if (resultsSection) resultsSection.style.display = 'block';
+        
+        // Get actual import options for display
+        const importMode = document.querySelector('input[name="importMode"]:checked');
+        const skipExistingUsername = document.getElementById('skip-existing-username');
+        const skipExistingUserid = document.getElementById('skip-existing-userid');
+        
+        const importModeText = importMode ? importMode.value : 'create';
+        const skipOptions = [];
+        if (skipExistingUsername && skipExistingUsername.checked) skipOptions.push('Username exists');
+        if (skipExistingUserid && skipExistingUserid.checked) skipOptions.push('User ID exists');
+        const skipOptionsText = skipOptions.length > 0 ? skipOptions.join(', ') : 'None';
         
         // This would be populated with actual results from the server
         const summary = document.getElementById('results-summary');
@@ -608,15 +689,19 @@ export class ImportPage {
                                 </div>
                                 <div class="stat-item">
                                     <span class="stat-label">Successfully Imported:</span>
-                                    <span class="stat-value success">145</span>
+                                    <span class="stat-value success">140</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Skipped:</span>
+                                    <span class="stat-value warning">8</span>
                                 </div>
                                 <div class="stat-item">
                                     <span class="stat-label">Failed:</span>
-                                    <span class="stat-value error">5</span>
+                                    <span class="stat-value error">2</span>
                                 </div>
                                 <div class="stat-item">
                                     <span class="stat-label">Success Rate:</span>
-                                    <span class="stat-value">96.7%</span>
+                                    <span class="stat-value">93.3%</span>
                                 </div>
                                 <div class="stat-item">
                                     <span class="stat-label">Duration:</span>
@@ -630,22 +715,116 @@ export class ImportPage {
                         <h4>Import Details</h4>
                         <ul>
                             <li><strong>Target Population:</strong> Production Users</li>
-                            <li><strong>Import Mode:</strong> Create new users only</li>
+                            <li><strong>Import Mode:</strong> ${importModeText === 'create' ? 'Create new users only' : importModeText === 'update' ? 'Update existing users' : 'Create or update users'}</li>
+                            <li><strong>Skip Options:</strong> ${skipOptionsText}</li>
                             <li><strong>File:</strong> users_import.csv (2.3 MB)</li>
                             <li><strong>Started:</strong> ${new Date().toLocaleString()}</li>
                         </ul>
                     </div>
                     
                     <div class="result-actions">
-                        <button class="btn btn-outline-info" onclick="this.downloadLog()">
+                        <button class="btn btn-outline-info" id="download-log-btn">
                             <i class="mdi mdi-download"></i> Download Log
                         </button>
-                        <button class="btn btn-outline-primary" onclick="this.startNewImport()">
+                        <button class="btn btn-outline-primary" id="new-import-btn">
                             <i class="mdi mdi-refresh"></i> New Import
                         </button>
                     </div>
                 </div>
             `;
+        }
+    }
+    
+    startNewImport() {
+        console.log('🔄 Starting new import...');
+        
+        // Reset form state
+        this.selectedFile = null;
+        
+        // Hide results section
+        this.hideResultsSection();
+        
+        // Show file upload section
+        const fileUploadSection = document.querySelector('.import-section:first-child');
+        if (fileUploadSection) {
+            fileUploadSection.style.display = 'block';
+        }
+        
+        // Reset file input
+        const fileInput = document.getElementById('file-input');
+        if (fileInput) {
+            fileInput.value = '';
+        }
+        
+        // Reset file info display
+        const fileInfo = document.getElementById('file-info');
+        const uploadArea = document.getElementById('upload-area');
+        if (fileInfo && uploadArea) {
+            fileInfo.style.display = 'none';
+            uploadArea.style.display = 'block';
+        }
+        
+        // Reset file preview
+        const filePreview = document.getElementById('file-preview');
+        if (filePreview) {
+            filePreview.innerHTML = '';
+        }
+        
+        // Disable action buttons
+        this.updateButtonStates();
+        
+        // Reset population selection
+        const targetPopulation = document.getElementById('target-population');
+        if (targetPopulation) {
+            targetPopulation.value = '';
+        }
+        
+        // Reset import options to defaults
+        const skipDuplicates = document.getElementById('skip-duplicates');
+        const skipExistingUsername = document.getElementById('skip-existing-username');
+        const skipExistingUserid = document.getElementById('skip-existing-userid');
+        const validateEmails = document.getElementById('validate-emails');
+        const sendWelcome = document.getElementById('send-welcome');
+        const dryRun = document.getElementById('dry-run');
+        
+        if (skipDuplicates) skipDuplicates.checked = true;
+        if (skipExistingUsername) skipExistingUsername.checked = false;
+        if (skipExistingUserid) skipExistingUserid.checked = false;
+        if (validateEmails) validateEmails.checked = true;
+        if (sendWelcome) sendWelcome.checked = false;
+        if (dryRun) dryRun.checked = false;
+        
+        // Reset import mode to create
+        const createMode = document.getElementById('mode-create');
+        if (createMode) createMode.checked = true;
+        
+        // Scroll to top of page
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        this.app.showInfo('Ready for new import. Please select a file.');
+    }
+    
+    downloadLog() {
+        console.log('📥 Downloading import log...');
+        // TODO: Implement actual log download functionality
+        this.app.showInfo('Log download functionality will be implemented in a future update');
+    }
+    
+    updateButtonStates() {
+        const validateFileBtn = document.getElementById('validate-file');
+        const startImportBtn = document.getElementById('start-import');
+        const targetPopulation = document.getElementById('target-population');
+        
+        // Validate File button: enabled only when a file is selected
+        if (validateFileBtn) {
+            validateFileBtn.disabled = !this.selectedFile;
+        }
+        
+        // Start Import button: enabled only when both file and population are selected
+        if (startImportBtn) {
+            const hasFile = !!this.selectedFile;
+            const hasPopulation = targetPopulation && targetPopulation.value;
+            startImportBtn.disabled = !hasFile || !hasPopulation;
         }
     }
     

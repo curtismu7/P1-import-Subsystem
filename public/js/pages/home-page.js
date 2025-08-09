@@ -134,6 +134,28 @@ export class HomePage {
                                 <i class="mdi mdi-chevron-right"></i>
                             </div>
                         </a>
+
+                        <a href="#history" class="action-card" data-page="history">
+                            <div class="card-icon">
+                                <i class="mdi mdi-history" data-icon="🕓"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>History</h3>
+                                <p>Browse recent operations</p>
+                                <i class="mdi mdi-chevron-right"></i>
+                            </div>
+                        </a>
+
+                        <a href="#token" class="action-card" data-page="token">
+                            <div class="card-icon">
+                                <i class="mdi mdi-key-variant" data-icon="🔑"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Token Management</h3>
+                                <p>View and manage API token</p>
+                                <i class="mdi mdi-chevron-right"></i>
+                            </div>
+                        </a>
                     </div>
                 </div>
                 
@@ -227,12 +249,13 @@ export class HomePage {
         if (hasSettings && hasValidToken) {
             if (connectionStatus) connectionStatus.textContent = 'Connected';
             if (connectionIndicator) connectionIndicator.className = 'status-indicator valid';
-            if (connectionIcon) connectionIcon.className = 'mdi mdi-shield';
+            // Use a green check shield to convey positive state
+            if (connectionIcon) connectionIcon.className = 'mdi mdi-shield-check';
             // Connection status set to Connected
         } else if (hasSettings) {
             if (connectionStatus) connectionStatus.textContent = 'Configured';
             if (connectionIndicator) connectionIndicator.className = 'status-indicator warning';
-            if (connectionIcon) connectionIcon.className = 'mdi mdi-shield';
+            if (connectionIcon) connectionIcon.className = 'mdi mdi-shield-alert';
             // Connection status set to Configured
         } else {
             if (connectionStatus) connectionStatus.textContent = 'Not Configured';
