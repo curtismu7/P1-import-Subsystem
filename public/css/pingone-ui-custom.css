@@ -663,8 +663,12 @@ select.form-control:not([multiple]) {
 .status-indicator {
   display: inline-flex;
   align-items: center;
+}
+
+/* Only compact on token status widget */
+.token-status-display .status-indicator {
   justify-content: center;
-  width: 18px; /* compact width just for the dot */
+  width: 18px;
   height: 18px;
 }
 
@@ -682,6 +686,17 @@ select.form-control:not([multiple]) {
 .token-status-display .status-text {
   font-weight: 600;
   color: var(--ping-text-primary, #111827);
+}
+
+/* Settings page server status alignment and green color */
+#settings-server-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#settings-server-status.status-valid .icon-circle {
+  color: var(--ping-success, #10b981);
 }
 
 .token-details {

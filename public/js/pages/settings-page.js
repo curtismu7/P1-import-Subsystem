@@ -415,6 +415,18 @@ export class SettingsPage {
             this.updateTokenButtonStates(tokenStatus.isValid);
             
             console.log('🔧 Token info updated - Valid:', tokenStatus.isValid, 'Time Left:', tokenStatus.timeLeft);
+
+            // Normalize server status indicator (display green when started)
+            const serverStatusEl = document.getElementById('settings-server-status');
+            if (serverStatusEl) {
+                serverStatusEl.classList.remove('status-valid','status-invalid','status-unknown');
+                // If we got a response, the server is up
+                serverStatusEl.classList.add('status-valid');
+                const textNode = serverStatusEl.childNodes[serverStatusEl.childNodes.length - 1];
+                if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+                    // keep as is
+                }
+            }
         }).catch(error => {
             console.error('❌ Failed to get token status:', error);
             // Fallback to app token status
