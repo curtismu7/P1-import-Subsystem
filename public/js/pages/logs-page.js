@@ -90,11 +90,18 @@ export class LogsPage {
                                 </button>
                             </div>
                             <div class="btn-row-right" style="display:flex; gap:12px; align-items:center;">
-                                <span style="font-weight:600; color:#374151;">Formats:</span>
-                                <a href="#" id="export-logs-json" class="btn btn-link p-0" title="Structured JSON file (for backup/sharing)">JSON</a>
-                                <a href="#" id="export-logs-csv" class="btn btn-link p-0" title="Spreadsheet-friendly CSV (Excel/Sheets)">CSV</a>
-                                <a href="#" id="export-logs-ndjson" class="btn btn-link p-0" title="Newline-delimited JSON for Splunk/ELK/Logstash">NDJSON</a>
-                                <a href="#" id="export-logs-all" class="btn btn-link p-0" title="Download JSON, CSV, and NDJSON together">All</a>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary dropdown-toggle" id="logs-formats-dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Formats
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" href="#" id="export-logs-json" title="Structured JSON file (for backup/sharing)">Export JSON (structured)</a></li>
+                                        <li><a class="dropdown-item" href="#" id="export-logs-csv" title="Spreadsheet-friendly CSV (Excel/Sheets)">Export CSV (spreadsheet)</a></li>
+                                        <li><a class="dropdown-item" href="#" id="export-logs-ndjson" title="Newline-delimited JSON for Splunk/ELK/Logstash">Export NDJSON (Splunk/ELK)</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="#" id="export-logs-all" title="Download JSON, CSV, and NDJSON together">Export All Formats</a></li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
