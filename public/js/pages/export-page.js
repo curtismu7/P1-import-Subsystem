@@ -37,10 +37,10 @@ export class ExportPage {
                             <div class="form-group">
                                 <label for="export-population-select">Population *</label>
                                 <div class="input-group">
-                                    <select id="export-population-select" class="form-control" required>
+                                    <select id="export-population-select" class="form-control" required style="height:44px; min-height:44px; line-height:44px; min-width:220px; max-width:300px; padding-top:8px; padding-bottom:8px;">
                                         <option value="">Select a population...</option>
                                     </select>
-                                    <button type="button" id="refresh-populations" class="btn btn-outline-secondary" title="Refresh populations" aria-label="Refresh populations">
+                                    <button type="button" id="refresh-populations" class="btn btn-outline-secondary" title="Refresh populations" aria-label="Refresh populations" style="height:44px; min-height:44px; line-height:44px;">
                                         <i class="mdi mdi-refresh" style="color:#1565c0;"></i>
                                     </button>
                                 </div>
@@ -73,7 +73,7 @@ export class ExportPage {
                         <div class="config-grid">
                             <div class="form-group">
                                 <label for="export-format">Export Format</label>
-                                <select id="export-format" class="form-control">
+                                <select id="export-format" class="form-control" style="height:44px; min-height:44px; line-height:44px; min-width:220px; max-width:320px; padding-top:8px; padding-bottom:8px;">
                                     <option value="csv">CSV (Comma Separated Values)</option>
                                     <option value="json">JSON (JavaScript Object Notation)</option>
                                      <option value="ndjson">NDJSON (JSON Lines)</option>
@@ -85,7 +85,7 @@ export class ExportPage {
                             </div>
                              <div class="form-group">
                                  <label for="export-profile">Export Preset</label>
-                                 <select id="export-profile" class="form-control">
+                                 <select id="export-profile" class="form-control" style="height:44px; min-height:44px; line-height:44px; min-width:220px; max-width:320px; padding-top:8px; padding-bottom:8px;">
                                      <option value="none">None (default)</option>
                                      <option value="pingone">PingOne re-import template</option>
                                      <option value="ad">AD/LDAP-friendly (sAMAccountName, DN)</option>
@@ -95,7 +95,7 @@ export class ExportPage {
                              </div>
                             <div class="form-group">
                                 <label for="export-encoding">Character Encoding</label>
-                                <select id="export-encoding" class="form-control">
+                                <select id="export-encoding" class="form-control" style="height:44px; min-height:44px; line-height:44px; min-width:220px; max-width:320px; padding-top:8px; padding-bottom:8px;">
                                     <option value="utf-8">UTF-8 (Recommended)</option>
                                     <option value="utf-16">UTF-16</option>
                                     <option value="ascii">ASCII</option>
