@@ -83,8 +83,12 @@ export class LogsPage {
                                 <label for="logs-export-format" style="font-weight:600; color:#374151; margin:0;">Format:</label>
                                 <select id="logs-export-format" class="form-control" style="height:36px; min-width: 200px;">
                                     <option value="json" selected>JSON (structured)</option>
+                                    <option value="ndjson">NDJSON (JSON Lines)</option>
                                     <option value="csv">CSV (spreadsheet)</option>
-                                    <option value="ndjson">NDJSON (Splunk/ELK)</option>
+                                    <option value="xlsx">Excel (XLSX)</option>
+                                    <option value="xml">XML</option>
+                                    <option value="ldif">LDIF</option>
+                                    <option value="scim">SCIM 2.0 Bulk JSON</option>
                                     <option value="cef">CEF</option>
                                     <option value="clf">CLF (NCSA)</option>
                                     <option value="elf">ELF (Extended)</option>
@@ -513,6 +517,22 @@ export class LogsPage {
             const ndjson = logsToExport.map(l => JSON.stringify(l)).join('\n');
             const blob = new Blob([ndjson], { type: 'application/x-ndjson' });
             this.triggerDownload(blob, `logs-export-${date}.ndjson`);
+        } else if (format === 'xlsx') {
+            const tsv = this.convertLogsToTSV(logsToExport);
+            const blob = new Blob([tsv], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            this.triggerDownload(blob, `logs-export-${date}.xlsx`);
+        } else if (format === 'xml') {
+            const xml = this.convertLogsToXML(logsToExport);
+            const blob = new Blob([xml], { type: 'application/xml' });
+            this.triggerDownload(blob, `logs-export-${date}.xml`);
+        } else if (format === 'ldif') {
+            const ldif = this.convertLogsToLDIF(logsToExport);
+            const blob = new Blob([ldif], { type: 'text/plain' });
+            this.triggerDownload(blob, `logs-export-${date}.ldif`);
+        } else if (format === 'scim') {
+            const scim = JSON.stringify(this.convertLogsToSCIMBulk(logsToExport), null, 2);
+            const blob = new Blob([scim], { type: 'application/scim+json' });
+            this.triggerDownload(blob, `logs-export-${date}-bulk.json`);
         } else if (format === 'cef') {
             const blob = new Blob([this.convertLogsToCEF(logsToExport)], { type: 'text/plain' });
             this.triggerDownload(blob, `logs-export-${date}.cef`);
@@ -623,6 +643,74 @@ export class LogsPage {
         });
 
         return csvRows.join('\n');
+    }
+
+    convertLogsToTSV(logs) {
+        const headers = ['Timestamp', 'Level', 'Source', 'Message', 'Details'];
+        const rows = [headers.join('\t')];
+        logs.forEach(log => {
+            const row = [
+                new Date(log.timestamp).toLocaleString(),
+                String(log.level || ''),
+                String(log.source || ''),
+                String(log.message || '').replace(/\t/g, '  '),
+                String(typeof log.details === 'string' ? log.details : JSON.stringify(log.details || {})).replace(/\t/g, '  ')
+            ];
+            rows.push(row.join('\t'));
+        });
+        return rows.join('\n');
+    }
+
+    convertLogsToXML(logs) {
+        const escape = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&apos;');
+        const items = logs.map(l => {
+            const fields = [
+                `    <timestamp>${escape(l.timestamp || new Date().toISOString())}</timestamp>`,
+                `    <level>${escape(l.level || '')}</level>`,
+                `    <source>${escape(l.source || '')}</source>`,
+                `    <message>${escape(l.message || '')}</message>`,
+                `    <details>${escape(typeof l.details === 'string' ? l.details : JSON.stringify(l.details || {}))}</details>`
+            ].join('\n');
+            return `  <log>\n${fields}\n  </log>`;
+        }).join('\n');
+        return `<?xml version="1.0" encoding="utf-8"?>\n<logs>\n${items}\n</logs>`;
+    }
+
+    convertLogsToLDIF(logs) {
+        // Represent each log as an LDIF entry (best-effort mapping)
+        return logs.map((l, idx) => {
+            const id = l.id || idx + 1;
+            const dn = `cn=log-${id},ou=Logs,dc=example,dc=com`;
+            const lines = [
+                `dn: ${dn}`,
+                'objectClass: organizationalRole',
+                `cn: log-${id}`,
+                `description: ${String(l.message || '').replace(/\n/g, ' ')}`,
+                `ou: ${String(l.source || 'application')}`,
+                `labeledURI: ${new Date(l.timestamp || Date.now()).toISOString()}`
+            ];
+            return lines.join('\n');
+        }).join('\n\n');
+    }
+
+    convertLogsToSCIMBulk(logs) {
+        const Operations = logs.map((l, idx) => ({
+            method: 'POST',
+            path: '/Events',
+            bulkId: `log${idx+1}`,
+            data: {
+                schemas: ['urn:pingidentity:schemas:event:1.0'],
+                timestamp: l.timestamp || new Date().toISOString(),
+                level: l.level || 'info',
+                source: l.source || 'application',
+                message: l.message || '',
+                details: typeof l.details === 'string' ? l.details : (l.details || {})
+            }
+        }));
+        return {
+            schemas: ['urn:ietf:params:scim:api:messages:2.0:BulkRequest'],
+            Operations
+        };
     }
 
     async downloadLogFiles() {
