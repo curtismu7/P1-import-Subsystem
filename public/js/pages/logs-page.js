@@ -375,13 +375,20 @@ export class LogsPage {
     }
 
     formatLogDetails(log) {
-        // Show provided details or a simple placeholder
+        // Prefer explicit details
         if (typeof log?.details === 'string' && log.details.trim().length > 0) return log.details;
         if (log?.details && typeof log.details === 'object') {
             try { return JSON.stringify(log.details, null, 2); } catch {}
         }
-        const idText = typeof log?.id !== 'undefined' ? ` ${log.id}` : '';
-        return `Additional details for log entry${idText}`;
+        // Synthesize meaningful details from available fields
+        const synthesized = {
+            id: log?.id ?? null,
+            timestamp: log?.timestamp ? new Date(log.timestamp).toLocaleString() : null,
+            level: log?.level ?? null,
+            source: log?.source ?? null,
+            message: log?.message ?? null
+        };
+        return JSON.stringify(synthesized, null, 2);
     }
 
     toggleLogDetails(logEntry) {
