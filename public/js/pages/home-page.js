@@ -160,18 +160,26 @@ export class HomePage {
                 </div>
                 
                 <!-- Recent Activity -->
-                <div class="recent-activity">
-                    <h2>Recent Activity</h2>
-                    <div class="activity-list" id="activity-list">
+                <div class="recent-activity" style="max-width: 640px; margin: 0 auto;">
+                    <h2 style="text-align:center;">Recent Activity</h2>
+                    <div class="activity-list" id="activity-list" style="margin:0 auto;">
                         <div class="activity-item">
                             <div class="activity-icon">
-                                <i class="mdi mdi-check-circle"></i>
+                                <i class="mdi mdi-check-circle" style="color:#16a34a;"></i>
                             </div>
                             <div class="activity-content">
                                 <p>Application started successfully</p>
                                 <span class="activity-time">${new Date().toLocaleString()}</span>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="system-health" style="max-width: 640px; margin: 16px auto 0;">
+                    <h2 style="text-align:center;">Server Health</h2>
+                    <div id="health-panel" class="card" style="padding:12px; border:1px solid rgba(0,0,0,0.08); border-radius:12px; background:#f9fafb;">
+                        <div id="health-summary" style="font-weight:600; margin-bottom:8px;">Checking...</div>
+                        <div id="health-details" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 12px; white-space: pre-wrap; color:#374151;"></div>
                     </div>
                 </div>
                 
@@ -229,6 +237,9 @@ export class HomePage {
         
         // Show/hide Swagger card based on settings
         this.updateSwaggerVisibility();
+
+        // Load server health info
+        this.loadServerHealth();
     }
     
     updateConnectionStatus() {
@@ -421,6 +432,42 @@ export class HomePage {
         const swaggerCard = document.getElementById('swagger-card');
         if (swaggerCard) {
             swaggerCard.style.display = this.app.settings.showSwaggerPage ? 'block' : 'none';
+        }
+    }
+
+    async loadServerHealth() {
+        const summaryEl = document.getElementById('health-summary');
+        const detailsEl = document.getElementById('health-details');
+        if (!summaryEl || !detailsEl) return;
+        try {
+            const resp = await fetch('/api/health');
+            const data = await resp.json().catch(() => ({}));
+            if (resp.ok && data && (data.data || data.message)) {
+                const payload = data.data || data.message;
+                const status = payload.status || 'unknown';
+                const checks = payload.checks || {};
+                const rt = payload.responseTime || '';
+                summaryEl.textContent = `Status: ${status} ${rt ? `(${rt})` : ''}`;
+                summaryEl.style.color = status === 'healthy' ? '#16a34a' : '#dc2626';
+                const printable = {
+                    server: checks.server,
+                    environment: checks.environment,
+                    uptimeSec: Math.floor((checks.uptime || 0)),
+                    tokenManager: checks.tokenManager,
+                    tokenStatus: checks.tokenStatus,
+                    settingsAccessible: checks.settings,
+                    timestamp: checks.timestamp,
+                };
+                detailsEl.textContent = JSON.stringify(printable, null, 2);
+            } else {
+                summaryEl.textContent = 'Status: unknown';
+                summaryEl.style.color = '#9ca3af';
+                detailsEl.textContent = 'Health endpoint not available';
+            }
+        } catch (e) {
+            summaryEl.textContent = 'Status: unknown';
+            summaryEl.style.color = '#9ca3af';
+            detailsEl.textContent = `Error: ${e.message}`;
         }
     }
     
