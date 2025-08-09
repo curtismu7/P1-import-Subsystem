@@ -59,7 +59,7 @@ export class PopulationLoader {
             console.log(`🌐 Fetching populations from server for ${dropdownId}`);
             let populations = [];
             try {
-                const response = await fetch('/api/populations');
+                const response = await fetch(`/api/populations?_=${Date.now()}`, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' } });
                 if (response.ok) {
                     const result = await response.json();
                     console.log(`📊 Populations response for ${dropdownId}:`, result);
@@ -78,7 +78,7 @@ export class PopulationLoader {
             // Fallback 1: /api/settings/public (sanitized)
             if (!Array.isArray(populations) || populations.length === 0) {
                 try {
-                    const resp = await fetch('/api/settings/public');
+                    const resp = await fetch(`/api/settings/public?_=${Date.now()}`, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' } });
                     if (resp.ok) {
                         const data = await resp.json().catch(() => ({}));
                         populations = (data && (data.populations || (data.data && data.data.populations))) || [];
@@ -90,7 +90,7 @@ export class PopulationLoader {
             // Fallback 2: /api/settings (may include cache)
             if (!Array.isArray(populations) || populations.length === 0) {
                 try {
-                    const resp = await fetch('/api/settings');
+                    const resp = await fetch(`/api/settings?_=${Date.now()}`, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' } });
                     if (resp.ok) {
                         const payload = await resp.json().catch(() => ({}));
                         const settings = payload && ((payload.success && (payload.data && (payload.data.data || payload.data))) || payload);
