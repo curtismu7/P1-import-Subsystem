@@ -43,7 +43,7 @@ export class HistoryPage {
                             <div class="col-md-3" style="flex:0 1 300px; min-width:280px; max-width:340px;">
                                 <div class="form-group">
                                     <label for="operation-filter">Filter by Operation:</label>
-                                    <select id="operation-filter" class="form-control" style="height:36px; max-width:100%;" title="Filter by Operation">
+                                    <select id="operation-filter" class="form-control" style="height:44px; min-height:44px; line-height:44px; max-width:320px; padding-top:8px; padding-bottom:8px;" title="Filter by Operation">
                                         <option value="all">All Operations</option>
                                         <option value="import">Import Users</option>
                                         <option value="export">Export Users</option>
@@ -57,7 +57,7 @@ export class HistoryPage {
                             <div class="col-md-3" style="flex:0 1 260px; min-width:240px; max-width:300px;">
                                 <div class="form-group">
                                     <label for="status-filter">Filter by Status:</label>
-                                    <select id="status-filter" class="form-control" style="height:36px; max-width:100%;" title="Filter by Status">
+                                    <select id="status-filter" class="form-control" style="height:44px; min-height:44px; line-height:44px; max-width:320px; padding-top:8px; padding-bottom:8px;" title="Filter by Status">
                                         <option value="all">All Status</option>
                                         <option value="success">Success</option>
                                         <option value="error">Error</option>
@@ -75,7 +75,7 @@ export class HistoryPage {
                             <div class="col-md-2" style="flex:0 1 220px; min-width:200px; max-width:260px;">
                                 <div class="form-group">
                                     <label for="date-range">Date Range:</label>
-                                    <select id="date-range" class="form-control" style="height:36px; max-width:100%;" title="Filter by Date Range">
+                                    <select id="date-range" class="form-control" style="height:44px; min-height:44px; line-height:44px; max-width:320px; padding-top:8px; padding-bottom:8px;" title="Filter by Date Range">
                                         <option value="all">All Time</option>
                                         <option value="today">Today</option>
                                         <option value="week">This Week</option>
@@ -106,7 +106,7 @@ export class HistoryPage {
                             </div>
                             <div class="btn-row-right" style="display:flex; gap:12px; align-items:center;">
                                 <label for="history-export-format" style="font-weight:600; color:#374151; margin:0;">Format:</label>
-                                <select id="history-export-format" class="form-control" style="height:36px; min-width: 200px;">
+                                <select id="history-export-format" class="form-control" style="height:44px; min-height:44px; line-height:44px; min-width: 220px; padding-top:8px; padding-bottom:8px;">
                                     <option value="json" selected>JSON (default)</option>
                                     <option value="csv">CSV (spreadsheet)</option>
                                     <option value="ndjson">NDJSON (Splunk/ELK)</option>
