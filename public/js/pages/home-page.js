@@ -440,33 +440,62 @@ export class HomePage {
         const detailsEl = document.getElementById('health-details');
         if (!summaryEl || !detailsEl) return;
         try {
-            const resp = await fetch('/api/health');
-            const data = await resp.json().catch(() => ({}));
-            if (resp.ok && data && (data.data || data.message)) {
-                const payload = data.data || data.message;
-                const status = payload.status || 'unknown';
-                const checks = payload.checks || {};
-                const rt = payload.responseTime || '';
-                summaryEl.textContent = `Status: ${status} ${rt ? `(${rt})` : ''}`;
-                summaryEl.style.color = status === 'healthy' ? '#16a34a' : '#dc2626';
-                const printable = {
-                    server: checks.server,
-                    environment: checks.environment,
-                    uptimeSec: Math.floor((checks.uptime || 0)),
-                    tokenManager: checks.tokenManager,
-                    tokenStatus: checks.tokenStatus,
-                    settingsAccessible: checks.settings,
-                    timestamp: checks.timestamp,
+            const [healthResp, cacheResp, swaggerResp, debugResp, logsResp] = await Promise.all([
+                fetch('/api/health'),
+                fetch('/api/populations/cache-status'),
+                fetch('/swagger.json'),
+                fetch('/api/debug/modules'),
+                fetch('/api/logs?limit=5')
+            ].map(p => p.catch(() => null)));
+
+            const data = healthResp ? await healthResp.json().catch(() => ({})) : {};
+            const payload = data && (data.data || data.message) ? (data.data || data.message) : {};
+            const status = payload.status || 'unknown';
+            const checks = payload.checks || {};
+            const rt = payload.responseTime || '';
+
+            summaryEl.textContent = `Status: ${status} ${rt ? `(${rt})` : ''}`;
+            summaryEl.style.color = status === 'healthy' ? '#16a34a' : '#dc2626';
+
+            // Extra probes
+            let cacheData = {};
+            if (cacheResp && cacheResp.ok) {
+                const cacheJson = await cacheResp.json().catch(() => ({}));
+                const cacheMsg = cacheJson && (cacheJson.data || cacheJson.message) ? (cacheJson.data || cacheJson.message) : cacheJson;
+                cacheData = {
+                    hasCachedData: !!(cacheMsg && (cacheMsg.hasCachedData === true || cacheMsg.isExpired === false)),
+                    cachedCount: cacheMsg?.count ?? cacheMsg?.data?.count ?? undefined,
+                    cachedAt: cacheMsg?.cachedAt || null,
                 };
-                detailsEl.textContent = JSON.stringify(printable, null, 2);
-            } else {
+            }
+
+            const swaggerOk = !!(swaggerResp && swaggerResp.ok);
+            const debugOk = !!(debugResp && debugResp.ok);
+            let logsCount;
+            if (logsResp && logsResp.ok) {
+                const logsJson = await logsResp.json().catch(() => []);
+                const list = Array.isArray(logsJson) ? logsJson : (logsJson.data || logsJson.logs || []);
+                logsCount = Array.isArray(list) ? list.length : 0;
+            }
+
+            const printable = {
+                server: checks.server,
+                environment: checks.environment,
+                uptimeSec: Math.floor((checks.uptime || 0)),
+                tokenManager: checks.tokenManager,
+                tokenStatus: checks.tokenStatus,
+                settingsAccessible: checks.settings,
+                timestamp: checks.timestamp,
+                populationCache: cacheData,
+                swaggerAvailable: swaggerOk,
+                debugModules: debugOk,
+                recentLogs: logsCount
+            };
+            detailsEl.textContent = JSON.stringify(printable, null, 2);
+
+        } catch (e) {
                 summaryEl.textContent = 'Status: unknown';
                 summaryEl.style.color = '#9ca3af';
-                detailsEl.textContent = 'Health endpoint not available';
-            }
-        } catch (e) {
-            summaryEl.textContent = 'Status: unknown';
-            summaryEl.style.color = '#9ca3af';
             detailsEl.textContent = `Error: ${e.message}`;
         }
     }
