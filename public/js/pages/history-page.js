@@ -108,11 +108,16 @@ export class HistoryPage {
                                 <button id="export-history-btn" class="btn btn-success">
                                     <i class="fas fa-download me-1"></i><span>Export History</span>
                                 </button>
-                                <span style="font-weight:600; color:#374151;">Formats:</span>
-                                <a href="#" id="export-history-json" class="btn btn-link p-0" title="Structured JSON file (default)">JSON</a>
-                                <a href="#" id="export-history-csv" class="btn btn-link p-0" title="Spreadsheet-friendly CSV (Excel/Sheets)">CSV</a>
-                                <a href="#" id="export-history-ndjson" class="btn btn-link p-0" title="Newline-delimited JSON for Splunk/ELK/Logstash">NDJSON</a>
-                                <a href="#" id="export-history-all" class="btn btn-link p-0" title="Download JSON, CSV, and NDJSON together">All</a>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary dropdown-toggle" id="history-formats-dropdown" data-bs-toggle="dropdown" aria-expanded="false">Formats</button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" href="#" id="export-history-json" title="Structured JSON file (default)">Export JSON (default)</a></li>
+                                        <li><a class="dropdown-item" href="#" id="export-history-csv" title="Spreadsheet-friendly CSV (Excel/Sheets)">Export CSV (spreadsheet)</a></li>
+                                        <li><a class="dropdown-item" href="#" id="export-history-ndjson" title="Newline-delimited JSON for Splunk/ELK/Logstash">Export NDJSON (Splunk/ELK)</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="#" id="export-history-all" title="Download JSON, CSV, and NDJSON together">Export All Formats</a></li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
