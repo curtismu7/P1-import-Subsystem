@@ -388,32 +388,12 @@ export class SettingsPage {
                 text.textContent = tokenStatus.isValid ? 'Token: Valid' : 'Token: Invalid';
                 
                 // Add focus management for invalid tokens
-                if (!tokenStatus.isValid) {
-                    // Highlight the token section to draw attention
-                    // Avoid unsupported :has-text() pseudo; find section by title text
-                    const tokenSection = Array.from(document.querySelectorAll('.settings-section'))
-                        .find(sec => sec.querySelector('.section-title')?.textContent?.includes('Token Management'));
-                    if (tokenSection) {
-                        tokenSection.style.border = '2px solid #dc3545';
-                        tokenSection.style.backgroundColor = '#fff5f5';
-                        
-                        // Add a focus indicator
-                        setTimeout(() => {
-                            const refreshBtn = document.getElementById('refresh-token');
-                            if (refreshBtn) {
-                                refreshBtn.focus();
-                                refreshBtn.style.boxShadow = '0 0 0 3px rgba(220, 53, 69, 0.5)';
-                            }
-                        }, 500);
-                    }
-                } else {
-                    // Remove highlighting for valid tokens
-                    const tokenSection = Array.from(document.querySelectorAll('.settings-section'))
-                        .find(sec => sec.querySelector('.section-title')?.textContent?.includes('Token Management'));
-                    if (tokenSection) {
-                        tokenSection.style.border = '';
-                        tokenSection.style.backgroundColor = '';
-                    }
+                // Always show a green outline around Token Management section
+                const tokenSection = Array.from(document.querySelectorAll('.settings-section'))
+                    .find(sec => sec.querySelector('.section-title')?.textContent?.includes('Token Management'));
+                if (tokenSection) {
+                    tokenSection.style.border = '2px solid #00AA44';
+                    tokenSection.style.backgroundColor = '';
                 }
             }
             
@@ -545,30 +525,12 @@ export class SettingsPage {
         const revokeBtn = document.getElementById('revoke-token');
         const clearBtn = document.getElementById('clear-token');
         
-        if (refreshBtn) {
-            refreshBtn.disabled = !isValid;
-            refreshBtn.style.opacity = isValid ? '1' : '0.5';
-        }
-        
-        if (validateBtn) {
-            validateBtn.disabled = !isValid;
-            validateBtn.style.opacity = isValid ? '1' : '0.5';
-        }
-        
-        if (testConnectionBtn) {
-            testConnectionBtn.disabled = !isValid;
-            testConnectionBtn.style.opacity = isValid ? '1' : '0.5';
-        }
-        
-        if (revokeBtn) {
-            revokeBtn.disabled = !isValid;
-            revokeBtn.style.opacity = isValid ? '1' : '0.5';
-        }
-        
-        if (clearBtn) {
-            clearBtn.disabled = !isValid;
-            clearBtn.style.opacity = isValid ? '1' : '0.5';
-        }
+        // Always enable all token buttons
+        if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.style.opacity = '1'; }
+        if (validateBtn) { validateBtn.disabled = false; validateBtn.style.opacity = '1'; }
+        if (testConnectionBtn) { testConnectionBtn.disabled = false; testConnectionBtn.style.opacity = '1'; }
+        if (revokeBtn) { revokeBtn.disabled = false; revokeBtn.style.opacity = '1'; }
+        if (clearBtn) { clearBtn.disabled = false; clearBtn.style.opacity = '1'; }
     }
     
     handleToggleSecret() {
