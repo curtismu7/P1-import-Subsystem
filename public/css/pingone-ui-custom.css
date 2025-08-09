@@ -1996,6 +1996,55 @@ button#clear-token,
   box-shadow: 0 1px 6px rgba(21, 101, 192, 0.18);
 }
 
+/* Taller, animated bar and fun "beer mug" theme for Export */
+#export-progress .progress-bar {
+  height: 20px;
+  background: rgba(15, 76, 129, 0.12);
+  border: 2px solid rgba(15, 76, 129, 0.35);
+}
+
+#export-progress .progress-fill {
+  background: linear-gradient(90deg, #f59e0b, #f59e0b 40%, #d97706 100%);
+  background-size: 200% 100%;
+  animation: beerFlow 2s linear infinite;
+  position: relative;
+}
+
+/* Foam cap */
+#export-progress .progress-fill::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 6px;
+  background: linear-gradient(180deg, #fff, rgba(255,255,255,0.8));
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06) inset;
+}
+
+/* Bubbles rising */
+#export-progress .progress-fill::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0; right: 0;
+  background-image:
+    radial-gradient(circle at 10% 80%, rgba(255,255,255,0.45) 0 2px, transparent 3px),
+    radial-gradient(circle at 30% 70%, rgba(255,255,255,0.35) 0 2px, transparent 3px),
+    radial-gradient(circle at 55% 75%, rgba(255,255,255,0.4) 0 2px, transparent 3px),
+    radial-gradient(circle at 75% 65%, rgba(255,255,255,0.3) 0 2px, transparent 3px),
+    radial-gradient(circle at 90% 85%, rgba(255,255,255,0.25) 0 2px, transparent 3px);
+  background-size: 200% 100%;
+  animation: bubbles 3s linear infinite;
+}
+
+@keyframes beerFlow {
+  0% { background-position: 0% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes bubbles {
+  0% { background-position: 0 100%; opacity: 0.8; }
+  100% { background-position: 0 0%; opacity: 1; }
+}
+
 /* Footer: force dark background regardless of earlier declarations */
 #app-footer.app-footer {
   background: #041727 !important;
