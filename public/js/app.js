@@ -1,15 +1,15 @@
 // PingOne User Management App v7.2.0
 
-import { HomePage } from './pages/home-page.js';
-import { SettingsPage } from './pages/settings-page.js';
-import { ImportPage } from './pages/import-page.js';
-import { ExportPage } from './pages/export-page.js';
-import { DeletePage } from './pages/delete-page.js';
-import { ModifyPage } from './pages/modify-page.js';
-import { LogsPage } from './pages/logs-page.js';
-import { TokenManagementPage } from './pages/token-management-page.js';
-import { HistoryPage } from './pages/history-page.js';
-import { SwaggerPage } from './pages/swagger-page.js';
+import { HomePage } from './pages/home-page.js?v=7.2.0';
+import { SettingsPage } from './pages/settings-page.js?v=7.2.0';
+import { ImportPage } from './pages/import-page.js?v=7.2.0';
+import { ExportPage } from './pages/export-page.js?v=7.2.0';
+import { DeletePage } from './pages/delete-page.js?v=7.2.0';
+import { ModifyPage } from './pages/modify-page.js?v=7.2.0';
+import { LogsPage } from './pages/logs-page.js?v=7.2.0';
+import { TokenManagementPage } from './pages/token-management-page.js?v=7.2.0';
+import { HistoryPage } from './pages/history-page.js?v=7.2.0';
+import { SwaggerPage } from './pages/swagger-page.js?v=7.2.0';
 
 class PingOneApp {
     constructor() {
