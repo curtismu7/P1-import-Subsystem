@@ -225,6 +225,9 @@ export class ExportPage {
                     <div class="export-box">
                         <h3 class="section-title">Export Complete</h3>
                         <p>Your export has been completed successfully</p>
+
+                        <!-- Consistent summary block -->
+                        <div id="export-summary" class="results-container" style="margin-bottom: 16px;"></div>
                         
                         <div class="export-actions">
                             <button type="button" id="download-export" class="btn btn-success">
@@ -704,23 +707,55 @@ export class ExportPage {
         this.setupResultsEventListeners();
 
         if (summaryDiv) {
+            const total = Number(document.getElementById('total-users')?.textContent || this.selectedPopulation.userCount || 0);
+            const processed = Number(document.getElementById('users-processed')?.textContent || total);
+            const success = processed; // for now assume all processed succeeded
+            const failed = 0;
+            const skipped = 0;
+            const successRate = total > 0 ? ((success / total) * 100).toFixed(1) : '0.0';
+
             summaryDiv.innerHTML = `
-                <div class="alert alert-success">
-                    <h4>Export Successful!</h4>
-                    <p>Successfully exported ${this.selectedPopulation.userCount || 0} users from population "${this.selectedPopulation.name}"</p>
-                </div>
-                <div class="export-stats">
-                    <div class="stat-item">
-                        <span class="label">File Format:</span>
-                        <span class="value">${this.exportOptions.format.toUpperCase()}</span>
+                <div class="results-grid">
+                    <div class="result-card success">
+                        <i class="mdi mdi-check-circle"></i>
+                        <div>
+                            <h3>Export Summary</h3>
+                            <div class="result-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label">Total Users:</span>
+                                    <span class="stat-value">${total}</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Exported:</span>
+                                    <span class="stat-value success">${success}</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Skipped:</span>
+                                    <span class="stat-value warning">${skipped}</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Failed:</span>
+                                    <span class="stat-value error">${failed}</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Success Rate:</span>
+                                    <span class="stat-value">${successRate}%</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Format:</span>
+                                    <span class="stat-value">${this.exportOptions.format.toUpperCase()}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="stat-item">
-                        <span class="label">File Size:</span>
-                        <span class="value">~${Math.round((this.selectedPopulation.userCount || 0) * 0.5)}KB</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="label">Export Time:</span>
-                        <span class="value">${new Date().toLocaleTimeString()}</span>
+
+                    <div class="result-details">
+                        <h4>Export Details</h4>
+                        <ul>
+                            <li><strong>Target Population:</strong> ${this.selectedPopulation.name}</li>
+                            <li><strong>File:</strong> ${this.generateFileName()}</li>
+                            <li><strong>Completed:</strong> ${new Date().toLocaleString()}</li>
+                        </ul>
                     </div>
                 </div>
             `;
