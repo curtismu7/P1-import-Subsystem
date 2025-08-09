@@ -1943,6 +1943,55 @@ button#clear-token,
   backdrop-filter: blur(4px);
 }
 
+/* Modern blue progress bar styling (applies across Import/Export/Modify) */
+.progress-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.progress-bar {
+  position: relative;
+  flex: 1 1 auto;
+  height: 12px;
+  background: rgba(21, 101, 192, 0.15);
+  border: 1px solid rgba(21, 101, 192, 0.3);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #1565c0, #1e88e5, #42a5f5);
+  background-size: 200% 100%;
+  animation: progressShimmer 2s linear infinite;
+  box-shadow: 0 0 10px rgba(33, 150, 243, 0.35);
+  border-radius: inherit;
+  transition: width 300ms ease;
+}
+
+@keyframes progressShimmer {
+  0% { background-position: 0% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.progress-text {
+  min-width: 48px;
+  font-weight: 600;
+  color: #0d47a1;
+}
+
+/* Footer: force dark background regardless of earlier declarations */
+#app-footer.app-footer {
+  background: #041727 !important;
+  border-top-color: rgba(255, 255, 255, 0.15) !important;
+}
+#app-footer .footer-content {
+  color: #e5e7eb !important;
+}
+
 .modal {
   background: white;
   border-radius: var(--radius-lg);
