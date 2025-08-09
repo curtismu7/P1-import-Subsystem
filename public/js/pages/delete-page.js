@@ -127,7 +127,7 @@ export class DeletePage {
                                 <i class="mdi mdi-account-group"></i> Load Users
                             </button>
                             <button id="delete-users-btn" class="btn btn-danger" disabled>
-                                <i class="mdi mdi-delete"></i> Delete Users
+                                <i class="mdi mdi-delete"></i> Delete Users - Warning
                             </button>
                         </div>
                     </div>
@@ -329,7 +329,7 @@ export class DeletePage {
 
                          <!-- Warning Modal -->
          <div class="modal fade" id="delete-warning-modal" tabindex="-1" role="dialog" aria-labelledby="delete-warning-modal-label" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-             <div class="modal-dialog modal-lg" role="document">
+             <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
                         <div class="modal-content">
                             <div class="modal-header bg-danger text-white">
                                 <h5 class="modal-title" id="delete-warning-modal-label">
