@@ -308,6 +308,24 @@ button#clear-token,
   border-radius: 10px !important;
 }
 
+/* Export page: make Preview Export button medium blue */
+#preview-export.btn {
+  background-color: #1e88e5 !important; /* medium blue */
+  border-color: #1e88e5 !important;
+  color: #ffffff !important;
+}
+#preview-export.btn:hover,
+#preview-export.btn:focus {
+  background-color: #1565c0 !important; /* darker on hover */
+  border-color: #1565c0 !important;
+  color: #ffffff !important;
+}
+#preview-export.btn:active {
+  background-color: #0b3c8c !important; /* even darker active */
+  border-color: #0b3c8c !important;
+  color: #ffffff !important;
+}
+
 /* Population fields layout */
 .population-fields {
   display: flex;
