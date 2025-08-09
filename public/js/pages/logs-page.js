@@ -567,7 +567,7 @@ export class LogsPage {
         // CEF:Version|Device Vendor|Device Product|Device Version|Signature ID|Name|Severity|Extension
         const vendor = 'PingIdentity';
         const product = 'UserManagementApp';
-        const version = '7.0';
+        const version = '7.2';
         return logs.map((l, idx) => {
             const sevMap = { error: '10', warn: '5', info: '3', debug: '1' };
             const sev = sevMap[l.level] || '3';
