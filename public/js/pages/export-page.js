@@ -40,8 +40,8 @@ export class ExportPage {
                                     <select id="export-population-select" class="form-control" required>
                                         <option value="">Select a population...</option>
                                     </select>
-                                    <button type="button" id="refresh-populations" class="btn btn-outline-secondary">
-                                        <i class="mdi mdi-refresh"></i>
+                                    <button type="button" id="refresh-populations" class="btn btn-outline-secondary" title="Refresh populations" aria-label="Refresh populations">
+                                        <i class="mdi mdi-refresh" style="color:#1565c0;"></i>
                                     </button>
                                 </div>
                                 <div class="form-help">Select the population containing the users you want to export</div>

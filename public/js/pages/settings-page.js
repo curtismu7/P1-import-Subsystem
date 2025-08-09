@@ -65,13 +65,13 @@ export class SettingsPage {
                             </div>
                             
                             <div class="form-group">
-                                <label><i class="mdi mdi-account-group"></i> PingOne Population</label>
+                                <label><i class="mdi mdi-account-group" style="color:#1565c0;"></i> PingOne Population</label>
                                 <div class="input-group">
                                     <select id="settings-population" name="populationId" class="form-control">
                                         <option value="">Select Population</option>
                                     </select>
-                                    <button type="button" id="refresh-populations" class="btn btn-outline-secondary">
-                                        <i class="mdi mdi-refresh"></i>
+                                    <button type="button" id="refresh-populations" class="btn btn-outline-secondary" title="Refresh populations" aria-label="Refresh populations">
+                                        <i class="mdi mdi-refresh" style="color:#1565c0;"></i>
                                     </button>
                                 </div>
                                 <div class="form-help">Default population for operations (optional)</div>
