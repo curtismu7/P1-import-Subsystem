@@ -95,14 +95,23 @@ export class HistoryPage {
                         <h3>History Actions</h3>
                     </div>
                     <div class="card-body" style="display:flex; justify-content:center;">
-                        <div class="btn-group" role="group" aria-label="History actions" style="background:#edf2f7; border:2px solid rgba(0,0,0,0.08); border-radius:12px; padding:10px 14px; gap:12px;">
+                        <div class="btn-toolbar" style="display:flex; gap: 16px; align-items: center; justify-content:center; background: #fdecec; border: 2px solid #dc3545; border-radius: 12px; padding: 12px 16px; max-width: 100%; margin: 0 auto;">
                             <button id="refresh-history-btn" class="btn btn-primary">
                                 <i class="fas fa-sync me-1"></i><span>Refresh History</span>
                             </button>
-                            <button id="export-history-btn" class="btn btn-success">
-                                <i class="fas fa-download me-1"></i><span>Export History</span>
-                            </button>
-                            <button id="clear-history-btn" class="btn btn-warning">
+                            <div class="dropdown" id="export-history-group">
+                                <button id="export-history-btn" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-download me-1"></i><span>Export History</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#" id="export-history-json" title="Structured JSON file (default)">Export JSON (default)</a></li>
+                                    <li><a class="dropdown-item" href="#" id="export-history-csv" title="Spreadsheet-friendly CSV (Excel/Sheets)">Export CSV (spreadsheet)</a></li>
+                                    <li><a class="dropdown-item" href="#" id="export-history-ndjson" title="Newline-delimited JSON for Splunk/ELK/Logstash">Export NDJSON (Splunk/ELK)</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="#" id="export-history-all" title="Download JSON, CSV, and NDJSON together">Export All Formats</a></li>
+                                </ul>
+                            </div>
+                            <button id="clear-history-btn" class="btn btn-danger">
                                 <i class="fas fa-trash me-1"></i><span>Clear History</span>
                             </button>
                         </div>
@@ -155,6 +164,7 @@ export class HistoryPage {
                         </div>
                     </div>
                     <div class="card-body">
+                        <div class="section-divider" style="height: 2px; background: rgba(0,0,0,0.08); border-radius: 2px; margin: 6px 0 16px;"></div>
                         <div id="history-loading" class="text-center" style="display: none;">
                             <div class="spinner-border" role="status"></div>
                             <p>Loading operation history...</p>
@@ -204,12 +214,19 @@ export class HistoryPage {
         });
 
         document.getElementById('export-history-btn')?.addEventListener('click', () => {
+            // Default export JSON
             this.exportHistory();
         });
 
         document.getElementById('clear-history-btn')?.addEventListener('click', () => {
             this.clearHistory();
         });
+
+        // Export format handlers
+        document.getElementById('export-history-json')?.addEventListener('click', (e) => { e.preventDefault(); this.exportHistorySpecific('json'); });
+        document.getElementById('export-history-csv')?.addEventListener('click', (e) => { e.preventDefault(); this.exportHistorySpecific('csv'); });
+        document.getElementById('export-history-ndjson')?.addEventListener('click', (e) => { e.preventDefault(); this.exportHistorySpecific('ndjson'); });
+        document.getElementById('export-history-all')?.addEventListener('click', (e) => { e.preventDefault(); this.exportHistorySpecific('all'); });
     }
 
     async loadHistory() {
@@ -358,36 +375,27 @@ export class HistoryPage {
         noHistory.style.display = 'none';
         historyCountDisplay.textContent = `Showing ${this.filteredHistory.length} operations`;
 
-        historyList.innerHTML = this.filteredHistory.map(entry => `
-            <div class="history-entry history-${entry.status}" data-entry-id="${entry.id}">
-                <div class="history-timeline-marker">
-                    <i class="fas ${this.getOperationIcon(entry.operation)}"></i>
+        historyList.innerHTML = this.filteredHistory.map((entry, idx) => `
+            <div class="history-entry history-${entry.status}" data-entry-id="${entry.id}"
+                 style="display:grid; grid-template-columns: 200px 120px 1fr auto; gap: 12px; align-items:center; padding:10px 12px; ${idx>0?'border-top:1px solid rgba(0,0,0,0.08);':''}">
+                <div class="history-timestamp" style="color:#374151; font-weight:600;">${new Date(entry.timestamp).toLocaleString()}</div>
+                <div class="history-status status-${entry.status}" style="text-transform:uppercase; font-weight:700;">${entry.status}</div>
+                <div class="history-message"><span style="color:#6b7280; font-weight:600;">${this.getOperationTitle(entry.operation)}:</span> ${entry.description}</div>
+                <div class="history-actions" style="justify-self:end;">
+                    <button class="btn btn-sm btn-outline-secondary toggle-details-btn">
+                        <i class="fas fa-chevron-down"></i> Details
+                    </button>
                 </div>
-                <div class="history-content">
-                    <div class="history-header">
-                        <div class="history-title">
-                            <strong>${this.getOperationTitle(entry.operation)}</strong>
-                            <span class="history-status status-${entry.status}">${entry.status.toUpperCase()}</span>
-                        </div>
-                        <div class="history-timestamp">${new Date(entry.timestamp).toLocaleString()}</div>
-                    </div>
-                    <div class="history-description">${entry.description}</div>
-                    <div class="history-details">
-                        ${entry.usersProcessed > 0 ? `<span class="detail-item">Users: ${entry.usersProcessed}</span>` : ''}
-                        <span class="detail-item">Duration: ${this.formatDuration(entry.duration)}</span>
-                        <span class="detail-item">User: ${entry.user}</span>
-                    </div>
-                    <div class="history-actions">
-                        <button class="btn btn-sm btn-outline-secondary toggle-details-btn">
-                            <i class="fas fa-chevron-down"></i> Details
-                        </button>
-                    </div>
-                    <div class="history-full-details" style="display: none;">
-                        <p><strong>Full Details:</strong></p>
-                        <p>${entry.details}</p>
-                        <p><strong>Operation ID:</strong> ${entry.id}</p>
-                        <p><strong>Timestamp:</strong> ${entry.timestamp}</p>
-                    </div>
+                <div class="history-details" style="grid-column: 1 / -1; color:#374151;">
+                    ${entry.usersProcessed > 0 ? `<span class="detail-item me-3">Users: ${entry.usersProcessed}</span>` : ''}
+                    <span class="detail-item me-3">Duration: ${this.formatDuration(entry.duration)}</span>
+                    <span class="detail-item">User: ${entry.user}</span>
+                </div>
+                <div class="history-full-details" style="grid-column: 1 / -1; display: none; background:#f9fafb; border:1px solid rgba(0,0,0,0.06); border-radius:8px; padding:8px 10px;">
+                    <p><strong>Full Details:</strong></p>
+                    <p>${entry.details}</p>
+                    <p><strong>Operation ID:</strong> ${entry.id}</p>
+                    <p><strong>Timestamp:</strong> ${entry.timestamp}</p>
                 </div>
             </div>
         `).join('');
@@ -484,17 +492,31 @@ export class HistoryPage {
             return;
         }
 
-        const csvContent = this.convertHistoryToCSV(historyToExport);
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `operation-history-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+        const jsonBlob = new Blob([JSON.stringify(historyToExport, null, 2)], { type: 'application/json' });
+        this.triggerDownload(jsonBlob, `operation-history-${new Date().toISOString().split('T')[0]}.json`);
+    }
+
+    exportHistorySpecific(format) {
+        const historyToExport = this.filteredHistory.length > 0 ? this.filteredHistory : this.history;
+        if (historyToExport.length === 0) { this.app?.showError?.('No history to export'); return; }
+        const date = new Date().toISOString().split('T')[0];
+        if (format === 'json') {
+            const blob = new Blob([JSON.stringify(historyToExport, null, 2)], { type: 'application/json' });
+            this.triggerDownload(blob, `operation-history-${date}.json`);
+        } else if (format === 'csv') {
+            const csvContent = this.convertHistoryToCSV(historyToExport);
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            this.triggerDownload(blob, `operation-history-${date}.csv`);
+        } else if (format === 'ndjson') {
+            const ndjson = historyToExport.map(h => JSON.stringify(h)).join('\n');
+            const blob = new Blob([ndjson], { type: 'application/x-ndjson' });
+            this.triggerDownload(blob, `operation-history-${date}.ndjson`);
+        } else if (format === 'all') {
+            // Trigger sequentially; browser will download each file
+            this.exportHistorySpecific('json');
+            this.exportHistorySpecific('csv');
+            this.exportHistorySpecific('ndjson');
+        }
     }
 
     convertHistoryToCSV(history) {
@@ -515,6 +537,17 @@ export class HistoryPage {
         });
 
         return csvRows.join('\n');
+    }
+
+    triggerDownload(blob, filename) {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
     }
 
     async clearHistory() {
