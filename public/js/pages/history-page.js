@@ -40,10 +40,10 @@ export class HistoryPage {
                     </div>
                     <div class="card-body" style="background:#f3f7fb; border:1px solid rgba(0,0,0,0.06); border-radius:12px;">
                         <div class="row" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-                            <div class="col-md-3" style="flex:0 0 260px; max-width:260px;">
+                            <div class="col-md-3" style="flex:0 1 300px; min-width:280px; max-width:340px;">
                                 <div class="form-group">
                                     <label for="operation-filter">Filter by Operation:</label>
-                                    <select id="operation-filter" class="form-control" style="height:36px;">
+                                    <select id="operation-filter" class="form-control" style="height:36px; max-width:100%;" title="Filter by Operation">
                                         <option value="all">All Operations</option>
                                         <option value="import">Import Users</option>
                                         <option value="export">Export Users</option>
@@ -54,10 +54,10 @@ export class HistoryPage {
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-3" style="flex:0 0 220px; max-width:220px;">
+                            <div class="col-md-3" style="flex:0 1 260px; min-width:240px; max-width:300px;">
                                 <div class="form-group">
                                     <label for="status-filter">Filter by Status:</label>
-                                    <select id="status-filter" class="form-control" style="height:36px;">
+                                    <select id="status-filter" class="form-control" style="height:36px; max-width:100%;" title="Filter by Status">
                                         <option value="all">All Status</option>
                                         <option value="success">Success</option>
                                         <option value="error">Error</option>
@@ -66,16 +66,16 @@ export class HistoryPage {
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-4" style="flex:1 1 320px; max-width:420px;">
+                            <div class="col-md-4" style="flex:1 1 420px; min-width:320px; max-width:600px;">
                                 <div class="form-group">
                                     <label for="history-search">Search History:</label>
-                                    <input type="text" id="history-search" class="form-control" placeholder="Search operations..." style="height:36px;">
+                                    <input type="text" id="history-search" class="form-control" placeholder="Search operations..." style="height:36px;" title="Type to filter by operation, status, description, details, user, or date">
                                 </div>
                             </div>
-                            <div class="col-md-2" style="flex:0 0 180px; max-width:180px;">
+                            <div class="col-md-2" style="flex:0 1 220px; min-width:200px; max-width:260px;">
                                 <div class="form-group">
                                     <label for="date-range">Date Range:</label>
-                                    <select id="date-range" class="form-control" style="height:36px;">
+                                    <select id="date-range" class="form-control" style="height:36px; max-width:100%;" title="Filter by Date Range">
                                         <option value="all">All Time</option>
                                         <option value="today">Today</option>
                                         <option value="week">This Week</option>
@@ -94,26 +94,26 @@ export class HistoryPage {
                     <div class="card-header">
                         <h3>History Actions</h3>
                     </div>
-                    <div class="card-body" style="display:flex; justify-content:center;">
-                        <div class="btn-toolbar" style="display:flex; gap: 16px; align-items: center; justify-content:center; background: #fdecec; border: 2px solid #dc3545; border-radius: 12px; padding: 12px 16px; max-width: 100%; margin: 0 auto;">
-                            <button id="refresh-history-btn" class="btn btn-primary">
-                                <i class="fas fa-sync me-1"></i><span>Refresh History</span>
-                            </button>
-                            <div class="dropdown" id="export-history-group">
-                                <button id="export-history-btn" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <div class="card-body" style="display:flex;">
+                        <div class="btn-toolbar" style="display:flex; align-items:center; justify-content:space-between; width:100%; background:#f3f4f6; border:2px solid #e5e7eb; border-radius:12px; padding:12px 16px;">
+                            <div class="btn-row-left" style="display:flex; gap:12px; align-items:center;">
+                                <button id="refresh-history-btn" class="btn btn-primary">
+                                    <i class="fas fa-sync me-1"></i><span>Refresh History</span>
+                                </button>
+                                <button id="clear-history-btn" class="btn btn-danger">
+                                    <i class="fas fa-trash me-1"></i><span>Clear History</span>
+                                </button>
+                            </div>
+                            <div class="btn-row-right" style="display:flex; gap:12px; align-items:center;">
+                                <button id="export-history-btn" class="btn btn-success">
                                     <i class="fas fa-download me-1"></i><span>Export History</span>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="#" id="export-history-json" title="Structured JSON file (default)">Export JSON (default)</a></li>
-                                    <li><a class="dropdown-item" href="#" id="export-history-csv" title="Spreadsheet-friendly CSV (Excel/Sheets)">Export CSV (spreadsheet)</a></li>
-                                    <li><a class="dropdown-item" href="#" id="export-history-ndjson" title="Newline-delimited JSON for Splunk/ELK/Logstash">Export NDJSON (Splunk/ELK)</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item" href="#" id="export-history-all" title="Download JSON, CSV, and NDJSON together">Export All Formats</a></li>
-                                </ul>
+                                <span style="font-weight:600; color:#374151;">Formats:</span>
+                                <a href="#" id="export-history-json" class="btn btn-link p-0" title="Structured JSON file (default)">JSON</a>
+                                <a href="#" id="export-history-csv" class="btn btn-link p-0" title="Spreadsheet-friendly CSV (Excel/Sheets)">CSV</a>
+                                <a href="#" id="export-history-ndjson" class="btn btn-link p-0" title="Newline-delimited JSON for Splunk/ELK/Logstash">NDJSON</a>
+                                <a href="#" id="export-history-all" class="btn btn-link p-0" title="Download JSON, CSV, and NDJSON together">All</a>
                             </div>
-                            <button id="clear-history-btn" class="btn btn-danger">
-                                <i class="fas fa-trash me-1"></i><span>Clear History</span>
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -200,7 +200,7 @@ export class HistoryPage {
         });
 
         document.getElementById('history-search')?.addEventListener('input', (e) => {
-            this.searchTerm = e.target.value.toLowerCase();
+            this.searchTerm = (e.target.value || '').toString().toLowerCase();
             this.filterHistory();
         });
 
@@ -329,9 +329,16 @@ export class HistoryPage {
         this.filteredHistory = this.history.filter(entry => {
             const matchesOperation = operationFilter === 'all' || entry.operation === operationFilter;
             const matchesStatus = statusFilter === 'all' || entry.status === statusFilter;
-            const matchesSearch = !this.searchTerm || 
-                entry.description.toLowerCase().includes(this.searchTerm) ||
-                entry.details.toLowerCase().includes(this.searchTerm);
+            const searchable = [
+                entry.operation,
+                entry.status,
+                entry.description,
+                entry.details,
+                entry.user,
+                new Date(entry.timestamp).toLocaleString(),
+                this.formatDuration(entry.duration)
+            ].filter(Boolean).join(' ').toLowerCase();
+            const matchesSearch = !this.searchTerm || searchable.includes(this.searchTerm);
             const matchesDate = this.matchesDateRange(entry.timestamp, dateRange);
             
             return matchesOperation && matchesStatus && matchesSearch && matchesDate;
