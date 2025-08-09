@@ -1996,6 +1996,11 @@ button#clear-token,
   box-shadow: 0 1px 6px rgba(21, 101, 192, 0.18);
 }
 
+/* Beer mug icon sizing/alignment */
+#export-progress .beer-mug {
+  flex: 0 0 auto;
+}
+
 /* Taller, animated bar and fun "beer mug" theme for Export */
 #export-progress .progress-bar {
   height: 20px;

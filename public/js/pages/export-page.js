@@ -190,6 +190,24 @@ export class ExportPage {
                             <div class="progress-bar">
                                 <div id="export-progress-bar" class="progress-fill" style="width: 0%;"></div>
                             </div>
+                            <!-- Animated beer mug icon that fills with progress -->
+                            <svg id="beer-mug-svg" class="beer-mug" width="36" height="36" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
+                                <defs>
+                                    <clipPath id="beer-clip">
+                                        <!-- Inner mug shape used to clip the fill -->
+                                        <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z" />
+                                    </clipPath>
+                                </defs>
+                                <!-- Mug outline -->
+                                <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z"
+                                      fill="none" stroke="#1f2937" stroke-width="1.5"/>
+                                <!-- Handle -->
+                                <path d="M27 12 h2 a3 3 0 0 1 3 3 v6 a3 3 0 0 1-3 3 h-2" fill="none" stroke="#1f2937" stroke-width="1.5"/>
+                                <!-- Beer fill rectangle (position updated by JS) -->
+                                <rect id="beer-fill" x="9" y="26" width="16" height="0" fill="#f59e0b" clip-path="url(#beer-clip)"/>
+                                <!-- Foam cap sits on top of beer fill (position updated by JS) -->
+                                <rect id="beer-foam" x="9" y="26" width="16" height="0.001" fill="#ffffff" opacity="0.95" clip-path="url(#beer-clip)"/>
+                            </svg>
                             <div id="export-progress-text" class="progress-text">0%</div>
                         </div>
                         
@@ -689,6 +707,23 @@ export class ExportPage {
                     // Force repaint to ensure CSS animations remain visible as width changes
                     // eslint-disable-next-line no-unused-expressions
                     progressBar.offsetHeight;
+                }
+
+                // Update beer mug fill height based on progress (0–16px height)
+                const beerFill = document.getElementById('beer-fill');
+                const beerFoam = document.getElementById('beer-foam');
+                if (beerFill) {
+                    const maxHeight = 16; // SVG mug inner height
+                    const height = Math.max(0, Math.min(maxHeight, (progress / 100) * maxHeight));
+                    const y = 26 - height;
+                    beerFill.setAttribute('y', String(y));
+                    beerFill.setAttribute('height', String(height));
+                }
+                if (beerFoam) {
+                    const foamHeight = progress > 0 ? 3 : 0.001;
+                    const yFoam = 26 - Math.max(0, Math.min(16, (progress / 100) * 16)) - foamHeight;
+                    beerFoam.setAttribute('y', String(yFoam));
+                    beerFoam.setAttribute('height', String(foamHeight));
                 }
                 if (progressText) progressText.textContent = `${Math.round(progress)}%`;
                 if (statusText) statusText.textContent = currentProgress >= total ? 'Export complete!' : 'Exporting users...';
