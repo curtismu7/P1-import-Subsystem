@@ -683,8 +683,13 @@ export class ExportPage {
 
                 currentProgress += 10;
                 const progress = Math.min((currentProgress / total) * 100, 100);
-                
-                if (progressBar) progressBar.style.width = `${progress}%`;
+
+                if (progressBar) {
+                    progressBar.style.width = `${progress}%`;
+                    // Force repaint to ensure CSS animations remain visible as width changes
+                    // eslint-disable-next-line no-unused-expressions
+                    progressBar.offsetHeight;
+                }
                 if (progressText) progressText.textContent = `${Math.round(progress)}%`;
                 if (statusText) statusText.textContent = currentProgress >= total ? 'Export complete!' : 'Exporting users...';
                 if (usersProcessed) usersProcessed.textContent = Math.min(currentProgress, total);
