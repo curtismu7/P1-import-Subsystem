@@ -377,6 +377,15 @@ select.form-control:not([multiple]) {
   padding-right: 28px; /* room for caret */
 }
 
+/* Settings page: ensure region dropdown has enough height so text isn't clipped */
+#settings-region.form-control {
+  height: 44px !important;
+  min-height: 44px !important;
+  line-height: 44px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
 /* Ensure Logs page dropdowns have sufficient height and no text truncation */
 #log-level-filter.form-control,
 #log-source.form-control,
