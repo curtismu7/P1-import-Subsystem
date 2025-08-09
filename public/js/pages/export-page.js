@@ -170,11 +170,11 @@ export class ExportPage {
                 <section class="export-section">
                     <div class="export-box">
                         <div class="export-actions">
-                            <button type="button" id="preview-export" class="btn btn-outline-info">
-                                <i class="mdi mdi-eye"></i> Preview Export
-                            </button>
                             <button type="button" id="start-export" class="btn btn-primary" disabled>
                                 <i class="mdi mdi-download"></i> Start Export
+                            </button>
+                            <button type="button" id="preview-export" class="btn btn-outline-info">
+                                <i class="mdi mdi-eye"></i> Preview Export
                             </button>
                         </div>
                     </div>
@@ -187,6 +187,7 @@ export class ExportPage {
                         <p>Exporting users from your PingOne environment</p>
                         
                         <div class="progress-container">
+                            <div id="export-progress-text-left" class="progress-text">0%</div>
                             <div class="progress-bar">
                                 <div id="export-progress-bar" class="progress-fill" style="width: 0%;"></div>
                             </div>
@@ -675,7 +676,8 @@ export class ExportPage {
 
     async simulateExport() {
         const progressBar = document.getElementById('export-progress-bar');
-        const progressText = document.getElementById('export-progress-text');
+                const progressText = document.getElementById('export-progress-text');
+                const progressTextLeft = document.getElementById('export-progress-text-left');
         const statusText = document.getElementById('export-status');
         const usersProcessed = document.getElementById('users-processed');
         const totalUsers = document.getElementById('total-users');
@@ -726,6 +728,7 @@ export class ExportPage {
                     beerFoam.setAttribute('height', String(foamHeight));
                 }
                 if (progressText) progressText.textContent = `${Math.round(progress)}%`;
+                if (progressTextLeft) progressTextLeft.textContent = `${Math.round(progress)}%`;
                 if (statusText) statusText.textContent = currentProgress >= total ? 'Export complete!' : 'Exporting users...';
                 if (usersProcessed) usersProcessed.textContent = Math.min(currentProgress, total);
             }, 200);
