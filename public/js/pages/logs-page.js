@@ -77,7 +77,7 @@ export class LogsPage {
                             </div>
                         </div>
                         
-                        <div class="btn-toolbar" style="display:flex; align-items:center; justify-content:space-between; background: #edf2f7; border: 2px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 12px 16px; max-width: 100%; margin: 6px auto;">
+                        <div class="btn-toolbar" style="position: sticky; top: 8px; z-index: 5; display:flex; align-items:center; justify-content:space-between; background: #edf2f7; border: 2px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 12px 16px; max-width: 100%; margin: 6px auto;">
                             <div class="btn-row-left" style="display:flex; gap:16px; align-items:center;">
                                 <button id="refresh-logs-btn" class="btn btn-primary">
                                     <i class="fas fa-sync me-1"></i><span>Refresh Logs</span>
@@ -98,8 +98,13 @@ export class LogsPage {
                                         <li><a class="dropdown-item" href="#" id="export-logs-json" title="Structured JSON file (for backup/sharing)">Export JSON (structured)</a></li>
                                         <li><a class="dropdown-item" href="#" id="export-logs-csv" title="Spreadsheet-friendly CSV (Excel/Sheets)">Export CSV (spreadsheet)</a></li>
                                         <li><a class="dropdown-item" href="#" id="export-logs-ndjson" title="Newline-delimited JSON for Splunk/ELK/Logstash">Export NDJSON (Splunk/ELK)</a></li>
+                                        <li><a class="dropdown-item" href="#" id="export-logs-cef" title="Common Event Format">Export CEF</a></li>
+                                        <li><a class="dropdown-item" href="#" id="export-logs-clf" title="NCSA Common Log Format">Export CLF</a></li>
+                                        <li><a class="dropdown-item" href="#" id="export-logs-elf" title="Extended Log Format">Export ELF</a></li>
+                                        <li><a class="dropdown-item" href="#" id="export-logs-w3c" title="W3C Extended Log File Format">Export W3C</a></li>
+                                        <li><a class="dropdown-item" href="#" id="export-logs-wevt" title="Windows Event Log (XML)">Export Windows Event XML</a></li>
                                         <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item" href="#" id="export-logs-all" title="Download JSON, CSV, and NDJSON together">Export All Formats</a></li>
+                                        <li><a class="dropdown-item" href="#" id="export-logs-all" title="Download all supported formats">Export All Formats</a></li>
                                     </ul>
                                 </div>
                             </div>
@@ -223,6 +228,12 @@ export class LogsPage {
             e.preventDefault();
             this.exportLogs();
         });
+        // Additional formats
+        document.getElementById('export-logs-cef')?.addEventListener('click', (e) => { e.preventDefault(); this.exportSpecific('cef'); });
+        document.getElementById('export-logs-clf')?.addEventListener('click', (e) => { e.preventDefault(); this.exportSpecific('clf'); });
+        document.getElementById('export-logs-elf')?.addEventListener('click', (e) => { e.preventDefault(); this.exportSpecific('elf'); });
+        document.getElementById('export-logs-w3c')?.addEventListener('click', (e) => { e.preventDefault(); this.exportSpecific('w3c'); });
+        document.getElementById('export-logs-wevt')?.addEventListener('click', (e) => { e.preventDefault(); this.exportSpecific('wevt'); });
 
         document.getElementById('download-logs-btn')?.addEventListener('click', () => {
             this.downloadLogFiles();
@@ -492,6 +503,13 @@ export class LogsPage {
         const ndjson = logsToExport.map(l => JSON.stringify(l)).join('\n');
         const ndjsonBlob = new Blob([ndjson], { type: 'application/x-ndjson' });
         this.triggerDownload(ndjsonBlob, `logs-export-${new Date().toISOString().split('T')[0]}.ndjson`);
+
+        // Additional default bulk: CEF, CLF, ELF, W3C, Windows Event XML
+        this.triggerDownload(new Blob([this.convertLogsToCEF(logsToExport)], { type: 'text/plain' }), `logs-export-${new Date().toISOString().split('T')[0]}.cef`);
+        this.triggerDownload(new Blob([this.convertLogsToCLF(logsToExport)], { type: 'text/plain' }), `logs-export-${new Date().toISOString().split('T')[0]}.log`);
+        this.triggerDownload(new Blob([this.convertLogsToELF(logsToExport)], { type: 'text/plain' }), `logs-export-${new Date().toISOString().split('T')[0]}.elf`);
+        this.triggerDownload(new Blob([this.convertLogsToW3C(logsToExport)], { type: 'text/plain' }), `logs-export-${new Date().toISOString().split('T')[0]}.w3c`);
+        this.triggerDownload(new Blob([this.convertLogsToWEVTXML(logsToExport)], { type: 'application/xml' }), `logs-export-${new Date().toISOString().split('T')[0]}.wevt.xml`);
     }
 
     exportSpecific(format) {
@@ -512,6 +530,21 @@ export class LogsPage {
             const ndjson = logsToExport.map(l => JSON.stringify(l)).join('\n');
             const blob = new Blob([ndjson], { type: 'application/x-ndjson' });
             this.triggerDownload(blob, `logs-export-${date}.ndjson`);
+        } else if (format === 'cef') {
+            const blob = new Blob([this.convertLogsToCEF(logsToExport)], { type: 'text/plain' });
+            this.triggerDownload(blob, `logs-export-${date}.cef`);
+        } else if (format === 'clf') {
+            const blob = new Blob([this.convertLogsToCLF(logsToExport)], { type: 'text/plain' });
+            this.triggerDownload(blob, `logs-export-${date}.log`);
+        } else if (format === 'elf') {
+            const blob = new Blob([this.convertLogsToELF(logsToExport)], { type: 'text/plain' });
+            this.triggerDownload(blob, `logs-export-${date}.elf`);
+        } else if (format === 'w3c') {
+            const blob = new Blob([this.convertLogsToW3C(logsToExport)], { type: 'text/plain' });
+            this.triggerDownload(blob, `logs-export-${date}.w3c`);
+        } else if (format === 'wevt') {
+            const blob = new Blob([this.convertLogsToWEVTXML(logsToExport)], { type: 'application/xml' });
+            this.triggerDownload(blob, `logs-export-${date}.wevt.xml`);
         }
     }
 
@@ -524,6 +557,71 @@ export class LogsPage {
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
+    }
+
+    // --- Export converters (best-effort, simplified mappings) ---
+    convertLogsToCEF(logs) {
+        // CEF:Version|Device Vendor|Device Product|Device Version|Signature ID|Name|Severity|Extension
+        const vendor = 'PingIdentity';
+        const product = 'UserManagementApp';
+        const version = '7.0';
+        return logs.map((l, idx) => {
+            const sevMap = { error: '10', warn: '5', info: '3', debug: '1' };
+            const sev = sevMap[l.level] || '3';
+            const sig = l.id || idx + 1;
+            const name = (l.message || '').toString().replace(/\|/g, ' ');
+            const ts = l.timestamp ? new Date(l.timestamp).toISOString() : new Date().toISOString();
+            const ext = `end=${Date.now()} msg=${JSON.stringify(l.message || '')} src=${(l.source||'app')} cs1Label=timestamp cs1=${ts}`;
+            return `CEF:0|${vendor}|${product}|${version}|${sig}|${name}|${sev}|${ext}`;
+        }).join('\n');
+    }
+
+    convertLogsToCLF(logs) {
+        // CLF: host ident authuser [date] "request" status bytes
+        return logs.map(l => {
+            const host = '-'; const ident = '-'; const user = (l.user || '-');
+            const date = new Date(l.timestamp || Date.now()).toISOString();
+            const request = (l.message || 'GET / -');
+            const status = l.level === 'error' ? 500 : 200;
+            const bytes = 0;
+            return `${host} ${ident} ${user} [${date}] "${request}" ${status} ${bytes}`;
+        }).join('\n');
+    }
+
+    convertLogsToELF(logs) {
+        // ELF (IIS-style extended): use a header then space-separated fields
+        const header = `#Fields: date time level source message`;
+        const rows = logs.map(l => {
+            const d = new Date(l.timestamp || Date.now());
+            const date = d.toISOString().split('T')[0];
+            const time = d.toISOString().split('T')[1].replace('Z','');
+            const level = l.level || 'info';
+            const source = l.source || 'application';
+            const msg = (l.message || '').toString().replace(/\s+/g, ' ');
+            return `${date} ${time} ${level} ${source} ${msg}`;
+        });
+        return [header, ...rows].join('\n');
+    }
+
+    convertLogsToW3C(logs) {
+        // W3C extended log format
+        const header = [`#Version: 1.0`, `#Fields: date time c-level cs-source cs-message`].join('\n');
+        const rows = logs.map(l => {
+            const d = new Date(l.timestamp || Date.now());
+            const date = d.toISOString().split('T')[0];
+            const time = d.toISOString().split('T')[1].replace('Z','');
+            const level = l.level || 'info';
+            const source = l.source || 'application';
+            const msg = (l.message || '').toString().replace(/\s+/g, ' ');
+            return `${date} ${time} ${level} ${source} ${msg}`;
+        });
+        return [header, ...rows].join('\n');
+    }
+
+    convertLogsToWEVTXML(logs) {
+        // Windows Event Log XML Envelope (simplified)
+        const items = logs.map(l => `\n  <Event>\n    <System>\n      <Provider Name="PingIdentity"/>\n      <Level>${(l.level || 'info')}</Level>\n      <TimeCreated SystemTime="${new Date(l.timestamp || Date.now()).toISOString()}"/>\n      <EventID>${l.id || 0}</EventID>\n    </System>\n    <EventData>\n      <Data Name="source">${l.source || 'application'}</Data>\n      <Data Name="message">${(l.message || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</Data>\n    </EventData>\n  </Event>`).join('');
+        return `<?xml version="1.0" encoding="utf-8"?>\n<Events>${items}\n</Events>`;
     }
 
     convertLogsToCSV(logs) {
