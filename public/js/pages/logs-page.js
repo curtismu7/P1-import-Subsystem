@@ -84,9 +84,21 @@ export class LogsPage {
                             <button id="clear-logs-btn" class="btn btn-primary mr-2">
                                 <i class="fas fa-trash"></i> Clear Logs
                             </button>
-                            <button id="export-logs-btn" class="btn btn-success">
-                                <i class="fas fa-download"></i> Export Logs
-                            </button>
+                            <div class="btn-group" id="export-logs-group">
+                                <button id="export-logs-btn" class="btn btn-success">
+                                    <i class="fas fa-download"></i> Export Logs
+                                </button>
+                                <button type="button" class="btn btn-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span class="visually-hidden">Toggle Dropdown</span>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" id="export-logs-json">Export JSON</a></li>
+                                    <li><a class="dropdown-item" href="#" id="export-logs-csv">Export CSV</a></li>
+                                    <li><a class="dropdown-item" href="#" id="export-logs-ndjson">Export NDJSON</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="#" id="export-logs-all">Export All Formats</a></li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -188,6 +200,23 @@ export class LogsPage {
         });
 
         document.getElementById('export-logs-btn')?.addEventListener('click', () => {
+            this.exportLogs();
+        });
+
+        document.getElementById('export-logs-json')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.exportSpecific('json');
+        });
+        document.getElementById('export-logs-csv')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.exportSpecific('csv');
+        });
+        document.getElementById('export-logs-ndjson')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.exportSpecific('ndjson');
+        });
+        document.getElementById('export-logs-all')?.addEventListener('click', (e) => {
+            e.preventDefault();
             this.exportLogs();
         });
 
@@ -452,6 +481,27 @@ export class LogsPage {
         const ndjson = logsToExport.map(l => JSON.stringify(l)).join('\n');
         const ndjsonBlob = new Blob([ndjson], { type: 'application/x-ndjson' });
         this.triggerDownload(ndjsonBlob, `logs-export-${new Date().toISOString().split('T')[0]}.ndjson`);
+    }
+
+    exportSpecific(format) {
+        const logsToExport = this.filteredLogs.length > 0 ? this.filteredLogs : this.logs;
+        if (logsToExport.length === 0) {
+            this.app?.showError?.('No logs to export');
+            return;
+        }
+        const date = new Date().toISOString().split('T')[0];
+        if (format === 'json') {
+            const blob = new Blob([JSON.stringify(logsToExport, null, 2)], { type: 'application/json' });
+            this.triggerDownload(blob, `logs-export-${date}.json`);
+        } else if (format === 'csv') {
+            const csv = this.convertLogsToCSV(logsToExport);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            this.triggerDownload(blob, `logs-export-${date}.csv`);
+        } else if (format === 'ndjson') {
+            const ndjson = logsToExport.map(l => JSON.stringify(l)).join('\n');
+            const blob = new Blob([ndjson], { type: 'application/x-ndjson' });
+            this.triggerDownload(blob, `logs-export-${date}.ndjson`);
+        }
     }
 
     triggerDownload(blob, filename) {
