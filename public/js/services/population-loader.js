@@ -59,7 +59,8 @@ export class PopulationLoader {
             console.log(`🌐 Fetching populations from server for ${dropdownId}`);
             let populations = [];
             try {
-                const response = await fetch(`/api/populations?_=${Date.now()}`, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' } });
+                const refreshParam = useCache ? '' : 'refresh=1&';
+                const response = await fetch(`/api/populations?${refreshParam}_=${Date.now()}`, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' } });
                 if (response.ok) {
                     const result = await response.json();
                     console.log(`📊 Populations response for ${dropdownId}:`, result);
