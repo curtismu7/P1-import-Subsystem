@@ -437,8 +437,11 @@ export class DeletePage {
         });
 
         // Refresh populations button
-        document.getElementById('refresh-populations')?.addEventListener('click', () => {
-            this.loadPopulations();
+        document.getElementById('refresh-populations')?.addEventListener('click', async () => {
+            const { populationLoader } = await import('../services/population-loader.js');
+            populationLoader.clearCache();
+            await this.loadPopulations();
+            this.app?.showInfo?.('Populations refreshed');
         });
 
         // Load users button
