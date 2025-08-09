@@ -144,7 +144,7 @@ export class LogsPage {
                                 <p>No logs to display. Click "Refresh Logs" to load recent entries.</p>
                             </div>
                             
-                            <div id="logs-list" class="logs-list">
+                        <div id="logs-list" class="logs-list" style="border:1px solid rgba(0,0,0,0.1); border-radius:10px; overflow:hidden;">
                                 <!-- Log entries will be populated here -->
                             </div>
                         </div>
@@ -322,22 +322,20 @@ export class LogsPage {
         noLogs.style.display = 'none';
         logCountDisplay.textContent = `Showing ${this.filteredLogs.length} logs`;
 
-        logsList.innerHTML = this.filteredLogs.map(log => {
+        logsList.innerHTML = this.filteredLogs.map((log, idx) => {
             const detailsStr = this.formatLogDetails(log);
             return `
-            <div class="log-entry log-${log.level}" data-log-id="${log.id}">
-                <div class="log-header">
-                    <span class="log-timestamp">${new Date(log.timestamp).toLocaleString()}</span>
-                    <span class="log-level log-level-${log.level}">${log.level.toUpperCase()}</span>
-                    <span class="log-source">${log.source}</span>
-                </div>
-                <div class="log-message">${log.message}</div>
-                <pre class="log-details" style="display: none; font-weight: 700; font-size: 0.95rem; margin-top: 6px; white-space: pre-wrap;">${detailsStr}</pre>
-                <div class="log-actions">
+            <div class="log-entry log-${log.level}" data-log-id="${log.id}"
+                 style="display:grid; grid-template-columns: 200px 110px 1fr auto; gap: 12px; align-items:center; padding:10px 12px; ${idx>0?'border-top:1px solid rgba(0,0,0,0.08);':''}">
+                <div class="log-timestamp" style="color:#374151; font-weight:600;">${new Date(log.timestamp).toLocaleString()}</div>
+                <div class="log-level log-level-${log.level}" style="text-transform:uppercase; font-weight:700;">${log.level}</div>
+                <div class="log-message"><span class="log-source" style="color:#6b7280; font-weight:600;">${log.source}:</span> ${log.message}</div>
+                <div class="log-actions" style="justify-self:end;">
                     <button class="btn btn-sm btn-outline-secondary toggle-details-btn">
                         <i class="fas fa-chevron-down"></i> Details
                     </button>
                 </div>
+                <pre class="log-details" style="grid-column: 1 / -1; display: none; font-weight: 700; font-size: 0.95rem; margin-top: 6px; white-space: pre-wrap; background:#f9fafb; border:1px solid rgba(0,0,0,0.06); border-radius:8px; padding:8px 10px;">${detailsStr}</pre>
             </div>`;
         }).join('');
 
@@ -410,8 +408,10 @@ export class LogsPage {
     }
 
     async clearLogs() {
-        const confirmed = confirm('Are you sure you want to clear all logs? This action cannot be undone.');
-        if (!confirmed) return;
+        // Replace browser confirm with in-app status bar prompt
+        if (this.app && this.app.showInfo) {
+            this.app.showInfo('Clearing all logs...');
+        }
 
         try {
             const response = await fetch('/api/logs', { method: 'DELETE' });
@@ -419,17 +419,13 @@ export class LogsPage {
                 this.logs = [];
                 this.filterLogs();
                 this.updateStatistics();
-                if (this.app && this.app.showSuccess) {
-                    this.app.showSuccess('Logs cleared successfully');
-                }
+                if (this.app && this.app.showSuccess) this.app.showSuccess('Logs cleared successfully');
             } else {
                 throw new Error('Failed to clear logs');
             }
         } catch (error) {
             console.error('❌ Error clearing logs:', error);
-            if (this.app && this.app.showError) {
-                this.app.showError('Error clearing logs. Please try again.');
-            }
+            if (this.app && this.app.showError) this.app.showError('Error clearing logs. Please try again.');
         }
     }
 
@@ -443,13 +439,26 @@ export class LogsPage {
             return;
         }
 
+        // Export JSON file
+        const jsonBlob = new Blob([JSON.stringify(logsToExport, null, 2)], { type: 'application/json' });
+        this.triggerDownload(jsonBlob, `logs-export-${new Date().toISOString().split('T')[0]}.json`);
+
+        // Export CSV file for BI tools and spreadsheets
         const csvContent = this.convertLogsToCSV(logsToExport);
-        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const csvBlob = new Blob([csvContent], { type: 'text/csv' });
+        this.triggerDownload(csvBlob, `logs-export-${new Date().toISOString().split('T')[0]}.csv`);
+
+        // Export NDJSON for ingestion tools (Splunk, ELK) – one JSON per line
+        const ndjson = logsToExport.map(l => JSON.stringify(l)).join('\n');
+        const ndjsonBlob = new Blob([ndjson], { type: 'application/x-ndjson' });
+        this.triggerDownload(ndjsonBlob, `logs-export-${new Date().toISOString().split('T')[0]}.ndjson`);
+    }
+
+    triggerDownload(blob, filename) {
         const url = window.URL.createObjectURL(blob);
-        
         const a = document.createElement('a');
         a.href = url;
-        a.download = `logs-export-${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
