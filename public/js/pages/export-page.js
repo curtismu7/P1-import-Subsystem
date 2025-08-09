@@ -300,7 +300,12 @@ export class ExportPage {
         // Refresh populations button
         const refreshPopulationsBtn = document.getElementById('refresh-populations');
         if (refreshPopulationsBtn) {
-            refreshPopulationsBtn.addEventListener('click', () => this.loadPopulations());
+            refreshPopulationsBtn.addEventListener('click', async () => {
+                const { populationLoader } = await import('../services/population-loader.js');
+                populationLoader.clearCache();
+                await this.loadPopulations();
+                this.app?.showInfo?.('Populations refreshed');
+            });
         }
 
         // Export format change

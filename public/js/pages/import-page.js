@@ -344,7 +344,12 @@ export class ImportPage {
         }
         
         if (refreshPopulations) {
-            refreshPopulations.addEventListener('click', this.loadPopulations.bind(this));
+            refreshPopulations.addEventListener('click', async () => {
+                const { populationLoader } = await import('../services/population-loader.js');
+                populationLoader.clearCache();
+                await this.loadPopulations();
+                this.app?.showInfo?.('Populations refreshed');
+            });
         }
         
         // Population selection change
