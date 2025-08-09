@@ -645,6 +645,12 @@ select.form-control:not([multiple]) {
   justify-content: center;
 }
 
+.token-status-display .status-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .status-indicator {
   display: inline-flex;
   align-items: center;
