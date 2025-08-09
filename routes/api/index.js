@@ -1527,9 +1527,10 @@ router.get('/populations', async (req, res) => {
         // Import population cache service dynamically
         const { populationCacheService } = await import('../../server/services/population-cache-service.js');
         
-        // Try to get cached populations first for fast response
-        const cachedData = await populationCacheService.getCachedPopulations();
-        if (cachedData && cachedData.populations) {
+        // Try to get cached populations first for fast response unless refresh requested
+        const forceRefresh = String(req.query.refresh || '') === '1';
+        const cachedData = forceRefresh ? null : await populationCacheService.getCachedPopulations();
+        if (!forceRefresh && cachedData && cachedData.populations) {
             apiLogger.debug(`${functionName} - Returning cached populations`, { 
                 requestId: req.requestId, 
                 count: cachedData.count,
@@ -1547,7 +1548,7 @@ router.get('/populations', async (req, res) => {
             });
         }
         
-        // Cache miss or expired - fetch from API
+        // Cache miss/expired or refresh requested - fetch from API
         apiLogger.debug(`${functionName} - Cache miss, fetching from PingOne API`, { requestId: req.requestId });
         console.log(`[Populations] 🔄 Cache miss, fetching from PingOne API...`);
         
