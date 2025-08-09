@@ -367,7 +367,15 @@ class PingOneApp {
             const resp = await fetch('/api/populations');
             if (resp.ok) {
                 const data = await resp.json().catch(() => ({}));
-                const pops = data && (data.populations || data.data || data.items || []);
+                // Support multiple response envelopes
+                const pops = (
+                    (data && (data.populations)) ||
+                    (data && data.message && data.message.populations) ||
+                    (data && data.data && data.data.populations) ||
+                    (data && data.data && data.data.message && data.data.message.populations) ||
+                    (data && data.items) ||
+                    []
+                );
                 if (Array.isArray(pops) && pops.length) {
                     setOptions(pops);
                     return;
@@ -381,7 +389,12 @@ class PingOneApp {
             if (resp.ok) {
                 const payload = await resp.json().catch(() => ({}));
                 const settings = payload && ((payload.success && (payload.data && (payload.data.data || payload.data))) || payload);
-                const pops = (settings && (settings.populationCache || settings.populations || (settings.data && settings.data.populations))) || [];
+                const pops = (
+                    (settings && settings.populations) ||
+                    (settings && settings.populationCache && settings.populationCache.populations) ||
+                    (settings && settings.data && settings.data.populations) ||
+                    []
+                );
                 setOptions(Array.isArray(pops) ? pops : []);
             }
         } catch (err) {
