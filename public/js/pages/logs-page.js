@@ -92,11 +92,11 @@ export class LogsPage {
                                     <span class="visually-hidden">Toggle Dropdown</span>
                                 </button>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="#" id="export-logs-json">Export JSON</a></li>
-                                    <li><a class="dropdown-item" href="#" id="export-logs-csv">Export CSV</a></li>
-                                    <li><a class="dropdown-item" href="#" id="export-logs-ndjson">Export NDJSON</a></li>
+                                    <li><a class="dropdown-item" href="#" id="export-logs-json" title="Structured JSON file (for backup/sharing)">Export JSON (structured)</a></li>
+                                    <li><a class="dropdown-item" href="#" id="export-logs-csv" title="Spreadsheet-friendly CSV (Excel/Sheets)">Export CSV (spreadsheet)</a></li>
+                                    <li><a class="dropdown-item" href="#" id="export-logs-ndjson" title="Newline-delimited JSON for Splunk/ELK/Logstash">Export NDJSON (Splunk/ELK)</a></li>
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item" href="#" id="export-logs-all">Export All Formats</a></li>
+                                    <li><a class="dropdown-item" href="#" id="export-logs-all" title="Download JSON, CSV, and NDJSON together">Export All Formats</a></li>
                                 </ul>
                             </div>
                         </div>
