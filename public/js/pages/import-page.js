@@ -134,6 +134,11 @@ export class ImportPage {
                         
                         <div class="options-group">
                             <h4>Import Options</h4>
+                            <div style="margin-bottom:8px;">
+                                <a id="download-template" href="/api/import/template" class="btn btn-outline-secondary btn-sm">
+                                    <i class="mdi mdi-file-download"></i> Download CSV Template
+                                </a>
+                            </div>
                             <div class="mb-2" style="display:flex; gap:12px; align-items:center;">
                                 <div class="form-check">
                                     <input type="checkbox" id="import-options-select-all" class="form-check-input">
@@ -829,8 +834,14 @@ export class ImportPage {
         if (skipExistingUserid && skipExistingUserid.checked) skipOptions.push('User ID exists');
         const skipOptionsText = skipOptions.length > 0 ? skipOptions.join(', ') : 'None';
         
-        // This would be populated with actual results from the server
+        // Populate with runtime values
         const summary = document.getElementById('results-summary');
+        const total = Number(document.getElementById('total-users')?.textContent || this.selectedRecordCount || 0);
+        const processed = Number(document.getElementById('users-processed')?.textContent || total);
+        const failed = 0; // TODO: wire to server errors count when real import implemented
+        const skipped = 0; // TODO: compute based on server response
+        const success = Math.max(0, processed - failed - skipped);
+        const rate = total > 0 ? Math.round((success / total) * 100) : 0;
         if (summary) {
             summary.innerHTML = `
                 <div class="results-grid">
@@ -839,55 +850,28 @@ export class ImportPage {
                         <div>
                             <h3>Import Summary</h3>
                             <div class="result-stats">
-                                <div class="stat-item">
-                                    <span class="stat-label">Total Users:</span>
-                                    <span class="stat-value">150</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Successfully Imported:</span>
-                                    <span class="stat-value success">140</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Skipped:</span>
-                                    <span class="stat-value warning">8</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Failed:</span>
-                                    <span class="stat-value error">2</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Success Rate:</span>
-                                    <span class="stat-value">93.3%</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Duration:</span>
-                                    <span class="stat-value">2m 34s</span>
-                                </div>
+                                <div class="stat-item"><span class="stat-label">Total Users:</span><span class="stat-value">${total}</span></div>
+                                <div class="stat-item"><span class="stat-label">Successfully Imported:</span><span class="stat-value success">${success}</span></div>
+                                <div class="stat-item"><span class="stat-label">Skipped:</span><span class="stat-value warning">${skipped}</span></div>
+                                <div class="stat-item"><span class="stat-label">Failed:</span><span class="stat-value error">${failed}</span></div>
+                                <div class="stat-item"><span class="stat-label">Success Rate:</span><span class="stat-value">${rate}%</span></div>
                             </div>
                         </div>
                     </div>
-                    
                     <div class="result-details">
                         <h4>Import Details</h4>
                         <ul>
-                            <li><strong>Target Population:</strong> Production Users</li>
+                            <li><strong>Target Population:</strong> ${document.getElementById('target-population')?.selectedOptions?.[0]?.text || 'N/A'}</li>
                             <li><strong>Import Mode:</strong> ${importModeText === 'create' ? 'Create new users only' : importModeText === 'update' ? 'Update existing users' : 'Create or update users'}</li>
                             <li><strong>Skip Options:</strong> ${skipOptionsText}</li>
-                            <li><strong>File:</strong> users_import.csv (2.3 MB)</li>
                             <li><strong>Started:</strong> ${new Date().toLocaleString()}</li>
                         </ul>
                     </div>
-                    
                     <div class="result-actions">
-                        <button class="btn btn-outline-info" id="download-log-btn">
-                            <i class="mdi mdi-download"></i> Download Log
-                        </button>
-                        <button class="btn btn-outline-primary" id="new-import-btn">
-                            <i class="mdi mdi-refresh"></i> New Import
-                        </button>
+                        <button class="btn btn-outline-info" id="download-log-btn"><i class="mdi mdi-download"></i> Download Log</button>
+                        <button class="btn btn-outline-primary" id="new-import-btn"><i class="mdi mdi-refresh"></i> New Import</button>
                     </div>
-                </div>
-            `;
+                </div>`;
         }
     }
     
