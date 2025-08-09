@@ -73,7 +73,7 @@ export class HistoryPage {
                                     <div id="history-search-status" class="text-muted" style="margin-top:4px; font-size:0.85rem;">Type to search</div>
                                 </div>
                             </div>
-                            <div class="col-md-2" style="flex:0 1 220px; min-width:200px; max-width:260px;">
+                            <div class="col-md-2" style="flex:0 1 320px; min-width:260px; max-width:360px;">
                                 <div class="form-group">
                                     <label for="date-range">Date Range:</label>
                                     <select id="date-range" class="form-control" style="height:44px; min-height:44px; line-height:44px; max-width:320px; padding-top:8px; padding-bottom:8px;" title="Filter by Date Range">
@@ -81,7 +81,15 @@ export class HistoryPage {
                                         <option value="today">Today</option>
                                         <option value="week">This Week</option>
                                         <option value="month">This Month</option>
+                                        <option value="custom">Custom…</option>
                                     </select>
+                                    <div id="custom-date-range" style="display:none; margin-top:8px; display:none;">
+                                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                            <input type="text" id="date-start" class="form-control" placeholder="Start (e.g. 2025-08-09 08:00)" style="height:44px; min-width:220px; max-width:280px;" title="Enter start date/time">
+                                            <input type="text" id="date-end" class="form-control" placeholder="End (e.g. 2025-08-09 17:30)" style="height:44px; min-width:220px; max-width:280px;" title="Enter end date/time">
+                                        </div>
+                                        <div id="custom-date-hint" class="text-muted" style="margin-top:4px; font-size:0.85rem;">Accepted formats: YYYY-MM-DD, YYYY-MM-DD HH:mm, MM/DD/YYYY, MM/DD/YYYY HH:mm</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -208,8 +216,15 @@ export class HistoryPage {
         });
 
         document.getElementById('date-range')?.addEventListener('change', () => {
+            const range = document.getElementById('date-range')?.value;
+            const custom = document.getElementById('custom-date-range');
+            if (custom) custom.style.display = range === 'custom' ? 'block' : 'none';
             this.filterHistory();
         });
+
+        // Custom date inputs
+        document.getElementById('date-start')?.addEventListener('input', () => this.filterHistory());
+        document.getElementById('date-end')?.addEventListener('input', () => this.filterHistory());
 
         // Action buttons
         document.getElementById('refresh-history-btn')?.addEventListener('click', () => {
@@ -380,9 +395,43 @@ export class HistoryPage {
             case 'month':
                 const monthAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
                 return entryDate >= monthAgo;
+            case 'custom':
+                const startInput = (document.getElementById('date-start')?.value || '').trim();
+                const endInput = (document.getElementById('date-end')?.value || '').trim();
+                if (!startInput && !endInput) return true;
+                const start = this.parseFlexibleDate(startInput);
+                const end = this.parseFlexibleDate(endInput);
+                if (start && end) return entryDate >= start && entryDate <= end;
+                if (start && !end) return entryDate >= start;
+                if (!start && end) return entryDate <= end;
+                return true;
             default:
                 return true;
         }
+    }
+
+    // Parse multiple common date/time formats into a Date object
+    parseFlexibleDate(input) {
+        if (!input) return null;
+        // Try native Date parsing first
+        let d = new Date(input);
+        if (!isNaN(d.getTime())) return d;
+        // Try YYYY-MM-DD HH:mm
+        const isoLike = input.match(/^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2})?$/);
+        if (isoLike) {
+            return new Date(input.replace(' ', 'T'));
+        }
+        // Try MM/DD/YYYY or MM/DD/YYYY HH:mm
+        const usLike = input.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/);
+        if (usLike) {
+            const month = parseInt(usLike[1], 10) - 1;
+            const day = parseInt(usLike[2], 10);
+            const year = parseInt(usLike[3], 10);
+            const hour = usLike[4] ? parseInt(usLike[4], 10) : 0;
+            const min = usLike[5] ? parseInt(usLike[5], 10) : 0;
+            return new Date(year, month, day, hour, min);
+        }
+        return null;
     }
 
     renderHistory() {
