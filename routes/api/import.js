@@ -8,6 +8,8 @@
 import express from 'express';
 import multer from 'multer';
 import nodemailer from 'nodemailer';
+import { parse } from 'csv-parse/sync';
+import fetch from 'node-fetch';
 const router = express.Router();
 
 // Configure multer for file uploads
@@ -259,11 +261,17 @@ router.post('/', upload.single('file'), async (req, res) => {
             populationId: req.body.populationId 
         });
         
-        // In a real implementation, you would start a background process to handle the import
-        // For now, we'll simulate progress updates
-        simulateImportProgress(sessionId, totalRecords, {
+        // Launch background import job (real implementation)
+        runImportJob({
+            sessionId,
+            csvContent,
+            populationId: req.body.populationId,
             sendWelcome: String(req.body.sendWelcome) === 'true',
-            csvContent
+            app: req.app
+        }).catch(err => {
+            console.error('Import job failed:', err);
+            importStatus.isRunning = false;
+            importStatus.status = 'failed';
         });
         
     } catch (error) {
@@ -343,50 +351,93 @@ function extractEmailsFromCsv(csv) {
     return Array.from(new Set(emails));
 }
 
-function simulateImportProgress(sessionId, totalRecords, options = {}) {
-    let processed = 0;
-    const updateInterval = Math.max(100, Math.min(500, totalRecords > 100 ? 100 : 50));
-    
-    const progressInterval = setInterval(async () => {
-        // Increment processed count
-        processed += Math.floor(Math.random() * 5) + 1;
-        
-        // Update import status
-        importStatus.processed = Math.min(processed, totalRecords);
-        importStatus.progress = Math.round((importStatus.processed / totalRecords) * 100);
-        
-        // Add some random errors and warnings
-        if (Math.random() > 0.9) {
-            importStatus.errors += 1;
-        }
-        if (Math.random() > 0.8) {
-            importStatus.warnings += 1;
-        }
-        
-        // Check if import is complete
-        if (processed >= totalRecords) {
-            clearInterval(progressInterval);
-            
-            // Mark import as complete
-            importStatus.isRunning = false;
-            importStatus.endTime = Date.now();
-            importStatus.status = 'completed';
-            importStatus.processed = totalRecords;
-            importStatus.progress = 100;
-            
-            console.log(`✅ Import completed: ${importStatus.sessionId}, ${totalRecords} records processed`);
+async function runImportJob({ sessionId, csvContent, populationId, sendWelcome, app }) {
+    try {
+        const records = parse(csvContent, {
+            columns: true,
+            skip_empty_lines: true,
+            trim: true
+        });
+        const total = records.length;
+        importStatus.total = total;
+        importStatus.processed = 0;
+        importStatus.errors = 0;
+        importStatus.warnings = 0;
 
-            // If requested, send welcome emails to all parsed addresses
-            if (options.sendWelcome) {
-                const emails = extractEmailsFromCsv(options.csvContent || '');
-                if (emails.length > 0) {
-                    await sendWelcomeEmailBatch(emails);
-                } else {
-                    console.warn('sendWelcome requested but no email column found in CSV');
+        // Get PingOne info
+        const tokenManager = app.get('tokenManager');
+        const environmentId = await tokenManager.getEnvironmentId();
+        const apiBaseUrl = tokenManager.getApiBaseUrl();
+        const token = await tokenManager.getAccessToken();
+
+        const endpoint = `${apiBaseUrl}/environments/${environmentId}/users`;
+        const concurrency = 5;
+        let inFlight = 0;
+        let idx = 0;
+
+        await new Promise((resolve) => {
+            const pump = async () => {
+                while (inFlight < concurrency && idx < total) {
+                    const row = records[idx++];
+                    inFlight++;
+                    createPingOneUser(endpoint, token, populationId, row)
+                        .then(() => {
+                            importStatus.processed++;
+                        })
+                        .catch(() => {
+                            importStatus.errors++;
+                        })
+                        .finally(() => {
+                            inFlight--;
+                            importStatus.progress = Math.round((importStatus.processed / total) * 100);
+                            if (importStatus.processed >= total && inFlight === 0) resolve();
+                            else pump();
+                        });
                 }
-            }
+            };
+            pump();
+        });
+
+        // Optional welcome emails
+        if (sendWelcome) {
+            const emails = extractEmailsFromCsv(csvContent || '');
+            if (emails.length > 0) await sendWelcomeEmailBatch(emails);
         }
-    }, updateInterval);
+
+        importStatus.isRunning = false;
+        importStatus.endTime = Date.now();
+        importStatus.status = 'completed';
+        importStatus.progress = 100;
+        console.log(`✅ Import completed: ${sessionId}, ${total} records processed`);
+    } catch (err) {
+        console.error('runImportJob error:', err);
+        importStatus.isRunning = false;
+        importStatus.status = 'failed';
+    }
+}
+
+async function createPingOneUser(endpoint, token, populationId, row) {
+    const body = {
+        username: row.username || row.email || undefined,
+        population: { id: populationId },
+        name: {
+            given: row.givenName || row.first_name || row.firstname || row.firstName || '',
+            family: row.familyName || row.last_name || row.lastname || row.lastName || ''
+        },
+        emails: row.email ? [{ value: row.email, primary: true }] : []
+    };
+    const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    });
+    if (!resp.ok) {
+        const txt = await resp.text().catch(() => '');
+        throw new Error(`User create failed: ${resp.status} ${resp.statusText} ${txt}`);
+    }
 }
 
 export default router;
