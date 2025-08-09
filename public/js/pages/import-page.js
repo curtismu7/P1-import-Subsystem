@@ -188,9 +188,22 @@ export class ImportPage {
                         <p>Importing users to your PingOne environment</p>
                         
                         <div class="progress-container">
+                            <div id="progress-text-left" class="progress-text">0%</div>
                             <div class="progress-bar">
                                 <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
                             </div>
+                            <svg id="beer-mug-svg-import" class="beer-mug" width="56" height="56" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
+                                <defs>
+                                    <clipPath id="beer-clip-import">
+                                        <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z" />
+                                    </clipPath>
+                                </defs>
+                                <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z"
+                                      fill="none" stroke="#1f2937" stroke-width="1.5"/>
+                                <path d="M27 12 h2 a3 3 0 0 1 3 3 v6 a3 3 0 0 1-3 3 h-2" fill="none" stroke="#1f2937" stroke-width="1.5"/>
+                                <rect id="beer-fill-import" x="9" y="26" width="16" height="0" fill="#f59e0b" clip-path="url(#beer-clip-import)"/>
+                                <rect id="beer-foam-import" x="9" y="26" width="16" height="0.001" fill="#ffffff" opacity="0.95" clip-path="url(#beer-clip-import)"/>
+                            </svg>
                             <div id="progress-percentage" class="progress-text">0%</div>
                         </div>
                         
@@ -700,6 +713,9 @@ export class ImportPage {
     updateProgress(percentage) {
         const progressFill = document.getElementById('progress-fill');
         const progressPercentage = document.getElementById('progress-percentage');
+        const progressTextLeft = document.getElementById('progress-text-left');
+        const beerFill = document.getElementById('beer-fill-import');
+        const beerFoam = document.getElementById('beer-foam-import');
         
         if (progressFill) {
             progressFill.style.width = percentage + '%';
@@ -707,6 +723,24 @@ export class ImportPage {
         
         if (progressPercentage) {
             progressPercentage.textContent = Math.round(percentage) + '%';
+        }
+
+        if (progressTextLeft) {
+            progressTextLeft.textContent = Math.round(percentage) + '%';
+        }
+
+        // Beer mug fill & foam positioning
+        if (beerFill) {
+            const fillHeight = Math.max(0, Math.min(16, (percentage / 100) * 16));
+            const yFill = 26 - fillHeight;
+            beerFill.setAttribute('y', String(yFill));
+            beerFill.setAttribute('height', String(fillHeight));
+        }
+        if (beerFoam) {
+            const foamHeight = percentage > 0 ? (percentage < 100 ? 3 : 4) : 0.001;
+            const yFoam = 26 - Math.max(0, Math.min(16, (percentage / 100) * 16)) - foamHeight;
+            beerFoam.setAttribute('y', String(yFoam));
+            beerFoam.setAttribute('height', String(foamHeight));
         }
     }
     

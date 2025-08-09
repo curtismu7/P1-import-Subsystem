@@ -209,9 +209,22 @@ export class ModifyPage {
                         <p>Updating users in your PingOne environment</p>
                         
                         <div class="progress-container">
+                            <div id="modify-progress-text-left" class="progress-text">0%</div>
                             <div class="progress-bar">
                                 <div id="modify-progress-bar" class="progress-fill" style="width: 0%;"></div>
                             </div>
+                            <svg id="beer-mug-svg-modify" class="beer-mug" width="56" height="56" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
+                                <defs>
+                                    <clipPath id="beer-clip-modify">
+                                        <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z" />
+                                    </clipPath>
+                                </defs>
+                                <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z"
+                                      fill="none" stroke="#1f2937" stroke-width="1.5"/>
+                                <path d="M27 12 h2 a3 3 0 0 1 3 3 v6 a3 3 0 0 1-3 3 h-2" fill="none" stroke="#1f2937" stroke-width="1.5"/>
+                                <rect id="beer-fill-modify" x="9" y="26" width="16" height="0" fill="#f59e0b" clip-path="url(#beer-clip-modify)"/>
+                                <rect id="beer-foam-modify" x="9" y="26" width="16" height="0.001" fill="#ffffff" opacity="0.95" clip-path="url(#beer-clip-modify)"/>
+                            </svg>
                             <div id="progress-percentage" class="progress-text">0%</div>
                         </div>
                         
@@ -746,11 +759,31 @@ export class ModifyPage {
 
     updateModifyProgress(processed, total, status) {
         const progressBar = document.getElementById('modify-progress-bar');
+        const progressTextLeft = document.getElementById('modify-progress-text-left');
+        const beerFill = document.getElementById('beer-fill-modify');
+        const beerFoam = document.getElementById('beer-foam-modify');
         const percentage = total > 0 ? Math.round((processed / total) * 100) : 0;
 
         if (progressBar) {
             progressBar.style.width = `${percentage}%`;
             progressBar.textContent = `${percentage}%`;
+        }
+        if (progressTextLeft) {
+            progressTextLeft.textContent = `${percentage}%`;
+        }
+
+        // Beer mug fill & foam positioning
+        if (beerFill) {
+            const fillHeight = Math.max(0, Math.min(16, (percentage / 100) * 16));
+            const yFill = 26 - fillHeight;
+            beerFill.setAttribute('y', String(yFill));
+            beerFill.setAttribute('height', String(fillHeight));
+        }
+        if (beerFoam) {
+            const foamHeight = percentage > 0 ? (percentage < 100 ? 3 : 4) : 0.001;
+            const yFoam = 26 - Math.max(0, Math.min(16, (percentage / 100) * 16)) - foamHeight;
+            beerFoam.setAttribute('y', String(yFoam));
+            beerFoam.setAttribute('height', String(foamHeight));
         }
 
         document.getElementById('status-text').textContent = status;
