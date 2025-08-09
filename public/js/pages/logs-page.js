@@ -78,34 +78,33 @@ export class LogsPage {
                         </div>
                         
                         <div class="btn-toolbar" style="position: sticky; top: 8px; z-index: 5; display:flex; align-items:center; background: #edf2f7; border: 2px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 12px 16px; max-width: 100%; margin: 6px auto; gap:16px;">
-                            <!-- Formats select moved to the left -->
-                            <div style="margin-right:auto; display:flex; align-items:center; gap:8px;">
-                                <label for="logs-export-format" style="font-weight:600; color:#374151; margin:0;">Format:</label>
-                                <select id="logs-export-format" class="form-control" style="height:36px; min-width: 200px;">
-                                    <option value="json" selected>JSON (structured)</option>
-                                    <option value="ndjson">NDJSON (JSON Lines)</option>
-                                    <option value="csv">CSV (spreadsheet)</option>
-                                    <option value="xlsx">Excel (XLSX)</option>
-                                    <option value="xml">XML</option>
-                                    <option value="ldif">LDIF</option>
-                                    <option value="scim">SCIM 2.0 Bulk JSON</option>
-                                    <option value="cef">CEF</option>
-                                    <option value="clf">CLF (NCSA)</option>
-                                    <option value="elf">ELF (Extended)</option>
-                                    <option value="w3c">W3C Extended</option>
-                                    <option value="wevt">Windows Event XML</option>
-                                    <option value="all">All Formats</option>
-                                </select>
-                            </div>
                             <div class="btn-row-center" style="display:flex; gap:16px; align-items:center; justify-content:center; width:100%;">
+                                <button id="export-logs-btn" class="btn btn-success">
+                                    <i class="fas fa-download me-1"></i><span>Export Logs</span>
+                                </button>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <label for="logs-export-format" style="font-weight:600; color:#374151; margin:0;">Format:</label>
+                                    <select id="logs-export-format" class="form-control" style="height:44px; min-height:44px; line-height:44px; min-width: 220px; padding-top:8px; padding-bottom:8px;">
+                                        <option value="json" selected>JSON (structured)</option>
+                                        <option value="ndjson">NDJSON (JSON Lines)</option>
+                                        <option value="csv">CSV (spreadsheet)</option>
+                                        <option value="xlsx">Excel (XLSX)</option>
+                                        <option value="xml">XML</option>
+                                        <option value="ldif">LDIF</option>
+                                        <option value="scim">SCIM 2.0 Bulk JSON</option>
+                                        <option value="cef">CEF</option>
+                                        <option value="clf">CLF (NCSA)</option>
+                                        <option value="elf">ELF (Extended)</option>
+                                        <option value="w3c">W3C Extended</option>
+                                        <option value="wevt">Windows Event XML</option>
+                                        <option value="all">All Formats</option>
+                                    </select>
+                                </div>
                                 <button id="refresh-logs-btn" class="btn btn-primary">
                                     <i class="fas fa-sync me-1"></i><span>Refresh Logs</span>
                                 </button>
                                 <button id="clear-logs-btn" class="btn btn-primary">
                                     <i class="fas fa-trash me-1"></i><span>Clear Logs</span>
-                                </button>
-                                <button id="export-logs-btn" class="btn btn-success">
-                                    <i class="fas fa-download me-1"></i><span>Export Logs</span>
                                 </button>
                             </div>
                         </div>
