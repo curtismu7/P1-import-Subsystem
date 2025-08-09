@@ -48,10 +48,12 @@ export class TokenManagementPage {
                     <h2 class="section-title">Token Status</h2>
                     <div class="token-box">
                         <div class="token-status-display">
-                            <div class="status-indicator status-unknown" id="token-status-indicator">
-                                <span class="status-dot" aria-hidden="true"></span>
+                            <div class="status-inline">
+                                <div class="status-indicator status-unknown" id="token-status-indicator">
+                                    <span class="status-dot" aria-hidden="true"></span>
+                                </div>
+                                <div class="status-text" id="token-status-text">Checking...</div>
                             </div>
-                            <div class="status-text" id="token-status-text">Checking...</div>
                             
                             <div class="token-details">
                                 <div class="detail-row">
