@@ -77,8 +77,23 @@ export class LogsPage {
                             </div>
                         </div>
                         
-                        <div class="btn-toolbar" style="position: sticky; top: 8px; z-index: 5; display:flex; align-items:center; justify-content:space-between; background: #edf2f7; border: 2px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 12px 16px; max-width: 100%; margin: 6px auto;">
-                            <div class="btn-row-left" style="display:flex; gap:16px; align-items:center;">
+                        <div class="btn-toolbar" style="position: sticky; top: 8px; z-index: 5; display:flex; align-items:center; background: #edf2f7; border: 2px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 12px 16px; max-width: 100%; margin: 6px auto; gap:16px;">
+                            <!-- Formats select moved to the left -->
+                            <div style="margin-right:auto; display:flex; align-items:center; gap:8px;">
+                                <label for="logs-export-format" style="font-weight:600; color:#374151; margin:0;">Format:</label>
+                                <select id="logs-export-format" class="form-control" style="height:36px; min-width: 200px;">
+                                    <option value="json" selected>JSON (structured)</option>
+                                    <option value="csv">CSV (spreadsheet)</option>
+                                    <option value="ndjson">NDJSON (Splunk/ELK)</option>
+                                    <option value="cef">CEF</option>
+                                    <option value="clf">CLF (NCSA)</option>
+                                    <option value="elf">ELF (Extended)</option>
+                                    <option value="w3c">W3C Extended</option>
+                                    <option value="wevt">Windows Event XML</option>
+                                    <option value="all">All Formats</option>
+                                </select>
+                            </div>
+                            <div class="btn-row-center" style="display:flex; gap:16px; align-items:center; justify-content:center; width:100%;">
                                 <button id="refresh-logs-btn" class="btn btn-primary">
                                     <i class="fas fa-sync me-1"></i><span>Refresh Logs</span>
                                 </button>
@@ -88,25 +103,6 @@ export class LogsPage {
                                 <button id="export-logs-btn" class="btn btn-success">
                                     <i class="fas fa-download me-1"></i><span>Export Logs</span>
                                 </button>
-                            </div>
-                            <div class="btn-row-right" style="display:flex; gap:12px; align-items:center;">
-                                <div class="dropdown">
-                                    <button class="btn btn-outline-secondary dropdown-toggle" id="logs-formats-dropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Formats
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item" href="#" id="export-logs-json" title="Structured JSON file (for backup/sharing)">Export JSON (structured)</a></li>
-                                        <li><a class="dropdown-item" href="#" id="export-logs-csv" title="Spreadsheet-friendly CSV (Excel/Sheets)">Export CSV (spreadsheet)</a></li>
-                                        <li><a class="dropdown-item" href="#" id="export-logs-ndjson" title="Newline-delimited JSON for Splunk/ELK/Logstash">Export NDJSON (Splunk/ELK)</a></li>
-                                        <li><a class="dropdown-item" href="#" id="export-logs-cef" title="Common Event Format">Export CEF</a></li>
-                                        <li><a class="dropdown-item" href="#" id="export-logs-clf" title="NCSA Common Log Format">Export CLF</a></li>
-                                        <li><a class="dropdown-item" href="#" id="export-logs-elf" title="Extended Log Format">Export ELF</a></li>
-                                        <li><a class="dropdown-item" href="#" id="export-logs-w3c" title="W3C Extended Log File Format">Export W3C</a></li>
-                                        <li><a class="dropdown-item" href="#" id="export-logs-wevt" title="Windows Event Log (XML)">Export Windows Event XML</a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item" href="#" id="export-logs-all" title="Download all supported formats">Export All Formats</a></li>
-                                    </ul>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -209,31 +205,18 @@ export class LogsPage {
         });
 
         document.getElementById('export-logs-btn')?.addEventListener('click', () => {
-            this.exportLogs();
+            // Export using selected single format (default JSON). If 'all' selected, export all.
+            const fmt = document.getElementById('logs-export-format')?.value || 'json';
+            if (fmt === 'all') this.exportLogs(); else this.exportSpecific(fmt);
         });
 
-        document.getElementById('export-logs-json')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.exportSpecific('json');
+        // When using select, we don't need individual links; still keep keyboard support via Enter
+        document.getElementById('logs-export-format')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const fmt = e.target.value || 'json';
+                if (fmt === 'all') this.exportLogs(); else this.exportSpecific(fmt);
+            }
         });
-        document.getElementById('export-logs-csv')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.exportSpecific('csv');
-        });
-        document.getElementById('export-logs-ndjson')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.exportSpecific('ndjson');
-        });
-        document.getElementById('export-logs-all')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.exportLogs();
-        });
-        // Additional formats
-        document.getElementById('export-logs-cef')?.addEventListener('click', (e) => { e.preventDefault(); this.exportSpecific('cef'); });
-        document.getElementById('export-logs-clf')?.addEventListener('click', (e) => { e.preventDefault(); this.exportSpecific('clf'); });
-        document.getElementById('export-logs-elf')?.addEventListener('click', (e) => { e.preventDefault(); this.exportSpecific('elf'); });
-        document.getElementById('export-logs-w3c')?.addEventListener('click', (e) => { e.preventDefault(); this.exportSpecific('w3c'); });
-        document.getElementById('export-logs-wevt')?.addEventListener('click', (e) => { e.preventDefault(); this.exportSpecific('wevt'); });
 
         document.getElementById('download-logs-btn')?.addEventListener('click', () => {
             this.downloadLogFiles();

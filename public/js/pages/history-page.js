@@ -105,19 +105,16 @@ export class HistoryPage {
                                 </button>
                             </div>
                             <div class="btn-row-right" style="display:flex; gap:12px; align-items:center;">
+                                <label for="history-export-format" style="font-weight:600; color:#374151; margin:0;">Format:</label>
+                                <select id="history-export-format" class="form-control" style="height:36px; min-width: 200px;">
+                                    <option value="json" selected>JSON (default)</option>
+                                    <option value="csv">CSV (spreadsheet)</option>
+                                    <option value="ndjson">NDJSON (Splunk/ELK)</option>
+                                    <option value="all">All Formats</option>
+                                </select>
                                 <button id="export-history-btn" class="btn btn-success">
                                     <i class="fas fa-download me-1"></i><span>Export History</span>
                                 </button>
-                                <div class="dropdown">
-                                    <button class="btn btn-outline-secondary dropdown-toggle" id="history-formats-dropdown" data-bs-toggle="dropdown" aria-expanded="false">Formats</button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item" href="#" id="export-history-json" title="Structured JSON file (default)">Export JSON (default)</a></li>
-                                        <li><a class="dropdown-item" href="#" id="export-history-csv" title="Spreadsheet-friendly CSV (Excel/Sheets)">Export CSV (spreadsheet)</a></li>
-                                        <li><a class="dropdown-item" href="#" id="export-history-ndjson" title="Newline-delimited JSON for Splunk/ELK/Logstash">Export NDJSON (Splunk/ELK)</a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item" href="#" id="export-history-all" title="Download JSON, CSV, and NDJSON together">Export All Formats</a></li>
-                                    </ul>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -219,19 +216,20 @@ export class HistoryPage {
         });
 
         document.getElementById('export-history-btn')?.addEventListener('click', () => {
-            // Default export JSON
-            this.exportHistory();
+            const fmt = document.getElementById('history-export-format')?.value || 'json';
+            if (fmt === 'all') this.exportHistorySpecific('all'); else this.exportHistorySpecific(fmt);
         });
 
         document.getElementById('clear-history-btn')?.addEventListener('click', () => {
             this.clearHistory();
         });
 
-        // Export format handlers
-        document.getElementById('export-history-json')?.addEventListener('click', (e) => { e.preventDefault(); this.exportHistorySpecific('json'); });
-        document.getElementById('export-history-csv')?.addEventListener('click', (e) => { e.preventDefault(); this.exportHistorySpecific('csv'); });
-        document.getElementById('export-history-ndjson')?.addEventListener('click', (e) => { e.preventDefault(); this.exportHistorySpecific('ndjson'); });
-        document.getElementById('export-history-all')?.addEventListener('click', (e) => { e.preventDefault(); this.exportHistorySpecific('all'); });
+        document.getElementById('history-export-format')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const fmt = e.target.value || 'json';
+                if (fmt === 'all') this.exportHistorySpecific('all'); else this.exportHistorySpecific(fmt);
+            }
+        });
     }
 
     async loadHistory() {
