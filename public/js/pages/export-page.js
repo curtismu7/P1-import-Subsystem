@@ -11,6 +11,7 @@ export class ExportPage {
         this.exportInterval = null; // Track export progress interval
         this.exportOptions = {
             format: 'csv',
+            profile: 'none',
             includeHeaders: true,
             includeDisabledUsers: false,
             attributes: []
@@ -75,9 +76,23 @@ export class ExportPage {
                                 <select id="export-format" class="form-control">
                                     <option value="csv">CSV (Comma Separated Values)</option>
                                     <option value="json">JSON (JavaScript Object Notation)</option>
-                                    <option value="xlsx">Excel (XLSX)</option>
+                                     <option value="ndjson">NDJSON (JSON Lines)</option>
+                                     <option value="xlsx">Excel (XLSX)</option>
+                                     <option value="xml">XML</option>
+                                     <option value="ldif">LDIF</option>
+                                     <option value="scim">SCIM 2.0 Bulk JSON</option>
                                 </select>
                             </div>
+                             <div class="form-group">
+                                 <label for="export-profile">Export Preset</label>
+                                 <select id="export-profile" class="form-control">
+                                     <option value="none">None (default)</option>
+                                     <option value="pingone">PingOne re-import template</option>
+                                     <option value="ad">AD/LDAP-friendly (sAMAccountName, DN)</option>
+                                     <option value="okta">Okta/AzureAD-style headers</option>
+                                     <option value="siem">SIEM profile (flattened)</option>
+                                 </select>
+                             </div>
                             <div class="form-group">
                                 <label for="export-encoding">Character Encoding</label>
                                 <select id="export-encoding" class="form-control">
@@ -292,6 +307,16 @@ export class ExportPage {
         const exportFormat = document.getElementById('export-format');
         if (exportFormat) {
             exportFormat.addEventListener('change', (e) => this.handleFormatChange(e.target.value));
+        }
+
+        // Export profile change
+        const exportProfile = document.getElementById('export-profile');
+        if (exportProfile) {
+            exportProfile.addEventListener('change', (e) => {
+                this.exportOptions.profile = e.target.value || 'none';
+                // Refresh options dependent UI if needed
+                this.updateExportOptions();
+            });
         }
 
         // Export options
@@ -566,10 +591,10 @@ export class ExportPage {
             selectedAttributes.push('created_date', 'last_updated', 'last_login');
         }
         
-        if (format === 'csv') {
+        if (format === 'csv' || format === 'xlsx') {
             let csv = '';
             if (includeHeaders) {
-                const headers = selectedAttributes.map(attr => this.getAttributeDisplayName(attr));
+                const headers = this.getProfileHeaders(selectedAttributes);
                 csv += headers.join(',') + '\n';
             }
             
@@ -588,15 +613,9 @@ export class ExportPage {
                     return;
                 }
                 
-                const row = selectedAttributes.map(attr => {
-                    if (attr === 'status') return user.status;
-                    const value = this.getAttributeValue(attr, user.index);
-                    if (attr === 'custom' && (value === undefined || value === null || value === '' || value === '{}' || value === '[]')) {
-                        return '';
-                    }
-                    return value;
-                });
-                csv += row.join(',') + '\n';
+                const transformed = this.applyProfileTransform(selectedAttributes, user.index, user.status);
+                const row = Object.values(transformed);
+                csv += row.join(format === 'xlsx' ? '\t' : ',') + '\n';
             });
             
             return csv;
@@ -612,26 +631,32 @@ export class ExportPage {
             const users = sampleUsers
                 .filter(user => includeDisabled || user.status !== 'Disabled')
                 .map(user => {
-                    const userObj = {};
-                selectedAttributes.forEach(attr => {
-                    const key = this.getAttributeKey(attr);
-                    if (attr === 'status') {
-                        userObj[key] = user.status;
-                        return;
-                    }
-                    const value = this.getAttributeValue(attr, user.index);
-                    if (attr === 'custom' && (value === undefined || value === null || value === '' || value === '{}' || value === '[]')) {
-                        userObj[key] = '';
-                    } else {
-                        userObj[key] = value;
-                    }
-                });
-                    return userObj;
+                    return this.applyProfileTransform(selectedAttributes, user.index, user.status);
                 });
             
             return JSON.stringify(users, null, 2);
-        } else if (format === 'xlsx') {
-            return 'Excel file preview not available in browser.\nFile would contain the same data as CSV format.';
+        } else if (format === 'ndjson') {
+            const sampleUsers = [1,2,3,4,5]
+                .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
+                .filter(u => includeDisabled || u.status !== 'Disabled')
+                .map(u => JSON.stringify(u))
+                .join('\n');
+            return sampleUsers;
+        } else if (format === 'xml') {
+            const sampleUsers = [1,2,3,4,5]
+                .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
+                .filter(u => includeDisabled || u.status !== 'Disabled');
+            return this.convertUsersToXML(sampleUsers);
+        } else if (format === 'ldif') {
+            const sampleUsers = [1,2,3,4,5]
+                .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
+                .filter(u => includeDisabled || u.status !== 'Disabled');
+            return this.convertUsersToLDIF(sampleUsers);
+        } else if (format === 'scim') {
+            const sampleUsers = [1,2,3,4,5]
+                .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
+                .filter(u => includeDisabled || u.status !== 'Disabled');
+            return JSON.stringify(this.convertUsersToSCIMBulk(sampleUsers), null, 2);
         }
         
         return 'Preview not available for this format.';
@@ -894,12 +919,11 @@ export class ExportPage {
             selectedAttributes.push('created_date', 'last_updated', 'last_login');
         }
         
-        if (format === 'csv') {
+        if (format === 'csv' || format === 'xlsx') {
             let csv = '';
             if (includeHeaders) {
-                // Build header row based on selected attributes
-                const headers = selectedAttributes.map(attr => this.getAttributeDisplayName(attr));
-                csv += headers.join(',') + '\n';
+                const headers = this.getProfileHeaders(selectedAttributes);
+                csv += headers.join(format === 'xlsx' ? '\t' : ',') + '\n';
             }
             
             // Generate sample data based on population size
@@ -911,17 +935,12 @@ export class ExportPage {
                     continue;
                 }
                 
-                const row = selectedAttributes.map(attr => {
-                    const value = this.getAttributeValue(attr, i);
-                    if (attr === 'custom' && (value === undefined || value === null || value === '' || value === '{}' || value === '[]')) {
-                        return '';
-                    }
-                    return value;
-                });
-                csv += row.join(',') + '\n';
+                const transformed = this.applyProfileTransform(selectedAttributes, i, userStatus);
+                const row = Object.values(transformed);
+                csv += row.join(format === 'xlsx' ? '\t' : ',') + '\n';
             }
             
-            return { content: csv, type: 'csv' };
+            return { content: csv, type: format };
             
         } else if (format === 'json') {
             const userCount = this.selectedPopulation.userCount || 100;
@@ -934,45 +953,170 @@ export class ExportPage {
                     continue;
                 }
                 
-                const user = {};
-                selectedAttributes.forEach(attr => {
-                    user[this.getAttributeKey(attr)] = this.getAttributeValue(attr, i);
-                });
-                users.push(user);
+                users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
             }
             
             return { content: JSON.stringify(users, null, 2), type: 'json' };
-            
-        } else if (format === 'xlsx') {
-            // For XLSX, we'll create a CSV-like format that Excel can open
-            let xlsxContent = '';
-            if (includeHeaders) {
-                const headers = selectedAttributes.map(attr => this.getAttributeDisplayName(attr));
-                xlsxContent += headers.join('\t') + '\n';
-            }
-            
+        } else if (format === 'ndjson') {
             const userCount = this.selectedPopulation.userCount || 100;
+            const lines = [];
             for (let i = 1; i <= userCount; i++) {
-                // Skip disabled users if not included
                 const userStatus = this.getAttributeValue('status', i);
-                if (!includeDisabled && userStatus === 'Disabled') {
-                    continue;
-                }
-                
-                const row = selectedAttributes.map(attr => {
-                    const value = this.getAttributeValue(attr, i);
-                    if (attr === 'custom' && (value === undefined || value === null || value === '' || value === '{}' || value === '[]')) {
-                        return '';
-                    }
-                    return value;
-                });
-                xlsxContent += row.join('\t') + '\n';
+                if (!includeDisabled && userStatus === 'Disabled') continue;
+                lines.push(JSON.stringify(this.applyProfileTransform(selectedAttributes, i, userStatus)));
             }
-            
-            return { content: xlsxContent, type: 'xlsx' };
+            return { content: lines.join('\n'), type: 'ndjson' };
+        } else if (format === 'xml') {
+            const userCount = this.selectedPopulation.userCount || 100;
+            const users = [];
+            for (let i = 1; i <= userCount; i++) {
+                const userStatus = this.getAttributeValue('status', i);
+                if (!includeDisabled && userStatus === 'Disabled') continue;
+                users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
+            }
+            return { content: this.convertUsersToXML(users), type: 'xml' };
+        } else if (format === 'ldif') {
+            const userCount = this.selectedPopulation.userCount || 100;
+            const users = [];
+            for (let i = 1; i <= userCount; i++) {
+                const userStatus = this.getAttributeValue('status', i);
+                if (!includeDisabled && userStatus === 'Disabled') continue;
+                users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
+            }
+            return { content: this.convertUsersToLDIF(users), type: 'ldif' };
+        } else if (format === 'scim') {
+            const userCount = this.selectedPopulation.userCount || 100;
+            const users = [];
+            for (let i = 1; i <= userCount; i++) {
+                const userStatus = this.getAttributeValue('status', i);
+                if (!includeDisabled && userStatus === 'Disabled') continue;
+                users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
+            }
+            return { content: JSON.stringify(this.convertUsersToSCIMBulk(users), null, 2), type: 'scim' };
         }
         
         return { content: 'Export data not available', type: 'txt' };
+    }
+
+    getProfileHeaders(selectedAttributes) {
+        const profile = this.exportOptions.profile || 'none';
+        if (profile === 'pingone') {
+            return ['username','email','givenName','familyName','enabled','groups'];
+        }
+        if (profile === 'ad') {
+            return ['sAMAccountName','mail','givenName','sn','distinguishedName'];
+        }
+        if (profile === 'okta') {
+            return ['login','email','firstName','lastName','status','groups'];
+        }
+        if (profile === 'siem') {
+            return ['id','username','email','enabled','createdDate','lastLogin'];
+        }
+        // default: use attribute display names
+        return selectedAttributes.map(attr => this.getAttributeDisplayName(attr));
+    }
+
+    applyProfileTransform(selectedAttributes, index, status) {
+        const profile = this.exportOptions.profile || 'none';
+        const base = {};
+        // Build from selected attributes first (default mapping)
+        selectedAttributes.forEach(attr => {
+            const key = this.getAttributeKey(attr);
+            base[key] = attr === 'status' ? status : this.getAttributeValue(attr, index);
+        });
+        if (profile === 'pingone') {
+            return {
+                username: base.username,
+                email: base.email,
+                givenName: base.first_name || 'User',
+                familyName: base.last_name || String(index),
+                enabled: (status || base.status) !== 'Disabled',
+                groups: base.groups || ''
+            };
+        }
+        if (profile === 'ad') {
+            const username = (base.username || `user${index}`);
+            const sam = String(username).includes('@') ? username.split('@')[0] : username;
+            const dn = `uid=${sam},ou=Users,dc=example,dc=com`;
+            return {
+                sAMAccountName: sam,
+                mail: base.email || `${sam}@example.com`,
+                givenName: base.first_name || 'User',
+                sn: base.last_name || String(index),
+                distinguishedName: dn
+            };
+        }
+        if (profile === 'okta') {
+            return {
+                login: base.email || `${base.username || `user${index}`}@example.com`,
+                email: base.email || `${base.username || `user${index}`}@example.com`,
+                firstName: base.first_name || 'User',
+                lastName: base.last_name || String(index),
+                status: status || base.status || 'ACTIVE',
+                groups: base.groups || ''
+            };
+        }
+        if (profile === 'siem') {
+            return {
+                id: `u-${index}`,
+                username: base.username || `user${index}`,
+                email: base.email || `${base.username || `user${index}`}@example.com`,
+                enabled: (status || base.status) !== 'Disabled',
+                createdDate: base.created_date || new Date().toISOString(),
+                lastLogin: base.last_login || new Date().toISOString()
+            };
+        }
+        return base;
+    }
+
+    convertUsersToXML(users) {
+        const escape = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+        const rows = users.map(u => {
+            const fields = Object.entries(u).map(([k,v]) => `    <${k}>${escape(v)}</${k}>`).join('\n');
+            return `  <user>\n${fields}\n  </user>`;
+        }).join('\n');
+        return `<users>\n${rows}\n</users>`;
+    }
+
+    convertUsersToLDIF(users) {
+        const lines = users.map(u => {
+            const uid = (u.username || u.login || u.sAMAccountName || 'user').toString();
+            const cn = `${u.givenName || u.firstName || 'User'} ${u.familyName || u.lastName || ''}`.trim();
+            const sam = uid.includes('@') ? uid.split('@')[0] : uid;
+            const dn = `uid=${sam},ou=Users,dc=example,dc=com`;
+            const block = [
+                `dn: ${dn}`,
+                'objectClass: inetOrgPerson',
+                `uid: ${sam}`,
+                `cn: ${cn}`,
+                `sn: ${u.familyName || u.lastName || 'User'}`,
+                `givenName: ${u.givenName || u.firstName || 'User'}`,
+                `mail: ${u.email || `${sam}@example.com`}`
+            ].join('\n');
+            return block + '\n';
+        });
+        return lines.join('\n');
+    }
+
+    convertUsersToSCIMBulk(users) {
+        const Operations = users.map((u, idx) => ({
+            method: 'POST',
+            path: '/Users',
+            bulkId: `user${idx+1}`,
+            data: {
+                userName: u.username || u.login || u.email,
+                name: {
+                    givenName: u.givenName || u.firstName || 'User',
+                    familyName: u.familyName || u.lastName || String(idx+1)
+                },
+                active: u.enabled !== false,
+                emails: [{ value: u.email, primary: true }]
+            }
+        }));
+        return {
+            schemas: ['urn:ietf:params:scim:api:messages:2.0:BulkRequest'],
+            Operations
+        };
     }
     
     /**
@@ -1084,8 +1228,16 @@ export class ExportPage {
                 return 'text/csv';
             case 'json':
                 return 'application/json';
+            case 'ndjson':
+                return 'application/x-ndjson';
             case 'xlsx':
                 return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            case 'xml':
+                return 'application/xml';
+            case 'ldif':
+                return 'text/plain';
+            case 'scim':
+                return 'application/scim+json';
             default:
                 return 'text/plain';
         }
