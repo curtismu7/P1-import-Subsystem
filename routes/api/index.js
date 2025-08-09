@@ -2707,6 +2707,109 @@ router.get('/version', (req, res) => {
     res.json({ version: '7.0.1.0' });
 });
 
+// --- BULK USER DELETE BY IDS ---
+router.post('/users/delete', express.json(), async (req, res) => {
+    try {
+        const { userIds = [], skipNotFound = true } = req.body || {};
+        if (!Array.isArray(userIds) || userIds.length === 0) {
+            return res.status(400).json({ success: false, error: 'userIds is required and must be a non-empty array' });
+        }
+        const tokenManager = req.app.get('tokenManager');
+        if (!tokenManager) return res.status(500).json({ success: false, error: 'Token manager not available' });
+        const token = await tokenManager.getAccessToken();
+        if (!token) return res.status(401).json({ success: false, error: 'Failed to get access token' });
+        const environmentId = await tokenManager.getEnvironmentId();
+        const apiBaseUrl = tokenManager.getApiBaseUrl();
+        const endpointBase = `${apiBaseUrl}/environments/${environmentId}/users`;
+        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+        let deleted = 0, failed = 0, skipped = 0;
+        const concurrency = 5;
+        let idx = 0, inFlight = 0;
+        await new Promise((resolve) => {
+            const pump = () => {
+                while (inFlight < concurrency && idx < userIds.length) {
+                    const id = userIds[idx++];
+                    inFlight++;
+                    fetch(`${endpointBase}/${encodeURIComponent(id)}`, { method: 'DELETE', headers })
+                        .then(async (resp) => {
+                            if (resp.ok) deleted++;
+                            else if (resp.status === 404 && skipNotFound) skipped++; 
+                            else failed++;
+                        })
+                        .catch(() => { failed++; })
+                        .finally(() => { inFlight--; if (idx >= userIds.length && inFlight === 0) resolve(); else pump(); });
+                }
+            };
+            pump();
+        });
+        res.json({ success: true, totals: { requested: userIds.length, deleted, skipped, failed } });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// --- BULK USER MODIFY BY IDS ---
+router.post('/users/modify', express.json(), async (req, res) => {
+    try {
+        const { userIds = [], modifications = [] } = req.body || {};
+        if (!Array.isArray(userIds) || userIds.length === 0) {
+            return res.status(400).json({ success: false, error: 'userIds is required and must be a non-empty array' });
+        }
+        const tokenManager = req.app.get('tokenManager');
+        if (!tokenManager) return res.status(500).json({ success: false, error: 'Token manager not available' });
+        const token = await tokenManager.getAccessToken();
+        if (!token) return res.status(401).json({ success: false, error: 'Failed to get access token' });
+        const environmentId = await tokenManager.getEnvironmentId();
+        const apiBaseUrl = tokenManager.getApiBaseUrl();
+        const endpointBase = `${apiBaseUrl}/environments/${environmentId}/users`;
+        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+        // Build a patch body per modifications
+        const buildBody = (mods) => {
+            const body = {};
+            for (const m of mods) {
+                const attr = (m.attribute || '').toLowerCase();
+                const val = m.value;
+                if (!attr) continue;
+                if (attr === 'email') {
+                    body.emails = val ? [{ value: val, primary: true }] : [];
+                } else if (attr === 'name.given') {
+                    body.name = body.name || {}; body.name.given = val;
+                } else if (attr === 'name.family') {
+                    body.name = body.name || {}; body.name.family = val;
+                } else if (attr.startsWith('phone')) {
+                    body.phoneNumbers = val ? [{ value: val }] : [];
+                } else if (attr === 'status') {
+                    body.enabled = (String(val).toLowerCase() !== 'disabled');
+                }
+            }
+            return body;
+        };
+
+        let modified = 0, failed = 0;
+        const bodyTemplate = buildBody(modifications);
+        const concurrency = 5;
+        let idx = 0, inFlight = 0;
+        await new Promise((resolve) => {
+            const pump = () => {
+                while (inFlight < concurrency && idx < userIds.length) {
+                    const id = userIds[idx++];
+                    inFlight++;
+                    fetch(`${endpointBase}/${encodeURIComponent(id)}`, { method: 'PATCH', headers, body: JSON.stringify(bodyTemplate) })
+                        .then(async (resp) => { if (resp.ok) modified++; else failed++; })
+                        .catch(() => { failed++; })
+                        .finally(() => { inFlight--; if (idx >= userIds.length && inFlight === 0) resolve(); else pump(); });
+                }
+            };
+            pump();
+        });
+        res.json({ success: true, totals: { requested: userIds.length, modified, failed } });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // --- DELETE USERS ENDPOINT ---
 router.post('/delete-users', upload.single('file'), async (req, res) => {
     try {
