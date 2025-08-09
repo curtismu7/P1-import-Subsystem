@@ -8,6 +8,8 @@ export class ImportPage {
         this.selectedFile = null;
         this.uploadProgress = 0;
         this.isUploading = false;
+        this.selectedRecordCount = 0;
+        this.importStartTime = null;
     }
     
     async load() {
@@ -468,6 +470,7 @@ export class ImportPage {
             const numRecords = Math.max(0, allLines.length - 1); // naive: minus header
             const fileRecords = document.getElementById('file-records');
             if (fileRecords) fileRecords.textContent = String(numRecords);
+            this.selectedRecordCount = numRecords;
             
             const preview = document.getElementById('file-preview');
             if (preview) {
@@ -617,6 +620,10 @@ export class ImportPage {
                 startBtn.classList.remove('btn-primary');
                 startBtn.classList.add('btn-success');
             }
+            // initialize stats
+            const totalEl = document.getElementById('total-users');
+            if (totalEl) totalEl.textContent = String(this.selectedRecordCount || 0);
+            this.importStartTime = Date.now();
             
             const formData = new FormData();
             formData.append('file', this.selectedFile);
@@ -744,6 +751,10 @@ export class ImportPage {
         const progressTextLeft = document.getElementById('progress-text-left');
         const beerFill = document.getElementById('beer-fill-import');
         const beerFoam = document.getElementById('beer-foam-import');
+        const usersProcessedEl = document.getElementById('users-processed');
+        const totalUsersEl = document.getElementById('total-users');
+        const successRateEl = document.getElementById('success-rate');
+        const estimatedTimeEl = document.getElementById('estimated-time');
         
         if (progressFill) {
             progressFill.style.width = percentage + '%';
@@ -769,6 +780,21 @@ export class ImportPage {
             const yFoam = 26 - Math.max(0, Math.min(16, (percentage / 100) * 16)) - foamHeight;
             beerFoam.setAttribute('y', String(yFoam));
             beerFoam.setAttribute('height', String(foamHeight));
+        }
+        // Real-time stats
+        const total = Number(totalUsersEl?.textContent || this.selectedRecordCount || 0);
+        const processed = Math.min(total, Math.round((percentage / 100) * total));
+        if (usersProcessedEl) usersProcessedEl.textContent = String(processed);
+        if (successRateEl && total > 0) successRateEl.textContent = `${Math.round((processed / total) * 100)}%`;
+        if (estimatedTimeEl && this.importStartTime && percentage > 0 && percentage < 100) {
+            const elapsedMs = Date.now() - this.importStartTime;
+            const remainingMs = Math.max(0, Math.round((elapsedMs * (100 - percentage)) / percentage));
+            const mins = Math.floor(remainingMs / 60000);
+            const secs = Math.floor((remainingMs % 60000) / 1000);
+            estimatedTimeEl.textContent = `${mins}m ${secs}s remaining`;
+        }
+        if (estimatedTimeEl && percentage >= 100) {
+            estimatedTimeEl.textContent = 'Done';
         }
     }
     
