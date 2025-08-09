@@ -97,16 +97,6 @@ export class ImportPage {
                         
                         <div class="options-group">
                             <h4>Import Mode</h4>
-                            <div class="mb-2" style="display:flex; gap:12px; align-items:center;">
-                                <div class="form-check">
-                                    <input type="checkbox" id="mode-select-all" class="form-check-input">
-                                    <label class="form-check-label" for="mode-select-all">Select All</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="mode-unselect-all" class="form-check-input">
-                                    <label class="form-check-label" for="mode-unselect-all">Unselect All</label>
-                                </div>
-                            </div>
                             <div class="checkbox-grid">
                                 <div class="form-check">
                                     <input type="radio" id="mode-create" name="importMode" value="create" class="form-check-input" checked>
@@ -266,20 +256,7 @@ export class ImportPage {
         const removeFile = document.getElementById('remove-file');
         
         console.log('🔧 Setting up import page event listeners...');
-        // Select All / Unselect All for Import Mode (radio group)
-        const modeSelectAll = document.getElementById('mode-select-all');
-        const modeUnselectAll = document.getElementById('mode-unselect-all');
-        const modeIds = ['mode-create','mode-update','mode-upsert'];
-        if (modeSelectAll) modeSelectAll.addEventListener('change', (e) => {
-            if (!e.target.checked) return;
-            modeIds.forEach(id => { const el = document.getElementById(id); if (el) el.checked = true; });
-            if (modeUnselectAll) modeUnselectAll.checked = false;
-        });
-        if (modeUnselectAll) modeUnselectAll.addEventListener('change', (e) => {
-            if (!e.target.checked) return;
-            modeIds.forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
-            if (modeSelectAll) modeSelectAll.checked = false;
-        });
+        // Import Mode radios do not need select-all controls; removed noisy UI
 
         // Select All / Unselect All for Import Options (checkbox group)
         const importOptionsSelectAll = document.getElementById('import-options-select-all');
@@ -542,6 +519,12 @@ export class ImportPage {
             if (response.ok) {
                 this.app.showSuccess(`File validation successful! Found ${result.total} users.`);
                 this.displayValidationResults(result);
+                // Turn Validate File button green to indicate success
+                const validateBtn = document.getElementById('validate-file');
+                if (validateBtn) {
+                    validateBtn.classList.remove('btn-primary');
+                    validateBtn.classList.add('btn-success');
+                }
             } else {
                 throw new Error(result.error || 'Validation failed');
             }
@@ -568,6 +551,12 @@ export class ImportPage {
         try {
             this.isUploading = true;
             this.showProgressSection();
+            // Turn Start Import button green to indicate active import
+            const startBtn = document.getElementById('start-import');
+            if (startBtn) {
+                startBtn.classList.remove('btn-primary');
+                startBtn.classList.add('btn-success');
+            }
             
             const formData = new FormData();
             formData.append('file', this.selectedFile);
