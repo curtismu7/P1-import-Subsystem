@@ -70,6 +70,7 @@ export class HistoryPage {
                                 <div class="form-group">
                                     <label for="history-search">Search History:</label>
                                     <input type="text" id="history-search" class="form-control" placeholder="Search operations..." style="height:36px;" title="Type to filter by operation, status, description, details, user, or date">
+                                    <div id="history-search-status" class="text-muted" style="margin-top:4px; font-size:0.85rem;">Type to search</div>
                                 </div>
                             </div>
                             <div class="col-md-2" style="flex:0 1 220px; min-width:200px; max-width:260px;">
@@ -346,6 +347,20 @@ export class HistoryPage {
             
             return matchesOperation && matchesStatus && matchesSearch && matchesDate;
         });
+
+        // Update search status indicator
+        const statusEl = document.getElementById('history-search-status');
+        if (statusEl) {
+            const total = this.history.length;
+            const count = this.filteredHistory.length;
+            if (this.searchTerm) {
+                statusEl.textContent = `Found ${count} of ${total}`;
+                statusEl.style.color = count ? '#374151' : '#dc2626';
+            } else {
+                statusEl.textContent = `Showing ${count} operations`;
+                statusEl.style.color = '#6b7280';
+            }
+        }
 
         this.renderHistory();
     }
