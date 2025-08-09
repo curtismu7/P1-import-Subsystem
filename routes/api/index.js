@@ -2868,6 +2868,66 @@ router.get('/user-schema', async (req, res) => {
     }
 });
 
+// --- CSV TEMPLATE FOR IMPORT ---
+router.get('/import/template', async (req, res) => {
+    try {
+        const tokenManager = req.app.get('tokenManager');
+        if (!tokenManager) return res.status(500).json({ success: false, error: 'Token manager not available' });
+        const token = await tokenManager.getAccessToken();
+        if (!token) return res.status(401).json({ success: false, error: 'Failed to get access token' });
+        const environmentId = await tokenManager.getEnvironmentId();
+        const apiBaseUrl = tokenManager.getApiBaseUrl();
+        const scimBase = `${apiBaseUrl}/environments/${environmentId}/scim/v2/Schemas`;
+
+        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        const listResp = await fetch(scimBase, { headers });
+        let flat = [];
+        if (listResp.ok) {
+            const listJson = await listResp.json();
+            const resources = listJson?.Resources || listJson?.schemas || [];
+            const userSchemas = resources.filter(s => {
+                const id = s?.id || s?.schema || '';
+                return /User$/i.test(id) || /:User/.test(id) || /core:2\.0:User/.test(id);
+            });
+            const walk = (attrs, prefix = '') => {
+                if (!Array.isArray(attrs)) return;
+                for (const a of attrs) {
+                    const name = a?.name || a?.id;
+                    if (!name) continue;
+                    const path = prefix ? `${prefix}.${name}` : name;
+                    flat.push(path);
+                    if (Array.isArray(a.subAttributes)) walk(a.subAttributes, path);
+                }
+            };
+            for (const s of userSchemas) {
+                if (Array.isArray(s.attributes)) walk(s.attributes);
+            }
+        }
+
+        // Prioritize common, minimal headers first
+        const common = [
+            'username', 'emails.value', 'name.given', 'name.family', 'enabled'
+        ];
+        const unique = Array.from(new Set([...common, ...flat])).slice(0, 60); // cap to reasonable length
+
+        const headerRow = unique.join(',');
+        const sample1 = ['user1', 'user1@example.com', 'User', 'One', 'true'];
+        const sample2 = ['user2', 'user2@example.com', 'User', 'Two', 'true'];
+        const paddedRow = (arr) => {
+            const row = [...arr];
+            while (row.length < unique.length) row.push('');
+            return row.join(',');
+        };
+        const csv = [headerRow, paddedRow(sample1), paddedRow(sample2)].join('\n');
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="pingone-import-template.csv"');
+        return res.send(csv);
+    } catch (error) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // --- DELETE USERS ENDPOINT ---
 router.post('/delete-users', upload.single('file'), async (req, res) => {
     try {
