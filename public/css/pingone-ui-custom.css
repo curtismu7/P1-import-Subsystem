@@ -1896,7 +1896,7 @@ button#clear-token,
   left: 0;
   right: 0;
   height: var(--footer-height);
-  background: var(--ping-gray-100);
+  background: #041727; /* requested footer background */
   border-top: 1px solid var(--ping-gray-300);
   z-index: 99;
 }
@@ -1908,7 +1908,7 @@ button#clear-token,
   height: 100%;
   padding: 0 var(--spacing-lg);
   font-size: var(--font-size-xs);
-  color: var(--ping-gray-600);
+  color: #e5e7eb; /* lighter text on dark footer */
 }
 
 .footer-left, .footer-center, .footer-right {
