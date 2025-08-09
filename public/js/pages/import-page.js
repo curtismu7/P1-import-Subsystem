@@ -97,6 +97,16 @@ export class ImportPage {
                         
                         <div class="options-group">
                             <h4>Import Mode</h4>
+                            <div class="mb-2" style="display:flex; gap:12px; align-items:center;">
+                                <div class="form-check">
+                                    <input type="checkbox" id="mode-select-all" class="form-check-input">
+                                    <label class="form-check-label" for="mode-select-all">Select All</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" id="mode-unselect-all" class="form-check-input">
+                                    <label class="form-check-label" for="mode-unselect-all">Unselect All</label>
+                                </div>
+                            </div>
                             <div class="checkbox-grid">
                                 <div class="form-check">
                                     <input type="radio" id="mode-create" name="importMode" value="create" class="form-check-input" checked>
@@ -115,6 +125,16 @@ export class ImportPage {
                         
                         <div class="options-group">
                             <h4>Import Options</h4>
+                            <div class="mb-2" style="display:flex; gap:12px; align-items:center;">
+                                <div class="form-check">
+                                    <input type="checkbox" id="import-options-select-all" class="form-check-input">
+                                    <label class="form-check-label" for="import-options-select-all">Select All</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" id="import-options-unselect-all" class="form-check-input">
+                                    <label class="form-check-label" for="import-options-unselect-all">Unselect All</label>
+                                </div>
+                            </div>
                             <div class="checkbox-grid">
                                 <div class="form-check">
                                     <input type="checkbox" id="skip-duplicates" name="skipDuplicates" class="form-check-input" checked>
@@ -246,6 +266,37 @@ export class ImportPage {
         const removeFile = document.getElementById('remove-file');
         
         console.log('🔧 Setting up import page event listeners...');
+        // Select All / Unselect All for Import Mode (radio group)
+        const modeSelectAll = document.getElementById('mode-select-all');
+        const modeUnselectAll = document.getElementById('mode-unselect-all');
+        const modeIds = ['mode-create','mode-update','mode-upsert'];
+        if (modeSelectAll) modeSelectAll.addEventListener('change', (e) => {
+            if (!e.target.checked) return;
+            modeIds.forEach(id => { const el = document.getElementById(id); if (el) el.checked = true; });
+            if (modeUnselectAll) modeUnselectAll.checked = false;
+        });
+        if (modeUnselectAll) modeUnselectAll.addEventListener('change', (e) => {
+            if (!e.target.checked) return;
+            modeIds.forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
+            if (modeSelectAll) modeSelectAll.checked = false;
+        });
+
+        // Select All / Unselect All for Import Options (checkbox group)
+        const importOptionsSelectAll = document.getElementById('import-options-select-all');
+        const importOptionsUnselectAll = document.getElementById('import-options-unselect-all');
+        const optionIds = ['skip-duplicates','skip-existing-username','skip-existing-userid','validate-emails','send-welcome','dry-run'];
+        const toggleOptions = (checked) => optionIds.forEach(id => { const el = document.getElementById(id); if (el) el.checked = checked; });
+        if (importOptionsSelectAll) importOptionsSelectAll.addEventListener('change', (e) => {
+            if (!e.target.checked) return;
+            toggleOptions(true);
+            if (importOptionsUnselectAll) importOptionsUnselectAll.checked = false;
+        });
+        if (importOptionsUnselectAll) importOptionsUnselectAll.addEventListener('change', (e) => {
+            if (!e.target.checked) return;
+            toggleOptions(false);
+            if (importOptionsSelectAll) importOptionsSelectAll.checked = false;
+        });
+
         console.log('📁 Upload area found:', !!uploadArea);
         console.log('📄 File input found:', !!fileInput);
         console.log('🔍 Browse files button found:', !!browseFiles);
