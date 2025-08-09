@@ -1983,6 +1983,19 @@ button#clear-token,
   color: #0d47a1;
 }
 
+/* Make export progress percentage highly prominent */
+#export-progress .progress-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0b3c8c;
+  background: rgba(21, 101, 192, 0.12);
+  border: 2px solid #1565c0;
+  padding: 4px 12px;
+  border-radius: 10px;
+  line-height: 1.2;
+  box-shadow: 0 1px 6px rgba(21, 101, 192, 0.18);
+}
+
 /* Footer: force dark background regardless of earlier declarations */
 #app-footer.app-footer {
   background: #041727 !important;
