@@ -609,9 +609,10 @@ export class ImportPage {
                 formData.append('importMode', importMode.value);
             }
             
-            const sendVerification = document.getElementById('send-verification');
-            if (sendVerification) {
-                formData.append('sendVerification', sendVerification.checked);
+            // Send welcome emails flag
+            const sendWelcome = document.getElementById('send-welcome');
+            if (sendWelcome) {
+                formData.append('sendWelcome', sendWelcome.checked);
             }
             
             const skipDuplicates = document.getElementById('skip-duplicates');
@@ -678,6 +679,14 @@ export class ImportPage {
         if (progressSection) progressSection.style.display = 'block';
         if (startImport) startImport.style.display = 'none';
         if (cancelImport) cancelImport.style.display = 'inline-block';
+
+        // Ensure the user sees the progress as it starts
+        // Scroll smoothly to the progress section
+        if (progressSection) {
+            setTimeout(() => {
+                progressSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+        }
     }
     
     hideProgressSection() {
