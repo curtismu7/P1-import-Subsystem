@@ -377,6 +377,18 @@ select.form-control:not([multiple]) {
   padding-right: 28px; /* room for caret */
 }
 
+/* Ensure Logs page dropdowns have sufficient height and no text truncation */
+#log-level-filter.form-control,
+#log-source.form-control,
+#logs-export-format.form-control {
+  height: 44px !important;
+  min-height: 44px !important;
+  line-height: 44px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  font-size: 15px !important;
+}
+
 .population-dropdown-container button {
   flex-shrink: 0 !important;
   width: 38px !important;
@@ -629,15 +641,26 @@ select.form-control:not([multiple]) {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  align-items: center;
+  justify-content: center;
 }
 
 .status-indicator {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.75rem;
   font-size: 1.1rem;
   font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 16px;
+  background: rgba(0,0,0,0.04);
 }
+
+/* color the dot based on status */
+.status-indicator i.fa-circle { color: #9ca3af; }
+.status-indicator.status-valid i.fa-circle { color: var(--ping-success, #10b981); }
+.status-indicator.status-invalid i.fa-circle { color: var(--ping-error, #ef4444); }
+.status-indicator.status-unknown i.fa-circle { color: #9ca3af; }
 
 .token-details {
   display: grid;
