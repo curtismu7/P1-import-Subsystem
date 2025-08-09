@@ -250,17 +250,26 @@ export class HomePage {
             if (connectionStatus) connectionStatus.textContent = 'Connected';
             if (connectionIndicator) connectionIndicator.className = 'status-indicator valid';
             // Use a green check shield to convey positive state
-            if (connectionIcon) connectionIcon.className = 'mdi mdi-shield-check';
+            if (connectionIcon) {
+                connectionIcon.className = 'mdi mdi-shield-check';
+                connectionIcon.style.color = '#2ea043'; // green
+            }
             // Connection status set to Connected
         } else if (hasSettings) {
             if (connectionStatus) connectionStatus.textContent = 'Configured';
             if (connectionIndicator) connectionIndicator.className = 'status-indicator warning';
-            if (connectionIcon) connectionIcon.className = 'mdi mdi-shield-alert';
+            if (connectionIcon) {
+                connectionIcon.className = 'mdi mdi-shield-alert';
+                connectionIcon.style.color = '#d4a72c'; // amber
+            }
             // Connection status set to Configured
         } else {
             if (connectionStatus) connectionStatus.textContent = 'Not Configured';
             if (connectionIndicator) connectionIndicator.className = 'status-indicator invalid';
-            if (connectionIcon) connectionIcon.className = 'mdi mdi-shield-off';
+            if (connectionIcon) {
+                connectionIcon.className = 'mdi mdi-shield-off';
+                connectionIcon.style.color = '#dc3545'; // red
+            }
             // Connection status set to Not Configured
         }
     }

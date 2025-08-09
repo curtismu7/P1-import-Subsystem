@@ -390,7 +390,9 @@ export class SettingsPage {
                 // Add focus management for invalid tokens
                 if (!tokenStatus.isValid) {
                     // Highlight the token section to draw attention
-                    const tokenSection = document.querySelector('.settings-section:has-text("Token Management")');
+                    // Avoid unsupported :has-text() pseudo; find section by title text
+                    const tokenSection = Array.from(document.querySelectorAll('.settings-section'))
+                        .find(sec => sec.querySelector('.section-title')?.textContent?.includes('Token Management'));
                     if (tokenSection) {
                         tokenSection.style.border = '2px solid #dc3545';
                         tokenSection.style.backgroundColor = '#fff5f5';
@@ -406,7 +408,8 @@ export class SettingsPage {
                     }
                 } else {
                     // Remove highlighting for valid tokens
-                    const tokenSection = document.querySelector('.settings-section:has-text("Token Management")');
+                    const tokenSection = Array.from(document.querySelectorAll('.settings-section'))
+                        .find(sec => sec.querySelector('.section-title')?.textContent?.includes('Token Management'));
                     if (tokenSection) {
                         tokenSection.style.border = '';
                         tokenSection.style.backgroundColor = '';
