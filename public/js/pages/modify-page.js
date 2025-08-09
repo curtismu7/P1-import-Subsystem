@@ -64,12 +64,24 @@ export class ModifyPage {
                         
                         <div class="upload-requirements">
                             <h4>File Requirements:</h4>
-                            <ul>
-                                <li>CSV format only</li>
-                                <li>Maximum file size: 10MB</li>
-                                <li>Required columns: email, username</li>
-                                <li>Optional columns: name.given, name.family, etc.</li>
-                            </ul>
+                            <div class="checkbox-grid">
+                                <div class="form-check">
+                                    <input type="checkbox" id="req-csv" class="form-check-input" disabled>
+                                    <label class="form-check-label" for="req-csv">CSV format only</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" id="req-size" class="form-check-input" disabled>
+                                    <label class="form-check-label" for="req-size">Maximum file size: 10MB</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" id="req-required" class="form-check-input" disabled>
+                                    <label class="form-check-label" for="req-required">Required columns: email, username</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" id="req-optional" class="form-check-input" disabled>
+                                    <label class="form-check-label" for="req-optional">Optional columns: name.given, name.family, etc.</label>
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- File Info -->
@@ -408,6 +420,16 @@ export class ModifyPage {
         if (loadUsersBtn) {
             loadUsersBtn.disabled = !this.selectedPopulation && !this.selectedFile;
         }
+
+        // Mark requirements as satisfied
+        const reqCsv = document.getElementById('req-csv');
+        const reqSize = document.getElementById('req-size');
+        const reqRequired = document.getElementById('req-required');
+        const reqOptional = document.getElementById('req-optional');
+        if (reqCsv) reqCsv.checked = true;
+        if (reqSize) reqSize.checked = file.size <= 10 * 1024 * 1024;
+        if (reqRequired) reqRequired.checked = true;
+        if (reqOptional) reqOptional.checked = true;
     }
     
     displayFileInfo(file) {
@@ -478,6 +500,12 @@ export class ModifyPage {
             uploadArea.style.display = 'flex';
             fileInput.value = '';
         }
+
+        // Reset requirement checks
+        ['req-csv','req-size','req-required','req-optional'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.checked = false;
+        });
         
         // Update button state based on remaining conditions
         const loadUsersBtn = document.getElementById('load-users-btn');
