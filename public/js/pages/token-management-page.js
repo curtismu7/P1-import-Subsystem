@@ -48,10 +48,10 @@ export class TokenManagementPage {
                     <h2 class="section-title">Token Status</h2>
                     <div class="token-box">
                         <div class="token-status-display">
-                            <div class="status-indicator" id="token-status-indicator">
-                                <i class="fas fa-circle"></i>
-                                <span id="token-status-text">Checking...</span>
+                            <div class="status-indicator status-unknown" id="token-status-indicator">
+                                <span class="status-dot" aria-hidden="true"></span>
                             </div>
+                            <div class="status-text" id="token-status-text">Checking...</div>
                             
                             <div class="token-details">
                                 <div class="detail-row">
@@ -127,7 +127,7 @@ export class TokenManagementPage {
                                 <button id="refresh-token-btn" class="btn btn-primary">
                                     <i class="fas fa-sync"></i> Refresh Token
                                 </button>
-                                <button id="validate-token-btn" class="btn btn-info">
+                                <button id="validate-token-btn" class="btn btn-danger">
                                     <i class="fas fa-check-circle"></i> Validate Token
                                 </button>
                                 <button id="test-connection-btn" class="btn btn-success">
@@ -335,7 +335,7 @@ export class TokenManagementPage {
             }
         } else {
             console.log('❌ No stored token found');
-            statusIndicator.className = 'status-indicator status-invalid';
+            statusIndicator.className = 'status-indicator status-unknown';
             statusText.textContent = 'No Token';
             tokenType.textContent = '-';
             tokenExpires.textContent = '-';
@@ -783,6 +783,8 @@ export class TokenManagementPage {
     async validateToken() {
         const validateBtn = document.getElementById('validate-token-btn');
         const originalText = validateBtn.innerHTML;
+        const statusIndicator = document.getElementById('token-status-indicator');
+        const statusText = document.getElementById('token-status-text');
         
         try {
             validateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating...';
@@ -802,6 +804,13 @@ export class TokenManagementPage {
                 if (this.app && this.app.showSuccess) {
                     this.app.showSuccess('Token is valid and active');
                 }
+
+                // Button goes green on success
+                validateBtn.classList.remove('btn-danger', 'btn-info');
+                validateBtn.classList.add('btn-success');
+                // Update status indicator to green
+                if (statusIndicator) statusIndicator.className = 'status-indicator status-valid';
+                if (statusText) statusText.textContent = 'Valid';
             } else {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
@@ -817,6 +826,12 @@ export class TokenManagementPage {
             if (this.app && this.app.showError) {
                 this.app.showError('Token validation failed. Token may be expired or invalid.');
             }
+
+            // Ensure button is red on failure
+            validateBtn.classList.remove('btn-success', 'btn-info');
+            validateBtn.classList.add('btn-danger');
+            if (statusIndicator) statusIndicator.className = 'status-indicator status-invalid';
+            if (statusText) statusText.textContent = 'Invalid';
         } finally {
             validateBtn.innerHTML = originalText;
             validateBtn.disabled = false;

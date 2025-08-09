@@ -648,19 +648,26 @@ select.form-control:not([multiple]) {
 .status-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 500;
-  padding: 6px 10px;
-  border-radius: 16px;
-  background: rgba(0,0,0,0.04);
+  justify-content: center;
+  width: 18px; /* compact width just for the dot */
+  height: 18px;
 }
 
-/* color the dot based on status */
-.status-indicator i.fa-circle { color: #9ca3af; }
-.status-indicator.status-valid i.fa-circle { color: var(--ping-success, #10b981); }
-.status-indicator.status-invalid i.fa-circle { color: var(--ping-error, #ef4444); }
-.status-indicator.status-unknown i.fa-circle { color: #9ca3af; }
+.status-indicator .status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #9ca3af; /* unknown default */
+}
+
+.status-indicator.status-valid .status-dot { background: var(--ping-success, #10b981); }
+.status-indicator.status-invalid .status-dot { background: var(--ping-error, #ef4444); }
+.status-indicator.status-unknown .status-dot { background: #9ca3af; }
+
+.token-status-display .status-text {
+  font-weight: 600;
+  color: var(--ping-text-primary, #111827);
+}
 
 .token-details {
   display: grid;
