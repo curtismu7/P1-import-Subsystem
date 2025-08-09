@@ -104,16 +104,17 @@ export class HistoryPage {
                         <h3>History Actions</h3>
                     </div>
                     <div class="card-body" style="display:flex;">
-                        <div class="btn-toolbar" style="display:flex; align-items:center; justify-content:space-between; width:100%; background:#f3f4f6; border:2px solid #e5e7eb; border-radius:12px; padding:12px 16px;">
-                            <div class="btn-row-left" style="display:flex; gap:12px; align-items:center;">
-                                <button id="refresh-history-btn" class="btn btn-primary">
-                                    <i class="fas fa-sync me-1"></i><span>Refresh History</span>
-                                </button>
-                                <button id="clear-history-btn" class="btn btn-danger">
-                                    <i class="fas fa-trash me-1"></i><span>Clear History</span>
-                                </button>
-                            </div>
-                            <div class="btn-row-right" style="display:flex; gap:12px; align-items:center;">
+                        <div class="btn-toolbar" style="display:flex; align-items:center; justify-content:center; gap:16px; width:100%; background:#f3f4f6; border:2px solid #e5e7eb; border-radius:12px; padding:12px 16px;">
+                            <button id="refresh-history-btn" class="btn btn-primary">
+                                <i class="fas fa-sync me-1"></i><span>Refresh History</span>
+                            </button>
+                            <button id="clear-history-btn" class="btn btn-danger">
+                                <i class="fas fa-trash me-1"></i><span>Clear History</span>
+                            </button>
+                            <button id="export-history-btn" class="btn btn-success">
+                                <i class="fas fa-download me-1"></i><span>Export History</span>
+                            </button>
+                            <div style="display:flex; align-items:center; gap:8px;">
                                 <label for="history-export-format" style="font-weight:600; color:#374151; margin:0;">Format:</label>
                                 <select id="history-export-format" class="form-control" style="height:44px; min-height:44px; line-height:44px; min-width: 220px; padding-top:8px; padding-bottom:8px;">
                                     <option value="json" selected>JSON (default)</option>
@@ -121,9 +122,6 @@ export class HistoryPage {
                                     <option value="ndjson">NDJSON (Splunk/ELK)</option>
                                     <option value="all">All Formats</option>
                                 </select>
-                                <button id="export-history-btn" class="btn btn-success">
-                                    <i class="fas fa-download me-1"></i><span>Export History</span>
-                                </button>
                             </div>
                         </div>
                     </div>
