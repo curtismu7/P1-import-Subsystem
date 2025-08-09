@@ -7,6 +7,7 @@
 
 import express from 'express';
 import multer from 'multer';
+import nodemailer from 'nodemailer';
 const router = express.Router();
 
 // Configure multer for file uploads
@@ -206,7 +207,7 @@ router.delete('/reset', (req, res) => {
  * POST /api/import
  * Main import endpoint - handles file upload and starts import process
  */
-router.post('/', upload.single('file'), (req, res) => {
+router.post('/', upload.single('file'), async (req, res) => {
     try {
         // Check if file was uploaded
         if (!req.file) {
@@ -249,7 +250,7 @@ router.post('/', upload.single('file'), (req, res) => {
         // Log import start
         console.log(`🔄 Import started: ${fileName}, ${totalRecords} records, session: ${sessionId}`);
         
-        // Return success response
+        // Return success response immediately
         res.success('Import started successfully', { 
             sessionId: sessionId, 
             total: totalRecords, 
@@ -260,7 +261,10 @@ router.post('/', upload.single('file'), (req, res) => {
         
         // In a real implementation, you would start a background process to handle the import
         // For now, we'll simulate progress updates
-        simulateImportProgress(sessionId, totalRecords);
+        simulateImportProgress(sessionId, totalRecords, {
+            sendWelcome: String(req.body.sendWelcome) === 'true',
+            csvContent
+        });
         
     } catch (error) {
         console.error('Import error:', error);
@@ -271,11 +275,79 @@ router.post('/', upload.single('file'), (req, res) => {
 /**
  * Simulate import progress for testing
  */
-function simulateImportProgress(sessionId, totalRecords) {
+async function sendWelcomeEmailBatch(emails) {
+    if (!Array.isArray(emails) || emails.length === 0) return;
+    // Simple transport using local sendmail or environment SMTP if provided
+    const transporter = nodemailer.createTransport({
+        sendmail: true,
+        newline: 'unix',
+        path: '/usr/sbin/sendmail'
+    });
+
+    const html = `
+      <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;padding:24px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;box-shadow:0 6px 24px rgba(16,24,40,.08);">
+          <tr>
+            <td style="padding:24px 24px 8px 24px;text-align:center;border-bottom:1px solid #eef2f7;">
+              <h1 style="margin:0;color:#0b3c8c;font-size:22px;">Welcome to PingOne</h1>
+              <p style="margin:8px 0 0 0;color:#475569;">Your account has been created in our system.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px;color:#111827;font-size:15px;line-height:1.6;">
+              <p>Hello,</p>
+              <p>We're excited to have you on board. Use the button below to access your account and complete setup.</p>
+              <div style="text-align:center;margin:24px 0;">
+                <a href="#" style="background:#1565c0;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;display:inline-block;">Open Your Account</a>
+              </div>
+              <p>If you have any questions, just reply to this email—our team is here to help.</p>
+              <p style="margin-top:24px;color:#6b7280;">Thanks,<br/>Ping Identity Team</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 24px;text-align:center;color:#94a3b8;font-size:12px;border-top:1px solid #eef2f7;">
+              © ${new Date().getFullYear()} Ping Identity. All rights reserved.
+            </td>
+          </tr>
+        </table>
+      </div>`;
+
+    const message = {
+        from: 'no-reply@localhost',
+        bcc: emails.join(','),
+        subject: 'Welcome to PingOne',
+        html
+    };
+
+    try {
+        await transporter.sendMail(message);
+        console.log(`✉️ Sent welcome emails to ${emails.length} recipients`);
+    } catch (err) {
+        console.warn('Failed to send welcome emails:', err.message);
+    }
+}
+
+function extractEmailsFromCsv(csv) {
+    const lines = csv.split('\n').filter(l => l.trim());
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g,'').toLowerCase());
+    const emailIdx = headers.indexOf('email');
+    if (emailIdx === -1) return [];
+    const emails = [];
+    for (let i = 1; i < lines.length; i++) {
+        const cells = lines[i].split(',');
+        const email = (cells[emailIdx] || '').replace(/"/g,'').trim();
+        if (email) emails.push(email);
+    }
+    // Deduplicate
+    return Array.from(new Set(emails));
+}
+
+function simulateImportProgress(sessionId, totalRecords, options = {}) {
     let processed = 0;
     const updateInterval = Math.max(100, Math.min(500, totalRecords > 100 ? 100 : 50));
     
-    const progressInterval = setInterval(() => {
+    const progressInterval = setInterval(async () => {
         // Increment processed count
         processed += Math.floor(Math.random() * 5) + 1;
         
@@ -303,6 +375,16 @@ function simulateImportProgress(sessionId, totalRecords) {
             importStatus.progress = 100;
             
             console.log(`✅ Import completed: ${importStatus.sessionId}, ${totalRecords} records processed`);
+
+            // If requested, send welcome emails to all parsed addresses
+            if (options.sendWelcome) {
+                const emails = extractEmailsFromCsv(options.csvContent || '');
+                if (emails.length > 0) {
+                    await sendWelcomeEmailBatch(emails);
+                } else {
+                    console.warn('sendWelcome requested but no email column found in CSV');
+                }
+            }
         }
     }, updateInterval);
 }
