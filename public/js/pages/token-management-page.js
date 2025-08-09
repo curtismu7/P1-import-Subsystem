@@ -304,7 +304,9 @@ export class TokenManagementPage {
             
             if (isTokenValid) {
                 statusIndicator.className = 'status-indicator status-valid';
-                statusText.textContent = 'Valid';
+                const exp = this.normalizeExpiry(storedToken);
+                const timeLeft = exp ? Math.max(0, Math.floor((exp - new Date()) / 1000)) : null;
+                statusText.textContent = timeLeft ? `Valid (${this.formatTimeRemaining(timeLeft)})` : 'Valid';
                 tokenType.textContent = 'Bearer';
                 tokenExpires.textContent = storedToken.expiresAt ? 
                     new Date(storedToken.expiresAt).toLocaleString() : 'Unknown';
@@ -316,7 +318,15 @@ export class TokenManagementPage {
                 this.decodeJWT(storedToken.token);
             } else {
                 statusIndicator.className = 'status-indicator status-invalid';
-                statusText.textContent = 'Expired';
+                const exp = this.normalizeExpiry(storedToken);
+                if (exp && exp > new Date()) {
+                    // Edge case: normalization says still in future, treat as valid-with-remaining
+                    const timeLeft = Math.floor((exp - new Date()) / 1000);
+                    statusIndicator.className = 'status-indicator status-valid';
+                    statusText.textContent = `Valid (${this.formatTimeRemaining(timeLeft)})`;
+                } else {
+                    statusText.textContent = 'Expired';
+                }
                 tokenType.textContent = 'Bearer';
                 tokenExpires.textContent = storedToken.expiresAt ? 
                     new Date(storedToken.expiresAt).toLocaleString() : 'Unknown';
@@ -478,19 +488,38 @@ export class TokenManagementPage {
      * Check if a token is valid (not expired)
      */
     isTokenValid(tokenInfo) {
-        if (!tokenInfo || !tokenInfo.token) {
-            return false;
-        }
-        
-        // Check if token has expiration
-        if (tokenInfo.expiresAt) {
-            const now = new Date();
-            const expiresAt = new Date(tokenInfo.expiresAt);
-            return expiresAt > now;
-        }
-        
-        // If no expiration info, assume valid for now
-        return true;
+        if (!tokenInfo || !tokenInfo.token) return false;
+        const expiresAt = this.normalizeExpiry(tokenInfo);
+        if (expiresAt) return expiresAt > new Date();
+        // If no expiration info, fall back to expiresIn/timeLeft if present
+        const secondsLeft = Number(tokenInfo.expiresIn || tokenInfo.timeLeft || 0);
+        if (!Number.isNaN(secondsLeft) && secondsLeft > 0) return true;
+        // No info; consider invalid to avoid false positives
+        return false;
+    }
+
+    /**
+     * Normalize various expiry representations into a Date
+     */
+    normalizeExpiry(tokenLike) {
+        try {
+            const raw = tokenLike?.expiresAt ?? tokenLike?.expires_at ?? null;
+            if (raw) {
+                // ISO string
+                if (typeof raw === 'string' && isNaN(raw)) return new Date(raw);
+                // numeric (ms or seconds)
+                const n = typeof raw === 'string' ? Number(raw) : raw;
+                if (Number.isFinite(n)) {
+                    // if seconds (10 digits) convert to ms
+                    const ms = n < 1e12 ? n * 1000 : n;
+                    return new Date(ms);
+                }
+            }
+            // Fallback from expiresIn/timeLeft seconds
+            const secs = Number(tokenLike?.expiresIn || tokenLike?.timeLeft || 0);
+            if (Number.isFinite(secs) && secs > 0) return new Date(Date.now() + secs * 1000);
+        } catch (_) {}
+        return null;
     }
     
     /**
@@ -802,17 +831,29 @@ export class TokenManagementPage {
                     this.tokenAnalytics.trackTokenRequest(true);
                 }
                 
-                this.addToTokenHistory('Token validation successful', 'success');
-                if (this.app && this.app.showSuccess) {
-                    this.app.showSuccess('Token is valid and active');
-                }
+                // Prefer authoritative server result when available
+                const tokenInfo = result?.data?.data || result?.data || result?.message || {};
+                const exp = this.normalizeExpiry(tokenInfo);
+                const nowValid = tokenInfo?.hasToken ? (tokenInfo.isValid ?? (exp ? exp > new Date() : true)) : false;
+
+                this.addToTokenHistory('Token validation successful', nowValid ? 'success' : 'warning');
+                if (this.app && this.app.showSuccess) this.app.showSuccess(nowValid ? 'Token is valid and active' : 'Token present, nearing expiry');
 
                 // Button goes green on success
                 validateBtn.classList.remove('btn-danger', 'btn-info');
-                validateBtn.classList.add('btn-success');
-                // Update status indicator to green
-                if (statusIndicator) statusIndicator.className = 'status-indicator status-valid';
-                if (statusText) statusText.textContent = 'Valid';
+                validateBtn.classList.add(nowValid ? 'btn-success' : 'btn-warning');
+                // Update status indicator to green and show remaining when known
+                if (statusIndicator) statusIndicator.className = `status-indicator ${nowValid ? 'status-valid' : 'status-unknown'}`;
+                if (statusText) {
+                    if (nowValid && exp) {
+                        const secs = Math.max(0, Math.floor((exp - new Date()) / 1000));
+                        statusText.textContent = `Valid (${this.formatTimeRemaining(secs)})`;
+                    } else if (nowValid) {
+                        statusText.textContent = 'Valid';
+                    } else {
+                        statusText.textContent = 'Unknown';
+                    }
+                }
             } else {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
