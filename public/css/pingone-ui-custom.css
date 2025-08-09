@@ -369,6 +369,14 @@ button#clear-token,
   min-width: 0 !important;
 }
 
+/* Normalize all dropdowns to match population dropdown behavior */
+select.form-control,
+select.form-control:not([multiple]) {
+  height: 36px !important;
+  min-width: 220px;
+  padding-right: 28px; /* room for caret */
+}
+
 .population-dropdown-container button {
   flex-shrink: 0 !important;
   width: 38px !important;
