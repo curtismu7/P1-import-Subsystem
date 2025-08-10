@@ -10338,6 +10338,16 @@ select.field-error:focus {
     padding: 12px 14px;
 }
 
+/* Ensure red background on critical action button in attributes group */
+.attributes-group .btn.btn-danger {
+    background-color: #dc2626 !important;
+    border-color: #dc2626 !important;
+    color: #fff !important;
+}
+.attributes-group .btn.btn-danger:hover {
+    filter: brightness(0.95);
+}
+
 .attributes-group .attributes-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
