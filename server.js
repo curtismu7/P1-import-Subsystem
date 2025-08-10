@@ -128,6 +128,7 @@ import { sanitizeInput } from './server/middleware/validation.js';
 import { WebSocketServer } from 'ws';
 import { Server as SocketIOServer } from 'socket.io';
 import { EnhancedRealtimeManager } from './server/services/enhanced-realtime-manager.js';
+import schedule from 'node-schedule';
 
 // 🛡️ Hardening & Monitoring Systems
 import { performRouteHealthCheck, startRouteMonitoring, generateRouteHealthReport } from './server/route-health-checker.js';
@@ -999,6 +1000,7 @@ app.post('/api/token/refresh', async (req, res) => {
 
 // API routes with enhanced logging
 app.use('/api', apiRouter); // Main API router includes: logs, auth, export, import, history, pingone, version, settings
+app.use('/api/logs', logsApiRouter); // Explicit logs API (purge, bundle, ui)
 app.use('/api/pingone', pingoneProxyRouter); // Additional pingone proxy routes
 app.use('/api/settings', settingsRouter); // Direct settings routes
 app.use('/api/v1/settings', settingsRouter); // Added to support /api/v1/settings
@@ -1210,6 +1212,18 @@ const startServer = async () => {
                     console.log('❌ POPULATION CACHE: ERROR - Using API fallback mode');
                 }
                 
+                // Schedule daily log purge at 03:00 local time (aggressive cleanup)
+                try {
+                    schedule.scheduleJob('0 3 * * *', async () => {
+                        try {
+                            await fetch(`${serverUrl}/api/logs/purge?days=1`).catch(() => null);
+                            serverLogger.info('Scheduled log purge executed');
+                        } catch (_) {
+                            serverLogger.warn('Scheduled log purge encountered an error');
+                        }
+                    });
+                } catch (_) { /* ignore scheduler errors */ }
+
                 // Run automated startup tests
                 const testResults = await runStartupTests({
                     port,

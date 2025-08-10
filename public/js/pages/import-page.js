@@ -10,6 +10,8 @@ export class ImportPage {
         this.isUploading = false;
         this.selectedRecordCount = 0;
         this.importStartTime = null;
+        this._lastReportedPercent = -1;
+        this._lastReportedError = null;
     }
     
     async load() {
@@ -668,11 +670,13 @@ export class ImportPage {
             }
             
             // Start the import
+            console.log('🚀 Starting import: sending POST /api/import');
             const response = await fetch('/api/import', {
                 method: 'POST',
                 body: formData
             });
             
+            console.log('📨 /api/import response status:', response.status);
             if (response.ok) {
                 const respJson = await response.json().catch(() => ({}));
                 const payload = respJson && (respJson.data || respJson.message || respJson);
@@ -682,13 +686,15 @@ export class ImportPage {
                 const totalEl = document.getElementById('total-users');
                 if (totalEl && totalFromServer) totalEl.textContent = String(totalFromServer);
                 // Start polling real status
+                console.log('✅ Import started, sessionId:', sessionId, 'totalFromServer:', totalFromServer);
                 this.startStatusPolling(sessionId);
             } else {
-                const error = await response.json();
+                const error = await response.json().catch(() => ({}));
                 throw new Error(error.error || 'Import failed to start');
             }
             
         } catch (error) {
+            console.error('❌ Failed to start import:', error);
             this.app.showError('Failed to start import: ' + error.message);
             this.isUploading = false;
             this.hideProgressSection();
@@ -777,18 +783,48 @@ export class ImportPage {
                         log.style.display = 'block';
                         log.textContent = `Last error: ${payload.lastError}`;
                     }
+                    if (this._lastReportedError !== payload.lastError) {
+                        this._lastReportedError = payload.lastError;
+                        // Push to UI logs for visibility
+                        this._postUiLog({ level: 'error', source: 'import', message: 'Import error', details: payload.lastError });
+                        this.app?.showError?.(payload.lastError);
+                    }
+                } else {
+                    const log = document.getElementById('import-error-inline');
+                    if (log) log.style.display = 'none';
                 }
                 this.updateProgressFromServer(percent, processed, total, startTime);
+                // Announce progress in status bar and logs occasionally
+                if (percent !== this._lastReportedPercent) {
+                    this._lastReportedPercent = percent;
+                    this.app?.showInfo?.(`Import running: ${percent}% (${processed}/${total})`);
+                    if (percent % 10 === 0 && total > 0) {
+                        this._postUiLog({ level: 'info', source: 'import', message: `Progress ${percent}%`, details: { processed, total } });
+                    }
+                }
                 if (!running) {
                     clearInterval(timer);
                     // Finalize UI
                     this.updateProgressFromServer(100, processed, total, startTime);
                     this.completeImport();
+                    this._postUiLog({ level: 'info', source: 'import', message: 'Import completed', details: { processed, total, errors: payload?.statistics?.errors ?? 0 } });
                 }
             } catch (_) {
                 // Ignore transient errors
             }
         }, pollIntervalMs);
+    }
+
+    async _postUiLog(entry) {
+        try {
+            await fetch('/api/logs/ui', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(entry)
+            });
+        } catch (_) {
+            // ignore
+        }
     }
     
     updateProgress(percentage) {
@@ -953,12 +989,14 @@ export class ImportPage {
                             <li><strong>Started:</strong> ${new Date().toLocaleString()}</li>
                         </ul>
                     </div>
-                    <div class="result-actions">
-                        <button class="btn btn-outline-info" id="download-log-btn"><i class="mdi mdi-download"></i> Download Log</button>
-                        <button class="btn btn-outline-primary" id="new-import-btn"><i class="mdi mdi-refresh"></i> New Import</button>
-                    </div>
                 </div>`;
         }
+
+        // Wire bottom action buttons (keep these only)
+        const dl = document.getElementById('download-log');
+        if (dl) dl.addEventListener('click', () => this.downloadLog());
+        const ni = document.getElementById('new-import');
+        if (ni) ni.addEventListener('click', () => this.startNewImport());
     }
     
     startNewImport() {
@@ -1030,10 +1068,26 @@ export class ImportPage {
         this.app.showInfo('Ready for new import. Please select a file.');
     }
     
-    downloadLog() {
-        console.log('📥 Downloading import log...');
-        // TODO: Implement actual log download functionality
-        this.app.showInfo('Log download functionality will be implemented in a future update');
+    async downloadLog() {
+        try {
+            console.log('📥 Downloading import log...');
+            const resp = await fetch('/api/import/log?format=json', { cache: 'no-store' });
+            if (!resp.ok) throw new Error('Failed to download log');
+            const blob = await resp.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const ts = new Date().toISOString().slice(0,10);
+            a.href = url;
+            a.download = `import-log-${ts}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            this.app.showSuccess('Log downloaded');
+        } catch (err) {
+            console.error('❌ Download log failed:', err);
+            this.app.showError('Download log failed: ' + err.message);
+        }
     }
     
     updateButtonStates() {
