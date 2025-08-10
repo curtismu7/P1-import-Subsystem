@@ -541,9 +541,9 @@ export class ExportPage {
         this.exportOptions.includeDisabledUsers = includeDisabled?.checked || false;
         this.exportOptions.includeMetadata = includeMetadata?.checked || false;
 
-        // Update selected attributes
+        // Update selected attributes using SCIM path when present
         const attributeCheckboxes = document.querySelectorAll('#attributes-selection input[type="checkbox"]:checked');
-        this.exportOptions.attributes = Array.from(attributeCheckboxes).map(cb => cb.id.replace('attr-', ''));
+        this.exportOptions.attributes = Array.from(attributeCheckboxes).map(cb => cb.getAttribute('data-attr') || cb.id.replace('attr-', ''));
 
         console.log('Export options updated:', this.exportOptions);
     }
@@ -869,7 +869,13 @@ export class ExportPage {
         const csvContent = rows.join('\n');
 
         // Present results and trigger download
-        setTimeout(() => this.showExportResults(), 300);
+        setTimeout(() => {
+            const totalUsersEl = document.getElementById('total-users');
+            const usersProcessedEl = document.getElementById('users-processed');
+            if (totalUsersEl) totalUsersEl.textContent = String(total);
+            if (usersProcessedEl) usersProcessedEl.textContent = String(total);
+            this.showExportResults();
+        }, 300);
         const blob = new Blob([csvContent], { type: this.getMimeType('csv') });
         const fileName = this.generateFileName();
         const a = document.createElement('a');
