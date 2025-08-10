@@ -362,8 +362,9 @@ export class ImportPage {
             refreshPopulations.addEventListener('click', async () => {
                 const { populationLoader } = await import('../services/population-loader.js');
                 populationLoader.clearCache();
+                this.app?.showWarning?.('Refreshing populations…');
                 await this.loadPopulations();
-                this.app?.showInfo?.('Populations refreshed');
+                this.app?.showSuccess?.('Populations refreshed');
             });
         }
         
