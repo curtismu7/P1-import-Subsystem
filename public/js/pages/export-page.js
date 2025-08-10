@@ -194,9 +194,8 @@ export class ExportPage {
                             <div class="attributes-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px;">
                                 <h4 style="margin:0;">User Attributes to Export</h4>
                                 <div class="attr-tools" style="display:flex; gap:8px; align-items:center;">
-                                    <input type="file" id="attr-csv-file" accept=".csv" style="display:none;" />
-                                    <button type="button" id="load-attr-csv" class="btn btn-outline-secondary btn-sm" title="Load fields from CSV header">
-                                        <i class="mdi mdi-file-upload"></i> Load CSV Fields
+                                    <button type="button" id="load-attr-schema" class="btn btn-outline-secondary btn-sm" title="Load fields from PingOne SCIM schema">
+                                        <i class="mdi mdi-database-search"></i> Load From PingOne
                                     </button>
                                 </div>
                                 </div>
@@ -400,22 +399,23 @@ export class ExportPage {
             }
         });
 
-        // Dynamic: load attributes from CSV header
-        const loadAttrBtn = document.getElementById('load-attr-csv');
-        const loadAttrInput = document.getElementById('attr-csv-file');
-        if (loadAttrBtn && loadAttrInput) {
-            loadAttrBtn.addEventListener('click', () => loadAttrInput.click());
-            loadAttrInput.addEventListener('change', async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
+        // Dynamic: load attributes from PingOne SCIM schema
+        const loadSchemaBtn = document.getElementById('load-attr-schema');
+        if (loadSchemaBtn) {
+            loadSchemaBtn.addEventListener('click', async () => {
                 try {
-                    const headers = await this.readCsvHeaders(file);
+                    this.app?.showWarning?.('Loading attributes from PingOne…');
+                    const resp = await fetch('/api/user-schema', { cache: 'no-store' });
+                    const json = await resp.json().catch(() => ({}));
+                    const payload = json && (json.data || json.message || json);
+                    const headers = payload?.headers || payload?.items || [];
+                    if (!Array.isArray(headers) || headers.length === 0) throw new Error('No attributes returned');
                     this.renderDynamicAttributes(headers);
                     this.bindAttributeSelectionHandlers();
-                    this.app?.showInfo?.(`Loaded ${headers.length} fields from CSV header`);
+                    this.app?.showSuccess?.(`Loaded ${headers.length} attributes from PingOne`);
                 } catch (err) {
-                    console.error('Failed to load CSV header:', err);
-                    this.app?.showError?.('Failed to read CSV header');
+                    console.error('Failed to load attributes from PingOne:', err);
+                    this.app?.showError?.('Failed to load attributes from PingOne');
                 }
             });
         }
