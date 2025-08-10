@@ -579,17 +579,48 @@ export class ExportPage {
 
         try {
             this.updateExportOptions();
-            
-            // Create preview modal
-            this.showPreviewModal();
-            
+
+            // Fetch real users (JSON) for preview
+            const includeDisabled = document.getElementById('include-disabled')?.checked ?? false;
+            const selectEl = document.getElementById('export-population-select');
+            const fallbackId = selectEl?.value || '';
+            const selectedPopulationId = (this.selectedPopulation && (this.selectedPopulation.id || this.selectedPopulation.populationId)) || fallbackId;
+
+            const resp = await fetch('/api/export-users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ populationId: selectedPopulationId, selectedPopulationId, fields: 'all', format: 'json', ignoreDisabledUsers: !includeDisabled })
+            });
+            let previewText = '';
+            if (resp.ok) {
+                const data = await resp.json().catch(() => ({}));
+                const payload = (data && (data.data || data.message || data)) || {};
+                const users = Array.isArray(payload.users) ? payload.users : (Array.isArray(payload) ? payload : (payload.items || payload.list || payload.data || []));
+                const sample = Array.isArray(users) ? users.slice(0, 5) : [];
+                const selectedAttributes = this.getSelectedAttributes();
+                const headers = this.getProfileHeaders(selectedAttributes);
+                const rows = [];
+                if (this.exportOptions.includeHeaders !== false) rows.push(headers.join(','));
+                for (const u of sample) {
+                    const row = selectedAttributes.map(attr => this.extractUserAttribute(u, attr));
+                    rows.push(row.map(v => this.csvEscape(v)).join(','));
+                }
+                previewText = rows.join('\n');
+            } else {
+                // Fallback to existing sample generator on error
+                previewText = this.generateSampleData();
+            }
+
+            // Create preview modal with real data
+            this.showPreviewModal(previewText);
+
         } catch (error) {
             console.error('Error previewing export:', error);
             this.app.showNotification('Failed to preview export: ' + error.message, 'error');
         }
     }
 
-    showPreviewModal() {
+    showPreviewModal(previewText) {
         // Create modal HTML
         const modalHTML = `
             <div class="modal-overlay" id="preview-modal" style="display: flex;">
@@ -628,7 +659,7 @@ export class ExportPage {
                             <div class="preview-sample">
                                 <h4>Sample Data (First 5 rows)</h4>
                                 <div class="sample-container">
-                                    <pre class="sample-data">${this.generateSampleData()}</pre>
+                                    <pre class="sample-data">${previewText || ''}</pre>
                                 </div>
                             </div>
                         </div>
