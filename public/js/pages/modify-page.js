@@ -112,7 +112,7 @@ export class ModifyPage {
                         <h3 class="section-title">Select Population</h3>
                         <p>Choose the population containing users you want to modify</p>
                         
-                        <div class="config-grid">
+                        <div class="config-grid shaded-group">
                             <div class="form-group">
                                 <label for="modify-population-select">Population *</label>
                                 <div class="input-group input-group-fused">
@@ -569,6 +569,7 @@ export class ModifyPage {
         
         // Use the unified service to load populations
         await populationLoader.loadPopulations('modify-population-select', {
+            showRefreshed: true,
             onError: (error) => {
                 console.error('❌ Error loading populations for modify page:', error);
             }
