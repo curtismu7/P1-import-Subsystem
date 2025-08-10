@@ -861,7 +861,7 @@ export class ExportPage {
         const resp = await fetch('/api/export-users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ selectedPopulationId, fields: 'all', format: 'json', ignoreDisabledUsers: !includeDisabled })
+            body: JSON.stringify({ populationId: selectedPopulationId, selectedPopulationId, fields: 'all', format: 'json', ignoreDisabledUsers: !includeDisabled })
         });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
