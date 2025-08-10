@@ -165,7 +165,7 @@ export class ExportPage {
                             </div>
                         </div>
 
-                        <div class="options-group">
+                        <div class="options-group shaded-group">
                             <h4>Export Options</h4>
                             <div class="mb-2" style="display:flex; gap:12px; align-items:center;">
                                 <div class="form-check">
