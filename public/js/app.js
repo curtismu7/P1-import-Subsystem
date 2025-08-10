@@ -3,7 +3,7 @@
 import { HomePage } from './pages/home-page.js?v=7.2.0';
 import { SettingsPage } from './pages/settings-page.js?v=7.2.0';
 import { ImportPage } from './pages/import-page.js?v=7.2.0';
-import { ExportPage } from './pages/export-page.js?v=7.2.0';
+import { ExportPage } from './pages/export-page.js?v=7.2.0-exp-shade-2';
 import { DeletePage } from './pages/delete-page.js?v=7.2.0';
 import { ModifyPage } from './pages/modify-page.js?v=7.2.0';
 import { LogsPage } from './pages/logs-page.js?v=7.2.0';
