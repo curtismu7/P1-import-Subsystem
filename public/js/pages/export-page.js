@@ -115,9 +115,13 @@ export class ExportPage {
                                 <span class="label">Population Name:</span>
                                 <span id="population-name" class="value">-</span>
                             </div>
-                            <div class="info-item">
+                            <div class="info-item small">
                                 <span class="label">Total Users:</span>
                                 <span id="population-user-count" class="value">-</span>
+                            </div>
+                            <div class="info-item small" id="population-default-box" style="display:none;">
+                                <span class="label">Default:</span>
+                                <span id="population-default" class="value">Yes</span>
                             </div>
                             <div class="info-item">
                                 <span class="label">Description:</span>
@@ -521,9 +525,19 @@ export class ExportPage {
                 const populationUserCount = document.getElementById('population-user-count');
                 const populationDescription = document.getElementById('population-description');
                 
-                if (populationName) populationName.textContent = `${this.selectedPopulation.name || '-'}${this.selectedPopulation.isDefault ? ' (Default)' : ''}`;
+                if (populationName) populationName.textContent = `${this.selectedPopulation.name || '-'}`;
                 if (populationUserCount) populationUserCount.textContent = this.selectedPopulation.userCount || '0';
                 if (populationDescription) populationDescription.textContent = this.selectedPopulation.description || 'No description';
+                const defaultBox = document.getElementById('population-default-box');
+                const defaultVal = document.getElementById('population-default');
+                if (defaultBox && defaultVal) {
+                    if (this.selectedPopulation.isDefault) {
+                        defaultVal.textContent = 'Yes';
+                        defaultBox.style.display = 'block';
+                    } else {
+                        defaultBox.style.display = 'none';
+                    }
+                }
                 
                 populationInfo.style.display = 'block';
             }
@@ -840,7 +854,7 @@ export class ExportPage {
         const includeDisabled = document.getElementById('include-disabled')?.checked ?? false;
         const selectEl = document.getElementById('export-population-select');
         const fallbackId = selectEl?.value || '';
-        const selectedPopulationId = this.selectedPopulation?.id || this.selectedPopulation?.populationId || fallbackId;
+        const selectedPopulationId = (this.selectedPopulation && (this.selectedPopulation.id || this.selectedPopulation.populationId)) || fallbackId;
         if (!selectedPopulationId) throw new Error('No population selected');
         console.log('[Export] Using populationId:', selectedPopulationId);
         const resp = await fetch('/api/export-users', {
@@ -869,7 +883,7 @@ export class ExportPage {
         if (progressText) progressText.textContent = '100%';
         if (progressTextLeft) progressTextLeft.textContent = '100%';
 
-        // Build CSV with selected attributes
+        // Build CSV with selected attributes from real users
         const selectedAttributes = this.getSelectedAttributes();
         const headers = this.getProfileHeaders(selectedAttributes);
         const rows = [headers.join(',')];
