@@ -32,7 +32,8 @@ let importStatus = {
     sessionId: null,
     status: 'idle', // idle, running, completed, failed, cancelled
     lastError: null,
-    recentErrors: []
+    recentErrors: [],
+    sessionLog: [] // in-memory event log for current session
 };
 
 /**
@@ -252,8 +253,10 @@ router.post('/', upload.single('file'), async (req, res) => {
             sessionId: sessionId,
             status: 'running',
             lastError: null,
-            recentErrors: []
+            recentErrors: [],
+            sessionLog: []
         };
+        importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'start', file: fileName, total: totalRecords, sessionId: importStatus.sessionId });
         
         // Log import start
         console.log(`🔄 Import started: ${fileName}, ${totalRecords} records, session: ${sessionId}`);
@@ -378,6 +381,19 @@ async function runImportJob({ sessionId, csvContent, populationId, sendWelcome, 
         const apiBaseUrl = tokenManager.getApiBaseUrl();
         const token = await tokenManager.getAccessToken();
 
+        // Visible diagnostics
+        console.log(`[IMPORT] Session ${sessionId}: env=${environmentId} apiBase=${apiBaseUrl}`);
+        console.log(`[IMPORT] Session ${sessionId}: records=${total} populationId=${populationId}`);
+        if (!token) {
+            const msg = 'No access token available for PingOne import';
+            console.error(`[IMPORT] ${msg}`);
+            importStatus.lastError = msg;
+            importStatus.recentErrors = [msg, ...(importStatus.recentErrors || [])].slice(0, 5);
+            importStatus.isRunning = false;
+            importStatus.status = 'failed';
+            return;
+        }
+
         const endpoint = `${apiBaseUrl}/environments/${environmentId}/users`;
         const concurrency = 5;
         let inFlight = 0;
@@ -388,15 +404,26 @@ async function runImportJob({ sessionId, csvContent, populationId, sendWelcome, 
                 while (inFlight < concurrency && idx < total) {
                     const row = records[idx++];
                     inFlight++;
+                    const rowNumber = idx; // 1-based soon after increment
+                    // Log first few attempts for visibility
+                    if (rowNumber <= 3) {
+                        const dbgUser = row.username || row.userName || row.login || row.email || '(no-username)';
+                        console.log(`[IMPORT] Creating PingOne user [row ${rowNumber}/${total}] user=${dbgUser}`);
+                    }
                     createPingOneUser(endpoint, token, populationId, row)
                         .then(() => {
                             importStatus.processed++;
+                            if (importStatus.processed % 100 === 0) {
+                                importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'progress', processed: importStatus.processed, total });
+                            }
                         })
                         .catch((err) => {
                             importStatus.errors++;
                             const msg = (err && err.message) ? String(err.message).slice(0, 500) : 'Unknown PingOne error';
                             importStatus.lastError = msg;
                             importStatus.recentErrors = [msg, ...(importStatus.recentErrors || [])].slice(0, 5);
+                            importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'error', row: rowNumber, message: msg });
+                            console.error(`[IMPORT] Error creating user at row ${rowNumber}: ${msg}`);
                         })
                         .finally(() => {
                             inFlight--;
@@ -420,10 +447,15 @@ async function runImportJob({ sessionId, csvContent, populationId, sendWelcome, 
         importStatus.status = 'completed';
         importStatus.progress = 100;
         console.log(`✅ Import completed: ${sessionId}, ${total} records processed`);
+        importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'complete', processed: importStatus.processed, errors: importStatus.errors, total });
     } catch (err) {
         console.error('runImportJob error:', err);
         importStatus.isRunning = false;
         importStatus.status = 'failed';
+        const msg = (err && err.message) ? String(err.message).slice(0, 500) : 'Unknown import error';
+        importStatus.lastError = msg;
+        importStatus.recentErrors = [msg, ...(importStatus.recentErrors || [])].slice(0, 5);
+        importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'fatal', message: msg });
     }
 }
 
@@ -443,6 +475,9 @@ async function createPingOneUser(endpoint, token, populationId, row) {
         emails: email ? [{ value: email, primary: true }] : [],
         enabled
     };
+    // Emit a minimal request log into session for diagnostics
+    importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'request', endpoint, user: username || email, populationId });
+
     const resp = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -453,8 +488,45 @@ async function createPingOneUser(endpoint, token, populationId, row) {
     });
     if (!resp.ok) {
         const txt = await resp.text().catch(() => '');
-        throw new Error(`User create failed: ${resp.status} ${resp.statusText} ${txt}`);
+        const truncated = txt && txt.length > 1000 ? txt.slice(0, 1000) + '…' : txt;
+        throw new Error(`User create failed: ${resp.status} ${resp.statusText} ${truncated}`);
     }
 }
 
 export default router;
+
+/**
+ * GET /api/import/log
+ * Download the in-memory session log for the current/last import
+ * Supports ?format=json|ndjson (default json)
+ */
+router.get('/log', (req, res) => {
+    try {
+        const format = String(req.query.format || 'json').toLowerCase();
+        const filename = `import-log-${new Date().toISOString().split('T')[0]}.${format === 'ndjson' ? 'ndjson' : 'json'}`;
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        if (format === 'ndjson') {
+            res.setHeader('Content-Type', 'application/x-ndjson');
+            const lines = (importStatus.sessionLog || []).map(e => JSON.stringify(e)).join('\n');
+            return res.send(lines);
+        }
+        res.setHeader('Content-Type', 'application/json');
+        return res.send(JSON.stringify({
+            sessionId: importStatus.sessionId,
+            summary: {
+                status: importStatus.status,
+                processed: importStatus.processed,
+                total: importStatus.total,
+                errors: importStatus.errors,
+                warnings: importStatus.warnings,
+                startTime: importStatus.startTime,
+                endTime: importStatus.endTime
+            },
+            lastError: importStatus.lastError,
+            recentErrors: importStatus.recentErrors,
+            events: importStatus.sessionLog || []
+        }, null, 2));
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
