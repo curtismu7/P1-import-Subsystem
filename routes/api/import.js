@@ -460,16 +460,17 @@ async function runImportJob({ sessionId, csvContent, populationId, sendWelcome, 
 }
 
 async function createPingOneUser(endpoint, token, populationId, row) {
-    const username = row.username || row.userName || row.login || row.email;
-    const given = row.givenName || row['name.given'] || row.first_name || row.firstname || row.firstName || '';
-    const family = row.familyName || row['name.family'] || row.last_name || row.lastname || row.lastName || '';
-    const email = row.email || row.mail || '';
+    // Support multiple CSV header variants (case/spacing)
+    const username = row.username || row.userName || row.login || row.email || row.Username || row['User Name'] || row.UserName || '';
+    const email = row.email || row.Email || row.mail || row['E-mail'] || '';
+    const given = row.givenName || row['name.given'] || row.first_name || row.firstname || row.firstName || row['First Name'] || '';
+    const family = row.familyName || row['name.family'] || row.last_name || row.lastname || row.lastName || row['Last Name'] || '';
     const enabled = typeof row.enabled !== 'undefined'
         ? String(row.enabled).toLowerCase() !== 'false' && String(row.enabled).toLowerCase() !== 'disabled'
         : (row.status ? String(row.status).toLowerCase() !== 'disabled' : true);
 
     const body = {
-        username: username || undefined,
+        username: (username || email) || undefined,
         population: { id: populationId },
         name: { given, family },
         emails: email ? [{ value: email, primary: true }] : [],
