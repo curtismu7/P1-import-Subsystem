@@ -30,7 +30,9 @@ let importStatus = {
     endTime: null,
     currentFile: null,
     sessionId: null,
-    status: 'idle' // idle, running, completed, failed, cancelled
+    status: 'idle', // idle, running, completed, failed, cancelled
+    lastError: null,
+    recentErrors: []
 };
 
 /**
@@ -63,7 +65,9 @@ router.get('/status', (req, res) => {
                         : null
             },
             currentFile: importStatus.currentFile,
-            sessionId: importStatus.sessionId
+            sessionId: importStatus.sessionId,
+            lastError: importStatus.lastError,
+            recentErrors: importStatus.recentErrors
         };
 
         res.success('Import status retrieved successfully', response);
@@ -246,7 +250,9 @@ router.post('/', upload.single('file'), async (req, res) => {
             endTime: null,
             currentFile: fileName,
             sessionId: sessionId,
-            status: 'running'
+            status: 'running',
+            lastError: null,
+            recentErrors: []
         };
         
         // Log import start
@@ -363,6 +369,8 @@ async function runImportJob({ sessionId, csvContent, populationId, sendWelcome, 
         importStatus.processed = 0;
         importStatus.errors = 0;
         importStatus.warnings = 0;
+        importStatus.lastError = null;
+        importStatus.recentErrors = [];
 
         // Get PingOne info
         const tokenManager = app.get('tokenManager');
@@ -384,8 +392,11 @@ async function runImportJob({ sessionId, csvContent, populationId, sendWelcome, 
                         .then(() => {
                             importStatus.processed++;
                         })
-                        .catch(() => {
+                        .catch((err) => {
                             importStatus.errors++;
+                            const msg = (err && err.message) ? String(err.message).slice(0, 500) : 'Unknown PingOne error';
+                            importStatus.lastError = msg;
+                            importStatus.recentErrors = [msg, ...(importStatus.recentErrors || [])].slice(0, 5);
                         })
                         .finally(() => {
                             inFlight--;
@@ -417,14 +428,20 @@ async function runImportJob({ sessionId, csvContent, populationId, sendWelcome, 
 }
 
 async function createPingOneUser(endpoint, token, populationId, row) {
+    const username = row.username || row.userName || row.login || row.email;
+    const given = row.givenName || row['name.given'] || row.first_name || row.firstname || row.firstName || '';
+    const family = row.familyName || row['name.family'] || row.last_name || row.lastname || row.lastName || '';
+    const email = row.email || row.mail || '';
+    const enabled = typeof row.enabled !== 'undefined'
+        ? String(row.enabled).toLowerCase() !== 'false' && String(row.enabled).toLowerCase() !== 'disabled'
+        : (row.status ? String(row.status).toLowerCase() !== 'disabled' : true);
+
     const body = {
-        username: row.username || row.email || undefined,
+        username: username || undefined,
         population: { id: populationId },
-        name: {
-            given: row.givenName || row.first_name || row.firstname || row.firstName || '',
-            family: row.familyName || row.last_name || row.lastname || row.lastName || ''
-        },
-        emails: row.email ? [{ value: row.email, primary: true }] : []
+        name: { given, family },
+        emails: email ? [{ value: email, primary: true }] : [],
+        enabled
     };
     const resp = await fetch(endpoint, {
         method: 'POST',

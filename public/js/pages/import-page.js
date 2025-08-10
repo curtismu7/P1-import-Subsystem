@@ -198,6 +198,7 @@ export class ImportPage {
                     <div class="import-box">
                         <h3 class="section-title">Import Progress</h3>
                         <p>Importing users to your PingOne environment</p>
+                        <div id="import-error-inline" class="alert alert-warning" style="display:none; margin-bottom:8px;"></div>
                         
                         <div class="progress-container">
                             <div id="progress-text-left" class="progress-text">0%</div>
@@ -673,8 +674,15 @@ export class ImportPage {
             });
             
             if (response.ok) {
-                // Start monitoring progress
-                this.startProgressMonitoring();
+                const respJson = await response.json().catch(() => ({}));
+                const payload = respJson && (respJson.data || respJson.message || respJson);
+                const sessionId = payload?.sessionId;
+                const totalFromServer = Number(payload?.total || 0);
+                if (totalFromServer && !this.selectedRecordCount) this.selectedRecordCount = totalFromServer;
+                const totalEl = document.getElementById('total-users');
+                if (totalEl && totalFromServer) totalEl.textContent = String(totalFromServer);
+                // Start polling real status
+                this.startStatusPolling(sessionId);
             } else {
                 const error = await response.json();
                 throw new Error(error.error || 'Import failed to start');
@@ -736,8 +744,7 @@ export class ImportPage {
     }
     
     startProgressMonitoring() {
-        // This would connect to Server-Sent Events or WebSocket for real-time updates
-        // For now, we'll simulate progress
+        // Legacy simulator (kept as fallback)
         let progress = 0;
         const interval = setInterval(() => {
             progress += Math.random() * 10;
@@ -748,6 +755,40 @@ export class ImportPage {
             }
             this.updateProgress(progress);
         }, 500);
+    }
+
+    startStatusPolling(sessionId) {
+        const pollIntervalMs = 800;
+        const timer = setInterval(async () => {
+            try {
+                const resp = await fetch('/api/import/status');
+                const json = await resp.json().catch(() => ({}));
+                const payload = json && (json.data || json.message || json);
+                if (!payload) return;
+                const processed = payload.progress?.current ?? payload.statistics?.processed ?? payload.processed ?? 0;
+                const total = payload.progress?.total ?? payload.total ?? this.selectedRecordCount ?? 0;
+                const percent = payload.progress?.percentage ?? (total > 0 ? Math.round((processed / total) * 100) : 0);
+                const startTime = payload.timing?.startTime ?? null;
+                const running = payload.isRunning ?? (payload.status === 'running');
+                // Show last error inline if any
+                if (payload.lastError) {
+                    const log = document.getElementById('import-error-inline');
+                    if (log) {
+                        log.style.display = 'block';
+                        log.textContent = `Last error: ${payload.lastError}`;
+                    }
+                }
+                this.updateProgressFromServer(percent, processed, total, startTime);
+                if (!running) {
+                    clearInterval(timer);
+                    // Finalize UI
+                    this.updateProgressFromServer(100, processed, total, startTime);
+                    this.completeImport();
+                }
+            } catch (_) {
+                // Ignore transient errors
+            }
+        }, pollIntervalMs);
     }
     
     updateProgress(percentage) {
@@ -801,6 +842,51 @@ export class ImportPage {
         if (estimatedTimeEl && percentage >= 100) {
             estimatedTimeEl.textContent = 'Done';
         }
+    }
+
+    updateProgressFromServer(percentage, processed, total, startTimeIso) {
+        const progressFill = document.getElementById('progress-fill');
+        const progressPercentage = document.getElementById('progress-percentage');
+        const progressTextLeft = document.getElementById('progress-text-left');
+        const beerFill = document.getElementById('beer-fill-import');
+        const beerFoam = document.getElementById('beer-foam-import');
+        const usersProcessedEl = document.getElementById('users-processed');
+        const totalUsersEl = document.getElementById('total-users');
+        const successRateEl = document.getElementById('success-rate');
+        const estimatedTimeEl = document.getElementById('estimated-time');
+
+        if (totalUsersEl && total) totalUsersEl.textContent = String(total);
+        if (progressFill) progressFill.style.width = percentage + '%';
+        if (progressPercentage) progressPercentage.textContent = Math.round(percentage) + '%';
+        if (progressTextLeft) progressTextLeft.textContent = Math.round(percentage) + '%';
+
+        // Beer mug
+        if (beerFill) {
+            const fillHeight = Math.max(0, Math.min(16, (percentage / 100) * 16));
+            const yFill = 26 - fillHeight;
+            beerFill.setAttribute('y', String(yFill));
+            beerFill.setAttribute('height', String(fillHeight));
+        }
+        if (beerFoam) {
+            const foamHeight = percentage > 0 ? (percentage < 100 ? 3 : 4) : 0.001;
+            const yFoam = 26 - Math.max(0, Math.min(16, (percentage / 100) * 16)) - foamHeight;
+            beerFoam.setAttribute('y', String(yFoam));
+            beerFoam.setAttribute('height', String(foamHeight));
+        }
+
+        if (usersProcessedEl) usersProcessedEl.textContent = String(processed || 0);
+        if (successRateEl && total > 0) successRateEl.textContent = `${Math.round(((processed || 0) / total) * 100)}%`;
+
+        // ETA from server start time
+        if (estimatedTimeEl && startTimeIso && percentage > 0 && percentage < 100) {
+            const startMs = new Date(startTimeIso).getTime();
+            const elapsedMs = Date.now() - startMs;
+            const remainingMs = Math.max(0, Math.round((elapsedMs * (100 - percentage)) / Math.max(1, percentage)));
+            const mins = Math.floor(remainingMs / 60000);
+            const secs = Math.floor((remainingMs % 60000) / 1000);
+            estimatedTimeEl.textContent = `${mins}m ${secs}s remaining`;
+        }
+        if (estimatedTimeEl && percentage >= 100) estimatedTimeEl.textContent = 'Done';
     }
     
     completeImport() {
