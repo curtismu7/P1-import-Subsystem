@@ -204,6 +204,7 @@ export class TokenManagementPage {
         `;
 
         this.setupEventListeners();
+        // Ensure existing tokens are auto-loaded on page load
         await this.updateTokenDisplay();
         this.loadTokenHistory();
         this.startTokenMonitoring();
@@ -463,14 +464,32 @@ export class TokenManagementPage {
                 if (response.ok) {
                     const result = await response.json();
                     console.log('🔍 Server token status:', result);
+                    const status = (result && (result.data?.data || result.data || result.message)) || {};
+                    const hasToken = !!status.hasToken;
+                    const isValid = status.isValid ?? false;
+                    const expiresIn = Number(status.expiresIn || status.timeLeft || 0);
                     
-                    if (result.success && result.data && result.data.access_token) {
-                        const tokenInfo = {
-                            token: result.data.access_token,
-                            expiresAt: result.data.expiresAt || null
-                        };
-                        console.log('🔍 Got token from server:', tokenInfo);
-                        return tokenInfo;
+                    if (hasToken && isValid) {
+                        // If server reports a valid token but we don't have it locally, proactively fetch it
+                        console.log('🔍 Server reports a valid token; fetching actual token payload...');
+                        const fetchResp = await fetch('/api/pingone/token', { method: 'POST' });
+                        if (fetchResp.ok) {
+                            const tokenPayload = await fetchResp.json();
+                            const tokenData = tokenPayload?.message || tokenPayload;
+                            if (tokenData && tokenData.access_token) {
+                                const cacheData = {
+                                    token: tokenData.access_token,
+                                    expiresAt: (tokenData.expires_at || (Date.now() + (Number(tokenData.expires_in || expiresIn || 0) * 1000)))
+                                };
+                                try {
+                                    localStorage.setItem('pingone_token', JSON.stringify(tokenData));
+                                    localStorage.setItem('pingone_token_cache', JSON.stringify(cacheData));
+                                } catch (_) {}
+                                console.log('✅ Token fetched from server and cached');
+                                return cacheData;
+                            }
+                        }
+                        console.warn('⚠️ Could not fetch token payload despite valid status');
                     }
                 }
             } catch (error) {
