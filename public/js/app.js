@@ -56,6 +56,13 @@ class PingOneApp {
             console.log('✅ Application initialized successfully');
             this.updateServerStatus('Server Started');
             this.hideLoading();
+            // Show a green check status message when the app has started
+            this.showSuccess('Application started');
+            // Ensure Home connection card reflects green status immediately
+            const homePage = this.pages?.home;
+            if (homePage && typeof homePage.refresh === 'function') {
+                try { homePage.refresh(); } catch (_) {}
+            }
         } catch (error) {
             console.error('❌ Failed to initialize application:', error);
             this.showError('Failed to initialize application: ' + error.message);
@@ -900,8 +907,12 @@ class PingOneApp {
     try {
       const historyPage = this.pages && this.pages['history'];
       if (historyPage && typeof historyPage.addHistoryEntry === 'function') {
-        historyPage.addHistoryEntry(operation, status, description, usersProcessed, duration);
-        return;
+        // Only update immediately if the history page is currently visible in DOM
+        const historyDom = document.getElementById('history-page');
+        if (historyDom && historyDom.style.display !== 'none') {
+          historyPage.addHistoryEntry(operation, status, description, usersProcessed, duration);
+          return;
+        }
       }
 
       // Fallback: persist to localStorage so History page can load it later
