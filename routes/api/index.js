@@ -2821,15 +2821,14 @@ router.get('/user-schema', async (req, res) => {
         const apiBaseUrl = tokenManager.getApiBaseUrl();
         const scimBase = `${apiBaseUrl}/environments/${environmentId}/scim/v2/Schemas`;
 
-        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-        // Fetch all schemas
+        const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/scim+json, application/json' };
+        // Fetch all schemas (SCIM)
         const listResp = await fetch(scimBase, { headers });
-        if (!listResp.ok) {
-            const txt = await listResp.text().catch(() => '');
-            return res.status(listResp.status).json({ success: false, error: `Failed to list schemas: ${listResp.statusText}`, details: txt });
+        let resources = [];
+        if (listResp.ok) {
+            const listJson = await listResp.json();
+            resources = listJson?.Resources || listJson?.schemas || [];
         }
-        const listJson = await listResp.json();
-        const resources = listJson?.Resources || listJson?.schemas || [];
 
         // Helper to flatten SCIM attributes to dot paths
         const flat = [];
@@ -2861,10 +2860,20 @@ router.get('/user-schema', async (req, res) => {
             'address.postalCode', 'address.country'
         ];
 
-        const unique = Array.from(new Set([...flat, ...common])).sort();
+        let unique = Array.from(new Set([...flat, ...common])).sort();
+        // Fallback if SCIM call was forbidden/failed or returned empty
+        if (!listResp.ok || unique.length === 0) {
+            unique = Array.from(new Set(common)).sort();
+            return res.json({ success: true, warning: listResp.ok ? undefined : `SCIM fetch failed: ${listResp.status} ${listResp.statusText}`, count: unique.length, headers: unique, fallback: true });
+        }
         return res.json({ success: true, count: unique.length, headers: unique, schemas: userSchemas.map(s => s.id || s.schema) });
     } catch (error) {
-        return res.status(500).json({ success: false, error: error.message });
+        // Final safety fallback
+        const common = [
+            'username', 'emails.value', 'name.given', 'name.family', 'enabled', 'status',
+            'phoneNumbers.value', 'externalId'
+        ];
+        return res.json({ success: true, warning: `Schema error: ${error.message}`, headers: common, fallback: true });
     }
 });
 
