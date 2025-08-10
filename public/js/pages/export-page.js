@@ -822,13 +822,13 @@ export class ExportPage {
                         </div>
                     </div>
 
-                    <div class="result-details">
+                    <div class="result-details shaded compact">
                         <h4>Export Details</h4>
-                        <ul>
-                            <li><strong>Target Population:</strong> ${this.selectedPopulation.name}</li>
-                            <li><strong>File:</strong> ${this.generateFileName()}</li>
-                            <li><strong>Completed:</strong> ${new Date().toLocaleString()}</li>
-                        </ul>
+                        <div class="kv-grid">
+                            <div class="kv-item"><span class="kv-label">Target Population:</span><span class="kv-value">${this.selectedPopulation.name}</span></div>
+                            <div class="kv-item"><span class="kv-label">File:</span><span class="kv-value">${this.generateFileName()}</span></div>
+                            <div class="kv-item"><span class="kv-label">Completed:</span><span class="kv-value">${new Date().toLocaleString()}</span></div>
+                        </div>
                     </div>
                 </div>
             `;
