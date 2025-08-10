@@ -2427,15 +2427,34 @@ router.post('/export-users', async (req, res, next) => {
             contentType
         });
 
+        // Write export audit log (usernames, emails, population)
+        try {
+            const logDir = path.join(process.cwd(), 'logs');
+            await fs.mkdir(logDir, { recursive: true });
+            const logPath = path.join(logDir, 'export-users.log');
+            const lines = processedUsers.map(u => {
+                const username = u.username || u.userName || (Array.isArray(u.emails) ? (u.emails[0]?.value || '') : '') || '';
+                const email = u.email || (Array.isArray(u.emails) ? (u.emails[0]?.value || '') : '') || '';
+                const pop = u.populationId || u.population?.id || actualPopulationId || '';
+                return `${username},${email},${pop}`;
+            }).join('\n');
+            await fs.writeFile(logPath, `username,email,populationId\n${lines}\n`);
+        } catch (_) { /* ignore logging errors */ }
+
+        // Return JSON payload for SPA consumption rather than forcing attachment
+        if ((req.get('Accept') || '').includes('application/json')) {
+            return res.json({ success: true, users: processedUsers, count: processedUsers.length, format: format || 'csv' });
+        }
         res.setHeader('Content-Type', contentType);
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
         res.send(output);
 
         // Log export operation
-        logger.info('********** START EXPORT **********');
+        const log = (global.logger || console);
+        log.info ? log.info('********** START EXPORT **********') : console.log('********** START EXPORT **********');
         logger.info(`* Population ID:   ${actualPopulationId || 'ALL'}`);
         logger.info('**********************************');
-        logger.info(`[${new Date().toISOString()}] [INFO] Export operation completed`, {
+        log.info ? log.info(`[${new Date().toISOString()}] [INFO] Export operation completed`, {
             populationId: actualPopulationId,
             populationName: req.body.populationName,
             userCount: users.length,
@@ -2445,11 +2464,7 @@ router.post('/export-users', async (req, res, next) => {
             useOverrideCredentials: req.body.useOverrideCredentials,
             userAgent: req.get('User-Agent'),
             ip: req.ip
-        });
-        logger.info(logTag('END OF EXPORT'), { tag: logTag('END OF EXPORT'), separator: logSeparator() });
-        logger.info('**********************************');
-        logger.info(`* Population ID:   ${actualPopulationId || 'ALL'}`);
-        logger.info('*********** END EXPORT ***********');
+        }) : console.log('Export operation completed');
     } catch (error) {
         console.error('Export operation failed:', {
             error: error.message,
