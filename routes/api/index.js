@@ -2151,22 +2151,14 @@ router.post('/export-users', async (req, res, next) => {
             });
         }
 
-        // Build PingOne API URL directly
+        // Build PingOne API URL directly with population filter and sane limit
         let pingOneUrl = `${tokenManager.getApiBaseUrl()}/environments/${environmentId}/users`;
         const params = new URLSearchParams();
-        
-        // Add population filter if specified (empty string means all populations)
-        if (actualPopulationId && actualPopulationId.trim() !== '') {
+        if (typeof actualPopulationId === 'string' && actualPopulationId.trim() !== '') {
             params.append('population.id', actualPopulationId.trim());
         }
-        
-        // Always expand population details to get population name and ID in response
-        params.append('expand', 'population');
-        
-        // Append query parameters if any exist
-        if (params.toString()) {
-            pingOneUrl += `?${params.toString()}`;
-        }
+        params.append('limit', '1000');
+        if (params.toString()) pingOneUrl += `?${params.toString()}`;
 
         console.log('Fetching users from PingOne API:', pingOneUrl);
 
@@ -2196,12 +2188,10 @@ router.post('/export-users', async (req, res, next) => {
         let users = await pingOneResponse.json();
         
         // Handle PingOne API response format variations
-        // PingOne can return users directly as array or nested in _embedded.users
-        if (users._embedded && users._embedded.users) {
-            users = users._embedded.users;
-        } else if (!Array.isArray(users)) {
-            users = [];
-        }
+        // PingOne can return users directly as array, in items, or nested in _embedded.users
+        if (users._embedded && users._embedded.users) users = users._embedded.users;
+        else if (Array.isArray(users.items)) users = users.items;
+        else if (!Array.isArray(users)) users = [];
 
         console.log('Users fetched successfully:', {
             count: users.length,
