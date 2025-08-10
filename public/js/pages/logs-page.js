@@ -77,7 +77,7 @@ export class LogsPage {
                             </div>
                         </div>
                         
-                        <div class="btn-toolbar" style="position: sticky; top: 8px; z-index: 5; display:flex; align-items:center; background: #edf2f7; border: 2px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 12px 16px; max-width: 100%; margin: 6px auto; gap:16px;">
+                        <div class="btn-toolbar" style="position: sticky; top: 8px; z-index: 5; display:flex; align-items:center; background: #dbe4ee; border: 2px solid rgba(0,0,0,0.18); border-radius: 14px; padding: 16px 20px; max-width: 100%; margin: 10px auto; gap:20px;">
                             <div class="btn-row-center" style="display:flex; gap:16px; align-items:center; justify-content:center; width:100%;">
                                 <button id="export-logs-btn" class="btn btn-success">
                                     <i class="fas fa-download me-1"></i><span>Export Logs</span>
