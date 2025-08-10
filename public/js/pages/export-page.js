@@ -16,6 +16,9 @@ export class ExportPage {
             includeDisabledUsers: false,
             attributes: []
         };
+        // Cache last real export so the Download button uses real data, not sample
+        this.lastExportCsv = null;
+        this.lastExportFileName = '';
     }
 
     // Read the first line of a CSV file to extract headers
@@ -317,6 +320,8 @@ export class ExportPage {
             await this.setupEventListeners();
             console.log('📝 Event listeners set up, loading populations...');
             await this.loadPopulations();
+            // Clear export audit log on open for a fresh run
+            try { await fetch('/api/logs/export-audit', { method: 'DELETE' }); } catch (_) {}
             // Auto-load attribute headers on page load from backend (with fallback)
             try {
                 const resp = await fetch('/api/user-schema', { cache: 'no-store' });
@@ -837,7 +842,7 @@ export class ExportPage {
         console.log('[Export] Using populationId:', selectedPopulationId);
         const resp = await fetch('/api/export-users', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({ selectedPopulationId, fields: 'all', format: 'json', ignoreDisabledUsers: !includeDisabled })
         });
         if (!resp.ok) {
@@ -846,7 +851,7 @@ export class ExportPage {
         }
         const data = await resp.json().catch(() => ({}));
         const payload = (data && (data.data || data.message || data)) || {};
-        const users = Array.isArray(payload) ? payload : (payload.users || payload.items || payload.list || payload.data || []);
+        const users = Array.isArray(payload.users) ? payload.users : (Array.isArray(payload) ? payload : (payload.items || payload.list || payload.data || []));
         const total = Array.isArray(users) ? users.length : 0;
 
         // Update progress display to complete
@@ -881,6 +886,8 @@ export class ExportPage {
         }, 300);
         const blob = new Blob([csvContent], { type: this.getMimeType('csv') });
         const fileName = this.generateFileName();
+        this.lastExportCsv = csvContent;
+        this.lastExportFileName = fileName;
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = fileName;
@@ -1032,14 +1039,11 @@ export class ExportPage {
         }
 
         try {
-            // Generate the export data
-            const exportData = this.generateExportData();
-            const fileName = this.generateFileName();
-            
-            // Create a Blob with the export data
-            const blob = new Blob([exportData.content], { 
-                type: this.getMimeType(this.exportOptions.format) 
-            });
+            // Prefer last real export if available
+            const hasReal = !!this.lastExportCsv;
+            const content = hasReal ? this.lastExportCsv : this.generateExportData().content;
+            const fileName = hasReal ? (this.lastExportFileName || this.generateFileName()) : this.generateFileName();
+            const blob = new Blob([content], { type: this.getMimeType('csv') });
             
             // Create a download link
             const downloadLink = document.createElement('a');
@@ -1393,10 +1397,26 @@ export class ExportPage {
         const progressSection = document.getElementById('export-progress');
         const resultsSection = document.getElementById('export-results');
         const populationSelect = document.getElementById('export-population-select');
+        const exportFormat = document.getElementById('export-format');
+        const includeHeaders = document.getElementById('include-headers');
+        const includeDisabled = document.getElementById('include-disabled');
+        const includeMetadata = document.getElementById('include-metadata');
+        const attrsSelectAll = document.getElementById('attrs-select-all');
+        const attrsUnselectAll = document.getElementById('attrs-unselect-all');
 
         if (progressSection) progressSection.style.display = 'none';
         if (resultsSection) resultsSection.style.display = 'none';
         if (populationSelect) populationSelect.value = '';
+        if (exportFormat) exportFormat.value = 'csv';
+        if (includeHeaders) includeHeaders.checked = true;
+        if (includeDisabled) includeDisabled.checked = false;
+        if (includeMetadata) includeMetadata.checked = false;
+        if (attrsSelectAll) attrsSelectAll.checked = false;
+        if (attrsUnselectAll) attrsUnselectAll.checked = false;
+
+        // Uncheck all attribute checkboxes except the disabled Username
+        document.querySelectorAll('#attributes-selection input[type="checkbox"]')
+            .forEach(cb => { if (!cb.disabled) cb.checked = false; });
 
         this.selectedPopulation = null;
         this.handlePopulationChange('');

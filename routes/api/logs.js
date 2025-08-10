@@ -314,6 +314,18 @@ router.get('/ui', async (req, res) => {
     }
 });
 
+// Delete export audit log (fresh per visit)
+router.delete('/export-audit', async (req, res) => {
+    try {
+        const logsDir = path.join(__dirname, '../..', 'logs');
+        const file = path.join(logsDir, 'export-users.log');
+        await fs.unlink(file).catch(() => {});
+        return res.success('Export audit log cleared', null);
+    } catch (err) {
+        return res.error('Failed to clear export audit log', { code: 'EXPORT_AUDIT_CLEAR_ERROR', details: err.message }, 500);
+    }
+});
+
 /**
  * Purge logs older than N days (default 1 day)
  * DELETE /api/logs/purge?days=1
