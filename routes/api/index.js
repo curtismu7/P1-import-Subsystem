@@ -2863,9 +2863,25 @@ router.get('/user-schema', async (req, res) => {
         let unique = Array.from(new Set([...flat, ...common])).sort();
         // Fallback if SCIM call was forbidden/failed or returned empty
         if (!listResp.ok || unique.length === 0) {
-            unique = Array.from(new Set(common)).sort();
+            // Try to read fallback headers from settings.json
+            try {
+                const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
+                const settingsRaw = await fs.readFile(settingsPath, 'utf8').catch(() => '{}');
+                const settingsJson = JSON.parse(settingsRaw || '{}');
+                const saved = Array.isArray(settingsJson.exportHeaders) ? settingsJson.exportHeaders : [];
+                if (saved.length > 0) unique = saved;
+            } catch (_) { /* ignore */ }
+            unique = Array.from(new Set(unique.length ? unique : common)).sort();
             return res.json({ success: true, warning: listResp.ok ? undefined : `SCIM fetch failed: ${listResp.status} ${listResp.statusText}`, count: unique.length, headers: unique, fallback: true });
         }
+        // Persist headers in settings for future fallback
+        try {
+            const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
+            const settingsRaw = await fs.readFile(settingsPath, 'utf8').catch(() => '{}');
+            const settingsJson = JSON.parse(settingsRaw || '{}');
+            settingsJson.exportHeaders = unique;
+            await fs.writeFile(settingsPath, JSON.stringify(settingsJson, null, 2));
+        } catch (_) { /* ignore */ }
         return res.json({ success: true, count: unique.length, headers: unique, schemas: userSchemas.map(s => s.id || s.schema) });
     } catch (error) {
         // Final safety fallback
