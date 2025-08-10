@@ -495,6 +495,7 @@ export class ExportPage {
         
         // Use the unified service to load populations
         await populationLoader.loadPopulations('export-population-select', {
+            showRefreshed: true,
             onError: (error) => {
                 this.app.showNotification('Failed to load populations: ' + error.message, 'error');
             }

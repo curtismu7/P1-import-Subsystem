@@ -716,6 +716,7 @@ export class DeletePage {
         
         // Use the unified service to load populations
         await populationLoader.loadPopulations('delete-population-select', {
+            showRefreshed: true,
             onError: (error) => {
                 console.error('❌ Error loading populations for delete page:', error);
             }

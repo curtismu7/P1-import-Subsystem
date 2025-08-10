@@ -548,6 +548,7 @@ export class ImportPage {
         
         // Use the unified service to load populations
         await populationLoader.loadPopulations('target-population', {
+            showRefreshed: true,
             onError: (error) => {
                 console.error('❌ Error loading populations for import page:', error);
                 this.app.showError('Failed to load populations: ' + error.message);
