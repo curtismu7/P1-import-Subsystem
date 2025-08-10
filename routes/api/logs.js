@@ -2,6 +2,7 @@ import { Router } from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import archiver from 'archiver';
 import loggerUtil from '../../server/combined-logger.js';
 const { writeClientLog } = loggerUtil;
 
@@ -23,8 +24,8 @@ router.get('/', async (req, res) => {
     try {
         const { level, limit = 50, offset = 0 } = req.query;
         
-        // Read log files from logs directory
-        const logsDir = path.join(__dirname, '../../logs');
+        // Read log files from logs directory (Winston writes under server/logs)
+        const logsDir = path.join(__dirname, '../..', 'server', 'logs');
         const logFiles = ['application.log', 'combined.log', 'error.log'];
         
         let allLogs = [];
@@ -234,7 +235,7 @@ router.get('/ui', async (req, res) => {
         const logLimit = Math.min(parseInt(limit) || 100, 1000); // Cap at 1000
         
         // Define log file paths
-        const logDir = path.join(__dirname, '../../logs');
+        const logDir = path.join(__dirname, '../..', 'server', 'logs');
         const logFiles = [
             path.join(logDir, 'combined.log'),
             path.join(logDir, 'application.log'),
@@ -310,6 +311,62 @@ router.get('/ui', async (req, res) => {
             code: 'LOG_RETRIEVAL_ERROR',
             details: error.message
         }, 500);
+    }
+});
+
+/**
+ * Purge logs older than N days (default 1 day)
+ * DELETE /api/logs/purge?days=1
+ */
+router.delete('/purge', async (req, res) => {
+    try {
+        const days = Math.max(1, parseInt(req.query.days || '1', 10));
+        const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+        const logsDir = path.join(__dirname, '../..', 'server', 'logs');
+        const entries = await fs.readdir(logsDir).catch(() => []);
+        let purged = 0;
+        for (const name of entries) {
+            const full = path.join(logsDir, name);
+            try {
+                const stat = await fs.stat(full);
+                if (stat.isFile() && stat.mtimeMs < cutoff) {
+                    await fs.unlink(full);
+                    purged++;
+                }
+            } catch (_) { /* ignore */ }
+        }
+        return res.success('Old logs purged', { purged, days });
+    } catch (err) {
+        return res.error('Failed to purge logs', { code: 'LOG_PURGE_ERROR', details: err.message }, 500);
+    }
+});
+
+/**
+ * Download a zipped bundle of recent logs
+ * GET /api/logs/bundle
+ */
+router.get('/bundle', async (req, res) => {
+    try {
+        const logsDir = path.join(__dirname, '../..', 'server', 'logs');
+        const files = await fs.readdir(logsDir).catch(() => []);
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="logs-${new Date().toISOString().slice(0,10)}.zip"`);
+
+        // Lazy import archiver to avoid ESM interop issues
+        const mod = await import('archiver');
+        const arch = mod.default('zip', { zlib: { level: 9 } });
+        arch.on('error', () => { try { res.end(); } catch (_) {} });
+        arch.pipe(res);
+        for (const name of files) {
+            const full = path.join(logsDir, name);
+            try {
+                const stat = await fs.stat(full);
+                if (stat.isFile()) arch.file(full, { name });
+            } catch (_) { /* ignore */ }
+        }
+        await arch.finalize();
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 
