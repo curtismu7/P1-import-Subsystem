@@ -124,6 +124,7 @@ export class ModifyPage {
                                     </button>
                                 </div>
                                 <div class="form-help">Select the population containing users to modify</div>
+                                <div id="modify-population-select-refresh-indicator" class="refresh-indicator" style="display:none;"></div>
                             </div>
                         </div>
                         

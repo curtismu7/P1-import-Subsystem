@@ -141,31 +141,31 @@ export class ImportPage {
                                     <i class="mdi mdi-file-download"></i> Download CSV Template
                                 </a>
                             </div>
-                            <div class="mb-2" style="display:flex; gap:12px; align-items:center;">
-                                <div class="form-check">
-                                    <input type="checkbox" id="import-options-select-all" class="form-check-input">
-                                    <label class="form-check-label" for="import-options-select-all">Select All</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="import-options-unselect-all" class="form-check-input">
-                                    <label class="form-check-label" for="import-options-unselect-all">Unselect All</label>
-                                </div>
-                            </div>
+                             <div class="mb-2" style="display:flex; gap:12px; align-items:center;">
+                             <div class="form-check">
+                                     <input type="checkbox" id="import-options-select-all" class="form-check-input">
+                                     <label class="form-check-label" for="import-options-select-all">Select All</label>
+                                 </div>
+                                 <div class="form-check">
+                                     <input type="checkbox" id="import-options-unselect-all" class="form-check-input">
+                                     <label class="form-check-label" for="import-options-unselect-all">Unselect All</label>
+                                 </div>
+                             </div>
                             <div class="checkbox-grid">
-                                <div class="form-check">
-                                    <input type="checkbox" id="skip-duplicates" name="skipDuplicates" class="form-check-input" checked>
+                                 <div class="form-check">
+                                     <input type="checkbox" id="skip-duplicates" name="skipDuplicates" class="form-check-input">
                                     <label class="form-check-label" for="skip-duplicates">Skip duplicate users (by email)</label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" id="skip-existing-username" name="skipExistingUsername" class="form-check-input">
+                                     <input type="checkbox" id="skip-existing-username" name="skipExistingUsername" class="form-check-input">
                                     <label class="form-check-label" for="skip-existing-username">Skip if username already exists</label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" id="skip-existing-userid" name="skipExistingUserid" class="form-check-input">
+                                     <input type="checkbox" id="skip-existing-userid" name="skipExistingUserid" class="form-check-input">
                                     <label class="form-check-label" for="skip-existing-userid">Skip if user ID already exists</label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" id="validate-emails" name="validateEmails" class="form-check-input" checked>
+                                     <input type="checkbox" id="validate-emails" name="validateEmails" class="form-check-input">
                                     <label class="form-check-label" for="validate-emails">Validate email addresses</label>
                                 </div>
                                 <div class="form-check">
