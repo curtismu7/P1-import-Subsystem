@@ -412,7 +412,8 @@ select.form-control:not([multiple]) {
 
 /* Style refresh buttons next to population select to match height */
 #refresh-populations,
-#refresh-populations-btn {
+#refresh-populations-btn,
+#credentials-refresh-populations {
   height: 44px !important;
   min-height: 44px !important;
   padding: 0 12px !important;
@@ -10355,13 +10356,15 @@ select.field-error:focus {
 }
 
 /* Fused select + refresh button styling */
-.input-group-fused {
+.input-group.input-group-fused {
     display: inline-flex;
     align-items: stretch;
     border: 1px solid rgba(0,0,0,0.15);
     border-radius: 8px;
     overflow: hidden;
     background: #fff;
+    width: max-content !important; /* shrink-wrap to content and override .input-group width */
+    white-space: nowrap;
 }
 .input-group-fused > select.form-control {
     border: none !important;
@@ -10371,10 +10374,15 @@ select.field-error:focus {
 .input-group-fused > #refresh-populations.btn {
     border: none !important;
     border-radius: 0 !important;
-    background: #f9fafb;
+    background: #e5e7eb; /* darker gray */
+}
+.input-group-fused > #credentials-refresh-populations.btn {
+    border: none !important;
+    border-radius: 0 !important;
+    background: #e5e7eb;
 }
 .input-group-fused > #refresh-populations.btn:hover {
-    background: #eef2f7;
+    background: #d1d5db; /* slightly darker on hover */
 }
 
 /* Export page: emphasize selected population details */

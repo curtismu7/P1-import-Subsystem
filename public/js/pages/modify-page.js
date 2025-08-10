@@ -115,7 +115,7 @@ export class ModifyPage {
                         <div class="config-grid">
                             <div class="form-group">
                                 <label for="modify-population-select">Population *</label>
-                                <div class="input-group">
+                                <div class="input-group input-group-fused">
                                     <select id="modify-population-select" class="form-control">
                                         <option value="">Select a population...</option>
                                     </select>

@@ -104,7 +104,7 @@ export class ImportPage {
                         <div class="config-grid">
                             <div class="form-group">
                                 <label for="target-population">Target Population *</label>
-                                <div class="input-group">
+                                <div class="input-group input-group-fused">
                                     <select id="target-population" name="targetPopulation" class="form-control" required>
                                         <option value="">Select a population...</option>
                                     </select>
