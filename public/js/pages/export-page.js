@@ -830,8 +830,11 @@ export class ExportPage {
     // Execute real export via backend then build the file
     async executeExport() {
         const includeDisabled = document.getElementById('include-disabled')?.checked ?? false;
-        const selectedPopulationId = this.selectedPopulation?.id || this.selectedPopulation?.populationId || '';
+        const selectEl = document.getElementById('export-population-select');
+        const fallbackId = selectEl?.value || '';
+        const selectedPopulationId = this.selectedPopulation?.id || this.selectedPopulation?.populationId || fallbackId;
         if (!selectedPopulationId) throw new Error('No population selected');
+        console.log('[Export] Using populationId:', selectedPopulationId);
         const resp = await fetch('/api/export-users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -885,7 +888,7 @@ export class ExportPage {
         a.click();
         a.remove();
         URL.revokeObjectURL(a.href);
-        this.app?.showSuccess?.(`Exported ${total} users`);
+        this.app?.showSuccess?.(`Exported ${total} users from ${this.selectedPopulation?.name || ''}`);
     }
 
     // Extract attribute from real user object using common mappings and dot-paths
