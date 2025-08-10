@@ -10354,6 +10354,29 @@ select.field-error:focus {
     gap: 10px 18px;
 }
 
+/* Fused select + refresh button styling */
+.input-group-fused {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid rgba(0,0,0,0.15);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+}
+.input-group-fused > select.form-control {
+    border: none !important;
+    border-right: 1px solid rgba(0,0,0,0.12) !important;
+    border-radius: 0 !important;
+}
+.input-group-fused > #refresh-populations.btn {
+    border: none !important;
+    border-radius: 0 !important;
+    background: #f9fafb;
+}
+.input-group-fused > #refresh-populations.btn:hover {
+    background: #eef2f7;
+}
+
 /* Export page: emphasize selected population details */
 .export-container .info-grid .value {
     font-weight: 700 !important;

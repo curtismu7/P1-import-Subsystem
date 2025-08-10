@@ -98,7 +98,7 @@ export class ExportPage {
                         <div class="config-grid">
                             <div class="form-group">
                                 <label for="export-population-select">Population *</label>
-                                <div class="input-group">
+                                <div class="input-group input-group-fused" id="export-population-group">
                                     <select id="export-population-select" class="form-control" required style="height:44px; min-height:44px; line-height:44px; min-width:220px; max-width:300px; padding-top:8px; padding-bottom:8px;">
                                         <option value="">Select a population...</option>
                                     </select>

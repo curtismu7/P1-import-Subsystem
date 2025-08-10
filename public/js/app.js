@@ -184,6 +184,8 @@ class PingOneApp {
     initializeUI() {
         this.updateNavigation();
         this.initializeResponsiveNav();
+        // Always scroll to top on initial UI render
+        try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (_) { window.scrollTo(0,0); }
         // Restore page from URL hash or sessionStorage
         const hashPage = (window.location.hash || '').replace(/^#/, '');
         const storedPage = sessionStorage.getItem('currentPage');
@@ -580,6 +582,8 @@ class PingOneApp {
             targetPage.style.display = 'block';
             this.currentPage = pageName;
             this.loadPageContent(pageName);
+            // Scroll to top on each page show
+            try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { window.scrollTo(0,0); }
         }
         
         this.updateNavigation();
