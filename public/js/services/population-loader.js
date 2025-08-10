@@ -21,7 +21,8 @@ export class PopulationLoader {
             useCache = true, 
             showLoading = true,
             onSuccess = null,
-            onError = null 
+            onError = null,
+            showRefreshed = false 
         } = options;
 
         // Prevent concurrent loading for the same dropdown
@@ -51,6 +52,7 @@ export class PopulationLoader {
             if (useCache && this.isCacheValid()) {
                 console.log(`📦 Using cached populations for ${dropdownId}`);
                 this.populateDropdown(dropdown, this.cache);
+                if (showRefreshed) this.showRefreshedIndicator(dropdown, false);
                 if (onSuccess) onSuccess(this.cache);
                 return;
             }
@@ -124,6 +126,7 @@ export class PopulationLoader {
             // Populate dropdown
             // Persist discovered default flag to settings via UI note is server handles persistence when saving settings
             this.populateDropdown(dropdown, populations);
+            if (showRefreshed) this.showRefreshedIndicator(dropdown, !useCache);
             
             if (onSuccess) onSuccess(populations);
             console.log(`✅ Successfully loaded ${populations.length} populations for ${dropdownId}`);
@@ -159,6 +162,24 @@ export class PopulationLoader {
 
         dropdown.disabled = false;
         console.log(`✅ Dropdown ${dropdown.id} populated with ${populations.length} populations`);
+    }
+
+    /**
+     * Show a small refreshed indicator near the dropdown's input group
+     */
+    showRefreshedIndicator(dropdown, wasRefreshed) {
+        const group = dropdown.closest('.input-group') || dropdown.parentElement;
+        if (!group) return;
+        let indicator = document.getElementById(`${dropdown.id}-refresh-indicator`);
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = `${dropdown.id}-refresh-indicator`;
+            indicator.className = 'refresh-indicator';
+            group.insertAdjacentElement('afterend', indicator);
+        }
+        const ts = new Date().toLocaleTimeString();
+        indicator.textContent = wasRefreshed ? `Refreshed from PingOne at ${ts}` : `Loaded at ${ts}`;
+        indicator.style.display = 'inline-block';
     }
 
     /**

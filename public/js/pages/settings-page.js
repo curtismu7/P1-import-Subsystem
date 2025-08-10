@@ -75,6 +75,7 @@ export class SettingsPage {
                                     </button>
                                 </div>
                                 <div class="form-help">Default population for operations (optional)</div>
+                                <div id="settings-population-refresh-indicator" class="refresh-indicator" style="display:none;"></div>
                             </div>
                             
                             <div class="form-actions">

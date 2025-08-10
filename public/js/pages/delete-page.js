@@ -124,6 +124,7 @@ export class DeletePage {
                                     </button>
                                 </div>
                                 <div class="form-help">Select the population containing users to delete</div>
+                                <div id="delete-population-select-refresh-indicator" class="refresh-indicator" style="display:none;"></div>
                             </div>
                         </div>
                         

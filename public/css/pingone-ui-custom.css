@@ -421,6 +421,18 @@ select.form-control:not([multiple]) {
   align-items: center;
 }
 
+/* Visual indicator below fused population control */
+.refresh-indicator {
+  margin-top: 6px;
+  display: inline-block;
+  background: #eef2f7;
+  color: #374151;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
 /* Ensure Logs page dropdowns have sufficient height and no text truncation */
 #log-level-filter.form-control,
 #log-source.form-control,
