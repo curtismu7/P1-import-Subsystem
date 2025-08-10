@@ -193,12 +193,12 @@ export class ExportPage {
                         <div class="attributes-group shaded">
                             <div class="attributes-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px;">
                                 <h4 style="margin:0;">User Attributes to Export</h4>
-                            </div>
+                                </div>
                             <div class="attr-tools" style="display:flex; gap:8px; align-items:center; margin: 6px 0 10px 0;">
                                 <button type="button" id="load-attr-schema" class="btn btn-danger btn-sm" title="Load fields from PingOne SCIM schema">
                                     <i class="mdi mdi-database-search"></i> Load From PingOne
                                 </button>
-                            </div>
+                                </div>
                             <div class="mb-2" style="display:flex; gap:12px; align-items:center;">
                                 <div class="form-check">
                                     <input type="checkbox" id="attrs-select-all" class="form-check-input">
@@ -735,22 +735,16 @@ export class ExportPage {
 
         try {
             this.updateExportOptions();
-            
-            // Show progress section
             const progressSection = document.getElementById('export-progress');
             const resultsSection = document.getElementById('export-results');
             const cancelBtn = document.getElementById('cancel-export');
-            
             if (progressSection) progressSection.style.display = 'block';
             if (resultsSection) resultsSection.style.display = 'none';
             if (cancelBtn) cancelBtn.style.display = 'inline-block';
-
-            // Scroll to progress section
             this.scrollToSection(progressSection);
 
-            // Simulate export process (replace with actual API call)
-            await this.simulateExport();
-            
+            // Call backend to fetch real users from PingOne and then build the file client-side
+            await this.executeExport();
         } catch (error) {
             console.error('Error starting export:', error);
             this.app.showNotification('Failed to start export: ' + error.message, 'error');
@@ -826,6 +820,89 @@ export class ExportPage {
                 if (usersProcessed) usersProcessed.textContent = Math.min(currentProgress, total);
             }, 200);
         });
+    }
+
+    // Execute real export via backend then build the file
+    async executeExport() {
+        const includeDisabled = document.getElementById('include-disabled')?.checked ?? false;
+        const selectedPopulationId = this.selectedPopulation?.id || this.selectedPopulation?.populationId || '';
+        const resp = await fetch('/api/export-users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ selectedPopulationId, fields: 'all', format: 'json', ignoreDisabledUsers: !includeDisabled })
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.message || 'Export request failed');
+        }
+        const data = await resp.json().catch(() => ({}));
+        const payload = (data && (data.data || data.message || data)) || {};
+        const users = Array.isArray(payload) ? payload : (payload.users || payload.items || payload.list || []);
+        const total = Array.isArray(users) ? users.length : 0;
+
+        // Update progress display to complete
+        const totalUsers = document.getElementById('total-users');
+        const usersProcessed = document.getElementById('users-processed');
+        const progressBar = document.getElementById('export-progress-bar');
+        const progressText = document.getElementById('export-progress-text');
+        const progressTextLeft = document.getElementById('export-progress-text-left');
+        if (totalUsers) totalUsers.textContent = String(total);
+        if (usersProcessed) usersProcessed.textContent = String(total);
+        if (progressBar) progressBar.style.width = '100%';
+        if (progressText) progressText.textContent = '100%';
+        if (progressTextLeft) progressTextLeft.textContent = '100%';
+
+        // Build CSV with selected attributes
+        const selectedAttributes = this.getSelectedAttributes();
+        const headers = this.getProfileHeaders(selectedAttributes);
+        const rows = [headers.join(',')];
+        for (const u of users) {
+            const row = selectedAttributes.map(attr => this.extractUserAttribute(u, attr));
+            rows.push(row.map(v => this.csvEscape(v)).join(','));
+        }
+        const csvContent = rows.join('\n');
+
+        // Present results and trigger download
+        setTimeout(() => this.showExportResults(), 300);
+        const blob = new Blob([csvContent], { type: this.getMimeType('csv') });
+        const fileName = this.generateFileName();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+        this.app?.showSuccess?.(`Exported ${total} users`);
+    }
+
+    // Extract attribute from real user object using common mappings and dot-paths
+    extractUserAttribute(user, attr) {
+        // Special cases
+        if (attr === 'status') return user.enabled === false ? 'Disabled' : 'Active';
+        if (attr === 'username') return user.username || user.userName || user.login || (Array.isArray(user.emails) && user.emails[0]?.value) || '';
+        if (attr === 'emails.value') return Array.isArray(user.emails) ? (user.emails[0]?.value || '') : '';
+        if (attr === 'name.given') return user.name?.given || '';
+        if (attr === 'name.family') return user.name?.family || '';
+        // Generic dot-path
+        const parts = String(attr).split('.');
+        let cur = user;
+        for (const p of parts) {
+            if (cur == null) return '';
+            if (Array.isArray(cur)) {
+                cur = cur[0];
+            }
+            cur = cur?.[p];
+        }
+        return (typeof cur === 'string' || typeof cur === 'number') ? String(cur) : cur ? JSON.stringify(cur) : '';
+    }
+
+    csvEscape(value) {
+        const s = value == null ? '' : String(value);
+        if (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r')) {
+            return '"' + s.replace(/"/g, '""') + '"';
+        }
+        return s;
     }
 
     showExportResults() {
