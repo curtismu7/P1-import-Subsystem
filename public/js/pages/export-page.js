@@ -132,7 +132,7 @@ export class ExportPage {
                     <div class="export-box">
                         <h3 class="section-title">Export Options</h3>
                         <p>Configure export settings and data format</p>
-                        <div class="config-grid">
+                        <div class="config-grid shaded-group">
                             <div class="form-group">
                                 <label for="export-format">Export Format</label>
                                 <select id="export-format" class="form-control" style="height:44px; min-height:44px; line-height:44px; min-width:220px; max-width:320px; padding-top:8px; padding-bottom:8px;">
@@ -334,6 +334,9 @@ export class ExportPage {
                 }
             } catch (_) { /* ignore auto-load errors */ }
             console.log('📝 Populations loading completed');
+            // Force repaint of fused input group to avoid cached styles
+            const group = document.getElementById('export-population-group');
+            if (group) { group.style.transform = 'translateZ(0)'; setTimeout(() => { group.style.transform = ''; }, 0); }
         } else {
             console.error('❌ Export page element not found!');
         }

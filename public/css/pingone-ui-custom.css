@@ -10339,6 +10339,15 @@ select.field-error:focus {
     padding: 12px 14px;
 }
 
+/* Shaded group utility for grid settings blocks */
+.shaded-group {
+  background: var(--ping-gray-50, #f3f4f6);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 6px;
+}
+
 /* Ensure red background on critical action button in attributes group */
 .attributes-group .btn.btn-danger {
     background-color: #dc2626 !important;
