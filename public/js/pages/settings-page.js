@@ -66,7 +66,7 @@ export class SettingsPage {
                             
                             <div class="form-group">
                                 <label><i class="mdi mdi-account-group" style="color:#1565c0;"></i> PingOne Population</label>
-                                <div class="input-group">
+                                <div class="input-group input-group-fused">
                                     <select id="settings-population" name="populationId" class="form-control">
                                         <option value="">Select Population</option>
                                     </select>

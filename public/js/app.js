@@ -165,6 +165,7 @@ class PingOneApp {
         const credentialsSettings = document.getElementById('credentials-settings');
         const credentialsSave = document.getElementById('credentials-save');
         const toggleSecret = document.getElementById('toggle-secret');
+        const credRefreshBtn = document.getElementById('credentials-refresh-populations');
         
         if (disclaimerAccept) disclaimerAccept.addEventListener('click', this.handleDisclaimerAccept.bind(this));
         if (disclaimerQuit) disclaimerQuit.addEventListener('click', this.handleDisclaimerQuit.bind(this));
@@ -179,6 +180,15 @@ class PingOneApp {
         if (credentialsSettings) credentialsSettings.addEventListener('click', this.handleCredentialsSettings.bind(this));
         if (credentialsSave) credentialsSave.addEventListener('click', this.handleCredentialsSave.bind(this));
         if (toggleSecret) toggleSecret.addEventListener('click', this.handleToggleSecret.bind(this));
+        if (credRefreshBtn) credRefreshBtn.addEventListener('click', async () => {
+            try {
+                this.showWarning('Refreshing populations…');
+                // Try cache-busting refresh from API first
+                await fetch('/api/populations?refresh=1', { headers: { 'Cache-Control': 'no-store' } }).catch(() => {});
+                await this.loadCredentialsPopulations();
+                this.showSuccess('Populations refreshed');
+            } catch (_) {}
+        });
     }
     
     initializeUI() {

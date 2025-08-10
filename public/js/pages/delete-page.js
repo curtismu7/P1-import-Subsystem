@@ -115,7 +115,7 @@ export class DeletePage {
                         <div class="config-grid">
                             <div class="form-group">
                                 <label for="delete-population-select">Population *</label>
-                                <div class="input-group">
+                                <div class="input-group input-group-fused">
                                     <select id="delete-population-select" class="form-control">
                                         <option value="">Select a population...</option>
                                     </select>
