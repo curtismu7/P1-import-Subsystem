@@ -178,7 +178,11 @@ export class PopulationLoader {
             group.insertAdjacentElement('afterend', indicator);
         }
         const ts = new Date().toLocaleTimeString();
-        indicator.textContent = wasRefreshed ? `Refreshed from PingOne at ${ts}` : `Loaded at ${ts}`;
+        // Try to read current selected population text to include in message
+        let context = '';
+        try { context = (dropdown.selectedOptions && dropdown.selectedOptions[0]?.textContent) || ''; } catch(_) {}
+        if (context) context = `${context} · `;
+        indicator.textContent = `${context}${wasRefreshed ? 'Refreshed' : 'Loaded'} at ${ts}`;
         indicator.style.display = 'inline-block';
     }
 
