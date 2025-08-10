@@ -1608,12 +1608,26 @@ router.get('/populations', async (req, res) => {
         
         console.log(`[Populations] ✅ Fetched ${populations.length} populations`);
         
-        // Format populations for frontend
+        // Determine default population from settings.json
+        let defaultPopulationId = null;
+        try {
+            const fs = await import('fs/promises');
+            const path = await import('path');
+            const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
+            const raw = await fs.readFile(settingsPath, 'utf8').catch(() => null);
+            if (raw) {
+                const settings = JSON.parse(raw);
+                defaultPopulationId = settings.pingone_population_id || settings.populationId || null;
+            }
+        } catch (_) { /* ignore settings read errors */ }
+
+        // Format populations for frontend and mark default
         const formattedPopulations = populations.map(population => ({
             id: population.id,
             name: population.name,
             description: population.description || '',
-            userCount: population.userCount || 0
+            userCount: population.userCount || 0,
+            isDefault: defaultPopulationId ? population.id === defaultPopulationId : false
         }));
         
         // Cache the fresh data for future requests
