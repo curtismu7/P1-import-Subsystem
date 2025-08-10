@@ -10346,7 +10346,14 @@ select.field-error:focus {
 
 /* Export page: emphasize selected population details */
 .export-container .info-grid .value {
-    font-weight: 700;
+    font-weight: 700 !important;
+    color: #0b3c8c !important; /* dark blue emphasis */
+}
+
+/* Global emphasis utility */
+.text-highlight, .highlight {
+    font-weight: 700 !important;
+    color: #0b3c8c !important;
 }
 
 .result-card {
