@@ -337,8 +337,10 @@ export class ExportPage {
             refreshPopulationsBtn.addEventListener('click', async () => {
                 const { populationLoader } = await import('../services/population-loader.js');
                 populationLoader.clearCache();
+                // Yellow status while refreshing
+                this.app?.showWarning?.('Refreshing populations…');
                 await this.loadPopulations();
-                this.app?.showInfo?.('Populations refreshed');
+                this.app?.showSuccess?.('Populations refreshed');
             });
         }
 
