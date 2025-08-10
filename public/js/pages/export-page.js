@@ -193,12 +193,12 @@ export class ExportPage {
                         <div class="attributes-group shaded">
                             <div class="attributes-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px;">
                                 <h4 style="margin:0;">User Attributes to Export</h4>
-                                <div class="attr-tools" style="display:flex; gap:8px; align-items:center;">
-                                    <button type="button" id="load-attr-schema" class="btn btn-outline-secondary btn-sm" title="Load fields from PingOne SCIM schema">
-                                        <i class="mdi mdi-database-search"></i> Load From PingOne
-                                    </button>
-                                </div>
-                                </div>
+                            </div>
+                            <div class="attr-tools" style="display:flex; gap:8px; align-items:center; margin: 6px 0 10px 0;">
+                                <button type="button" id="load-attr-schema" class="btn btn-danger btn-sm" title="Load fields from PingOne SCIM schema">
+                                    <i class="mdi mdi-database-search"></i> Load From PingOne
+                                </button>
+                            </div>
                             <div class="mb-2" style="display:flex; gap:12px; align-items:center;">
                                 <div class="form-check">
                                     <input type="checkbox" id="attrs-select-all" class="form-check-input">
@@ -406,16 +406,26 @@ export class ExportPage {
                 try {
                     this.app?.showWarning?.('Loading attributes from PingOne…');
                     const resp = await fetch('/api/user-schema', { cache: 'no-store' });
-                    const json = await resp.json().catch(() => ({}));
-                    const payload = json && (json.data || json.message || json);
-                    const headers = payload?.headers || payload?.items || [];
-                    if (!Array.isArray(headers) || headers.length === 0) throw new Error('No attributes returned');
+                    let headers = [];
+                    if (resp.ok) {
+                        const json = await resp.json().catch(() => ({}));
+                        const payload = json && (json.data || json.message || json);
+                        headers = payload?.headers || payload?.items || [];
+                    }
+                    if (!Array.isArray(headers) || headers.length === 0) {
+                        // Fallback minimal set so user can proceed
+                        headers = ['username','emails.value','name.given','name.family','enabled','status'];
+                        this.app?.showWarning?.('Using default attribute list (schema not available)');
+                    }
                     this.renderDynamicAttributes(headers);
                     this.bindAttributeSelectionHandlers();
-                    this.app?.showSuccess?.(`Loaded ${headers.length} attributes from PingOne`);
+                    this.app?.showSuccess?.(`Loaded ${headers.length} attributes`);
                 } catch (err) {
                     console.error('Failed to load attributes from PingOne:', err);
-                    this.app?.showError?.('Failed to load attributes from PingOne');
+                    const fallback = ['username','emails.value','name.given','name.family','enabled','status'];
+                    this.renderDynamicAttributes(fallback);
+                    this.bindAttributeSelectionHandlers();
+                    this.app?.showWarning?.('Loaded default attributes (schema request failed)');
                 }
             });
         }
