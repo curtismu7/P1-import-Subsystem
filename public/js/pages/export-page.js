@@ -521,7 +521,7 @@ export class ExportPage {
                 const populationUserCount = document.getElementById('population-user-count');
                 const populationDescription = document.getElementById('population-description');
                 
-                if (populationName) populationName.textContent = this.selectedPopulation.name || '-';
+                if (populationName) populationName.textContent = `${this.selectedPopulation.name || '-'}${this.selectedPopulation.isDefault ? ' (Default)' : ''}`;
                 if (populationUserCount) populationUserCount.textContent = this.selectedPopulation.userCount || '0';
                 if (populationDescription) populationDescription.textContent = this.selectedPopulation.description || 'No description';
                 

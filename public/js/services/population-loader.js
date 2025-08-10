@@ -122,6 +122,7 @@ export class PopulationLoader {
             this.lastCacheTime = Date.now();
 
             // Populate dropdown
+            // Persist discovered default flag to settings via UI note is server handles persistence when saving settings
             this.populateDropdown(dropdown, populations);
             
             if (onSuccess) onSuccess(populations);
@@ -150,7 +151,8 @@ export class PopulationLoader {
             const option = document.createElement('option');
             option.value = population.id || population.populationId || population.value || '';
             const name = population.name || population.label || population.text || 'Unnamed Population';
-            option.textContent = `${name}${population.userCount ? ` (${population.userCount} users)` : ''}`;
+            const defaultBadge = population.isDefault ? ' — Default' : '';
+            option.textContent = `${name}${population.userCount ? ` (${population.userCount} users)` : ''}${defaultBadge}`;
             option.dataset.population = JSON.stringify(population);
             dropdown.appendChild(option);
         });
