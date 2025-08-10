@@ -2162,7 +2162,7 @@ router.post('/export-users', async (req, res, next) => {
             pingOneUrl = `${base}/users?limit=1000`;
         }
 
-        console.log('Fetching users from PingOne API:', pingOneUrl);
+        console.log('Fetching users from PingOne API:', pingOneUrl, { populationId: actualPopulationId });
 
         const pingOneResponse = await fetch(pingOneUrl, {
             method: 'GET',
