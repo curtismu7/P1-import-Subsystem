@@ -54,17 +54,17 @@ export class ExportPage {
         const used = new Set();
         for (const pref of preferred) {
             const hit = normalized.find(h => pref.match.some(m => m.toLowerCase() === h.toLowerCase()));
-            if (hit) { items.push({ id: pref.id, label: pref.label, disabled: !!pref.disabled, checked: !!pref.checked }); used.add(hit); }
+            if (hit) { items.push({ id: pref.id, label: pref.label, source: hit, disabled: !!pref.disabled, checked: !!pref.checked }); used.add(hit); }
         }
         for (const h of normalized) {
             if (used.has(h)) continue;
             const safeId = 'attr-' + h.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            items.push({ id: safeId, label: h, disabled: false, checked: true });
+            items.push({ id: safeId, label: h, source: h, disabled: false, checked: true });
         }
 
         container.innerHTML = items.map(it => `
             <div class="form-check">
-                <input type="checkbox" id="${it.id}" class="form-check-input" ${it.checked ? 'checked' : ''} ${it.disabled ? 'disabled' : ''}>
+                <input type="checkbox" id="${it.id}" class="form-check-input" data-attr="${it.source || it.label}" ${it.checked ? 'checked' : ''} ${it.disabled ? 'disabled' : ''}>
                 <label for="${it.id}" class="form-check-label">${it.label}</label>
             </div>
         `).join('');
@@ -195,8 +195,8 @@ export class ExportPage {
                                 <h4 style="margin:0;">User Attributes to Export</h4>
                                 </div>
                             <div class="attr-tools" style="display:flex; gap:8px; align-items:center; margin: 6px 0 10px 0;">
-                                <button type="button" id="load-attr-schema" class="btn btn-danger btn-sm" title="Load fields from PingOne SCIM schema">
-                                    <i class="mdi mdi-database-search"></i> Load From PingOne
+                                <button type="button" id="load-attr-schema" class="btn btn-danger btn-sm" title="Refresh fields from PingOne SCIM schema">
+                                    <i class="mdi mdi-database-refresh"></i> Refresh Headers
                                 </button>
                                 </div>
                             <div class="mb-2" style="display:flex; gap:12px; align-items:center;">
@@ -317,6 +317,17 @@ export class ExportPage {
             await this.setupEventListeners();
             console.log('📝 Event listeners set up, loading populations...');
             await this.loadPopulations();
+            // Auto-load attribute headers on page load from backend (with fallback)
+            try {
+                const resp = await fetch('/api/user-schema', { cache: 'no-store' });
+                const json = await resp.json().catch(() => ({}));
+                const payload = json && (json.data || json.message || json);
+                const headers = payload?.headers || [];
+                if (Array.isArray(headers) && headers.length) {
+                    this.renderDynamicAttributes(headers);
+                    this.bindAttributeSelectionHandlers();
+                }
+            } catch (_) { /* ignore auto-load errors */ }
             console.log('📝 Populations loading completed');
         } else {
             console.error('❌ Export page element not found!');
@@ -562,7 +573,6 @@ export class ExportPage {
                 <div class="modal preview-modal" style="max-width: 800px; width: 90%;">
                     <div class="modal-header">
                         <h2><i class="mdi mdi-eye"></i> Export Preview</h2>
-                        <button type="button" class="btn-close" id="close-preview">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div class="preview-info">
@@ -614,12 +624,7 @@ export class ExportPage {
         document.body.insertAdjacentHTML('beforeend', modalHTML);
 
         // Add event listeners
-        const closeButtons = document.querySelectorAll('#close-preview');
         const startExportButton = document.getElementById('start-export-from-preview');
-
-        closeButtons.forEach(btn => {
-            btn.addEventListener('click', () => this.closePreviewModal());
-        });
 
         if (startExportButton) {
             startExportButton.addEventListener('click', () => {
@@ -826,6 +831,7 @@ export class ExportPage {
     async executeExport() {
         const includeDisabled = document.getElementById('include-disabled')?.checked ?? false;
         const selectedPopulationId = this.selectedPopulation?.id || this.selectedPopulation?.populationId || '';
+        if (!selectedPopulationId) throw new Error('No population selected');
         const resp = await fetch('/api/export-users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -837,7 +843,7 @@ export class ExportPage {
         }
         const data = await resp.json().catch(() => ({}));
         const payload = (data && (data.data || data.message || data)) || {};
-        const users = Array.isArray(payload) ? payload : (payload.users || payload.items || payload.list || []);
+        const users = Array.isArray(payload) ? payload : (payload.users || payload.items || payload.list || payload.data || []);
         const total = Array.isArray(users) ? users.length : 0;
 
         // Update progress display to complete
@@ -1268,30 +1274,15 @@ export class ExportPage {
      * Get selected attributes from checkboxes
      */
     getSelectedAttributes() {
-        const attributes = [];
-        
-        // Always include username (required)
-        attributes.push('username');
-        
-        // Check other attribute checkboxes
-        const attributeCheckboxes = [
-            { id: 'attr-email', key: 'email' },
-            { id: 'attr-firstname', key: 'firstname' },
-            { id: 'attr-lastname', key: 'lastname' },
-            { id: 'attr-status', key: 'status' },
-            { id: 'attr-groups', key: 'groups' },
-            { id: 'attr-roles', key: 'roles' },
-            { id: 'attr-custom', key: 'custom' }
-        ];
-        
-        attributeCheckboxes.forEach(({ id, key }) => {
-            const checkbox = document.getElementById(id);
-            if (checkbox && checkbox.checked) {
-                attributes.push(key);
-            }
-        });
-        
-        return attributes;
+        // Collect selected attributes from dynamic list, using SCIM path in data-attr when present
+        const picked = Array.from(document.querySelectorAll('#attributes-selection input[type="checkbox"]:checked'))
+            .map(cb => cb.getAttribute('data-attr') || cb.id.replace('attr-',''))
+            .filter(Boolean);
+        // Ensure username first
+        if (!picked.some(a => a.toLowerCase() === 'username' || a.toLowerCase() === 'userName'.toLowerCase())) {
+            picked.unshift('username');
+        }
+        return picked;
     }
     
     /**
