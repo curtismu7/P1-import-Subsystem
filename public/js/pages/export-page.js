@@ -18,6 +18,65 @@ export class ExportPage {
         };
     }
 
+    // Read the first line of a CSV file to extract headers
+    readCsvHeaders(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const text = String(e.target.result || '');
+                    const firstLine = text.split(/\r?\n/).find(l => l.trim()) || '';
+                    const headers = firstLine.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                    resolve(headers.filter(Boolean));
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            reader.onerror = reject;
+            reader.readAsText(file);
+        });
+    }
+
+    // Render dynamic attribute checkboxes from headers
+    renderDynamicAttributes(headers) {
+        const container = document.getElementById('attributes-selection');
+        if (!container) return;
+
+        // Normalize
+        const normalized = Array.from(new Set(headers.map(h => h.trim()).filter(Boolean)));
+        const preferred = [
+            { id: 'attr-username', label: 'Username (Required)', disabled: true, checked: true, match: ['username','userName','login','Username','User Name'] },
+            { id: 'attr-email', label: 'Email', checked: true, match: ['email','Email','E-mail'] }
+        ];
+
+        // Build items: preferred first (if present), then all remaining headers
+        const items = [];
+        const used = new Set();
+        for (const pref of preferred) {
+            const hit = normalized.find(h => pref.match.some(m => m.toLowerCase() === h.toLowerCase()));
+            if (hit) { items.push({ id: pref.id, label: pref.label, disabled: !!pref.disabled, checked: !!pref.checked }); used.add(hit); }
+        }
+        for (const h of normalized) {
+            if (used.has(h)) continue;
+            const safeId = 'attr-' + h.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            items.push({ id: safeId, label: h, disabled: false, checked: true });
+        }
+
+        container.innerHTML = items.map(it => `
+            <div class="form-check">
+                <input type="checkbox" id="${it.id}" class="form-check-input" ${it.checked ? 'checked' : ''} ${it.disabled ? 'disabled' : ''}>
+                <label for="${it.id}" class="form-check-label">${it.label}</label>
+            </div>
+        `).join('');
+    }
+
+    // Bind change listeners after dynamic render
+    bindAttributeSelectionHandlers() {
+        document.querySelectorAll('#attributes-selection input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', () => this.updateExportOptions());
+        });
+    }
+
     async load() {
         console.log('📄 Loading Export page...');
         
@@ -77,7 +136,7 @@ export class ExportPage {
                                     <option value="csv">CSV (Comma Separated Values)</option>
                                     <option value="json">JSON (JavaScript Object Notation)</option>
                                      <option value="ndjson">NDJSON (JSON Lines)</option>
-                                     <option value="xlsx">Excel (XLSX)</option>
+                                    <option value="xlsx">Excel (XLSX)</option>
                                      <option value="xml">XML</option>
                                      <option value="ldif">LDIF</option>
                                      <option value="scim">SCIM 2.0 Bulk JSON</option>
@@ -91,8 +150,8 @@ export class ExportPage {
                                      <option value="ad">AD/LDAP-friendly (sAMAccountName, DN)</option>
                                      <option value="okta">Okta/AzureAD-style headers</option>
                                      <option value="siem">SIEM profile (flattened)</option>
-                                 </select>
-                             </div>
+                                </select>
+                            </div>
                             <div class="form-group">
                                 <label for="export-encoding">Character Encoding</label>
                                 <select id="export-encoding" class="form-control" style="height:44px; min-height:44px; line-height:44px; min-width:220px; max-width:320px; padding-top:8px; padding-bottom:8px;">
@@ -131,8 +190,16 @@ export class ExportPage {
                             </div>
                         </div>
 
-                        <div class="attributes-group">
-                            <h4>User Attributes to Export</h4>
+                        <div class="attributes-group shaded">
+                            <div class="attributes-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px;">
+                                <h4 style="margin:0;">User Attributes to Export</h4>
+                                <div class="attr-tools" style="display:flex; gap:8px; align-items:center;">
+                                    <input type="file" id="attr-csv-file" accept=".csv" style="display:none;" />
+                                    <button type="button" id="load-attr-csv" class="btn btn-outline-secondary btn-sm" title="Load fields from CSV header">
+                                        <i class="mdi mdi-file-upload"></i> Load CSV Fields
+                                    </button>
+                                </div>
+                                </div>
                             <div class="mb-2" style="display:flex; gap:12px; align-items:center;">
                                 <div class="form-check">
                                     <input type="checkbox" id="attrs-select-all" class="form-check-input">
@@ -142,41 +209,8 @@ export class ExportPage {
                                     <input type="checkbox" id="attrs-unselect-all" class="form-check-input">
                                     <label for="attrs-unselect-all" class="form-check-label">Unselect All</label>
                                 </div>
-                            </div>
-                            <div id="attributes-selection" class="attributes-grid">
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-username" class="form-check-input" checked disabled>
-                                    <label for="attr-username" class="form-check-label">Username (Required)</label>
                                 </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-email" class="form-check-input" checked>
-                                    <label for="attr-email" class="form-check-label">Email</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-firstname" class="form-check-input" checked>
-                                    <label for="attr-firstname" class="form-check-label">First Name</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-lastname" class="form-check-input" checked>
-                                    <label for="attr-lastname" class="form-check-label">Last Name</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-status" class="form-check-input">
-                                    <label for="attr-status" class="form-check-label">Status</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-groups" class="form-check-input">
-                                    <label for="attr-groups" class="form-check-label">Groups</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-roles" class="form-check-input">
-                                    <label for="attr-roles" class="form-check-label">Roles</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-custom" class="form-check-input">
-                                    <label for="attr-custom" class="form-check-label">Custom Attributes</label>
-                                </div>
-                            </div>
+                            <div id="attributes-selection" class="attributes-grid"></div>
                         </div>
                     </div>
                 </section>
@@ -342,10 +376,7 @@ export class ExportPage {
         if (optionsUnselectAll) optionsUnselectAll.addEventListener('change', (e) => { if (e.target.checked) { toggleGroup(optionIds, false); if (optionsSelectAll) optionsSelectAll.checked = false; this.updateExportOptions(); } });
 
         // Attribute selection
-        const attributeCheckboxes = document.querySelectorAll('#attributes-selection input[type="checkbox"]');
-        attributeCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', () => this.updateExportOptions());
-        });
+        this.bindAttributeSelectionHandlers();
 
         // Select All / Unselect All for attributes (exclude required username)
         const attrsSelectAll = document.getElementById('attrs-select-all');
@@ -366,6 +397,26 @@ export class ExportPage {
                 this.updateExportOptions();
             }
         });
+
+        // Dynamic: load attributes from CSV header
+        const loadAttrBtn = document.getElementById('load-attr-csv');
+        const loadAttrInput = document.getElementById('attr-csv-file');
+        if (loadAttrBtn && loadAttrInput) {
+            loadAttrBtn.addEventListener('click', () => loadAttrInput.click());
+            loadAttrInput.addEventListener('change', async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                    const headers = await this.readCsvHeaders(file);
+                    this.renderDynamicAttributes(headers);
+                    this.bindAttributeSelectionHandlers();
+                    this.app?.showInfo?.(`Loaded ${headers.length} fields from CSV header`);
+                } catch (err) {
+                    console.error('Failed to load CSV header:', err);
+                    this.app?.showError?.('Failed to read CSV header');
+                }
+            });
+        }
 
         // Action buttons
         const previewBtn = document.getElementById('preview-export');
@@ -706,7 +757,7 @@ export class ExportPage {
 
     async simulateExport() {
         const progressBar = document.getElementById('export-progress-bar');
-                const progressText = document.getElementById('export-progress-text');
+        const progressText = document.getElementById('export-progress-text');
                 const progressTextLeft = document.getElementById('export-progress-text-left');
         const statusText = document.getElementById('export-status');
         const usersProcessed = document.getElementById('users-processed');
@@ -733,7 +784,7 @@ export class ExportPage {
 
                 currentProgress += 10;
                 const progress = Math.min((currentProgress / total) * 100, 100);
-
+                
                 if (progressBar) {
                     progressBar.style.width = `${progress}%`;
                     // Force repaint to ensure CSS animations remain visible as width changes
@@ -797,16 +848,16 @@ export class ExportPage {
                                 <div class="stat-item">
                                     <span class="stat-label">Total Users:</span>
                                     <span class="stat-value">${total}</span>
-                                </div>
-                                <div class="stat-item">
+                </div>
+                    <div class="stat-item">
                                     <span class="stat-label">Exported:</span>
                                     <span class="stat-value success">${success}</span>
-                                </div>
-                                <div class="stat-item">
+                    </div>
+                    <div class="stat-item">
                                     <span class="stat-label">Skipped:</span>
                                     <span class="stat-value warning">${skipped}</span>
-                                </div>
-                                <div class="stat-item">
+                    </div>
+                    <div class="stat-item">
                                     <span class="stat-label">Failed:</span>
                                     <span class="stat-value error">${failed}</span>
                                 </div>
