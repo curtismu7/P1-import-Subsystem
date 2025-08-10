@@ -2151,14 +2151,16 @@ router.post('/export-users', async (req, res, next) => {
             });
         }
 
-        // Build PingOne API URL directly with population filter and sane limit
-        let pingOneUrl = `${tokenManager.getApiBaseUrl()}/environments/${environmentId}/users`;
-        const params = new URLSearchParams();
+        // Build PingOne API URL. Prefer population-scoped endpoint when populationId is provided
+        let pingOneUrl;
+        const base = `${tokenManager.getApiBaseUrl()}/environments/${environmentId}`;
         if (typeof actualPopulationId === 'string' && actualPopulationId.trim() !== '') {
-            params.append('population.id', actualPopulationId.trim());
+            // Use population-specific users list to guarantee scoping
+            pingOneUrl = `${base}/populations/${encodeURIComponent(actualPopulationId.trim())}/users?limit=1000`;
+        } else {
+            // Fallback to global users list
+            pingOneUrl = `${base}/users?limit=1000`;
         }
-        params.append('limit', '1000');
-        if (params.toString()) pingOneUrl += `?${params.toString()}`;
 
         console.log('Fetching users from PingOne API:', pingOneUrl);
 
@@ -2188,10 +2190,16 @@ router.post('/export-users', async (req, res, next) => {
         let users = await pingOneResponse.json();
         
         // Handle PingOne API response format variations
-        // PingOne can return users directly as array, in items, or nested in _embedded.users
-        if (users._embedded && users._embedded.users) users = users._embedded.users;
-        else if (Array.isArray(users.items)) users = users.items;
-        else if (!Array.isArray(users)) users = [];
+        // Normalize response array shape
+        if (users && Array.isArray(users)) {
+            // already array
+        } else if (users && Array.isArray(users.items)) {
+            users = users.items;
+        } else if (users && users._embedded && Array.isArray(users._embedded.users)) {
+            users = users._embedded.users;
+        } else {
+            users = [];
+        }
 
         console.log('Users fetched successfully:', {
             count: users.length,
