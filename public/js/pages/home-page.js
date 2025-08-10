@@ -175,11 +175,11 @@ export class HomePage {
                     </div>
                 </div>
 
-                <div class="system-health" style="max-width: 640px; margin: 16px auto 0;">
+                <div class="system-health" style="max-width: 960px; margin: 16px auto 0;">
                     <h2 style="text-align:center;">Server Health</h2>
-                    <div id="health-panel" class="card" style="padding:12px; border:1px solid rgba(0,0,0,0.08); border-radius:12px; background:#f9fafb;">
+                    <div id="health-panel" class="card" style="padding:16px; border:1px solid rgba(0,0,0,0.08); border-radius:12px; background:#f9fafb;">
                         <div id="health-summary" style="font-weight:600; margin-bottom:8px;">Checking...</div>
-                        <div id="health-details" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 12px; white-space: pre-wrap; color:#374151;"></div>
+                        <div id="health-details" style="font-size: 13px; color:#111827;"></div>
                     </div>
                 </div>
                 
@@ -478,7 +478,16 @@ export class HomePage {
                 logsCount = Array.isArray(list) ? list.length : 0;
             }
 
-            const printable = {
+            // Build pretty health/details + settings flags
+            const settingsFlags = {
+                showDisclaimerModal: this.app.settings?.showDisclaimerModal === true,
+                showCredentialsModal: this.app.settings?.showCredentialsModal === true,
+                showSwaggerPage: this.app.settings?.showSwaggerPage === true,
+                autoRefreshToken: this.app.settings?.autoRefreshToken === true,
+                pingone_population_id: this.app.settings?.pingone_population_id || ''
+            };
+
+            const pretty = {
                 server: checks.server,
                 environment: checks.environment,
                 uptimeSec: Math.floor((checks.uptime || 0)),
@@ -489,9 +498,59 @@ export class HomePage {
                 populationCache: cacheData,
                 swaggerAvailable: swaggerOk,
                 debugModules: debugOk,
-                recentLogs: logsCount
+                recentLogs: logsCount,
+                settings: settingsFlags
             };
-            detailsEl.textContent = JSON.stringify(printable, null, 2);
+
+            // Render pretty details as key/value blocks with colors
+            const kv = [];
+            const colorize = (val) => {
+                if (val === true) return '<span style="color:#16a34a;font-weight:600;">Yes</span>';
+                if (val === false) return '<span style="color:#dc2626;font-weight:600;">No</span>';
+                if (typeof val === 'number') return `<span style="color:#1e40af;font-weight:600;">${val}</span>`;
+                if (val == null) return '<span style="color:#6b7280;">—</span>';
+                return `<span style="color:#111827;">${String(val)}</span>`;
+            };
+
+            const addRow = (label, valueHtml) => {
+                kv.push(`<div style=\"display:grid;grid-template-columns:220px 1fr;gap:12px;align-items:start;padding:6px 8px;border-top:1px solid rgba(0,0,0,0.06);\"><div style=\"color:#374151;font-weight:600;\">${label}</div><div>${valueHtml}</div></div>`);
+            };
+
+            addRow('Server', colorize(pretty.server?.ok ?? pretty.server));
+            addRow('Environment', colorize(pretty.environment?.ok ?? pretty.environment));
+            addRow('Uptime (sec)', colorize(pretty.uptimeSec));
+            addRow('Token Manager', colorize(pretty.tokenManager?.ok ?? pretty.tokenManager));
+            addRow('Token Status', colorize(pretty.tokenStatus?.valid ?? pretty.tokenStatus));
+            addRow('Settings Accessible', colorize(pretty.settingsAccessible?.ok ?? pretty.settingsAccessible));
+            addRow('Timestamp', colorize(pretty.timestamp));
+
+            // Population cache block
+            const pc = pretty.populationCache || {};
+            const pcHtml = `
+                <div style=\"display:flex;flex-wrap:wrap;gap:12px;\">
+                    <div>Has Cache: ${colorize(pc.hasCachedData === true)}</div>
+                    ${pc.cachedCount !== undefined ? `<div>Count: ${colorize(pc.cachedCount)}</div>` : ''}
+                    <div>Cached At: ${colorize(pc.cachedAt || null)}</div>
+                </div>`;
+            addRow('Population Cache', pcHtml);
+
+            addRow('Swagger Available', colorize(pretty.swaggerAvailable));
+            addRow('Debug Modules', colorize(pretty.debugModules));
+            addRow('Recent Logs (count)', colorize(pretty.recentLogs ?? 0));
+
+            // Settings flags
+            const s = pretty.settings || {};
+            const sHtml = `
+                <div style=\"display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:8px;\">
+                    <div><span style=\"color:#374151;font-weight:600;\">Disclaimer Modal:</span> ${colorize(s.showDisclaimerModal)}</div>
+                    <div><span style=\"color:#374151;font-weight:600;\">Credentials Modal:</span> ${colorize(s.showCredentialsModal)}</div>
+                    <div><span style=\"color:#374151;font-weight:600;\">Swagger Page:</span> ${colorize(s.showSwaggerPage)}</div>
+                    <div><span style=\"color:#374151;font-weight:600;\">Auto Refresh Token:</span> ${colorize(s.autoRefreshToken)}</div>
+                    <div style=\"grid-column:1/-1;\"><span style=\"color:#374151;font-weight:600;\">Default Population ID:</span> ${colorize(s.pingone_population_id || 'Not set')}</div>
+                </div>`;
+            addRow('Settings', sHtml);
+
+            detailsEl.innerHTML = `<div style=\"border:1px solid rgba(0,0,0,0.06);border-radius:10px;background:#ffffff;overflow:hidden\">${kv.join('')}</div>`;
 
         } catch (e) {
                 summaryEl.textContent = 'Status: unknown';
