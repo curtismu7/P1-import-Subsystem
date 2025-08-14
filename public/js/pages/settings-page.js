@@ -1,5 +1,5 @@
 // Settings Page Module
-// PingOne User Management Tool v7.2.0
+// PingOne User Management Tool v7.3.0
 
 export class SettingsPage {
     constructor(app) {
@@ -141,7 +141,7 @@ export class SettingsPage {
                         <div class="info-grid">
                             <div class="info-item">
                                 <span class="label">Application Version:</span>
-                                <span id="settings-app-version" class="value">v7.2.0</span>
+                                <span id="settings-app-version" class="version">v7.3.0</span>
                             </div>
                             <div class="info-item">
                                 <span class="label">Server Status:</span>
