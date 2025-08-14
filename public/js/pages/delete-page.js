@@ -43,7 +43,7 @@ export class DeletePage {
         deletePage.innerHTML = `
             <div class="page-header">
                 <h1>Delete Users</h1>
-                <p>Remove users from a population. Use with caution.</p>
+                <p>Remove users from a CSV file or population. Use with caution.</p>
             </div>
 
             <div class="delete-container">
@@ -104,26 +104,26 @@ export class DeletePage {
                 <!-- Population Selection -->
                 <section class="delete-section">
                     <div class="delete-box">
-                        <h3 class="section-title">Select Population</h3>
-                        <p>Choose the population from which you want to delete users</p>
+                        <h3 class="section-title">Select Population (Optional)</h3>
+                        <p>Choose a population to delete users from, or upload a CSV file above</p>
                         
                         <div class="config-grid">
                             <div class="form-group">
                                 <label for="delete-population-select">Population *</label>
-                                <div class="input-group" style="width: fit-content;">
-                                    <select id="delete-population-select" class="form-control" style="width: auto; min-width: 300px;">
+                                <div class="population-dropdown-container">
+                                    <select id="delete-population-select" class="form-control" data-long-text="true">
                                         <option value="">Select a population...</option>
                                     </select>
                                     <button type="button" id="refresh-populations" class="btn btn-outline-secondary">
                                         <i class="mdi mdi-refresh"></i>
                                     </button>
                                 </div>
-                                <div class="form-help">Select the population containing users to delete</div>
+                                <div class="form-help">Select a population to delete users from, or use the CSV file upload above</div>
                             </div>
                         </div>
                         
                         <div class="export-actions">
-                            <button id="load-users-btn" class="btn btn-primary" disabled>
+                            <button id="load-users-btn" class="btn btn-danger" disabled>
                                 <i class="mdi mdi-account-group"></i> Load Users
                             </button>
                             <button id="delete-users-btn" class="btn btn-danger" disabled>
@@ -404,6 +404,9 @@ export class DeletePage {
             this.displayFileInfo(this.selectedFile);
             this.previewFile(this.selectedFile);
         }
+        
+        // Initialize button states
+        this.updateDeleteButtonState();
     }
 
     setupEventListeners() {
@@ -443,7 +446,11 @@ export class DeletePage {
 
         // Load users button
         document.getElementById('load-users-btn')?.addEventListener('click', () => {
-            this.loadUsers();
+            if (this.selectedFile) {
+                this.loadUsersFromFile();
+            } else if (this.selectedPopulation) {
+                this.loadUsers();
+            }
         });
 
         // Delete users button
@@ -567,8 +574,9 @@ export class DeletePage {
         if (reqRequired) reqRequired.checked = true;
         if (reqOptional) reqOptional.checked = true;
         
-        // Enable load users button
+        // Enable load users button and check if delete button should be enabled
         document.getElementById('load-users-btn').disabled = false;
+        this.updateDeleteButtonState();
     }
     
     displayFileInfo(file) {
@@ -639,6 +647,10 @@ export class DeletePage {
             uploadArea.style.display = 'flex';
             fileInput.value = '';
         }
+        
+        // Update button states after removing file
+        this.updateDeleteButtonState();
+    }
 
         // Reset requirement checks
         ['req-csv','req-size','req-required','req-optional'].forEach(id => {
@@ -670,7 +682,6 @@ export class DeletePage {
     handlePopulationChange(populationId) {
         this.selectedPopulation = populationId;
         const loadUsersBtn = document.getElementById('load-users-btn');
-        const deleteUsersBtn = document.getElementById('delete-users-btn');
         
         console.log('🔍 handlePopulationChange called');
         console.log('Selected population:', populationId);
@@ -680,17 +691,140 @@ export class DeletePage {
             loadUsersBtn.disabled = !this.selectedPopulation;
         }
         
-        if (deleteUsersBtn) {
-            // Keep delete button disabled until users are actually loaded and selected
-            deleteUsersBtn.disabled = true;
-        }
+        // Update delete button state based on available options
+        this.updateDeleteButtonState();
         
         // Automatically load users when population is selected
         if (this.selectedPopulation) {
             this.loadUsers();
         }
     }
+    
+    /**
+     * Update the delete button state based on available options
+     * Button is enabled when either a file is uploaded OR a population is selected
+     */
+    updateDeleteButtonState() {
+        const deleteUsersBtn = document.getElementById('delete-users-btn');
+        const loadUsersBtn = document.getElementById('load-users-btn');
+        
+        if (deleteUsersBtn) {
+            // Enable delete button if we have either a file OR a population
+            const hasFile = this.selectedFile !== null;
+            const hasPopulation = this.selectedPopulation !== null && this.selectedPopulation !== '';
+            
+            deleteUsersBtn.disabled = !(hasFile || hasPopulation);
+            
+            // Update button text to indicate the source
+            if (hasFile && hasPopulation) {
+                deleteUsersBtn.innerHTML = '<i class="mdi mdi-delete"></i> Delete Users (File + Population) - Warning';
+            } else if (hasFile) {
+                deleteUsersBtn.innerHTML = '<i class="mdi mdi-delete"></i> Delete Users (CSV File) - Warning';
+            } else if (hasPopulation) {
+                deleteUsersBtn.innerHTML = '<i class="mdi mdi-delete"></i> Delete Users (Population) - Warning';
+            } else {
+                deleteUsersBtn.innerHTML = '<i class="mdi mdi-delete"></i> Delete Users - Warning';
+            }
+        }
+        
+        // Update load users button state
+        if (loadUsersBtn) {
+            // Enable load users button if we have either option
+            const hasFile = this.selectedFile !== null;
+            const hasPopulation = this.selectedPopulation !== null && this.selectedPopulation !== '';
+            loadUsersBtn.disabled = !(hasFile || hasPopulation);
+        }
+    }
+    
+    /**
+     * Load users from the uploaded CSV file
+     */
+    async loadUsersFromFile() {
+        if (!this.selectedFile) return;
 
+        const usersList = document.getElementById('users-list');
+        const userSelectionSection = document.getElementById('user-selection-section');
+        
+        if (!usersList || !userSelectionSection) return;
+
+        try {
+            usersList.innerHTML = '<div class="text-center"><div class="spinner-border"></div><p>Loading users from file...</p></div>';
+            userSelectionSection.style.display = 'block';
+
+            // Read and parse the CSV file
+            const text = await this.readFileAsText(this.selectedFile);
+            const lines = text.split('\n').filter(line => line.trim());
+            
+            if (lines.length < 2) {
+                throw new Error('File must contain at least a header row and one data row');
+            }
+            
+            // Parse CSV headers
+            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            const usernameIndex = headers.findIndex(h => h.toLowerCase().includes('username'));
+            const emailIndex = headers.findIndex(h => h.toLowerCase().includes('email'));
+            
+            if (usernameIndex === -1 && emailIndex === -1) {
+                throw new Error('File must contain either username or email column');
+            }
+            
+            // Parse user data
+            const users = [];
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const values = this.parseCSVLine(line);
+                if (values.length >= Math.max(usernameIndex, emailIndex) + 1) {
+                    const user = {
+                        id: `file-user-${i}`,
+                        username: usernameIndex >= 0 ? values[usernameIndex] : '',
+                        email: emailIndex >= 0 ? values[emailIndex] : '',
+                        givenName: headers.includes('givenName') ? values[headers.indexOf('givenName')] : '',
+                        familyName: headers.includes('familyName') ? values[headers.indexOf('familyName')] : '',
+                        enabled: true
+                    };
+                    users.push(user);
+                }
+            }
+            
+            if (users.length === 0) {
+                throw new Error('No valid user data found in file');
+            }
+            
+            this.renderUsers(users);
+            
+        } catch (error) {
+            console.error('❌ Error loading users from file:', error);
+            usersList.innerHTML = `<div class="alert alert-danger">Error loading users from file: ${error.message}</div>`;
+        }
+    }
+    
+    /**
+     * Parse a CSV line, handling quoted values
+     */
+    parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        
+        result.push(current.trim());
+        return result;
+    }
+    
     async loadPopulations() {
         // Import the population loader service
         const { populationLoader } = await import('../services/population-loader.js');
@@ -874,8 +1008,53 @@ export class DeletePage {
     }
 
     async deleteUser(userId) {
+        // Check if this is a file-based user or population-based user
+        const isFileUser = userId.startsWith('file-user-');
+        
+        try {
+            if (isFileUser) {
+                // For file-based users, we need to identify them by username/email
+                // This would typically involve looking up the user in PingOne first
+                await this.deleteUserFromFile(userId);
+            } else {
+                // For population-based users, we can delete directly by ID
+                await this.deleteUserFromPopulation(userId);
+            }
+            
+            return { success: true };
+        } catch (error) {
+            throw new Error(`Failed to delete user: ${error.message}`);
+        }
+    }
+    
+    /**
+     * Delete a user identified from a CSV file
+     */
+    async deleteUserFromFile(userId) {
         // Simulate API call delay
         await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // In a real implementation, you would:
+        // 1. Look up the user in PingOne by username/email
+        // 2. Delete the user using their actual PingOne ID
+        
+        // Simulate random success/failure for demo
+        if (Math.random() < 0.1) {
+            throw new Error('User lookup or deletion failed');
+        }
+        
+        return { success: true };
+    }
+    
+    /**
+     * Delete a user from a population by their PingOne ID
+     */
+    async deleteUserFromPopulation(userId) {
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // In a real implementation, you would call the PingOne API
+        // to delete the user by their ID
         
         // Simulate random success/failure for demo
         if (Math.random() < 0.1) {
@@ -1065,9 +1244,19 @@ export class DeletePage {
             return;
         }
 
-        // Get population name
-        const populationSelect = document.getElementById('delete-population-select');
-        const populationName = populationSelect ? populationSelect.options[populationSelect.selectedIndex]?.text : 'Unknown Population';
+        // Determine the source of users (file or population)
+        const hasFile = this.selectedFile !== null;
+        const hasPopulation = this.selectedPopulation !== null && this.selectedPopulation !== '';
+        
+        let sourceName = 'Unknown Source';
+        if (hasFile && hasPopulation) {
+            sourceName = 'CSV File + Population';
+        } else if (hasFile) {
+            sourceName = 'CSV File';
+        } else if (hasPopulation) {
+            const populationSelect = document.getElementById('delete-population-select');
+            sourceName = populationSelect ? populationSelect.options[populationSelect.selectedIndex]?.text : 'Unknown Population';
+        }
 
         // Update modal content with actual data
         const modalPopulationName = document.getElementById('modal-population-name');
@@ -1075,7 +1264,7 @@ export class DeletePage {
         const userList = document.getElementById('modal-user-list');
 
         if (modalPopulationName) {
-            modalPopulationName.textContent = populationName || 'Unknown Population';
+            modalPopulationName.textContent = sourceName;
         }
 
         if (modalUserCount) {
