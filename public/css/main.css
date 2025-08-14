@@ -1066,6 +1066,27 @@ select.form-control[data-long-text="true"] {
   min-height: 64px !important;
   height: 64px !important;
   padding: 18px 22px !important;
+  line-height: 1.4 !important;
+}
+
+/* Force long text styling with higher specificity */
+select.form-control[data-long-text="true"],
+select.form-control[data-long-text="true"]:focus,
+select.form-control[data-long-text="true"]:hover {
+  min-height: 64px !important;
+  height: 64px !important;
+  padding: 18px 22px !important;
+  line-height: 1.4 !important;
+}
+
+/* ULTRA HIGH SPECIFICITY - Force override any conflicting styles */
+html body select.form-control[data-long-text="true"],
+html body select.form-control[data-long-text="true"]:focus,
+html body select.form-control[data-long-text="true"]:hover {
+  min-height: 64px !important;
+  height: 64px !important;
+  padding: 18px 22px !important;
+  line-height: 1.4 !important;
 }
 
 /* Enhanced population dropdown styling */
@@ -1155,11 +1176,12 @@ select.form-control {
   height: 56px;
 }
 
-/* Ensure long text dropdowns have priority */
+/* Ensure long text dropdowns have priority - HIGH SPECIFICITY */
 select.form-control[data-long-text="true"] {
   min-height: 64px !important;
   height: 64px !important;
   padding: 18px 22px !important;
+  line-height: 1.4 !important;
 }
 
 /* Ensure dropdown options are fully visible */
