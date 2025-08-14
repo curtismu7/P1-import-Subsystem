@@ -963,7 +963,21 @@ app.get('/api/token/status', async (req, res) => {
             }
         }
         
-        res.json(status);
+        // Create a response that the middleware recognizes as already standardized
+        // to prevent double-wrapping
+        res.json({
+            success: true,
+            message: status.isValid ? 'Token is valid' : 'Token is invalid or expired',
+            data: {
+                hasToken: status.hasToken,
+                isValid: status.isValid,
+                expiresIn: status.expiresIn,
+                environmentId: status.environmentId,
+                region: status.region,
+                lastUpdated: status.lastUpdated
+            },
+            timestamp: new Date().toISOString()
+        });
     } catch (error) {
         logger.error('Token status check failed', { error: error.message });
         res.status(500).json({
