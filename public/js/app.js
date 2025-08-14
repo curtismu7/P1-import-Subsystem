@@ -1,4 +1,4 @@
-// PingOne User Management App v7.2.0
+// PingOne User Management App v7.3.0
 
 import { HomePage } from './pages/home-page.js';
 import { SettingsPage } from './pages/settings-page.js';
@@ -13,7 +13,7 @@ import { SwaggerPage } from './pages/swagger-page.js';
 
 class PingOneApp {
     constructor() {
-        this.version = '7.2.0';
+        this.version = '7.3.0';
         this.currentPage = 'home';
         this.settings = {};
         this.tokenStatus = { isValid: false, expiresAt: null, timeLeft: null };
