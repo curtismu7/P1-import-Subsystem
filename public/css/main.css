@@ -1043,10 +1043,125 @@ select.form-control {
   background-repeat: no-repeat;
   background-size: 16px 12px;
   padding-right: calc(var(--spacing-md) + 24px);
+  min-height: 56px; /* Increased height to prevent text cutoff */
+  height: 56px; /* Fixed height for consistency */
+  line-height: 1.4; /* Better line height for readability */
+  padding: 16px 20px; /* Increased padding for better text display */
 }
 
 select.form-control:focus {
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23007bff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+}
+
+/* Ensure dropdown options are properly sized */
+select.form-control option {
+  padding: 12px 16px;
+  line-height: 1.4;
+  min-height: 28px;
+  font-size: 15px;
+}
+
+/* Special handling for dropdowns with long text */
+select.form-control[data-long-text="true"] {
+  min-height: 64px;
+  height: 64px;
+  padding: 18px 22px;
+}
+
+/* Enhanced population dropdown styling */
+.population-dropdown-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  max-width: 800px; /* Increased from 500px to accommodate longer population names */
+}
+
+.population-dropdown-container .form-control {
+  flex: 1;
+  min-width: 500px; /* Increased from 300px to accommodate longer population names */
+  height: 56px;
+  min-height: 56px;
+  line-height: 1.4;
+  padding: 16px 20px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-size: 15px;
+}
+
+.population-dropdown-container .form-control:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+  outline: none;
+}
+
+/* Update button border when dropdown is focused */
+.population-dropdown-container .form-control:focus + .btn {
+  border-color: #007bff;
+  border-left: none;
+}
+
+.population-dropdown-container .btn {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+  background-color: #f8f9fa;
+  color: #495057;
+  transition: all 0.2s ease;
+  font-size: 18px;
+  /* Make button look more integrated with dropdown */
+  border-left: none;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: -2px; /* Overlap border for seamless connection */
+}
+
+.population-dropdown-container .btn:hover {
+  background-color: #e9ecef;
+  border-color: #007bff;
+  color: #007bff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+}
+
+.population-dropdown-container .btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(0, 123, 255, 0.2);
+}
+
+/* Ensure dropdown containers have proper spacing */
+.input-group select.form-control {
+  margin: 0;
+  flex: 1;
+}
+
+/* Fix for dropdown text being cut off */
+select.form-control {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  /* Ensure text is fully visible */
+  display: flex;
+  align-items: center;
+  /* Additional height for longer text */
+  min-height: 56px;
+  height: 56px;
+}
+
+/* Ensure dropdown options are fully visible */
+select.form-control option {
+  white-space: normal;
+  word-wrap: break-word;
+  min-height: 32px; /* Increased from 24px for better text visibility */
+  padding: 12px 16px; /* Increased padding for better readability */
+  line-height: 1.4;
 }
 
 /* File Input */
