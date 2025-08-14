@@ -110,8 +110,8 @@ export class ModifyPage {
                         <div class="config-grid">
                             <div class="form-group">
                                 <label for="modify-population-select">Population *</label>
-                                <div class="input-group">
-                                    <select id="modify-population-select" class="form-control">
+                                <div class="input-group" style="width: fit-content;">
+                                    <select id="modify-population-select" class="form-control" style="width: auto; min-width: 300px;">
                                         <option value="">Select a population...</option>
                                     </select>
                                     <button type="button" id="refresh-populations" class="btn btn-outline-secondary">

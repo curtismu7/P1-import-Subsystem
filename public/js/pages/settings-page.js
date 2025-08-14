@@ -66,8 +66,8 @@ export class SettingsPage {
                             
                             <div class="form-group">
                                 <label><i class="mdi mdi-account-group"></i> PingOne Population</label>
-                                <div class="input-group">
-                                    <select id="settings-population" name="populationId" class="form-control">
+                                <div class="input-group" style="width: fit-content;">
+                                    <select id="settings-population" name="populationId" class="form-control" style="width: auto; min-width: 300px;">
                                         <option value="">Select Population</option>
                                     </select>
                                     <button type="button" id="refresh-populations" class="btn btn-outline-secondary">
@@ -568,6 +568,8 @@ export class SettingsPage {
     async handleSaveSettings() {
         console.log('💾 Saving settings...');
         
+        let result = null; // Declare result variable in function scope
+        
         this.setButtonLoading('save-settings', true);
         this.app.showInfo('Saving settings...');
         
@@ -585,6 +587,16 @@ export class SettingsPage {
                 pingone_region: formData.get('region'),
                 pingone_population_id: formData.get('populationId')
             };
+            
+            console.log('📝 Form data extracted:', {
+                environmentId: formData.get('environmentId'),
+                clientId: formData.get('clientId'),
+                clientSecret: formData.get('clientSecret'),
+                region: formData.get('region'),
+                populationId: formData.get('populationId')
+            });
+            
+            console.log('🔧 Settings object to send:', settings);
             
             // Validate required fields
             const requiredFields = ['pingone_environment_id', 'pingone_client_id', 'pingone_client_secret', 'pingone_region'];
@@ -604,6 +616,7 @@ export class SettingsPage {
             });
             
             const result = await response.json();
+            console.log('📡 Settings save response:', result);
             
             if (result.success) {
                 this.app.showSuccess('Settings saved successfully');
@@ -617,12 +630,51 @@ export class SettingsPage {
                 this.updateTokenInfo();
                 
             } else {
-                throw new Error(result.error || 'Failed to save settings');
+                // Handle different error response formats
+                let errorMessage = 'Failed to save settings';
+                if (result.error) {
+                    if (typeof result.error === 'string') {
+                        errorMessage = result.error;
+                    } else if (result.error.message) {
+                        errorMessage = result.error.message;
+                    } else if (result.error.details && result.error.details.validationErrors) {
+                        // Handle validation errors specifically
+                        const validationErrors = result.error.details.validationErrors;
+                        if (Array.isArray(validationErrors) && validationErrors.length > 0) {
+                            errorMessage = `Validation errors: ${validationErrors.map(err => err.message).join(', ')}`;
+                        } else {
+                            errorMessage = result.error.message || 'Validation failed';
+                        }
+                    } else if (result.error.details) {
+                        errorMessage = result.error.details;
+                    } else {
+                        errorMessage = JSON.stringify(result.error);
+                    }
+                }
+                throw new Error(errorMessage);
             }
             
         } catch (error) {
             console.error('❌ Failed to save settings:', error);
-            this.app.showError(`Failed to save settings: ${error.message}`);
+            
+            // Show more detailed error information
+            let errorMessage = error.message;
+            
+            // Check if we have detailed error information from the response
+            if (result && result.error && result.error.details) {
+                if (result.error.details.validationErrors) {
+                    const validationErrors = result.error.details.validationErrors;
+                    if (Array.isArray(validationErrors) && validationErrors.length > 0) {
+                        errorMessage = `Validation errors: ${validationErrors.map(err => err.message).join(', ')}`;
+                    }
+                } else if (Array.isArray(result.error.details)) {
+                    errorMessage = `Validation errors: ${result.error.details.join(', ')}`;
+                } else if (typeof result.error.details === 'string') {
+                    errorMessage = result.error.details;
+                }
+            }
+            
+            this.app.showError(`Failed to save settings: ${errorMessage}`);
         } finally {
             this.setButtonLoading('save-settings', false);
         }
@@ -654,7 +706,19 @@ export class SettingsPage {
                     this.signageSystem.addMessage(`⏰ Token acquired - Time left: ${result.token.timeLeft}`, 'info');
                 }
             } else {
-                this.app.showError(`Connection test failed: ${result.error || 'Unknown error'}`);
+                let errorMessage = 'Unknown error';
+                if (result.error) {
+                    if (typeof result.error === 'string') {
+                        errorMessage = result.error;
+                    } else if (result.error.message) {
+                        errorMessage = result.error.message;
+                    } else if (result.error.details) {
+                        errorMessage = result.error.details;
+                    } else {
+                        errorMessage = JSON.stringify(result.error);
+                    }
+                }
+                this.app.showError(`Connection test failed: ${errorMessage}`);
             }
         } catch (error) {
             console.error('❌ Error testing connection:', error);
@@ -697,7 +761,19 @@ export class SettingsPage {
                 // Update token info
                 this.updateTokenInfo();
             } else {
-                this.signageSystem.addMessage(`❌ Failed to refresh token: ${result.error || 'Unknown error'}`, 'error');
+                let errorMessage = 'Unknown error';
+                if (result.error) {
+                    if (typeof result.error === 'string') {
+                        errorMessage = result.error;
+                    } else if (result.error.message) {
+                        errorMessage = result.error.message;
+                    } else if (result.error.details) {
+                        errorMessage = result.error.details;
+                    } else {
+                        errorMessage = JSON.stringify(result.error);
+                    }
+                }
+                this.signageSystem.addMessage(`❌ Failed to refresh token: ${errorMessage}`, 'error');
             }
         } catch (error) {
             console.error('❌ Error refreshing token:', error);
@@ -750,7 +826,19 @@ export class SettingsPage {
                 // Update token info
                 this.updateTokenInfo();
             } else {
-                this.signageSystem.addMessage(`❌ Failed to revoke token: ${result.error || 'Unknown error'}`, 'error');
+                let errorMessage = 'Unknown error';
+                if (result.error) {
+                    if (typeof result.error === 'string') {
+                        errorMessage = result.error;
+                    } else if (result.error.message) {
+                        errorMessage = result.error.message;
+                    } else if (result.error.details) {
+                        errorMessage = result.error.details;
+                    } else {
+                        errorMessage = JSON.stringify(result.error);
+                    }
+                }
+                this.signageSystem.addMessage(`❌ Failed to revoke token: ${errorMessage}`, 'error');
             }
         } catch (error) {
             console.error('❌ Error revoking token:', error);

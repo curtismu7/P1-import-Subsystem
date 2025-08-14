@@ -46,13 +46,27 @@ class PingOneApp {
     
     async init() {
         try {
+            console.log('🚀 App initialization started...');
             this.showLoading('Initializing application...');
+            
+            console.log('🔧 Loading settings...');
             await this.loadSettings();
+            
+            console.log('🔑 Loading token status...');
             await this.loadTokenStatus(); // Load current token status from server
+            
+            console.log('🎯 Setting up event listeners...');
             this.setupEventListeners();
+            
+            console.log('🎨 Initializing UI...');
             this.initializeUI(); // This will load the home page and update UI with current token status
+            
+            console.log('⏰ Starting token monitoring...');
             this.startTokenMonitoring();
+            
+            console.log('🔍 Checking initial modals...');
             await this.checkInitialModals();
+            
             console.log('✅ Application initialized successfully');
             this.updateServerStatus('Server Started');
             this.hideLoading();
@@ -112,12 +126,17 @@ class PingOneApp {
     }
     
     async loadTokenStatus() {
+        console.log('🔄 loadTokenStatus() called - starting token status check...');
         try {
+            console.log('📡 Fetching token status from /api/token/status...');
             const response = await fetch('/api/token/status');
-            const result = await response.json();
+            console.log('📡 Response received:', response.status, response.statusText);
             
-            if (result.success && result.data && result.data.data) {
-                const tokenData = result.data.data;
+            const result = await response.json();
+            console.log('📡 Raw response data:', result);
+            
+            if (result.success && result.data) {
+                const tokenData = result.data;
                 console.log('🔑 Token status loaded from server:', tokenData);
                 
                 // Update token status based on server response
@@ -126,6 +145,7 @@ class PingOneApp {
                     this.tokenStatus.expiresAt = new Date(Date.now() + (tokenData.expiresIn * 1000));
                     this.tokenStatus.timeLeft = tokenData.expiresIn;
                     console.log('✅ Token is valid, expires in:', tokenData.expiresIn, 'seconds');
+                    console.log('🔄 Updating token status object:', this.tokenStatus);
                 } else {
                     this.tokenStatus.isValid = false;
                     this.tokenStatus.expiresAt = null;
@@ -133,11 +153,13 @@ class PingOneApp {
                     console.log('❌ Token is invalid or expired');
                 }
                 
+                console.log('🔄 Calling updateTokenUI()...');
                 this.updateTokenUI();
             } else {
                 console.warn('⚠️ Invalid token status response:', result);
             }
         } catch (error) {
+            console.error('❌ Error in loadTokenStatus:', error);
             console.warn('⚠️ Could not load token status:', error.message);
             // Keep default invalid status
             this.showInfo('Please enter credentials for your PingOne Environment');
@@ -693,21 +715,35 @@ class PingOneApp {
     }
     
     updateTokenUI() {
+        console.log('🔄 updateTokenUI() called with tokenStatus:', this.tokenStatus);
+        
         // Update header token indicator (top status bar)
         const headerTokenIndicator = document.getElementById('token-indicator');
         const headerTokenText = document.getElementById('token-text');
         const headerTokenTime = document.getElementById('token-time');
         
+        console.log('🔍 Header elements found:', {
+            indicator: !!headerTokenIndicator,
+            text: !!headerTokenText,
+            time: !!headerTokenTime
+        });
+        
         if (headerTokenIndicator) {
-            headerTokenIndicator.className = 'status-indicator ' + (this.tokenStatus.isValid ? 'valid' : 'invalid');
+            const newClass = 'status-indicator ' + (this.tokenStatus.isValid ? 'valid' : 'invalid');
+            console.log('🎨 Setting header indicator class to:', newClass);
+            headerTokenIndicator.className = newClass;
         }
         
         if (headerTokenText) {
-            headerTokenText.textContent = this.tokenStatus.isValid ? 'Token: Valid' : 'Token: Invalid';
+            const newText = this.tokenStatus.isValid ? 'Token: Valid' : 'Token: Invalid';
+            console.log('📝 Setting header text to:', newText);
+            headerTokenText.textContent = newText;
         }
         
         if (headerTokenTime) {
-            headerTokenTime.textContent = this.tokenStatus.isValid ? this.formatTimeLeft(this.tokenStatus.timeLeft) : '';
+            const newTime = this.tokenStatus.isValid ? this.formatTimeLeft(this.tokenStatus.timeLeft) : '';
+            console.log('⏰ Setting header time to:', newTime);
+            headerTokenTime.textContent = newTime;
         }
         
         // Update footer token indicator

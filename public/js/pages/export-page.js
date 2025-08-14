@@ -36,8 +36,8 @@ export class ExportPage {
                         <div class="config-grid">
                             <div class="form-group">
                                 <label for="export-population-select">Population *</label>
-                                <div class="input-group">
-                                    <select id="export-population-select" class="form-control" required>
+                                <div class="input-group" style="width: fit-content;">
+                                    <select id="export-population-select" class="form-control" style="width: auto; min-width: 300px;" required>
                                         <option value="">Select a population...</option>
                                     </select>
                                     <button type="button" id="refresh-populations" class="btn btn-outline-secondary">

@@ -1,0 +1,33 @@
+{
+  "environment-id": b9817c16-9910-4415-b67e-4ac687da74d9",
+  "api-client-id": "26e7f07c-11a4-402a-b064-07b55aee189e",
+  "api-secret": "9p3hLItWFzw5BxKjH3.~TIGVPP~uj4os6fY93170dMvXadn1GEsWTP2lHSTAoevq",
+  "population-id": "",
+  "region": "NA",
+  "rate-limit": "90",
+  "_comment": "This is a sample settings.json file for the PingOne Import Tool",
+  "_instructions": {
+    "setup": [
+      "1. Copy this file to settings.json in the same directory",
+      "2. Replace 'your-pingone-environment-id-here' with your actual Environment ID",
+      "3. Replace 'your-pingone-client-id-here' with your actual Client ID", 
+      "4. Replace 'your-pingone-client-secret-here' with your actual Client Secret",
+      "5. Set region to your PingOne region: NorthAmerica, Europe, AsiaPacific, or Canada",
+      "6. Optionally set a default population-id if you have one",
+      "7. Adjust rate-limit if needed (requests per minute, default: 90)"
+    ],
+    "security": [
+      "The api-secret will be automatically encrypted when saved through the UI",
+      "Encrypted secrets will have the 'enc:' prefix",
+      "Never commit actual credentials to version control",
+      "Use proper file permissions (600) in production environments"
+    ],
+    "regions": {
+      "NorthAmerica": "North America region (.com)",
+      "Europe": "Europe region (.eu)",
+      "AsiaPacific": "Asia Pacific region (.asia)",
+      "Canada": "Canada region (.ca)"
+    },
+    "fallback": "This file serves as a fallback when .env credentials are not available"
+  }
+}
