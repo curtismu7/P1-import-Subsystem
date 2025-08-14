@@ -106,6 +106,7 @@ import { webSocketService } from './server/services/websocket-service.js';
 
 // Import routes
 import { runStartupTokenTest } from './server/startup-token-test.js';
+import enhancedHealthRouter, { initializeHealthMonitoring } from './src/server/api/enhanced-health.js';
 import apiRouter from './routes/api/index.js';
 import settingsRouter from './routes/settings.js';
 import debugLogRouter from './routes/api/debug-log.js';
@@ -382,6 +383,24 @@ app.use(sanitizeInput({
     trimWhitespace: true
 }));
 
+// Mount debug modules endpoint BEFORE response standardization/wrappers
+app.get('/api/debug/modules', (req, res) => {
+    try {
+        const payload = {
+            moduleSystem: 'import-maps',
+            useImportMaps: true,
+            version: appVersion,
+            timestamp: new Date().toISOString()
+        };
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.status(200).send(JSON.stringify({ success: true, message: 'Module info retrieved', data: payload }));
+    } catch (e) {
+        res.setHeader('Content-Type', 'application/json');
+        res.status(500).send(JSON.stringify({ success: false, message: 'Failed to retrieve module info', error: e.message }));
+    }
+});
+
 // Response standardization middleware (fixes QA issues)
 import { standardizeResponse, addRequestId } from './server/middleware/response-standardization.js';
 app.use(addRequestId);
@@ -540,11 +559,10 @@ app.get('/api/settings/public', async (req, res) => {
         const settingsPath = path.join(__dirname, 'data', 'settings.json');
         const raw = await fs.readFile(settingsPath, 'utf-8').catch(() => '{}');
         const json = JSON.parse(raw || '{}');
-        // Pick only safe fields (populations + default id)
+        // Pick only safe fields (populations from populationCache + default id)
         const safe = {
-            populations: Array.isArray(json.populations) ? json.populations : [],
-            populationCache: json.populationCache && Array.isArray(json.populationCache.populations)
-                ? { populations: json.populationCache.populations } : undefined,
+            populations: json.populationCache && Array.isArray(json.populationCache.populations)
+                ? json.populationCache.populations : [],
             pingone_population_id: json.pingone_population_id || json.populationId || undefined
         };
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -588,15 +606,7 @@ app.use('/src', express.static(path.join(__dirname, 'src'), {
 console.log('📦 Source files served at /src for Import Maps');
 console.log('🗺️  Import Maps version available at http://localhost:4000/');
 
-// Debug route to check module system status
-app.get('/api/debug/modules', (req, res) => {
-    res.json({
-        moduleSystem: 'import-maps',
-        useImportMaps: useImportMaps,
-        version: packageVersion,
-        timestamp: new Date().toISOString()
-    });
-});
+// Debug route to check module system status is already defined above
 
 console.log('📚 Swagger UI available at http://localhost:4000/swagger.html');
 console.log('📄 Swagger JSON available at http://localhost:4000/swagger.json');
@@ -999,11 +1009,15 @@ app.post('/api/token/refresh', async (req, res) => {
 });
 
 // API routes with enhanced logging
-app.use('/api', apiRouter); // Main API router includes: logs, auth, export, import, history, pingone, version, settings
-app.use('/api/logs', logsApiRouter); // Explicit logs API (purge, bundle, ui)
-app.use('/api/pingone', pingoneProxyRouter); // Additional pingone proxy routes
-app.use('/api/settings', settingsRouter); // Direct settings routes
-app.use('/api/v1/settings', settingsRouter); // Added to support /api/v1/settings
+app.use('/api', apiRouter);
+app.use('/api/health', enhancedHealthRouter);
+app.use('/api/import', importRouter); 
+app.use('/api/logs', logsApiRouter); 
+app.use('/api/pingone', pingoneProxyRouter); 
+app.use('/api/settings', settingsRouter); 
+app.use('/api/v1/settings', settingsRouter); 
+app.use('/api/v1/auth', authSubsystemRouter); 
+app.use('/api/test-runner', testRunnerRouter); 
 app.use('/api/v1/auth', authSubsystemRouter); // Auth subsystem routes
 app.use('/api/test-runner', testRunnerRouter); // Test runner routes
 // NOTE: /api/auth, /api/logs, /api/import, /api/export are handled by the main apiRouter above

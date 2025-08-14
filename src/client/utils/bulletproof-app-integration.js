@@ -53,8 +53,8 @@ export class BulletproofAppIntegration {
             // Layer 6: State Protection
             await this.initializeBulletproofState();
             
-            // Layer 7: Bundle Protection
-            await this.initializeBulletproofBundle();
+            // Layer 7: Import Maps Protection
+            await this.initializeBulletproofImportMaps();
             
             // Layer 8: Health Monitoring
             this.startHealthMonitoring();
@@ -198,9 +198,9 @@ export class BulletproofAppIntegration {
     }
     
     /**
-     * Initialize bulletproof bundle protection - CANNOT FAIL
+     * Initialize bulletproof Import Maps protection - CANNOT FAIL
      */
-    async initializeBulletproofBundle() {
+    async initializeBulletproofImportMaps() {
         try {
             // Monitor for script loading errors
             document.addEventListener('error', (event) => {
@@ -209,10 +209,10 @@ export class BulletproofAppIntegration {
                 }
             }, true);
             
-            this.protectionLayers.set('bundle', true);
-            this.logger.debug('🛡️ BULLETPROOF: Bundle protection initialized');
+            this.protectionLayers.set('importMaps', true);
+            this.logger.debug('🛡️ BULLETPROOF: Import Maps protection initialized');
         } catch (error) {
-            this.logger.error('🛡️ BULLETPROOF: Bundle protection initialization failed', error);
+            this.logger.error('🛡️ BULLETPROOF: Import Maps protection initialization failed', error);
         }
     }
     
@@ -222,7 +222,7 @@ export class BulletproofAppIntegration {
     handleScriptError(src, error) {
         try {
             this.logger.error('🛡️ BULLETPROOF: Script loading failed', { src, error });
-            if (src && src.includes('bundle')) {
+            if (src && (src.includes('module') || src.includes('import'))) {
                 this.showEmergencyUI();
             }
         } catch (error) {

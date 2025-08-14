@@ -589,7 +589,7 @@ router.get('/populations', getPopulations);
 
 // Test connection endpoint
 // CRITICAL: This MUST be a GET endpoint to match client-side expectations
-// Client-side files making GET requests: population-dropdown-fix.js, app.js, bundle files
+// Client-side files making GET requests: population-dropdown-fix.js, app.js, Import Maps modules
 // DO NOT change to POST without updating ALL client-side calls
 // Last fixed: 2025-07-30 - Moved to dedicated module for stability
 // ⚠️  IMPLEMENTATION MOVED TO: server/pingone-connection-tester.js

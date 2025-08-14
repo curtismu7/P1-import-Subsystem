@@ -151,7 +151,7 @@ class BulletproofGlobalHandler {
                 'fetch',
                 'xhr',
                 'websocket',
-                'bundle',
+                'module',
                 'module',
                 'import',
                 'script',
@@ -188,7 +188,7 @@ class BulletproofGlobalHandler {
             setTimeout(() => {
                 try {
                     // Strategy 1: Reload critical resources
-                    if (type.includes('resource') || type.includes('bundle')) {
+                    if (type.includes('resource') || type.includes('module')) {
                         this.reloadCriticalResources();
                     }
                     
@@ -223,19 +223,20 @@ class BulletproofGlobalHandler {
      */
     reloadCriticalResources() {
         try {
-            // Attempt to reload bundle if it failed
-            const scripts = document.querySelectorAll('script[src*="bundle"]');
-            scripts.forEach(script => {
+            // Attempt to reload Import Maps modules if they failed
+            const importMapScript = document.querySelector('script[type="importmap"]');
+            if (importMapScript) {
                 try {
-                    const newScript = document.createElement('script');
-                    newScript.src = script.src + '?reload=' + Date.now();
-                    newScript.onload = () => this.safeLog('info', '🛡️ BULLETPROOF: Bundle reloaded');
-                    newScript.onerror = () => this.safeLog('warn', '🛡️ BULLETPROOF: Bundle reload failed');
-                    document.head.appendChild(newScript);
+                    // Reload the main application module
+                    if (window.location.reload) {
+                        this.safeLog('info', '🛡️ BULLETPROOF: Reloading Import Maps modules');
+                        // For Import Maps, a full page reload is more reliable than individual module reloads
+                        setTimeout(() => window.location.reload(), 1000);
+                    }
                 } catch (e) {
-                    // Ignore individual script reload failures
+                    this.safeLog('warn', '🛡️ BULLETPROOF: Module reload failed');
                 }
-            });
+            }
         } catch (e) {
             this.emergencyLog('Resource reload failed', e);
         }
