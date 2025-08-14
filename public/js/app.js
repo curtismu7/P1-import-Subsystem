@@ -61,6 +61,9 @@ class PingOneApp {
             console.log('🎨 Initializing UI...');
             this.initializeUI(); // This will load the home page and update UI with current token status
             
+            console.log('🔧 Fixing dropdown heights...');
+            this.fixDropdownHeights();
+            
             console.log('⏰ Starting token monitoring...');
             this.startTokenMonitoring();
             
@@ -69,6 +72,12 @@ class PingOneApp {
             
             console.log('✅ Application initialized successfully');
             this.updateServerStatus('Server Started');
+            
+            // Test status update after a short delay
+            setTimeout(() => {
+                this.testStatusUpdate();
+            }, 500);
+            
             this.hideLoading();
         } catch (error) {
             console.error('❌ Failed to initialize application:', error);
@@ -595,6 +604,9 @@ class PingOneApp {
             targetPage.style.display = 'block';
             this.currentPage = pageName;
             this.loadPageContent(pageName);
+            
+            // Fix dropdown heights after page content is loaded
+            setTimeout(() => this.fixDropdownHeights(), 100);
         }
         
         this.updateNavigation();
@@ -717,6 +729,13 @@ class PingOneApp {
     updateTokenUI() {
         console.log('🔄 updateTokenUI() called with tokenStatus:', this.tokenStatus);
         
+        // Check if DOM is ready
+        if (document.readyState === 'loading') {
+            console.log('⏳ DOM not ready yet, deferring token UI update');
+            document.addEventListener('DOMContentLoaded', () => this.updateTokenUI());
+            return;
+        }
+        
         // Update header token indicator (top status bar)
         const headerTokenIndicator = document.getElementById('token-indicator');
         const headerTokenText = document.getElementById('token-text');
@@ -727,6 +746,18 @@ class PingOneApp {
             text: !!headerTokenText,
             time: !!headerTokenTime
         });
+        
+        // Debug: Check if elements exist
+        if (!headerTokenIndicator) console.warn('⚠️ Header token indicator not found');
+        if (!headerTokenText) console.warn('⚠️ Header token text not found');
+        if (!headerTokenTime) console.warn('⚠️ Header token time not found');
+        
+        // If elements not found, retry after a short delay
+        if (!headerTokenIndicator || !headerTokenText || !headerTokenTime) {
+            console.log('🔄 Retrying token UI update in 100ms...');
+            setTimeout(() => this.updateTokenUI(), 100);
+            return;
+        }
         
         if (headerTokenIndicator) {
             const newClass = 'status-indicator ' + (this.tokenStatus.isValid ? 'valid' : 'invalid');
@@ -855,20 +886,48 @@ class PingOneApp {
     }
     
     updateServerStatus(statusText) {
+        console.log('🔄 updateServerStatus called with:', statusText);
+        
+        // Check if DOM is ready
+        if (document.readyState === 'loading') {
+            console.log('⏳ DOM not ready yet, deferring server status update');
+            document.addEventListener('DOMContentLoaded', () => this.updateServerStatus(statusText));
+            return;
+        }
+        
         const serverStatusText = document.getElementById('footer-server-text');
         const serverStatusIndicator = document.getElementById('footer-server-indicator');
         
+        console.log('🔍 Server status elements found:', {
+            text: !!serverStatusText,
+            indicator: !!serverStatusIndicator
+        });
+        
+        // Debug: Check if elements exist
+        if (!serverStatusText) console.warn('⚠️ Footer server text not found');
+        if (!serverStatusIndicator) console.warn('⚠️ Footer server indicator not found');
+        
+        // If elements not found, retry after a short delay
+        if (!serverStatusText || !serverStatusIndicator) {
+            console.log('🔄 Retrying server status update in 100ms...');
+            setTimeout(() => this.updateServerStatus(statusText), 100);
+            return;
+        }
+        
         if (serverStatusText) {
             serverStatusText.textContent = statusText;
+            console.log('✅ Server status text updated to:', statusText);
         }
         
         if (serverStatusIndicator) {
             // Set indicator color based on status
             if (statusText === 'Server Started') {
                 serverStatusIndicator.className = 'status-indicator status-valid';
+                console.log('✅ Server status indicator set to green');
                 // Server status indicator set to green
             } else {
                 serverStatusIndicator.className = 'status-indicator';
+                console.log('✅ Server status indicator set to default');
             }
         }
     }
@@ -920,6 +979,29 @@ class PingOneApp {
     updateVersionDisplay() {
         const versionElements = document.querySelectorAll('#version-info, #footer-version');
         versionElements.forEach(element => element.textContent = 'v' + this.version);
+    }
+    
+    // Test function to manually update status elements
+    testStatusUpdate() {
+        console.log('🧪 Testing status update...');
+        
+        // Test server status
+        const serverText = document.getElementById('footer-server-text');
+        if (serverText) {
+            serverText.textContent = 'Test: Server Status Updated';
+            console.log('✅ Server status updated');
+        } else {
+            console.log('❌ Server status element not found');
+        }
+        
+        // Test token status
+        const tokenText = document.getElementById('footer-token-text');
+        if (tokenText) {
+            tokenText.textContent = 'Test: Token Status Updated';
+            console.log('✅ Token status updated');
+        } else {
+            console.log('❌ Token status element not found');
+        }
     }
 
   // Record an operation in History (falls back to localStorage if page not loaded)
@@ -1173,6 +1255,27 @@ class PingOneApp {
             if (statusIcon) statusIcon.className = 'icon-check-circle';
             statusBar.className = 'status-message-bar';
         }, timeoutMs);
+    }
+
+    /**
+     * Automatically detect and fix dropdown heights for long text options
+     */
+    fixDropdownHeights() {
+        const selects = document.querySelectorAll('select.form-control');
+        selects.forEach(select => {
+            let hasLongText = false;
+            const options = select.querySelectorAll('option');
+            
+            options.forEach(option => {
+                if (option.textContent.length > 30) {
+                    hasLongText = true;
+                }
+            });
+            
+            if (hasLongText) {
+                select.setAttribute('data-long-text', 'true');
+            }
+        });
     }
 }
 
