@@ -392,7 +392,7 @@ export class BulletproofTokenManager {
             if (tokenInfo.hasToken && tokenInfo.isValid) {
             // Token is valid - Show comprehensive green banner
             const formattedTime = this.formatTime(tokenInfo.timeLeft);
-            const buildNumber = 'bundle-1753964067';
+            const buildNumber = 'import-maps-' + Date.now();
             const version = '6.5.2.3';
             const lastChange = 'Bulletproof token system with comprehensive status display';
             

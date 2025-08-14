@@ -432,7 +432,7 @@ export class EnhancedTokenStatusSubsystem {
             if (status.className === 'valid' && this.tokenInfo.isValid) {
                 // Show comprehensive green banner with all requested info
                 const timeLeft = this.formatTimeRemaining();
-                const buildNumber = 'bundle-1753964322';
+                const buildNumber = 'import-maps-' + Date.now();
                 const version = '6.5.2.3';
                 const lastChange = 'Comprehensive token status banner with build info and version display';
                 
