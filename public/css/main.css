@@ -1063,9 +1063,9 @@ select.form-control option {
 
 /* Special handling for dropdowns with long text */
 select.form-control[data-long-text="true"] {
-  min-height: 64px;
-  height: 64px;
-  padding: 18px 22px;
+  min-height: 64px !important;
+  height: 64px !important;
+  padding: 18px 22px !important;
 }
 
 /* Enhanced population dropdown styling */
@@ -1153,6 +1153,13 @@ select.form-control {
   /* Additional height for longer text */
   min-height: 56px;
   height: 56px;
+}
+
+/* Ensure long text dropdowns have priority */
+select.form-control[data-long-text="true"] {
+  min-height: 64px !important;
+  height: 64px !important;
+  padding: 18px 22px !important;
 }
 
 /* Ensure dropdown options are fully visible */
