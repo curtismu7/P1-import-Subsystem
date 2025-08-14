@@ -447,7 +447,7 @@ class DisclaimerModal {
     }
 }
 
-// Initialize disclaimer modal immediately (DOM is already loaded when bundle executes)
+// Initialize disclaimer modal immediately (DOM is already loaded when import maps execute)
 (function() {
     console.log('[DISCLAIMER DEBUG] Modal initialization starting immediately');
     
