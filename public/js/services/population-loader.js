@@ -97,7 +97,8 @@ export class PopulationLoader {
                     if (resp.ok) {
                         const payload = await resp.json().catch(() => ({}));
                         const settings = payload && ((payload.success && (payload.data && (payload.data.data || payload.data))) || payload);
-                        populations = (settings && (settings.populationCache || settings.populations || (settings.data && settings.data.populations))) || [];
+                        // Try to get populations from settings
+                        populations = (settings && (settings.populationCache?.populations || (settings.data && settings.data.populationCache?.populations))) || [];
                         console.log('📦 Populations from /api/settings:', populations?.length || 0);
                     }
                 } catch (_) { /* ignore */ }
@@ -154,14 +155,22 @@ export class PopulationLoader {
             const option = document.createElement('option');
             option.value = population.id || population.populationId || population.value || '';
             const name = population.name || population.label || population.text || 'Unnamed Population';
-            const defaultBadge = population.isDefault ? ' — Default' : '';
-            option.textContent = `${name}${population.userCount ? ` (${population.userCount} users)` : ''}${defaultBadge}`;
+            option.textContent = `${name}${population.userCount ? ` (${population.userCount} users)` : ''}`;
             option.dataset.population = JSON.stringify(population);
             dropdown.appendChild(option);
         });
 
         dropdown.disabled = false;
         console.log(`✅ Dropdown ${dropdown.id} populated with ${populations.length} populations`);
+
+        // Do not auto-select based on default flag; user must choose explicitly
+
+        // Update/append a compact default badge when default is shown in text
+        const indicator = document.getElementById(`${dropdown.id}-refresh-indicator`);
+        if (indicator) {
+            indicator.style.fontSize = '0.85rem';
+            indicator.style.padding = '2px 6px';
+        }
     }
 
     /**
@@ -181,8 +190,8 @@ export class PopulationLoader {
         // Try to read current selected population text to include in message
         let context = '';
         try { context = (dropdown.selectedOptions && dropdown.selectedOptions[0]?.textContent) || ''; } catch(_) {}
-        if (context) context = `${context} · `;
-        indicator.textContent = `${context}${wasRefreshed ? 'Refreshed' : 'Loaded'} at ${ts}`;
+        context = context || 'Select a population...';
+        indicator.textContent = `${context} · ${wasRefreshed ? 'Refreshed' : 'Loaded'} at ${ts}`;
         indicator.style.display = 'inline-block';
     }
 

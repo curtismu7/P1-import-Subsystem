@@ -43,7 +43,11 @@ class PopulationCacheService {
         this.logger = options.logger || console;
         this.tokenManager = options.tokenManager;
         
-        this.logger.info('🗃️ Population Cache Service initialized');
+        if (this.logger && this.logger.info) {
+            this.logger.info('🗃️ Population Cache Service initialized');
+        } else {
+            console.log('🗃️ Population Cache Service initialized (using console fallback)');
+        }
     }
 
     /**
@@ -52,38 +56,62 @@ class PopulationCacheService {
      */
     async cachePopulationsOnStartup() {
         if (!this.tokenManager) {
-            this.logger.warn('⚠️ Token manager not available, skipping population caching');
+            if (this.logger && this.logger.warn) {
+                this.logger.warn('⚠️ Token manager not available, skipping population caching');
+            } else {
+                console.warn('⚠️ Token manager not available, skipping population caching');
+            }
             return false;
         }
 
         try {
-            this.logger.info('🚀 Caching populations during startup...');
+            if (this.logger && this.logger.info) {
+                this.logger.info('🚀 Caching populations during startup...');
+            } else {
+                console.log('🚀 Caching populations during startup...');
+            }
             
             // Check if we have valid credentials
             const environmentId = await this.tokenManager.getEnvironmentId();
             if (!environmentId) {
-                this.logger.warn('⚠️ No environment ID configured, skipping population caching');
+                if (this.logger && this.logger.warn) {
+                    this.logger.warn('⚠️ No environment ID configured, skipping population caching');
+                } else {
+                    console.warn('⚠️ No environment ID configured, skipping population caching');
+                }
                 return false;
             }
 
             // Get access token
             const token = await this.tokenManager.getAccessToken();
             if (!token) {
-                this.logger.warn('⚠️ No valid token available, skipping population caching');
+                if (this.logger && this.logger.warn) {
+                    this.logger.warn('⚠️ No valid token available, skipping population caching');
+                } else {
+                    console.warn('⚠️ No valid token available, skipping population caching');
+                }
                 return false;
             }
 
             // Fetch populations from PingOne API
             const populations = await this.fetchPopulationsFromAPI();
             if (!populations) {
-                this.logger.warn('⚠️ Failed to fetch populations from API');
+                if (this.logger && this.logger.warn) {
+                    this.logger.warn('⚠️ Failed to fetch populations from API');
+                } else {
+                    console.warn('⚠️ Failed to fetch populations from API');
+                }
                 return false;
             }
 
             // Cache populations in settings.json
             await this.savePopulationsToCache(populations);
             
-            this.logger.info(`✅ Successfully cached ${populations.length} populations during startup`);
+            if (this.logger && this.logger.info) {
+                this.logger.info(`✅ Successfully cached ${populations.length} populations during startup`);
+            } else {
+                console.log(`✅ Successfully cached ${populations.length} populations during startup`);
+            }
             
             // Start background refresh timer
             this.startBackgroundRefresh();
@@ -91,7 +119,11 @@ class PopulationCacheService {
             return true;
 
         } catch (error) {
-            this.logger.error('❌ Error caching populations during startup:', error);
+            if (this.logger && this.logger.error) {
+                this.logger.error('❌ Error caching populations during startup:', error);
+            } else {
+                console.error('❌ Error caching populations during startup:', error);
+            }
             return false;
         }
     }
@@ -118,7 +150,11 @@ class PopulationCacheService {
             // Fetch populations from PingOne API
             const populationsUrl = `${apiBaseUrl}/environments/${environmentId}/populations`;
             
-            this.logger.debug('🔄 Fetching populations from PingOne API', { url: populationsUrl });
+            if (this.logger && this.logger.debug) {
+                this.logger.debug('🔄 Fetching populations from PingOne API', { url: populationsUrl });
+            } else {
+                console.log('🔄 Fetching populations from PingOne API:', populationsUrl);
+            }
 
             const response = await fetch(populationsUrl, {
                 method: 'GET',
@@ -143,12 +179,20 @@ class PopulationCacheService {
                 userCount: population.userCount || 0
             }));
 
-            this.logger.debug(`📦 Fetched ${formattedPopulations.length} populations from API`);
+            if (this.logger && this.logger.debug) {
+                this.logger.debug(`📦 Fetched ${formattedPopulations.length} populations from API`);
+            } else {
+                console.log(`📦 Fetched ${formattedPopulations.length} populations from API`);
+            }
             
             return formattedPopulations;
 
         } catch (error) {
-            this.logger.error('❌ Error fetching populations from API:', error);
+            if (this.logger && this.logger.error) {
+                this.logger.error('❌ Error fetching populations from API:', error);
+            } else {
+                console.error('❌ Error fetching populations from API:', error);
+            }
             return null;
         }
     }
@@ -165,10 +209,14 @@ class PopulationCacheService {
                 const settingsContent = await fs.readFile(SETTINGS_FILE, 'utf8');
                 settings = JSON.parse(settingsContent);
             } catch (error) {
-                this.logger.warn('⚠️ Could not read existing settings, creating new cache');
+                if (this.logger && this.logger.warn) {
+                    this.logger.warn('⚠️ Could not read existing settings, creating new cache');
+                } else {
+                    console.warn('⚠️ Could not read existing settings, creating new cache');
+                }
             }
 
-            // Add population cache data
+            // Add population cache data (only populationCache, remove duplicate populations array)
             settings.populationCache = {
                 populations: populations,
                 cachedAt: new Date().toISOString(),
@@ -176,8 +224,10 @@ class PopulationCacheService {
                 count: populations.length
             };
 
-            // Also write a flattened copy for easy client consumption
-            settings.populations = populations;
+            // Remove duplicate populations array if it exists
+            if (settings.populations) {
+                delete settings.populations;
+            }
 
             // Update last updated timestamp
             settings.lastUpdated = new Date().toISOString();
@@ -185,13 +235,24 @@ class PopulationCacheService {
             // Write updated settings back to file
             await fs.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2));
             
-            this.logger.debug('💾 Populations cached in settings.json', {
-                count: populations.length,
-                expiresAt: settings.populationCache.expiresAt
-            });
+            if (this.logger && this.logger.debug) {
+                this.logger.debug('💾 Populations cached in settings.json', {
+                    count: populations.length,
+                    expiresAt: settings.populationCache.expiresAt
+                });
+            } else {
+                console.log('💾 Populations cached in settings.json:', {
+                    count: populations.length,
+                    expiresAt: settings.populationCache.expiresAt
+                });
+            }
 
         } catch (error) {
-            this.logger.error('❌ Error saving populations to cache:', error);
+            if (this.logger && this.logger.error) {
+                this.logger.error('❌ Error saving populations to cache:', error);
+            } else {
+                console.error('❌ Error saving populations to cache:', error);
+            }
             throw error;
         }
     }
@@ -207,7 +268,11 @@ class PopulationCacheService {
 
             const cache = settings.populationCache;
             if (!cache || !cache.populations) {
-                this.logger.debug('📭 No population cache found');
+                if (this.logger && this.logger.debug) {
+                    this.logger.debug('📭 No population cache found');
+                } else {
+                    console.log('📭 No population cache found');
+                }
                 return null;
             }
 
@@ -216,19 +281,35 @@ class PopulationCacheService {
             const expiresAt = new Date(cache.expiresAt);
             
             if (now > expiresAt) {
-                this.logger.debug('⏰ Population cache expired', {
-                    cachedAt: cache.cachedAt,
-                    expiresAt: cache.expiresAt,
-                    now: now.toISOString()
-                });
+                if (this.logger && this.logger.debug) {
+                    this.logger.debug('⏰ Population cache expired', {
+                        cachedAt: cache.cachedAt,
+                        expiresAt: cache.expiresAt,
+                        now: now.toISOString()
+                    });
+                } else {
+                    console.log('⏰ Population cache expired:', {
+                        cachedAt: cache.cachedAt,
+                        expiresAt: cache.expiresAt,
+                        now: now.toISOString()
+                    });
+                }
                 return null;
             }
 
-            this.logger.debug('✅ Retrieved cached populations', {
-                count: cache.count,
-                cachedAt: cache.cachedAt,
-                expiresAt: cache.expiresAt
-            });
+            if (this.logger && this.logger.debug) {
+                this.logger.debug('✅ Retrieved cached populations', {
+                    count: cache.count,
+                    cachedAt: cache.cachedAt,
+                    expiresAt: cache.expiresAt
+                });
+            } else {
+                console.log('✅ Retrieved cached populations:', {
+                    count: cache.count,
+                    cachedAt: cache.cachedAt,
+                    expiresAt: cache.expiresAt
+                });
+            }
 
             return {
                 populations: cache.populations,
@@ -239,7 +320,11 @@ class PopulationCacheService {
             };
 
         } catch (error) {
-            this.logger.debug('📭 Could not retrieve cached populations:', error.message);
+            if (this.logger && this.logger.debug) {
+                this.logger.debug('📭 Could not retrieve cached populations:', error.message);
+            } else {
+                console.log('📭 Could not retrieve cached populations:', error.message);
+            }
             return null;
         }
     }
@@ -250,26 +335,46 @@ class PopulationCacheService {
      */
     async refreshCache() {
         if (this.isRefreshing) {
-            this.logger.debug('🔄 Cache refresh already in progress, skipping');
+            if (this.logger && this.logger.debug) {
+                this.logger.debug('🔄 Cache refresh already in progress, skipping');
+            } else {
+                console.log('🔄 Cache refresh already in progress, skipping');
+            }
             return false;
         }
 
         try {
             this.isRefreshing = true;
-            this.logger.debug('🔄 Starting background population cache refresh...');
+            if (this.logger && this.logger.debug) {
+                this.logger.debug('🔄 Starting background population cache refresh...');
+            } else {
+                console.log('🔄 Starting background population cache refresh...');
+            }
 
             const populations = await this.fetchPopulationsFromAPI();
             if (populations) {
                 await this.savePopulationsToCache(populations);
-                this.logger.info(`✅ Background cache refresh completed: ${populations.length} populations`);
+                if (this.logger && this.logger.info) {
+                    this.logger.info(`✅ Background cache refresh completed: ${populations.length} populations`);
+                } else {
+                    console.log(`✅ Background cache refresh completed: ${populations.length} populations`);
+                }
                 return true;
             } else {
-                this.logger.warn('⚠️ Background cache refresh failed: could not fetch populations');
+                if (this.logger && this.logger.warn) {
+                    this.logger.warn('⚠️ Background cache refresh failed: could not fetch populations');
+                } else {
+                    console.warn('⚠️ Background cache refresh failed: could not fetch populations');
+                }
                 return false;
             }
 
         } catch (error) {
-            this.logger.error('❌ Error during background cache refresh:', error);
+            if (this.logger && this.logger.error) {
+                this.logger.error('❌ Error during background cache refresh:', error);
+            } else {
+                console.error('❌ Error during background cache refresh:', error);
+            }
             return false;
         } finally {
             this.isRefreshing = false;
@@ -288,7 +393,11 @@ class PopulationCacheService {
             await this.refreshCache();
         }, BACKGROUND_REFRESH_INTERVAL);
 
-        this.logger.info(`🔄 Background population cache refresh started (every ${BACKGROUND_REFRESH_INTERVAL / 60000} minutes)`);
+                    if (this.logger) {
+                this.logger.info(`🔄 Background population cache refresh started (every ${BACKGROUND_REFRESH_INTERVAL / 60000} minutes)`);
+            } else {
+                console.log(`🔄 Background population cache refresh started (every ${BACKGROUND_REFRESH_INTERVAL / 60000} minutes) (no logger)`);
+            }
     }
 
     /**
@@ -298,7 +407,11 @@ class PopulationCacheService {
         if (this.backgroundRefreshTimer) {
             clearInterval(this.backgroundRefreshTimer);
             this.backgroundRefreshTimer = null;
-            this.logger.info('⏹️ Background population cache refresh stopped');
+            if (this.logger) {
+                this.logger.info('⏹️ Background population cache refresh stopped');
+            } else {
+                console.log('⏹️ Background population cache refresh stopped (no logger)');
+            }
         }
     }
 
@@ -311,14 +424,27 @@ class PopulationCacheService {
             const settings = JSON.parse(settingsContent);
 
             delete settings.populationCache;
+            // Also remove duplicate populations array if it exists
+            if (settings.populations) {
+                delete settings.populations;
+            }
             settings.lastUpdated = new Date().toISOString();
 
             await fs.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2));
             
-            this.logger.info('🗑️ Population cache cleared');
+            if (this.logger) {
+                this.logger.info('🗑️ Population cache cleared');
+            } else {
+                console.log('🗑️ Population cache cleared (no logger)');
+            }
 
         } catch (error) {
-            this.logger.error('❌ Error clearing population cache:', error);
+            if (this.logger) {
+                this.logger.error('❌ Error clearing population cache:', error);
+            } else {
+                console.error('❌ Error clearing population cache:', error);
+            }
+            throw error;
         }
     }
 
@@ -352,7 +478,11 @@ class PopulationCacheService {
             };
 
         } catch (error) {
-            this.logger.error('❌ Error getting cache status:', error);
+            if (this.logger) {
+                this.logger.error('❌ Error getting cache status:', error);
+            } else {
+                console.error('❌ Error getting cache status:', error);
+            }
             return {
                 hasCachedData: false,
                 isExpired: true,
@@ -370,7 +500,11 @@ class PopulationCacheService {
      */
     cleanup() {
         this.stopBackgroundRefresh();
-        this.logger.info('🧽 Population Cache Service cleaned up');
+        if (this.logger) {
+            this.logger.info('🧽 Population Cache Service cleaned up');
+        } else {
+            console.log('🧽 Population Cache Service cleaned up (no logger)');
+        }
     }
 }
 

@@ -15,10 +15,10 @@ export class HomePage {
         
         const pageContent = `
             <div class="page-header">
-                <p>Welcome to the PingOne User Management Tool v${this.app.version}</p>
+                <p class="page-subtitle">Manage users across your PingOne environment</p>
             </div>
             
-            <div class="home-container">
+            <div class="home-content">
                 <!-- Quick Status Overview -->
                 <div class="status-overview">
                     <div class="status-card">
@@ -66,96 +66,140 @@ export class HomePage {
                     </div>
                 </div>
                 
-                <div class="quick-actions">
-                    <h2>Quick Actions</h2>
-                    <div class="action-grid">
-                        <a href="#settings" class="action-card" data-page="settings">
+                <!-- Configuration Section -->
+                <div class="home-section">
+                    <div class="section-header">
+                        <h2><i class="icon-settings"></i> Configuration</h2>
+                        <p class="section-description">Configure your PingOne environment and application settings</p>
+                    </div>
+                    <div class="action-cards-row">
+                        <div class="action-card" data-action="settings">
                             <div class="card-icon">
-                                <i class="mdi mdi-cog" data-icon="⚙️"></i>
+                                <i class="icon-settings"></i>
                             </div>
                             <div class="card-content">
                                 <h3>Settings</h3>
-                                <p>Configure your PingOne environment</p>
-                                <i class="mdi mdi-chevron-right"></i>
+                                <p>Configure PingOne credentials and preferences</p>
+                                <div class="card-status" id="settings-status">Ready</div>
                             </div>
-                        </a>
-                        
-                        <a href="#import" class="action-card" data-page="import">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- User Operations Section -->
+                <div class="home-section">
+                    <div class="section-header">
+                        <h2><i class="icon-users"></i> User Operations</h2>
+                        <p class="section-description">Import, export, modify, and delete users in your PingOne environment</p>
+                    </div>
+                    <div class="action-cards-row">
+                        <div class="action-card" data-action="export">
                             <div class="card-icon">
-                                <i class="mdi mdi-upload" data-icon="📤"></i>
-                            </div>
-                            <div class="card-content">
-                                <h3>Import Users</h3>
-                                <p>Upload CSV files to import users</p>
-                                <i class="mdi mdi-chevron-right"></i>
-                            </div>
-                        </a>
-                        
-                        <a href="#export" class="action-card" data-page="export">
-                            <div class="card-icon">
-                                <i class="mdi mdi-download" data-icon="📥"></i>
+                                <i class="icon-download"></i>
                             </div>
                             <div class="card-content">
                                 <h3>Export Users</h3>
-                                <p>Download user data from populations</p>
-                                <i class="mdi mdi-chevron-right"></i>
+                                <p>Export users to CSV file</p>
+                                <div class="card-status" id="export-status">Ready</div>
                             </div>
-                        </a>
+                        </div>
                         
-                        <a href="#modify" class="action-card" data-page="modify">
+                        <div class="action-card" data-action="import">
                             <div class="card-icon">
-                                <i class="mdi mdi-pencil" data-icon="✏️"></i>
+                                <i class="icon-upload"></i>
                             </div>
                             <div class="card-content">
-                                <h3>Modify Users</h3>
-                                <p>Update user information in bulk</p>
-                                <i class="mdi mdi-chevron-right"></i>
+                                <h3>Import Users</h3>
+                                <p>Import users from CSV file</p>
+                                <div class="card-status" id="import-status">Ready</div>
                             </div>
-                        </a>
+                        </div>
                         
-                        <a href="#delete" class="action-card" data-page="delete">
+                        <div class="action-card" data-action="delete">
                             <div class="card-icon">
-                                <i class="mdi mdi-delete" data-icon="🗑️"></i>
+                                <i class="icon-trash"></i>
                             </div>
                             <div class="card-content">
                                 <h3>Delete Users</h3>
-                                <p>Remove users from populations</p>
-                                <i class="mdi mdi-chevron-right"></i>
+                                <p>Delete users from CSV file</p>
+                                <div class="card-status" id="delete-status">Ready</div>
                             </div>
-                        </a>
+                        </div>
                         
-                        <a href="#logs" class="action-card" data-page="logs">
+                        <div class="action-card" data-action="modify">
                             <div class="card-icon">
-                                <i class="mdi mdi-book-open" data-icon="📖"></i>
+                                <i class="icon-edit"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Modify Users</h3>
+                                <p>Update user attributes from CSV</p>
+                                <div class="card-status" id="modify-status">Ready</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Management & Monitoring Section -->
+                <div class="home-section">
+                    <div class="section-header">
+                        <h2><i class="icon-activity"></i> Management & Monitoring</h2>
+                        <p class="section-description">Monitor system health, view logs, and manage application operations</p>
+                    </div>
+                    <div class="action-cards-row">
+                        <div class="action-card" data-action="logs">
+                            <div class="card-icon">
+                                <i class="icon-file-text"></i>
                             </div>
                             <div class="card-content">
                                 <h3>Logs</h3>
-                                <p>View operation history and logs</p>
-                                <i class="mdi mdi-chevron-right"></i>
+                                <p>View application logs and errors</p>
+                                <div class="card-status" id="logs-status">Ready</div>
                             </div>
-                        </a>
-
-                        <a href="#history" class="action-card" data-page="history">
+                        </div>
+                        
+                        <div class="action-card" data-action="token-management">
                             <div class="card-icon">
-                                <i class="mdi mdi-history" data-icon="🕓"></i>
-                            </div>
-                            <div class="card-content">
-                                <h3>History</h3>
-                                <p>Browse recent operations</p>
-                                <i class="mdi mdi-chevron-right"></i>
-                            </div>
-                        </a>
-
-                        <a href="#token" class="action-card" data-page="token">
-                            <div class="card-icon">
-                                <i class="mdi mdi-key-variant" data-icon="🔑"></i>
+                                <i class="icon-key"></i>
                             </div>
                             <div class="card-content">
                                 <h3>Token Management</h3>
-                                <p>View and manage API token</p>
-                                <i class="mdi mdi-chevron-right"></i>
+                                <p>Manage API tokens and authentication</p>
+                                <div class="card-status" id="token-management-status">Ready</div>
                             </div>
-                        </a>
+                        </div>
+                        
+                        <div class="action-card" data-action="history">
+                            <div class="card-icon">
+                                <i class="icon-clock"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>History</h3>
+                                <p>View past operations and activities</p>
+                                <div class="card-status" id="history-status">Ready</div>
+                            </div>
+                        </div>
+                        
+                        <div class="action-card" data-action="health-dashboard">
+                            <div class="card-icon">
+                                <i class="icon-activity"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Health Dashboard</h3>
+                                <p>Monitor system health and performance</p>
+                                <div class="card-status" id="health-dashboard-status">Ready</div>
+                            </div>
+                        </div>
+                        
+                        <div class="action-card" id="swagger-card" data-action="swagger" style="display: none;">
+                            <div class="card-icon">
+                                <i class="icon-code"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Swagger</h3>
+                                <p>API documentation and testing</p>
+                                <div class="card-status" id="swagger-status">Ready</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 

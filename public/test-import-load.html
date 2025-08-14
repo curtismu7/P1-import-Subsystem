@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Import Load Test</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; color: #111827; }
+    .row { display: flex; gap: 12px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+    input[type="text"], input[type="number"] { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; min-width: 240px; }
+    button { padding: 8px 12px; border: 1px solid #0d6efd; background: #0d6efd; color: #fff; border-radius: 6px; cursor: pointer; }
+    button.secondary { background: #fff; color: #0d6efd; }
+    .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; background:#fff; }
+    .progress { display:flex; align-items:center; gap:12px; margin-top: 8px; }
+    .bar { width: 360px; height: 10px; background:#f3f4f6; border-radius: 999px; overflow:hidden; border:1px solid #e5e7eb; }
+    .fill { height: 100%; width: 0%; background: linear-gradient(90deg,#0d6efd,#38bdf8); transition: width .25s ease; }
+    .stats { display:flex; gap:16px; flex-wrap:wrap; font-size: 14px; color:#374151; }
+    pre { background:#0b1220; color:#cbd5e1; padding:10px; border-radius:8px; overflow:auto; max-height: 240px; }
+    /* Beer mug */
+    .beer { display:flex; gap:12px; align-items:center; }
+  </style>
+</head>
+<body>
+  <h1>Import Load Test</h1>
+
+  <div class="card">
+    <div class="row">
+      <label>Population ID</label>
+      <input type="text" id="populationId" placeholder="e.g. 1234-5678-..." />
+    </div>
+    <div class="row">
+      <label>Rows</label>
+      <input type="number" id="rows" value="10000" min="1" step="1" />
+      <button id="genBtn" class="secondary">Generate CSV (download)</button>
+      <button id="validateBtn">Validate File (stream count)</button>
+      <button id="startBtn">Start Import</button>
+      <input type="file" id="fileInput" accept=".csv" style="display:none" />
+      <button id="pickBtn" class="secondary">Choose CSV</button>
+    </div>
+    <div id="msg" style="margin-top:6px;color:#0b3c8c;font-weight:600;"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h3 style="margin:6px 0 10px;">Progress</h3>
+    <div class="progress">
+      <div class="bar"><div class="fill" id="fill"></div></div>
+      <div id="pct">0%</div>
+    </div>
+    <div class="beer" style="margin-top:10px;">
+      <svg id="beer-svg" width="56" height="56" viewBox="0 0 36 36" aria-label="Beer mug" focusable="false">
+        <defs>
+          <clipPath id="beer-clip-test">
+            <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z" />
+          </clipPath>
+        </defs>
+        <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z" fill="none" stroke="#1f2937" stroke-width="1.5"/>
+        <path d="M27 12 h2 a3 3 0 0 1 3 3 v6 a3 3 0 0 1-3 3 h-2" fill="none" stroke="#1f2937" stroke-width="1.5"/>
+        <rect id="beer-fill-test" x="9" y="26" width="16" height="0" fill="#f59e0b" clip-path="url(#beer-clip-test)"/>
+        <rect id="beer-foam-test" x="9" y="26" width="16" height="0.001" fill="#ffffff" opacity="0.95" clip-path="url(#beer-clip-test)"/>
+      </svg>
+      <div class="stats">
+        <div>Processed: <span id="processed">0</span></div>
+        <div>Total: <span id="total">0</span></div>
+        <div>Errors: <span id="errors">0</span></div>
+        <div>Status: <span id="status">idle</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <div class="row" style="justify-content:space-between;align-items:center;margin:6px 0 10px;">
+      <h3 style="margin:0;">Status JSON</h3>
+      <button id="copyJsonBtn" class="secondary" title="Copy status JSON to clipboard">Copy</button>
+    </div>
+    <pre id="json"></pre>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const msg = (t,c='#0b3c8c') => { const m=$('msg'); m.textContent=t; m.style.color=c; };
+
+    // Generate CSV client-side
+    $('genBtn').addEventListener('click', () => {
+      const n = Number($('rows').value||0);
+      if(!n||n<1) return msg('Enter a positive row count','#b91c1c');
+      const header = 'username,email,name.given,name.family,enabled\n';
+      let parts = [header];
+      const chunk = 10000;
+      for (let i=1;i<=n;i++) {
+        const given = `Test${i}`;
+        const family = `User${i}`;
+        parts.push(`testuser${String(i).padStart(6,'0')},testuser${i}@example.com,${given},${family},true\n`);
+        if (i % chunk === 0) { /* yield */ }
+      }
+      const blob = new Blob(parts,{type:'text/csv'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `users_${n}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      msg(`Generated CSV with ${n} rows (downloaded)`,'#065f46');
+    });
+
+    // File picker
+    $('pickBtn').addEventListener('click', ()=> $('fileInput').click());
+
+    // Validate (stream count on server)
+    $('validateBtn').addEventListener('click', async ()=>{
+      const file = $('fileInput').files[0];
+      const pop = $('populationId').value.trim();
+      if(!file) return msg('Choose a CSV first','#b91c1c');
+      if(!pop) return msg('Enter a Population ID','#b91c1c');
+      try {
+        msg('Validating...','#374151');
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('populationId', pop);
+        fd.append('validateOnly','true');
+        const r = await fetch('/api/import', { method:'POST', body: fd });
+        const j = await r.json().catch(()=>({}));
+        if(!r.ok) throw new Error(j?.error||r.statusText);
+        msg(`File valid, ${j?.data?.total ?? j?.total ?? 'N/A'} users`,'#065f46');
+      } catch(e){ msg('Validate failed: '+e.message,'#b91c1c'); }
+    });
+
+    // Start import
+    $('startBtn').addEventListener('click', async ()=>{
+      const file = $('fileInput').files[0];
+      const pop = $('populationId').value.trim();
+      if(!file) return msg('Choose a CSV first','#b91c1c');
+      if(!pop) return msg('Enter a Population ID','#b91c1c');
+      try {
+        msg('Starting import...','#374151');
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('populationId', pop);
+        const r = await fetch('/api/import', { method:'POST', body: fd });
+        const j = await r.json().catch(()=>({}));
+        if(!r.ok) throw new Error(j?.error||r.statusText);
+        msg(`Import started. Session: ${j?.data?.sessionId || j?.sessionId || 'n/a'}`,'#065f46');
+        poll();
+      } catch(e) { msg('Start failed: '+e.message,'#b91c1c'); }
+    });
+
+    let pollTimer=null;
+    async function poll(){
+      if(pollTimer) clearInterval(pollTimer);
+      const upd = async ()=>{
+        try {
+          const r = await fetch('/api/import/status');
+          const j = await r.json().catch(()=>({}));
+          const d = j?.data || j;
+          $('json').textContent = JSON.stringify(d, null, 2);
+          const pct = d?.progress?.percentage ?? 0;
+          $('fill').style.width = `${pct}%`;
+          $('pct').textContent = `${pct}%`;
+          $('processed').textContent = d?.progress?.current ?? 0;
+          $('total').textContent = d?.progress?.total ?? 0;
+          $('errors').textContent = d?.statistics?.errors ?? 0;
+          $('status').textContent = d?.status ?? 'unknown';
+          // Beer mug fill/foam
+          const beerFill = $('beer-fill-test');
+          const beerFoam = $('beer-foam-test');
+          const height = Math.max(0, Math.min(16, (pct/100)*16));
+          const y = 26 - height; // inner mug top at y=10 -> 26-16
+          beerFill.setAttribute('y', String(y));
+          beerFill.setAttribute('height', String(height));
+          const foamHeight = pct>0 ? (pct<100 ? 3 : 4) : 0.001;
+          const yFoam = 26 - height - foamHeight;
+          beerFoam.setAttribute('y', String(yFoam));
+          beerFoam.setAttribute('height', String(foamHeight));
+        } catch(e) {
+          $('json').textContent = 'status error: '+e.message;
+        }
+      };
+      await upd();
+      pollTimer = setInterval(upd, 1000);
+    }
+
+    // Copy JSON button
+    $('copyJsonBtn').addEventListener('click', async () => {
+      const text = $('json').textContent || '';
+      if (!text) return msg('Nothing to copy','#b91c1c');
+      try {
+        await navigator.clipboard.writeText(text);
+        msg('Status JSON copied to clipboard','#065f46');
+      } catch (e) {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.style.position='fixed'; ta.style.left='-9999px';
+          document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+          msg('Status JSON copied','#065f46');
+        } catch (err) {
+          msg('Copy failed: '+(err?.message||e?.message||'unknown'),'#b91c1c');
+        }
+      }
+    });
+  </script>
+</body>
+</html>
+

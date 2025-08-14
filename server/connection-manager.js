@@ -890,6 +890,113 @@ export function sendProgressEvent(sessionId, current, total, message, counts, us
 }
 
 /**
+ * Send Smart Progress Event Helper Function
+ * 
+ * Enhanced progress event function that intelligently manages update frequency
+ * based on import mode and record count. This function provides optimal
+ * performance for large imports while maintaining detailed visibility for
+ * smaller operations.
+ * 
+ * ## Smart Update Strategy
+ * - **Real-time Mode**: Updates for every individual user operation
+ * - **Batch Mode**: Summary updates at configurable intervals
+ * - **Auto Mode**: Automatically chooses optimal strategy based on record count
+ * 
+ * ## Update Strategy Configuration
+ * - **updateFrequency**: How often to send updates (every N operations)
+ * - **batchUpdates**: Whether to send batch summaries or individual updates
+ * - **detailedLogging**: Whether to include detailed user information
+ * 
+ * ## Performance Benefits
+ * - **Large Imports**: Reduced event overhead for 100,000+ records
+ * - **Small Imports**: Full real-time visibility for ≤100 records
+ * - **Memory Management**: Prevents excessive event queuing
+ * - **Network Optimization**: Balances detail vs. performance
+ * 
+ * @function sendSmartProgressEvent
+ * @param {string} sessionId - Unique session identifier for client targeting
+ * @param {number} current - Current number of items processed
+ * @param {number} total - Total number of items to process
+ * @param {string} message - Human-readable progress message
+ * @param {Object} counts - Current operation statistics
+ * @param {string} user - Username or identifier of current user
+ * @param {string} populationName - Name of target population
+ * @param {string} populationId - ID of target population
+ * @param {Object} app - Express application instance
+ * @param {Object} updateStrategy - Update strategy configuration
+ * @param {number} updateStrategy.updateFrequency - Update frequency (every N operations)
+ * @param {boolean} updateStrategy.batchUpdates - Whether to send batch updates
+ * @param {boolean} updateStrategy.detailedLogging - Whether to include detailed logging
+ * @returns {boolean} True if event was successfully sent, false otherwise
+ * 
+ * @example
+ * // Send smart progress update for large import
+ * const updateStrategy = { updateFrequency: 100, batchUpdates: true, detailedLogging: false };
+ * sendSmartProgressEvent(sessionId, 1000, 50000, 'Processing batch...', counts, username, popName, popId, app, updateStrategy);
+ */
+export function sendSmartProgressEvent(sessionId, current, total, message, counts, user, populationName, populationId, app, updateStrategy) {
+    // Validate required parameters
+    if (!sessionId || typeof current !== 'number' || typeof total !== 'number') {
+        console.warn('Invalid smart progress event parameters', {
+            sessionId: !!sessionId,
+            current: typeof current,
+            total: typeof total
+        });
+        return false;
+    }
+    
+    // Check if we should send an update based on strategy
+    if (updateStrategy && updateStrategy.updateFrequency > 1) {
+        // Only send updates at specified frequency
+        if (current % updateStrategy.updateFrequency !== 0 && current !== total) {
+            return false; // Skip this update
+        }
+    }
+    
+    // Calculate progress percentage
+    const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+    
+    // Create event data based on strategy
+    const eventData = {
+        // Core progress information
+        current,
+        total,
+        percentage,
+        message: message || `Processing ${current}/${total} items`,
+        
+        // Detailed statistics
+        counts: counts || { created: 0, updated: 0, failed: 0, skipped: 0 },
+        
+        // User information (conditional based on strategy)
+        user: updateStrategy?.detailedLogging ? {
+            username: user?.username || user?.email || user || 'unknown',
+            email: user?.email || null,
+            lineNumber: user?._lineNumber || null,
+        } : null,
+        
+        // Population context
+        populationName: populationName || 'Unknown Population',
+        populationId: populationId || null,
+        
+        // Strategy information
+        mode: updateStrategy?.batchUpdates ? 'batch' : 'realtime',
+        updateFrequency: updateStrategy?.updateFrequency || 1,
+        
+        // Event metadata
+        timestamp: new Date().toISOString(),
+        eventType: 'smart-progress'
+    };
+    
+    // Use connection manager if available (preferred)
+    if (app && app.get('connectionManager')) {
+        return app.get('connectionManager').sendEvent(sessionId, 'smart-progress', eventData);
+    }
+    
+    // Fallback to direct implementation
+    return sendEventDirect(sessionId, 'smart-progress', eventData);
+}
+
+/**
  * Send Completion Event Helper Function
  * 
  * Specialized helper function for sending operation completion notifications

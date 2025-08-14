@@ -8,14 +8,23 @@
 import express from 'express';
 import multer from 'multer';
 import nodemailer from 'nodemailer';
-import { parse } from 'csv-parse/sync';
+import { parse as csvParseStream } from 'csv-parse';
+import { promises as fsp, createReadStream, unlinkSync } from 'fs';
+import os from 'os';
+import path from 'path';
 import fetch from 'node-fetch';
 const router = express.Router();
 
-// Configure multer for file uploads
+// Configure multer for file uploads (disk storage for large files)
 const upload = multer({ 
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-    storage: multer.memoryStorage()
+    limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2GB
+    storage: multer.diskStorage({
+        destination: (_, __, cb) => cb(null, os.tmpdir()),
+        filename: (_, file, cb) => {
+            const safe = `${Date.now()}-${(file.originalname || 'upload.csv').replace(/[^a-zA-Z0-9_.-]+/g,'_')}`;
+            cb(null, safe);
+        }
+    })
 });
 
 // In-memory storage for import status (in production, use database)
@@ -24,6 +33,7 @@ let importStatus = {
     progress: 0,
     total: 0,
     processed: 0,
+    skipped: 0,
     errors: 0,
     warnings: 0,
     startTime: null,
@@ -53,6 +63,7 @@ router.get('/status', (req, res) => {
             },
             statistics: {
                 processed: importStatus.processed,
+                skipped: importStatus.skipped,
                 errors: importStatus.errors,
                 warnings: importStatus.warnings
             },
@@ -94,6 +105,7 @@ router.post('/start', express.json(), (req, res) => {
             progress: 0,
             total: totalRecords || 0,
             processed: 0,
+            skipped: 0,
             errors: 0,
             warnings: 0,
             startTime: Date.now(),
@@ -195,6 +207,7 @@ router.delete('/reset', (req, res) => {
             progress: 0,
             total: 0,
             processed: 0,
+            skipped: 0,
             errors: 0,
             warnings: 0,
             startTime: null,
@@ -214,7 +227,7 @@ router.delete('/reset', (req, res) => {
  * POST /api/import
  * Main import endpoint - handles file upload and starts import process
  */
-router.post('/', upload.single('file'), async (req, res) => {
+router.post('/import', upload.single('file'), async (req, res) => {
     try {
         // Check if file was uploaded
         if (!req.file) {
@@ -229,12 +242,16 @@ router.post('/', upload.single('file'), async (req, res) => {
         // Get file details
         const fileName = req.file.originalname;
         const fileSize = req.file.size;
-        const fileBuffer = req.file.buffer;
-        
-        // Parse CSV to get total records (simplified)
-        const csvContent = fileBuffer.toString('utf8');
-        const lines = csvContent.split('\n').filter(line => line.trim());
-        const totalRecords = lines.length > 1 ? lines.length - 1 : 0; // Subtract header row
+        const tempPath = req.file.path;
+
+        // Validate-only: stream count and return
+        if (String(req.body.validateOnly) === 'true') {
+            const totalRecords = await countCsvRows(tempPath);
+            try { unlinkSync(tempPath); } catch (_) {}
+            return res.success('File validated', { total: totalRecords, fileName, fileSize });
+        }
+
+        const totalRecords = await countCsvRows(tempPath);
         
         // Generate session ID
         const sessionId = `import_${Date.now()}`;
@@ -245,6 +262,7 @@ router.post('/', upload.single('file'), async (req, res) => {
             progress: 0,
             total: totalRecords,
             processed: 0,
+            skipped: 0,
             errors: 0,
             warnings: 0,
             startTime: Date.now(),
@@ -262,21 +280,28 @@ router.post('/', upload.single('file'), async (req, res) => {
         console.log(`🔄 Import started: ${fileName}, ${totalRecords} records, session: ${sessionId}`);
         
         // Return success response immediately
+        const importBehavior = String(req.body.importBehavior || 'create').toLowerCase();
+        const importMode = String(req.body.importMode || 'auto').toLowerCase();
+
         res.success('Import started successfully', { 
             sessionId: sessionId, 
             total: totalRecords, 
             fileName: fileName, 
             fileSize: fileSize, 
-            populationId: req.body.populationId 
+            populationId: req.body.populationId,
+            importBehavior,
+            importMode
         });
         
-        // Launch background import job (real implementation)
-        runImportJob({
+        // Launch background import job (streaming)
+        runImportJobStream({
             sessionId,
-            csvContent,
+            tempPath,
             populationId: req.body.populationId,
             sendWelcome: String(req.body.sendWelcome) === 'true',
-            app: req.app
+            app: req.app,
+            importBehavior,
+            importMode
         }).catch(err => {
             console.error('Import job failed:', err);
             importStatus.isRunning = false;
@@ -287,6 +312,34 @@ router.post('/', upload.single('file'), async (req, res) => {
         console.error('Import error:', error);
         res.error('Failed to start import', { code: 'IMPORT_START_ERROR', details: error.message }, 500);
     }
+});
+
+/**
+ * GET /api/import/template
+ * Download CSV template for user import
+ */
+router.get('/template', (req, res) => {
+    try {
+        const csvTemplate = `username,email,givenname,familyname,population
+user1@example.com,user1@example.com,John,Doe,Default Population
+user2@example.com,user2@example.com,Jane,Smith,Default Population`;
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="user-import-template.csv"');
+        res.send(csvTemplate);
+    } catch (error) {
+        res.error('Failed to generate template', { code: 'TEMPLATE_GENERATION_ERROR', details: error.message }, 500);
+    }
+});
+
+/**
+ * POST /api/ (legacy endpoint for backward compatibility)
+ * Redirects to /api/import
+ */
+router.post('/', upload.single('file'), async (req, res) => {
+    // Redirect to the main import endpoint
+    req.url = '/import';
+    return router._router.handle(req, res);
 });
 
 /**
@@ -360,14 +413,9 @@ function extractEmailsFromCsv(csv) {
     return Array.from(new Set(emails));
 }
 
-async function runImportJob({ sessionId, csvContent, populationId, sendWelcome, app }) {
+async function runImportJobStream({ sessionId, tempPath, populationId, sendWelcome, app, importBehavior, importMode }) {
     try {
-        const records = parse(csvContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true
-        });
-        const total = records.length;
+        const total = importStatus.total || 0;
         importStatus.total = total;
         importStatus.processed = 0;
         importStatus.errors = 0;
@@ -394,51 +442,162 @@ async function runImportJob({ sessionId, csvContent, populationId, sendWelcome, 
             return;
         }
 
-        const endpoint = `${apiBaseUrl}/environments/${environmentId}/users`;
-        const concurrency = 5;
+        const endpointBase = `${apiBaseUrl}/environments/${environmentId}/users`;
+        const concurrency = Number(process.env.IMPORT_CONCURRENCY || 20);
+        const rateLimitPerSec = Math.max(1, Number(process.env.IMPORT_RPS_LIMIT || 50));
+        let tokens = rateLimitPerSec;
+        let refillTimer = null;
+        const waiters = [];
+        const grant = () => {
+            while (tokens > 0 && waiters.length > 0) {
+                tokens--;
+                const resolve = waiters.shift();
+                try { resolve(); } catch (_) {}
+            }
+        };
+        const rateLimiter = {
+            acquire: async () => {
+                if (tokens > 0) {
+                    tokens--;
+                    return;
+                }
+                await new Promise(resolve => waiters.push(resolve));
+            }
+        };
+
         let inFlight = 0;
         let idx = 0;
+        const rowsBuffer = [];
+        let ended = false;
 
-        await new Promise((resolve) => {
-            const pump = async () => {
-                while (inFlight < concurrency && idx < total) {
-                    const row = records[idx++];
-                    inFlight++;
-                    const rowNumber = idx; // 1-based soon after increment
-                    // Log first few attempts for visibility
+        await new Promise((resolve, reject) => {
+            // Refill tokens every second and nudge the queue
+            refillTimer = setInterval(() => {
+                tokens = rateLimitPerSec;
+                grant();
+                queueNext();
+            }, 1000);
+
+            const queueNext = () => {
+                while (inFlight < concurrency) {
+                    const row = rowsBuffer.shift();
+                    if (!row) break;
+                    const rowNumber = ++idx;
                     if (rowNumber <= 3) {
                         const dbgUser = row.username || row.userName || row.login || row.email || '(no-username)';
-                        console.log(`[IMPORT] Creating PingOne user [row ${rowNumber}/${total}] user=${dbgUser}`);
+                        console.log(`[IMPORT] Creating PingOne user [row ${rowNumber}/${importStatus.total || '?'}] user=${dbgUser}`);
                     }
-                    createPingOneUser(endpoint, token, populationId, row)
-                        .then(() => {
-                            importStatus.processed++;
-                            if (importStatus.processed % 100 === 0) {
-                                importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'progress', processed: importStatus.processed, total });
-                            }
-                        })
-                        .catch((err) => {
-                            importStatus.errors++;
-                            const msg = (err && err.message) ? String(err.message).slice(0, 500) : 'Unknown PingOne error';
-                            importStatus.lastError = msg;
-                            importStatus.recentErrors = [msg, ...(importStatus.recentErrors || [])].slice(0, 5);
-                            importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'error', row: rowNumber, message: msg });
-                            console.error(`[IMPORT] Error creating user at row ${rowNumber}: ${msg}`);
-                        })
-                        .finally(() => {
-                            inFlight--;
-                            importStatus.progress = Math.round((importStatus.processed / total) * 100);
-                            if (importStatus.processed >= total && inFlight === 0) resolve();
-                            else pump();
-                        });
+                                            // Acquire rate-limit token before dispatching
+                        rateLimiter.acquire().then(() => {
+                            inFlight++;
+                            
+                            // Determine action based on import behavior
+                            if (importBehavior === 'upsert') {
+                                // Try to update first, then create if not found
+                                updatePingOneUserWithRetry(endpointBase, token, populationId, row)
+                                    .then(() => {
+                                        importStatus.processed++;
+                                        if (importStatus.processed % 100 === 0) {
+                                            importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'progress', processed: importStatus.processed, total: importStatus.total });
+                                        }
+                                    })
+                                    .catch((err) => {
+                                        // If update fails, try to create
+                                        createPingOneUserWithRetry(endpointBase, token, populationId, row)
+                                            .then(() => {
+                                                importStatus.processed++;
+                                                if (importStatus.processed % 100 === 0) {
+                                                    importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'progress', processed: importStatus.processed, total: importStatus.total });
+                                                }
+                                            })
+                                            .catch((createErr) => {
+                                                importStatus.errors++;
+                                                const msg = (createErr && createErr.message) ? String(createErr.message).slice(0, 500) : 'Unknown PingOne error';
+                                                importStatus.lastError = msg;
+                                                importStatus.recentErrors = [msg, ...(importStatus.recentErrors || [])].slice(0, 5);
+                                                importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'error', row: rowNumber, message: msg });
+                                                console.error(`[IMPORT] Error creating user at row ${rowNumber}: ${msg}`);
+                                            })
+                                            .finally(() => {
+                                                inFlight--;
+                                                const denom = importStatus.total > 0 ? importStatus.total : Math.max(importStatus.processed + importStatus.errors, 1);
+                                                importStatus.progress = Math.round((importStatus.processed / denom) * 100);
+                                                queueNext();
+                                                if (ended && rowsBuffer.length === 0 && inFlight === 0) resolve();
+                                            });
+                                    })
+                                    .finally(() => {
+                                        inFlight--;
+                                        const denom = importStatus.total > 0 ? importStatus.total : Math.max(importStatus.processed + importStatus.errors, 1);
+                                        importStatus.progress = Math.round((importStatus.processed / denom) * 100);
+                                        queueNext();
+                                        if (ended && rowsBuffer.length === 0 && inFlight === 0) resolve();
+                                    });
+                                return;
+                                                        }
+                            
+                            // Default behavior: create new users only (importBehavior === 'create')
+                            createPingOneUserWithRetry(endpointBase, token, populationId, row)
+                            .then(() => {
+                                importStatus.processed++;
+                                if (importStatus.processed % 100 === 0) {
+                                    importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'progress', processed: importStatus.processed, total: importStatus.total });
+                                }
+                            })
+                            .catch((err) => {
+                                const raw = String(err && err.message || '');
+                                let countedAsSkip = false;
+                                try {
+                                    // Try to detect uniqueness violation from PingOne error body
+                                    const jsonStart = raw.indexOf('{');
+                                    if (jsonStart !== -1) {
+                                        const body = JSON.parse(raw.slice(jsonStart));
+                                        const details = Array.isArray(body.details) ? body.details : [];
+                                        if (body.code === 'INVALID_DATA' && details.some(d => d.code === 'UNIQUENESS_VIOLATION')) {
+                                            importStatus.skipped++;
+                                            importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'skip', row: rowNumber, reason: 'UNIQUENESS_VIOLATION', user: row.username || row.email });
+                                            countedAsSkip = true;
+                                        }
+                                    }
+                                } catch (_) { /* ignore parse errors */ }
+                                if (!countedAsSkip) {
+                                    importStatus.errors++;
+                                    const msg = raw ? raw.slice(0, 500) : 'Unknown PingOne error';
+                                    importStatus.lastError = msg;
+                                    importStatus.recentErrors = [msg, ...(importStatus.recentErrors || [])].slice(0, 5);
+                                    importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'error', row: rowNumber, message: msg });
+                                    console.error(`[IMPORT] Error creating user at row ${rowNumber}: ${msg}`);
+                                }
+                            })
+                            .finally(() => {
+                                inFlight--;
+                                const denom = importStatus.total > 0 ? importStatus.total : Math.max(importStatus.processed + importStatus.errors, 1);
+                                importStatus.progress = Math.round((importStatus.processed / denom) * 100);
+                                queueNext();
+                                if (ended && rowsBuffer.length === 0 && inFlight === 0) resolve();
+                            });
+                    });
                 }
             };
-            pump();
+
+            const parser = csvParseStream({ columns: true, trim: true, skip_empty_lines: true });
+            parser.on('readable', () => {
+                let record;
+                while ((record = parser.read()) !== null) {
+                    rowsBuffer.push(record);
+                }
+                queueNext();
+            });
+            parser.on('error', (err) => reject(err));
+            parser.on('end', () => { ended = true; queueNext(); if (rowsBuffer.length === 0 && inFlight === 0) resolve(); });
+
+            createReadStream(tempPath, { encoding: 'utf8' }).pipe(parser);
         });
 
         // Optional welcome emails
         if (sendWelcome) {
-            const emails = extractEmailsFromCsv(csvContent || '');
+            const csv = await fsp.readFile(tempPath, 'utf8').catch(() => '');
+            const emails = extractEmailsFromCsv(csv || '');
             if (emails.length > 0) await sendWelcomeEmailBatch(emails);
         }
 
@@ -447,7 +606,8 @@ async function runImportJob({ sessionId, csvContent, populationId, sendWelcome, 
         importStatus.status = 'completed';
         importStatus.progress = 100;
         console.log(`✅ Import completed: ${sessionId}, ${total} records processed`);
-        importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'complete', processed: importStatus.processed, errors: importStatus.errors, total });
+        importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'complete', processed: importStatus.processed, errors: importStatus.errors, total: importStatus.total });
+        try { unlinkSync(tempPath); } catch (_) {}
     } catch (err) {
         console.error('runImportJob error:', err);
         importStatus.isRunning = false;
@@ -456,26 +616,150 @@ async function runImportJob({ sessionId, csvContent, populationId, sendWelcome, 
         importStatus.lastError = msg;
         importStatus.recentErrors = [msg, ...(importStatus.recentErrors || [])].slice(0, 5);
         importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'fatal', message: msg });
+        try { unlinkSync(tempPath); } catch (_) {}
     }
+    finally {
+        // Cleanup token bucket timer if set
+        try { if (typeof refillTimer !== 'undefined' && refillTimer) clearInterval(refillTimer); } catch (_) {}
+    }
+
+// Count CSV rows efficiently via stream (minus header)
+async function countCsvRows(filePath) {
+    return new Promise((resolve, reject) => {
+        let count = 0;
+        let seenHeader = false;
+        const parser = csvParseStream({ columns: false, trim: true, skip_empty_lines: true });
+        parser.on('readable', () => {
+            let rec;
+            while ((rec = parser.read()) !== null) {
+                if (!seenHeader) { seenHeader = true; continue; }
+                count++;
+            }
+        });
+        parser.on('error', (e) => reject(e));
+        parser.on('end', () => resolve(count));
+        createReadStream(filePath, { encoding: 'utf8' }).pipe(parser);
+    });
+}
+
+// Retry wrapper with backoff
+async function createPingOneUserWithRetry(endpoint, token, populationId, row, attempt = 0) {
+    const maxAttempts = 5;
+    const baseDelay = 300;
+    try {
+        return await createPingOneUser(endpoint, token, populationId, row);
+    } catch (err) {
+        const message = String(err?.message || '').toLowerCase();
+        const transient = /429|rate|throttle|timeout|5\d\d/.test(message);
+        if (transient && attempt < maxAttempts) {
+            const jitter = Math.floor(Math.random() * 200);
+            const delay = Math.min(5000, baseDelay * Math.pow(2, attempt)) + jitter;
+            await new Promise(r => setTimeout(r, delay));
+            return createPingOneUserWithRetry(endpoint, token, populationId, row, attempt + 1);
+        }
+        throw err;
+    }
+}
+}
+
+async function updatePingOneUserWithRetry(endpointBase, token, populationId, row, attempt = 0) {
+    const maxAttempts = 5;
+    const baseDelay = 300;
+    try {
+        return await updatePingOneUser(endpointBase, token, populationId, row);
+    } catch (err) {
+        const message = String(err?.message || '').toLowerCase();
+        const transient = /429|rate|throttle|timeout|5\d\d/.test(message);
+        if (transient && attempt < maxAttempts) {
+            const jitter = Math.floor(Math.random() * 200);
+            const delay = Math.min(5000, baseDelay * Math.pow(2, attempt)) + jitter;
+            await new Promise(r => setTimeout(r, delay));
+            return updatePingOneUserWithRetry(endpointBase, token, populationId, row, attempt + 1);
+        }
+        throw err;
+    }
+}
+
+// Remove empty strings/arrays/objects recursively
+function pruneEmpty(value) {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === 'string') {
+        const v = value.trim();
+        return v === '' ? undefined : value;
+    }
+    if (Array.isArray(value)) {
+        const arr = value.map(pruneEmpty).filter(v => v !== undefined);
+        return arr.length ? arr : undefined;
+    }
+    if (typeof value === 'object') {
+        const out = {};
+        for (const [k, v] of Object.entries(value)) {
+            const pv = pruneEmpty(v);
+            if (pv !== undefined) out[k] = pv;
+        }
+        return Object.keys(out).length ? out : undefined;
+    }
+    return value;
 }
 
 async function createPingOneUser(endpoint, token, populationId, row) {
     // Support multiple CSV header variants (case/spacing)
     const username = row.username || row.userName || row.login || row.email || row.Username || row['User Name'] || row.UserName || '';
     const email = row.email || row.Email || row.mail || row['E-mail'] || '';
-    const given = row.givenName || row['name.given'] || row.first_name || row.firstname || row.firstName || row['First Name'] || '';
-    const family = row.familyName || row['name.family'] || row.last_name || row.lastname || row.lastName || row['Last Name'] || '';
+    let given = row.givenName || row['name.given'] || row.first_name || row.firstname || row.firstName || row['First Name'] || row.given || '';
+    let family = row.familyName || row['name.family'] || row.last_name || row.lastname || row.lastName || row['Last Name'] || row.family || '';
     const enabled = typeof row.enabled !== 'undefined'
         ? String(row.enabled).toLowerCase() !== 'false' && String(row.enabled).toLowerCase() !== 'disabled'
         : (row.status ? String(row.status).toLowerCase() !== 'disabled' : true);
 
-    const body = {
+    // Derive missing names from common alternatives to avoid PingOne 400s and avoid sending blanks
+    const fullName = row.fullName || row.displayName || row.name || '';
+    const clean = (s) => (typeof s === 'string' ? s.trim() : '').replace(/\s+/g, ' ');
+    const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '');
+
+    const tryFromFullName = () => {
+        const n = clean(fullName);
+        if (!n) return null;
+        const parts = n.split(' ');
+        if (parts.length === 1) return { given: cap(parts[0]), family: 'User' };
+        return { given: cap(parts[0]), family: cap(parts.slice(1).join(' ')) };
+    };
+
+    const tryFromIdentifier = (id) => {
+        const v = clean(id);
+        if (!v) return null;
+        const local = v.includes('@') ? v.split('@')[0] : v;
+        const segs = local.split(/[._-]+/).filter(Boolean);
+        if (segs.length >= 2) return { given: cap(segs[0]), family: cap(segs[1]) };
+        if (segs.length === 1) return { given: cap(segs[0]), family: 'User' };
+        return null;
+    };
+
+    if (!given && !family) {
+        const derived = tryFromFullName() || tryFromIdentifier(email) || tryFromIdentifier(username) || { given: '', family: '' };
+        given = derived.given || '';
+        family = derived.family || '';
+    } else {
+        // If one side missing, attempt to derive it
+        if (!given) {
+            const d = tryFromFullName() || tryFromIdentifier(email) || tryFromIdentifier(username);
+            if (d?.given) given = d.given;
+        }
+        if (!family) {
+            const d = tryFromFullName() || tryFromIdentifier(email) || tryFromIdentifier(username);
+            if (d?.family) family = d.family;
+        }
+    }
+
+    const payload = {
         username: (username || email) || undefined,
         population: { id: populationId },
-        name: { given, family },
-        emails: email ? [{ value: email, primary: true }] : [],
+        // Only include name if both given and family are non-empty
+        name: (given && family) ? { given, family } : undefined,
+        emails: email ? [{ value: email, primary: true }] : undefined,
         enabled
     };
+    const body = pruneEmpty(payload);
     // Emit a minimal request log into session for diagnostics
     importStatus.sessionLog.push({ ts: new Date().toISOString(), type: 'request', endpoint, user: username || email, populationId });
 
@@ -491,6 +775,46 @@ async function createPingOneUser(endpoint, token, populationId, row) {
         const txt = await resp.text().catch(() => '');
         const truncated = txt && txt.length > 1000 ? txt.slice(0, 1000) + '…' : txt;
         throw new Error(`User create failed: ${resp.status} ${resp.statusText} ${truncated}`);
+    }
+}
+
+async function updatePingOneUser(endpointBase, token, populationId, row) {
+    // Identify user by username or email
+    const username = row.username || row.userName || row.login || row.Username || row['User Name'] || row.UserName || '';
+    const email = row.email || row.Email || row.mail || row['E-mail'] || '';
+    const identifier = username || email;
+    if (!identifier) throw new Error('Update requires username or email');
+
+    // Lookup user id
+    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const searchUrl = username
+        ? `${endpointBase}?filter=username eq "${identifier}"`
+        : `${endpointBase}?filter=email eq "${identifier}"`;
+    const searchResp = await fetch(encodeURI(searchUrl), { headers });
+    if (!searchResp.ok) {
+        const t = await searchResp.text().catch(()=>'');
+        throw new Error(`Lookup failed: ${searchResp.status} ${searchResp.statusText} ${t}`);
+    }
+    const data = await searchResp.json().catch(()=>({}));
+    const user = data?._embedded?.users?.[0];
+    if (!user || !user.id) throw new Error('User not found for update');
+
+    // Build patch body, prune empty
+    const given = row.givenName || row['name.given'] || row.first_name || row.firstname || row.firstName || row['First Name'] || row.given || '';
+    const family = row.familyName || row['name.family'] || row.last_name || row.lastname || row.lastName || row['Last Name'] || row.family || '';
+    const payload = {
+        population: populationId ? { id: populationId } : undefined,
+        // Only include name if both sides present
+        name: (given && family) ? { given, family } : undefined,
+        emails: email ? [{ value: email, primary: true }] : undefined,
+    };
+    const body = pruneEmpty(payload);
+
+    const patchUrl = `${endpointBase}/${encodeURIComponent(user.id)}`;
+    const patchResp = await fetch(patchUrl, { method: 'PATCH', headers, body: JSON.stringify(body) });
+    if (!patchResp.ok) {
+        const txt = await patchResp.text().catch(()=> '');
+        throw new Error(`Update failed: ${patchResp.status} ${patchResp.statusText} ${txt}`);
     }
 }
 

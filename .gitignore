@@ -6,6 +6,10 @@ node_modules/
 
 # Runtime configuration (contains sensitive data and cache)
 data/settings.json
+data/settings*.json
+data/*.backup*
+data/settings-real.json
+data/settings.json.backup*
 
 # Logs
 logs

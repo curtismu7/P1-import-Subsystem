@@ -104,6 +104,22 @@ import { tokenService } from './server/services/token-service.js';
 import { populationCacheService } from './server/services/population-cache-service.js';
 import { webSocketService } from './server/services/websocket-service.js';
 
+// Import enhanced health monitoring
+const { EnhancedHealthAPI } = require('./src/server/api/enhanced-health.js');
+const { EnhancedTokenManager } = require('./src/server/services/enhanced-token-manager.js');
+const { EnhancedMemoryMonitor } = require('./src/server/services/enhanced-memory-monitor.js');
+const { EnhancedErrorHandler } = require('./src/server/services/enhanced-error-handler.js');
+
+// Import performance monitoring
+const { PerformanceMonitor } = require('./src/server/middleware/performance-monitor.js');
+const { PerformanceMonitorAPI } = require('./src/server/api/performance-monitor.js');
+
+// Import security enhancements
+const { RequestSigningService } = require('./src/server/services/request-signing-service.js');
+const { AuditLoggingService } = require('./src/server/services/audit-logging-service.js');
+const { SecurityHardeningMiddleware } = require('./src/server/middleware/security-hardening.js');
+const { SecurityManagementAPI } = require('./src/server/api/security-management.js');
+
 // Import routes
 import { runStartupTokenTest } from './server/startup-token-test.js';
 import enhancedHealthRouter, { initializeHealthMonitoring } from './src/server/api/enhanced-health.js';
@@ -1008,18 +1024,28 @@ app.post('/api/token/refresh', async (req, res) => {
     }
 });
 
-// API routes with enhanced logging
+// Add security hardening middleware (first)
+const securityStack = securityHardening.getSecurityStack();
+securityStack.forEach(middleware => app.use(middleware));
+
+// Add audit logging middleware
+app.use(auditLogger.middleware());
+
+// Add performance monitoring middleware (before routes)
+app.use(performanceMonitor.middleware());
+
+// Use API routes
 app.use('/api', apiRouter);
 app.use('/api/health', enhancedHealthRouter);
+app.use('/api/performance', performanceRouter);
+app.use('/api/security', securityRouter);
 app.use('/api/import', importRouter); 
 app.use('/api/logs', logsApiRouter); 
 app.use('/api/pingone', pingoneProxyRouter); 
 app.use('/api/settings', settingsRouter); 
 app.use('/api/v1/settings', settingsRouter); 
 app.use('/api/v1/auth', authSubsystemRouter); 
-app.use('/api/test-runner', testRunnerRouter); 
-app.use('/api/v1/auth', authSubsystemRouter); // Auth subsystem routes
-app.use('/api/test-runner', testRunnerRouter); // Test runner routes
+app.use('/api/test-runner', testRunnerRouter);
 // NOTE: /api/auth, /api/logs, /api/import, /api/export are handled by the main apiRouter above
 app.use('/', indexRouter);
 

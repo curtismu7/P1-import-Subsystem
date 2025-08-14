@@ -1050,7 +1050,7 @@
             const settings = await settingsResp.json();
             // Server wraps payload as { success, message?, data: { data: {...} } }
             const payload = (settings && settings.data && (settings.data.data || settings.data)) || {};
-            const fromSettings = payload.populations || payload.populationCache?.populations;
+            const fromSettings = payload.populations;
             if (Array.isArray(fromSettings) && fromSettings.length) {
               populations = fromSettings;
               loaded = true;
@@ -1087,7 +1087,7 @@
           if (resp.ok) {
             const result = await resp.json();
             const data = (result && result.data && result.data.data) || result.data || result.message || {};
-            const pops = data.populationCache?.populations || data.populations || [];
+            const pops = data.populationCache?.populations || [];
             if (Array.isArray(pops) && pops.length) {
               populations = pops;
               loaded = true;

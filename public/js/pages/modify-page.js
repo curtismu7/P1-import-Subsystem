@@ -59,7 +59,7 @@ export class ModifyPage {
                             </div>
                             <div class="upload-text">Drag & Drop CSV File Here</div>
                             <div class="upload-hint">or <button type="button" id="browse-files" class="btn btn-link">Choose CSV File</button></div>
-                            <input type="file" id="file-input" accept=".csv" style="display: none;">
+                            <input type="file" id="file-input" accept=".csv" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
                         </div>
                         
                         <div class="upload-requirements">
@@ -289,7 +289,7 @@ export class ModifyPage {
                         </div>
                         
                         <div class="export-actions">
-                            <button type="button" id="download-modify-log" class="btn btn-outline-info">
+                            <button type="button" id="download-modify-log" class="btn btn-primary">
                                 <i class="mdi mdi-download"></i> Download Log
                             </button>
                             <button type="button" id="new-modification" class="btn btn-outline-primary">
@@ -324,11 +324,17 @@ export class ModifyPage {
         }
         
         if (fileInput) {
+            // Cross-OS reliability
+            fileInput.addEventListener('click', () => { try { fileInput.value = ''; } catch (_) {} });
             fileInput.addEventListener('change', this.handleFileSelect.bind(this));
         }
         
         if (browseFiles) {
-            browseFiles.addEventListener('click', () => fileInput?.click());
+            browseFiles.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (!fileInput) return;
+                try { fileInput.click(); } catch (_) { setTimeout(() => fileInput.click(), 0); }
+            }, { passive: true });
         }
         
         if (removeFile) {
@@ -744,24 +750,27 @@ export class ModifyPage {
 
     async performModifications(modifications) {
         const total = this.selectedUsers.length;
-        
-        for (let i = 0; i < this.selectedUsers.length; i++) {
-            if (!this.modifyInProgress) break;
-
-            const user = this.selectedUsers[i];
-            this.updateModifyProgress(i, total, `Modifying user ${i + 1} of ${total}...`);
-
-            try {
-                await this.modifyUser(user, modifications);
-                this.modifiedUsers.push(user.id);
-                this.addToModifyLog(`✅ Successfully modified user ${user.name || user.id}`, 'success');
-            } catch (error) {
-                this.errors.push({ userId: user.id, error: error.message });
-                this.addToModifyLog(`❌ Failed to modify user ${user.name || user.id}: ${error.message}`, 'error');
-            }
-
-            this.updateModifyProgress(i + 1, total, 
-                i + 1 === total ? 'Modification process completed' : `Modifying user ${i + 2} of ${total}...`);
+        try {
+            this.updateModifyProgress(0, total, `Modifying ${total} users...`);
+            const userIds = this.selectedUsers.map(u => u.id);
+            const resp = await fetch('/api/users/modify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userIds, modifications })
+            });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const json = await resp.json().catch(() => ({}));
+            const totals = json?.totals || {};
+            const modified = totals.modified ?? total;
+            const failed = totals.failed ?? 0;
+            this.modifiedUsers = userIds.slice(0, modified);
+            this.errors = failed > 0 ? userIds.slice(modified, modified + failed).map(id => ({ userId: id, error: 'Failed to modify' })) : [];
+            this.updateModifyProgress(total, total, 'Modification process completed');
+            this.addToModifyLog(`✅ Modified ${modified}, failed ${failed}`, failed > 0 ? 'error' : 'success');
+        } catch (error) {
+            this.addToModifyLog(`❌ Modify request failed: ${error.message}`, 'error');
+            this.errors = this.selectedUsers.map(u => ({ userId: u.id, error: error.message }));
+            this.updateModifyProgress(total, total, 'Modification completed with errors');
         }
     }
 

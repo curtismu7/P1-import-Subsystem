@@ -1,0 +1,4 @@
+username,email,givenname,familyname,population
+testuser1@example.com,testuser1@example.com,John,Doe,Test Population
+testuser2@example.com,testuser2@example.com,Jane,Smith,Test Population
+testuser3@example.com,testuser3@example.com,Bob,Johnson,Test Population
