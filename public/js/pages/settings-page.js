@@ -66,8 +66,8 @@ export class SettingsPage {
                             
                             <div class="form-group">
                                 <label><i class="mdi mdi-account-group"></i> PingOne Population</label>
-                                <div class="input-group" style="width: fit-content;">
-                                    <select id="settings-population" name="populationId" class="form-control" style="width: auto; min-width: 300px;">
+                                <div class="population-dropdown-container">
+                                    <select id="settings-population" name="populationId" class="form-control" data-long-text="true">
                                         <option value="">Select Population</option>
                                     </select>
                                     <button type="button" id="refresh-populations" class="btn btn-outline-secondary">
@@ -78,10 +78,10 @@ export class SettingsPage {
                             </div>
                             
                             <div class="form-actions">
-                                <button type="submit" id="save-settings" class="btn btn-primary">
+                                <button type="submit" id="save-settings" class="btn btn-danger">
                                     <i class="mdi mdi-content-save"></i> Save Settings
                                 </button>
-                                <button type="button" id="test-connection" class="btn btn-outline-info">
+                                <button type="button" id="test-connection" class="btn btn-danger">
                                     <i class="mdi mdi-test-tube"></i> Test Connection
                                 </button>
                             </div>
@@ -96,19 +96,19 @@ export class SettingsPage {
                         <p>Manage your PingOne access tokens and authentication</p>
                         
                         <div class="token-actions">
-                            <button type="button" id="refresh-token" class="btn btn-primary btn-sm" title="Get a new token using current credentials">
+                            <button type="button" id="refresh-token" class="btn btn-danger btn-sm" title="Get a new token using current credentials">
                                 <i class="mdi mdi-refresh"></i> Refresh Token
                             </button>
-                            <button type="button" id="validate-token" class="btn btn-outline-success btn-sm" title="Check if current token is valid">
+                            <button type="button" id="validate-token" class="btn btn-danger btn-sm" title="Check if current token is valid">
                                 <i class="mdi mdi-check-circle"></i> Validate Token
                             </button>
-                            <button type="button" id="test-connection-token" class="btn btn-outline-info btn-sm" title="Test connection with current token">
+                            <button type="button" id="test-connection-token" class="btn btn-danger btn-sm" title="Test connection with current token">
                                 <i class="mdi mdi-connection"></i> Test Connection
                             </button>
-                            <button type="button" id="revoke-token" class="btn btn-outline-warning btn-sm" title="Revoke current token">
+                            <button type="button" id="revoke-token" class="btn btn-danger btn-sm" title="Revoke current token">
                                 <i class="mdi mdi-block-helper"></i> Revoke Token
                             </button>
-                            <button type="button" id="clear-token" class="btn btn-outline-danger btn-sm" title="Clear stored token">
+                            <button type="button" id="clear-token" class="btn btn-danger btn-sm" title="Clear stored token">
                                 <i class="mdi mdi-delete"></i> Clear Token
                             </button>
                         </div>

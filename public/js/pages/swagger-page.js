@@ -18,7 +18,7 @@ export class SwaggerPage {
       </div>
       <section class="swagger-section">
         <div class="swagger-actions" style="margin-bottom: 12px; display:flex; gap:12px; align-items:center;">
-          <a class="btn btn-primary" href="/swagger.html" target="_blank" rel="noopener">Open in New Tab</a>
+                          <a class="btn btn-danger" href="/swagger.html" target="_blank" rel="noopener">Open in New Tab</a>
           <a class="btn btn-outline-info" href="/swagger.json" target="_blank" rel="noopener">View OpenAPI JSON</a>
         </div>
         <iframe id="swagger-iframe" title="Swagger UI" src="/swagger.html" style="width:100%; height: calc(100vh - 220px); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; background: white;"></iframe>

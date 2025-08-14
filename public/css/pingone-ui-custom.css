@@ -1679,7 +1679,7 @@ select.form-control:not([multiple]) {
 .nav-logo {
   width: 80px;
   height: 80px;
-  filter: brightness(0) invert(1);
+  /* Removed filter that was making logo white */
   margin-bottom: var(--spacing-sm);
 }
 
@@ -3385,7 +3385,7 @@ select {
 .nav-logo {
   width: 80px;
   height: 80px;
-  filter: brightness(0) invert(1);
+  /* Removed filter that was making logo white */
   margin-bottom: var(--spacing-sm);
 }
 
@@ -4843,7 +4843,7 @@ select {
 .nav-logo {
   width: 80px;
   height: 80px;
-  filter: brightness(0) invert(1);
+  /* Removed filter that was making logo white */
   margin-bottom: var(--spacing-sm);
 }
 
@@ -6301,7 +6301,7 @@ select {
 .nav-logo {
   width: 80px;
   height: 80px;
-  filter: brightness(0) invert(1);
+  /* Removed filter that was making logo white */
   margin-bottom: var(--spacing-sm);
 }
 
@@ -7759,7 +7759,7 @@ select {
 .nav-logo {
   width: 80px;
   height: 80px;
-  filter: brightness(0) invert(1);
+  /* Removed filter that was making logo white */
   margin-bottom: var(--spacing-sm);
 }
 

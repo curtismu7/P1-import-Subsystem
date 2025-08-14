@@ -84,13 +84,13 @@ export class TokenManagementPage {
                                 <label for="token-string">Raw Token:</label>
                                 <textarea id="token-string" class="token-string" placeholder="Paste your JWT token here or get a token using the 'Get Token' button"></textarea>
                                 <div class="token-actions">
-                                    <button id="get-token-btn" class="btn btn-primary">
+                                    <button id="get-token-btn" class="btn btn-danger">
                                         <i class="fas fa-key"></i> Get Token
                                     </button>
-                                    <button id="copy-token-btn" class="btn btn-secondary">
+                                    <button id="copy-token-btn" class="btn btn-danger">
                                         <i class="fas fa-copy"></i> Copy Token
                                     </button>
-                                    <button id="decode-token-btn" class="btn btn-info">
+                                    <button id="decode-token-btn" class="btn btn-danger">
                                         <i class="fas fa-code"></i> Decode JWT
                                     </button>
                                 </div>
@@ -124,16 +124,16 @@ export class TokenManagementPage {
                     <div class="token-box">
                         <div class="token-actions">
                             <div class="action-group">
-                                <button id="refresh-token-btn" class="btn btn-primary">
+                                <button id="refresh-token-btn" class="btn btn-danger">
                                     <i class="fas fa-sync"></i> Refresh Token
                                 </button>
-                                <button id="validate-token-btn" class="btn btn-info">
+                                <button id="validate-token-btn" class="btn btn-danger">
                                     <i class="fas fa-check-circle"></i> Validate Token
                                 </button>
-                                <button id="test-connection-btn" class="btn btn-success">
+                                <button id="test-connection-btn" class="btn btn-danger">
                                     <i class="fas fa-plug"></i> Test Connection
                                 </button>
-                                <button id="revoke-token-btn" class="btn btn-warning">
+                                <button id="revoke-token-btn" class="btn btn-danger">
                                     <i class="fas fa-ban"></i> Revoke Token
                                 </button>
                                 <button id="clear-token-btn" class="btn btn-danger">

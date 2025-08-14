@@ -110,8 +110,8 @@ export class ModifyPage {
                         <div class="config-grid">
                             <div class="form-group">
                                 <label for="modify-population-select">Population *</label>
-                                <div class="input-group" style="width: fit-content;">
-                                    <select id="modify-population-select" class="form-control" style="width: auto; min-width: 300px;">
+                                <div class="population-dropdown-container">
+                                    <select id="modify-population-select" class="form-control" data-long-text="true">
                                         <option value="">Select a population...</option>
                                     </select>
                                     <button type="button" id="refresh-populations" class="btn btn-outline-secondary">
@@ -123,7 +123,7 @@ export class ModifyPage {
                         </div>
                         
                         <div class="export-actions">
-                            <button id="load-users-btn" class="btn btn-primary" disabled>
+                            <button id="load-users-btn" class="btn btn-danger" disabled>
                                 <i class="mdi mdi-account-group"></i> Modify users
                             </button>
                         </div>
@@ -195,7 +195,7 @@ export class ModifyPage {
                         </div>
                         
                         <div class="export-actions">
-                            <button id="start-modify-btn" class="btn btn-primary" disabled>
+                            <button id="start-modify-btn" class="btn btn-danger" disabled>
                                 <i class="mdi mdi-pencil"></i> Start Modification
                             </button>
                         </div>

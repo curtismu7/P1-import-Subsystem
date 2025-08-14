@@ -98,13 +98,13 @@ export class LogsPage {
                                 </select>
                             </div>
                             <div class="btn-row-center" style="display:flex; gap:16px; align-items:center; justify-content:center; width:100%;">
-                                <button id="refresh-logs-btn" class="btn btn-primary">
+                                <button id="refresh-logs-btn" class="btn btn-danger">
                                     <i class="fas fa-sync me-1"></i><span>Refresh Logs</span>
                                 </button>
-                                <button id="clear-logs-btn" class="btn btn-primary">
+                                <button id="clear-logs-btn" class="btn btn-danger">
                                     <i class="fas fa-trash me-1"></i><span>Clear Logs</span>
                                 </button>
-                                <button id="export-logs-btn" class="btn btn-success">
+                                <button id="export-logs-btn" class="btn btn-danger">
                                     <i class="fas fa-download me-1"></i><span>Export Logs</span>
                                 </button>
                             </div>

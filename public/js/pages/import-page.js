@@ -171,10 +171,10 @@ export class ImportPage {
                 <section class="import-section">
                     <div class="import-box">
                         <div class="export-actions">
-                            <button type="button" id="validate-file" class="btn btn-primary" disabled>
+                            <button type="button" id="validate-file" class="btn btn-danger" disabled>
                                 <i class="mdi mdi-check-circle"></i> Validate File
                             </button>
-                            <button type="button" id="start-import" class="btn btn-primary" disabled>
+                            <button type="button" id="start-import" class="btn btn-danger" disabled>
                                 <i class="mdi mdi-upload"></i> Start Import
                             </button>
                         </div>
@@ -240,15 +240,15 @@ export class ImportPage {
                         <h3 class="section-title">Import Results</h3>
                         <p>Summary of the import operation</p>
                         
-                        <div id="results-summary" class="results-container">
+                                                <div id="results-summary" class="results-container">
                             <!-- Results will be populated here -->
                         </div>
                         
                         <div class="export-actions">
-                            <button type="button" id="download-log" class="btn btn-outline-info">
+                            <button type="button" id="download-log-btn" class="btn btn-outline-info">
                                 <i class="mdi mdi-download"></i> Download Log
                             </button>
-                            <button type="button" id="new-import" class="btn btn-outline-primary">
+                            <button type="button" id="new-import-btn" class="btn btn-outline-primary">
                                 <i class="mdi mdi-refresh"></i> New Import
                             </button>
                         </div>
@@ -833,14 +833,7 @@ export class ImportPage {
                         </ul>
                     </div>
                     
-                    <div class="result-actions">
-                        <button class="btn btn-outline-info" id="download-log-btn">
-                            <i class="mdi mdi-download"></i> Download Log
-                        </button>
-                        <button class="btn btn-outline-primary" id="new-import-btn">
-                            <i class="mdi mdi-refresh"></i> New Import
-                        </button>
-                    </div>
+
                 </div>
             `;
         }

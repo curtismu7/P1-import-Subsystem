@@ -11,7 +11,7 @@ export class ExportPage {
         this.exportInterval = null; // Track export progress interval
         this.exportOptions = {
             format: 'csv',
-            profile: 'none',
+            profile: 'pingone',
             includeHeaders: true,
             includeDisabledUsers: false,
             attributes: []
@@ -36,8 +36,8 @@ export class ExportPage {
                         <div class="config-grid">
                             <div class="form-group">
                                 <label for="export-population-select">Population *</label>
-                                <div class="input-group" style="width: fit-content;">
-                                    <select id="export-population-select" class="form-control" style="width: auto; min-width: 300px;" required>
+                                <div class="population-dropdown-container">
+                                    <select id="export-population-select" class="form-control" required>
                                         <option value="">Select a population...</option>
                                     </select>
                                     <button type="button" id="refresh-populations" class="btn btn-outline-secondary">
@@ -73,7 +73,7 @@ export class ExportPage {
                         <div class="config-grid">
                             <div class="form-group">
                                 <label for="export-format">Export Format</label>
-                                <select id="export-format" class="form-control">
+                                <select id="export-format" class="form-control" data-long-text="true">
                                     <option value="csv">CSV (Comma Separated Values)</option>
                                     <option value="json">JSON (JavaScript Object Notation)</option>
                                      <option value="ndjson">NDJSON (JSON Lines)</option>
@@ -85,9 +85,9 @@ export class ExportPage {
                             </div>
                              <div class="form-group">
                                  <label for="export-profile">Export Preset</label>
-                                 <select id="export-profile" class="form-control">
-                                     <option value="none">None (default)</option>
-                                     <option value="pingone">PingOne re-import template</option>
+                                 <select id="export-profile" class="form-control" data-long-text="true">
+                                     <option value="none">None</option>
+                                     <option value="pingone" selected>PingOne re-import template (default)</option>
                                      <option value="ad">AD/LDAP-friendly (sAMAccountName, DN)</option>
                                      <option value="okta">Okta/AzureAD-style headers</option>
                                      <option value="siem">SIEM profile (flattened)</option>
@@ -95,7 +95,7 @@ export class ExportPage {
                              </div>
                             <div class="form-group">
                                 <label for="export-encoding">Character Encoding</label>
-                                <select id="export-encoding" class="form-control">
+                                <select id="export-encoding" class="form-control" data-long-text="true">
                                     <option value="utf-8">UTF-8 (Recommended)</option>
                                     <option value="utf-16">UTF-16</option>
                                     <option value="ascii">ASCII</option>
@@ -185,10 +185,10 @@ export class ExportPage {
                 <section class="export-section">
                     <div class="export-box">
                         <div class="export-actions">
-                            <button type="button" id="start-export" class="btn btn-primary" disabled>
+                            <button type="button" id="start-export" class="btn btn-danger" disabled>
                                 <i class="mdi mdi-download"></i> Start Export
                             </button>
-                            <button type="button" id="preview-export" class="btn btn-outline-info">
+                            <button type="button" id="preview-export" class="btn btn-danger">
                                 <i class="mdi mdi-eye"></i> Preview Export
                             </button>
                         </div>
@@ -312,8 +312,11 @@ export class ExportPage {
         // Export profile change
         const exportProfile = document.getElementById('export-profile');
         if (exportProfile) {
+            // Set the initial value to match the default profile
+            exportProfile.value = this.exportOptions.profile;
+            
             exportProfile.addEventListener('change', (e) => {
-                this.exportOptions.profile = e.target.value || 'none';
+                this.exportOptions.profile = e.target.value || 'pingone';
                 // Refresh options dependent UI if needed
                 this.updateExportOptions();
             });
@@ -999,7 +1002,7 @@ export class ExportPage {
     }
 
     getProfileHeaders(selectedAttributes) {
-        const profile = this.exportOptions.profile || 'none';
+        const profile = this.exportOptions.profile || 'pingone';
         if (profile === 'pingone') {
             return ['username','email','givenName','familyName','enabled','groups'];
         }
@@ -1017,7 +1020,7 @@ export class ExportPage {
     }
 
     applyProfileTransform(selectedAttributes, index, status) {
-        const profile = this.exportOptions.profile || 'none';
+        const profile = this.exportOptions.profile || 'pingone';
         const base = {};
         // Build from selected attributes first (default mapping)
         selectedAttributes.forEach(attr => {
