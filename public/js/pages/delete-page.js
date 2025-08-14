@@ -650,8 +650,7 @@ export class DeletePage {
         
         // Update button states after removing file
         this.updateDeleteButtonState();
-    }
-
+        
         // Reset requirement checks
         ['req-csv','req-size','req-required','req-optional'].forEach(id => {
             const el = document.getElementById(id);
