@@ -935,5 +935,5 @@ async getNewToken() {
 export { GlobalTokenManagerSubsystem };
 export default GlobalTokenManagerSubsystem;
 
-// Make GlobalTokenManagerSubsystem available globally for bundle
+// Make GlobalTokenManagerSubsystem available globally for import maps
 window.GlobalTokenManagerSubsystem = GlobalTokenManagerSubsystem;
