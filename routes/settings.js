@@ -589,12 +589,19 @@ router.get("/", async (req, res) => {
         
         // Convert kebab-case to camelCase for frontend compatibility
         const frontendSettings = {
-            environmentId: settings['environment-id'] || settings.environmentId || '',
-            apiClientId: settings['api-client-id'] || settings.apiClientId || '',
+            // camelCase for legacy/UI compatibility
+            environmentId: settings['environment-id'] || settings.environmentId || settings.pingone_environment_id || '',
+            apiClientId: settings['api-client-id'] || settings.apiClientId || settings.pingone_client_id || '',
             apiSecret: plainSecret, // Return the decrypted secret
-            populationId: settings['population-id'] || settings.populationId || '',
-            region: settings.region || 'NA',
-            rateLimit: parseInt(settings['rate-limit'] || settings.rateLimit || '100')
+            populationId: settings['population-id'] || settings.populationId || settings.pingone_population_id || '',
+            region: settings.region || settings.pingone_region || 'NA',
+            rateLimit: parseInt(settings['rate-limit'] || settings.rateLimit || '100'),
+            // Duplicate with pingone_* keys as requested by UI
+            pingone_environment_id: settings.pingone_environment_id || settings['environment-id'] || settings.environmentId || '',
+            pingone_client_id: settings.pingone_client_id || settings['api-client-id'] || settings.apiClientId || '',
+            pingone_client_secret: plainSecret || '',
+            pingone_population_id: settings.pingone_population_id || settings['population-id'] || settings.populationId || '',
+            pingone_region: settings.pingone_region || settings.region || 'NA'
         };
         
         res.json({ success: true, data: frontendSettings });
@@ -711,11 +718,11 @@ router.post("/", express.json(), async (req, res) => {
         
         // Convert camelCase to kebab-case for file storage
         const fileSettings = {
-            'environment-id': newSettings.environmentId || newSettings['environment-id'] || '',
-            'api-client-id': newSettings.apiClientId || newSettings['api-client-id'] || '',
-            'api-secret': newSettings.apiSecret || newSettings['api-secret'] || '',
-            'population-id': newSettings.populationId || newSettings['population-id'] || '',
-            region: newSettings.region || 'NA',
+            'environment-id': newSettings.pingone_environment_id || newSettings.environmentId || newSettings['environment-id'] || '',
+            'api-client-id': newSettings.pingone_client_id || newSettings.apiClientId || newSettings['api-client-id'] || '',
+            'api-secret': newSettings.pingone_client_secret || newSettings.apiSecret || newSettings['api-secret'] || '',
+            'population-id': newSettings.pingone_population_id || newSettings['population-id'] || newSettings.populationId || '',
+            region: newSettings.pingone_region || newSettings.region || 'NA',
             'rate-limit': (newSettings.rateLimit || newSettings['rate-limit'] || 100).toString()
         };
         

@@ -16,7 +16,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css">
     
     <!-- Custom PingOne UI CSS -->
-    <link rel="stylesheet" href="/css/pingone-ui-custom.css?v=7.2.0-export-ui-3">
+    <link rel="stylesheet" href="/css/pingone-ui-custom.css?v=7.2.0-export-ui-3a">
+    
+    <!-- Main Application CSS -->
+    <link rel="stylesheet" href="/css/main.css?v=7.2.0">
     
     <!-- Import Maps Configuration -->
     <script type="importmap">
@@ -45,7 +48,11 @@
 
     <!-- Status Message Area -->
     <div class="status-message-bar" id="status-message-bar">
-        <div class="status-message-content">
+        <div class="status-message-content" style="display:flex; align-items:center; gap:8px; justify-content:flex-start;">
+            <button id="refresh-token-btn" type="button" title="Get new PingOne Worker Token">
+                <i class="icon-refresh"></i>
+                <span>Get new PingOne Worker Token</span>
+            </button>
             <div class="status-message" id="status-message">
                 <i class="icon-check-circle" id="status-icon"></i>
                 <span id="status-text">System Status - Ready</span>
@@ -143,6 +150,12 @@
                         <span class="nav-text">History</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="#health-dashboard" class="nav-link" data-page="health-dashboard">
+                        <i class="icon-activity"></i>
+                        <span class="nav-text">Health Dashboard</span>
+                    </a>
+                </li>
                 <li class="nav-item" id="swagger-nav" style="display: none;">
                     <a href="#swagger" class="nav-link" data-page="swagger">
                         <i class="icon-code"></i>
@@ -158,33 +171,39 @@
             <!-- Home Page -->
             <div class="page" id="home-page" data-page="home">
                 <div class="page-header">
+                    <h1>PingOne User Management</h1>
                     <p class="page-subtitle">Manage users across your PingOne environment</p>
                 </div>
                 
-                <div class="home-grid">
+                <div class="home-content">
+
+                    <!-- Configuration Section -->
                     <div class="home-section">
                         <div class="section-header">
-                            <h2>Settings</h2>
+                            <h2><i class="icon-settings"></i> Configuration</h2>
+                            <p class="section-description">Configure your PingOne environment and application settings</p>
                         </div>
-                        <div class="action-card" data-action="settings">
-                            <div class="card-icon">
-                                <i class="icon-settings"></i>
-                            </div>
-                            <div class="card-content">
-                                <h3>Settings</h3>
-                                <p>Configure PingOne credentials and preferences</p>
-                                <div class="card-status" id="settings-status">Ready</div>
+                        <div class="action-cards-row">
+                            <div class="action-card" data-action="settings">
+                                <div class="card-icon">
+                                    <i class="icon-settings"></i>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Settings</h3>
+                                    <p>Configure PingOne credentials and preferences</p>
+                                    <div class="card-status" id="settings-status">Ready</div>
+                                </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="home-divider"></div>
-                    
+                    <!-- User Operations Section -->
                     <div class="home-section">
                         <div class="section-header">
-                            <h2>User Operations</h2>
+                            <h2><i class="icon-users"></i> User Operations</h2>
+                            <p class="section-description">Import, export, modify, and delete users in your PingOne environment</p>
                         </div>
-                        <div class="action-cards">
+                        <div class="action-cards-row">
                             <div class="action-card" data-action="export">
                                 <div class="card-icon">
                                     <i class="icon-download"></i>
@@ -231,13 +250,13 @@
                         </div>
                     </div>
                     
-                    <div class="home-divider"></div>
-                    
+                    <!-- Management & Monitoring Section -->
                     <div class="home-section">
                         <div class="section-header">
-                            <h2>Management</h2>
+                            <h2><i class="icon-activity"></i> Management & Monitoring</h2>
+                            <p class="section-description">Monitor system health, view logs, and manage application operations</p>
                         </div>
-                        <div class="action-cards">
+                        <div class="action-cards-row">
                             <div class="action-card" data-action="logs">
                                 <div class="card-icon">
                                     <i class="icon-file-text"></i>
@@ -271,6 +290,17 @@
                                 </div>
                             </div>
                             
+                            <div class="action-card" data-action="health-dashboard">
+                                <div class="card-icon">
+                                    <i class="icon-activity"></i>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Health Dashboard</h3>
+                                    <p>Monitor system health and performance</p>
+                                    <div class="card-status" id="health-dashboard-status">Ready</div>
+                                </div>
+                            </div>
+
                             <div class="action-card" id="swagger-card" data-action="swagger" style="display: none;">
                                 <div class="card-icon">
                                     <i class="icon-code"></i>
@@ -295,6 +325,7 @@
             <div class="page" id="logs-page" data-page="logs" style="display: none;"></div>
             <div class="page" id="token-management-page" data-page="token-management" style="display: none;"></div>
             <div class="page" id="history-page" data-page="history" style="display: none;"></div>
+            <div class="page" id="health-dashboard-page" data-page="health-dashboard" style="display: none;"></div>
             <div class="page" id="swagger-page" data-page="swagger" style="display: none;"></div>
         </main>
     </div>
@@ -324,8 +355,8 @@
 
     <!-- Modals -->
     <!-- Disclaimer Modal (formal style) -->
-    <div class="modal-overlay" id="disclaimer-modal" style="display: none;">
-        <div class="modal disclaimer-modal" style="box-shadow: 0 8px 24px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.08);">
+    <div class="disclaimer-modal-overlay" id="disclaimer-modal" style="display: none;">
+        <div class="disclaimer-modal" style="box-shadow: 0 8px 24px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.08);">
             <div class="modal-header">
                 <h2><i class="icon-alert-circle" aria-hidden="true"></i> Important Disclaimer</h2>
                 <p class="subtitle">Please review and acknowledge before continuing</p>
@@ -351,8 +382,8 @@
     </div>
 
     <!-- Credentials Modal -->
-    <div class="modal-overlay" id="credentials-modal" style="display: none;">
-        <div class="modal credentials-modal" style="max-width: 820px; width: 90%; max-height: 85vh; overflow: auto;">
+    <div class="credentials-modal-overlay" id="credentials-modal" style="display: none;">
+        <div class="credentials-modal" style="max-width: 820px; width: 90%; max-height: 85vh; overflow: auto;">
             <div class="modal-header">
                 <h2>PingOne Credentials</h2>
                 <p>Configure your PingOne API credentials to get started</p>
@@ -361,29 +392,42 @@
                 <form id="credentials-form" novalidate>
                     <div class="form-group field-control-wrapper">
                         <label for="cred-environment-id">PingOne Environment ID</label>
-                        <input type="text" id="cred-environment-id" name="environmentId"
-                               class="field-control-input is-default"
-                               maxlength="256" data-pendo-id="Input"
-                               autocomplete="off"
-                               aria-label="PingOne Environment ID"
-                               spellcheck="false"
-                               required>
+                        <div class="input-group input-group-fused">
+                            <input type="text" id="cred-environment-id" name="environmentId"
+                                   class="field-control-input is-default"
+                                   style="min-width: 520px; width: 100%;"
+                                   maxlength="256" data-pendo-id="Input"
+                                   autocomplete="off"
+                                   aria-label="PingOne Environment ID"
+                                   spellcheck="false"
+                                   required>
+                            <button type="button" class="btn btn-icon" id="copy-env-id" title="Copy Environment ID" aria-label="Copy Environment ID" style="display:flex;align-items:center;justify-content:center;min-width:36px;">
+                                <i class="mdi mdi-content-copy" aria-hidden="true"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="form-group field-control-wrapper">
                         <label for="cred-client-id">PingOne Client ID</label>
-                        <input type="text" id="cred-client-id" name="clientId"
-                               class="field-control-input is-default"
-                               maxlength="256" data-pendo-id="Input"
-                               autocomplete="username"
-                               aria-label="PingOne Client ID"
-                               spellcheck="false"
-                               required>
+                        <div class="input-group input-group-fused">
+                            <input type="text" id="cred-client-id" name="clientId"
+                                   class="field-control-input is-default"
+                                   style="min-width: 520px; width: 100%;"
+                                   maxlength="256" data-pendo-id="Input"
+                                   autocomplete="username"
+                                   aria-label="PingOne Client ID"
+                                   spellcheck="false"
+                                   required>
+                            <button type="button" class="btn btn-icon" id="copy-cred-client-id" title="Copy Client ID" aria-label="Copy Client ID" style="display:flex;align-items:center;justify-content:center;min-width:36px;">
+                                <i class="mdi mdi-content-copy" aria-hidden="true"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="form-group field-control-wrapper">
                         <label for="cred-client-secret">PingOne Client Secret</label>
                         <div class="input-group">
                             <input type="password" id="cred-client-secret" name="clientSecret"
                                    class="field-control-input is-default"
+                                   style="min-width: 640px; width: 100%;"
                                    maxlength="256" data-pendo-id="Input"
                                    autocomplete="current-password"
                                    aria-label="PingOne Client Secret"
@@ -395,6 +439,9 @@
                                     title="Toggle secret visibility"
                                     aria-label="Show client secret">
                                 <i class="icon-eye" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="btn btn-icon" id="copy-cred-client-secret" title="Copy Client Secret" aria-label="Copy Client Secret" style="display:flex;align-items:center;justify-content:center;min-width:36px;">
+                                <i class="mdi mdi-content-copy" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
@@ -437,8 +484,13 @@
     </div>
 
     <!-- Main Application Script -->
-    <script type="module" src="/js/app.js?v=7.2.0-logs-history-delete"></script>
+    <script type="module" src="/js/app.js?v=7.2.0-logs-history-delete2"></script>
     
+    <!-- Scroll to Top Button -->
+    <button id="scroll-to-top-btn" class="scroll-to-top-btn" title="Scroll to top" aria-label="Scroll to top">
+        <i class="icon-chevron-up"></i>
+    </button>
+
     <!-- Error Handling -->
     <script>
         window.addEventListener('error', function(e) {
@@ -448,6 +500,47 @@
         window.addEventListener('unhandledrejection', function(e) {
             console.error('Unhandled promise rejection:', e.reason);
         });
+        
+        // STARTUP BLUR FIX: Only remove excessive blur, preserve modal functionality
+        window.addEventListener('load', function() {
+            // Only hide loading overlays, don't touch modal overlays
+            const loadingOverlays = document.querySelectorAll('.loading-overlay');
+            loadingOverlays.forEach(overlay => {
+                overlay.style.display = 'none';
+                overlay.classList.remove('active');
+                overlay.style.backdropFilter = 'rgba(0, 0, 0, 0.3)';
+                overlay.style.webkitBackdropFilter = 'rgba(0, 0, 0, 0.3)';
+            });
+            
+            // Only remove excessive blur from body and html
+            document.body.style.filter = 'none';
+            document.body.style.backdropFilter = 'none';
+            document.body.style.webkitBackdropFilter = 'none';
+            document.documentElement.style.filter = 'none';
+            document.documentElement.style.backdropFilter = 'none';
+            document.documentElement.style.webkitBackdropFilter = 'none';
+        });
+        
+        // STARTUP BLUR FIX: Only remove excessive blur on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                // Only remove excessive blur from body and html
+                document.body.style.filter = 'none';
+                document.body.style.backdropFilter = 'none';
+                document.body.style.webkitBackdropFilter = 'none';
+                document.documentElement.style.filter = 'none';
+                document.documentElement.style.backdropFilter = 'none';
+                document.documentElement.style.webkitBackdropFilter = 'none';
+            });
+        } else {
+            // DOM is already ready
+            document.body.style.filter = 'none';
+            document.body.style.backdropFilter = 'none';
+            document.body.style.webkitBackdropFilter = 'none';
+            document.documentElement.style.filter = 'none';
+            document.documentElement.style.backdropFilter = 'none';
+            document.documentElement.style.webkitBackdropFilter = 'none';
+        }
     </script>
 </body>
 </html>

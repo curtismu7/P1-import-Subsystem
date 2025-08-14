@@ -3102,7 +3102,7 @@ class DisclaimerModal {
             };
         }
         // Fetch settings from server
-        let showDisclaimerModal = true;
+        let showDisclaimerModal = false; // Default to false to respect settings.json
         try {
             const response = await fetch('/api/settings');
             if (response.ok) {
@@ -3112,7 +3112,7 @@ class DisclaimerModal {
                 }
             }
         } catch (err) {
-            console.warn('[DISCLAIMER DEBUG] Failed to fetch settings, defaulting showDisclaimerModal to true:', err);
+            console.warn('[DISCLAIMER DEBUG] Failed to fetch settings, defaulting showDisclaimerModal to false:', err);
         }
         // Check disclaimer acceptance status
         const isAccepted = DisclaimerModal.isDisclaimerAccepted();

@@ -67,8 +67,8 @@
   --border-color-light: #e9ecef;
   --border-color-dark: #adb5bd;
   
-  /* Typography */
-  --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Typography - Bold, highly readable fonts */
+  --font-family-base: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   --font-family-monospace: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
   
   --font-size-xs: 0.75rem;    /* 12px */
@@ -169,7 +169,7 @@ html {
 body {
   font-family: var(--font-family-base);
   font-size: var(--font-size-base);
-  font-weight: var(--font-weight-normal);
+  font-weight: 500;
   line-height: var(--line-height-base);
   color: var(--text-primary);
   background-color: var(--bg-primary);
@@ -17120,8 +17120,8 @@ body.drag-over::after {
     justify-content: center;
     align-items: center;
     z-index: 10000;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
 }
 
 .modal-loading-content {
@@ -20376,7 +20376,7 @@ body.disclaimer-modal-open {
     justify-content: center;
     align-items: center;
     z-index: 10000;
-    backdrop-filter: blur(4px);
+    backdrop-filter: none;
 }
 
 .credential-modal-content {
@@ -22262,4 +22262,144 @@ button:focus {
         align-items: flex-start;
         gap: 0.5rem;
     }
+}
+
+/* ===== SCROLL TO TOP BUTTON ===== */
+.scroll-to-top-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 3rem;
+    height: 3rem;
+    background-color: var(--ping-blue-primary, #1565c0);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    z-index: 1000;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.scroll-to-top-btn:hover {
+    background-color: var(--ping-blue-dark, #0d47a1);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.scroll-to-top-btn:active {
+    transform: translateY(0);
+}
+
+.scroll-to-top-btn.visible {
+    display: flex;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.scroll-to-top-btn i {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+/* Responsive adjustments for scroll-to-top button */
+@media (max-width: 768px) {
+    .scroll-to-top-btn {
+        bottom: 1rem;
+        right: 1rem;
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1rem;
+    }
+    
+    .scroll-to-top-btn i {
+        font-size: 1rem;
+    }
+}
+
+/* ===== STARTUP BLUR FIX ===== */
+/* Ensure loading overlay is hidden by default and doesn't cause persistent blur */
+.loading-overlay {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+.loading-overlay.active {
+    /* No backdrop filter - clean background */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Modal loading overlay - minimal backdrop for visibility */
+.modal-loading-overlay {
+    backdrop-filter: rgba(0, 0, 0, 0.3) !important;
+    -webkit-backdrop-filter: rgba(0, 0, 0, 0.3) !important;
+}
+
+.modal-loading-overlay.active {
+    /* Minimal backdrop filter for visibility */
+    backdrop-filter: rgba(0, 0, 0, 0.3) !important;
+    -webkit-backdrop-filter: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Global fix to prevent any persistent blur effects */
+body, html {
+    /* Ensure no global blur filters are applied */
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+.app-container {
+    /* Ensure the main app container doesn't have blur effects */
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Restore modal functionality - only remove excessive blur */
+.modal-overlay {
+    /* Keep minimal backdrop for modal visibility */
+    backdrop-filter: rgba(0, 0, 0, 0.3) !important;
+    -webkit-backdrop-filter: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Ensure credentials and disclaimer modals have proper z-index and positioning */
+.credentials-modal-overlay,
+.disclaimer-modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 10000 !important;
+    display: none !important; /* Hidden by default */
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* When modals are active, they should be visible */
+.credentials-modal-overlay.active,
+.disclaimer-modal-overlay.active {
+    display: flex !important;
+}
+
+/* Emergency blur removal - but NOT for modals */
+*:not(.modal-overlay):not(.modal-content) {
+    /* Remove any accidental blur filters, but preserve modal blur effects */
+    filter: none !important;
+}
+
+/* Specific fix for startup blur */
+.startup-blur-fix {
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
 }

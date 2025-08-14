@@ -386,22 +386,7 @@ router.get('/credentials', asyncHandler(async (req, res) => {
             region: standardizedSettings[STANDARD_KEYS.REGION] || DEFAULT_REGION
         };
 
-        // Fallback: if any credential is missing, try data/settings-real.json (developer-local overrides)
-        if (!rawCredentials.environmentId || !rawCredentials.clientId || !rawCredentials.clientSecret) {
-            try {
-                const realPath = path.join(__dirname, '../../data/settings-real.json');
-                const realContent = await fs.readFile(realPath, 'utf8');
-                const realJson = standardizeConfigKeys(JSON.parse(realContent));
-                rawCredentials = {
-                    environmentId: rawCredentials.environmentId || realJson[STANDARD_KEYS.ENVIRONMENT_ID] || '',
-                    clientId: rawCredentials.clientId || realJson[STANDARD_KEYS.CLIENT_ID] || '',
-                    clientSecret: rawCredentials.clientSecret || realJson[STANDARD_KEYS.CLIENT_SECRET] || '',
-                    region: rawCredentials.region || realJson[STANDARD_KEYS.REGION] || DEFAULT_REGION
-                };
-            } catch (_) {
-                // optional fallback file not present; ignore
-            }
-        }
+        // Note: settings-real.json fallback removed for security
         
         // Apply region configuration with precedence hierarchy
         const regionConfig = getRegionConfig({
@@ -429,6 +414,40 @@ router.get('/credentials', asyncHandler(async (req, res) => {
     } catch (error) {
         console.error('Error reading credentials:', error);
         res.error('Failed to read credentials', { code: 'SETTINGS_READ_ERROR', message: error.message }, 500);
+    }
+}));
+
+/**
+ * Get public settings (non-sensitive information)
+ * GET /api/settings/public
+ * This endpoint returns public settings without sensitive credentials
+ */
+router.get('/public', asyncHandler(async (req, res) => {
+    try {
+        const settingsContent = await fs.readFile(SETTINGS_FILE, 'utf8');
+        const rawSettings = JSON.parse(settingsContent);
+        
+        // Standardize configuration keys
+        const standardizedSettings = standardizeConfigKeys(rawSettings);
+        
+        // Return only public, non-sensitive information
+        const publicSettings = {
+            environmentId: standardizedSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
+            region: standardizedSettings[STANDARD_KEYS.REGION] || DEFAULT_REGION,
+            rateLimit: rawSettings.rateLimit || 100,
+            showDisclaimerModal: rawSettings.showDisclaimerModal || false,
+            showCredentialsModal: rawSettings.showCredentialsModal || false,
+            showSwaggerPage: rawSettings.showSwaggerPage || false,
+            autoRefreshToken: rawSettings.autoRefreshToken !== false,
+            lastUpdated: rawSettings.lastUpdated || null,
+            hasCredentials: !!(standardizedSettings[STANDARD_KEYS.CLIENT_ID] && standardizedSettings[STANDARD_KEYS.CLIENT_SECRET])
+        };
+        
+        res.success(publicSettings, 'Public settings retrieved successfully');
+        
+    } catch (error) {
+        console.error('Error reading public settings:', error);
+        res.error('Failed to read public settings', { code: 'SETTINGS_READ_ERROR', message: error.message }, 500);
     }
 }));
 

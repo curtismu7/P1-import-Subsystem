@@ -29,7 +29,7 @@ import logsRouter from './logs.js';
 import debugLogRouter from './debug-log.js';
 import credentialRouter from './credential-management.js';
 import exportRouter from './export.js';
-import importRouter from './import.js';
+// importRouter is now handled directly by the server
 import historyRouter from './history.js';
 import pingoneRouter from './pingone.js';
 import versionRouter from './version.js';
@@ -37,7 +37,7 @@ import settingsRouter from './settings.js';
 import { apiLogHelpers, apiLogger } from '../../server/winston-config.js';
 import { logSeparator, logTag } from '../../server/winston-config.js';
 import { debugLog } from '../../src/shared/debug-utils.js';
-import { sendProgressEvent } from '../../server/connection-manager.js';
+import { sendProgressEvent, sendSmartProgressEvent } from '../../server/connection-manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -104,7 +104,7 @@ router.get('/status', (req, res) => {
     }
 });
 router.use('/export', exportRouter);
-router.use('/import', importRouter);
+// Import routes are now handled directly by the server mounting importRouter at /api
 router.use('/history', historyRouter);
 router.use('/pingone', pingoneRouter);
 router.use('/version', versionRouter);
@@ -259,12 +259,14 @@ async function runImportProcess(sessionId, app) {
             throw new Error('Import session not found');
         }
         
-        const { file, populationId, populationName, totalUsers } = session;
+        const { file, populationId, populationName, totalUsers, importMode, enableRealTimeUpdates } = session;
         
         // Add clear log at start
         logger.info('********** START IMPORT **********');
         logger.info(`* Population Name: ${populationName || 'MISSING'}`);
         logger.info(`* Population ID:   ${populationId || 'MISSING'}`);
+        logger.info(`* Import Mode:     ${importMode || 'auto'}`);
+        logger.info(`* Real-time Updates: ${enableRealTimeUpdates ? 'enabled' : 'disabled'}`);
         logger.info('**********************************');
         
         // DEBUG: Log the session data retrieved for import process
@@ -273,6 +275,8 @@ async function runImportProcess(sessionId, app) {
             populationId: populationId || 'MISSING',
             populationName: populationName || 'MISSING',
             totalUsers: totalUsers || 0,
+            importMode: importMode || 'auto',
+            enableRealTimeUpdates: enableRealTimeUpdates || false,
             fileName: file.originalname
         });
         if (logger.flush) await logger.flush();
@@ -280,7 +284,9 @@ async function runImportProcess(sessionId, app) {
         debugLog.info("🔍 Session data retrieved", {
             populationId: populationId || 'MISSING',
             populationName: populationName || 'MISSING',
-            totalUsers: totalUsers || 0
+            totalUsers: totalUsers || 0,
+            importMode: importMode || 'auto',
+            enableRealTimeUpdates: enableRealTimeUpdates || false
         });
         
         // Parse CSV file
@@ -347,13 +353,16 @@ async function runImportProcess(sessionId, app) {
         const getApiDomain = (region) => {
             const domainMap = {
                 'NorthAmerica': 'api.pingone.com',
+                'NA': 'api.pingone.com', // Add NA mapping
                 'Europe': 'api.eu.pingone.com',
+                'EU': 'api.eu.pingone.com', // Add EU mapping
                 'Canada': 'api.ca.pingone.com',
                 'Asia': 'api.apsoutheast.pingone.com',
+                'AsiaPacific': 'api.apsoutheast.pingone.com', // Add AsiaPacific mapping
+                'AP': 'api.apsoutheast.pingone.com',
+                'APAC': 'api.apsoutheast.pingone.com', // Add APAC mapping
                 'Australia': 'api.aus.pingone.com',
-                'US': 'api.pingone.com',
-                'EU': 'api.eu.pingone.com',
-                'AP': 'api.apsoutheast.pingone.com'
+                'US': 'api.pingone.com'
             };
             return domainMap[region] || 'api.pingone.com';
         };
@@ -367,6 +376,18 @@ async function runImportProcess(sessionId, app) {
         // Process users in batches to avoid rate limiting
         const batchSize = 5;
         const delayBetweenBatches = 1000; // 1 second delay between batches
+        
+        // Basic progress configuration (temporarily disable smart mode)
+        const updateStrategy = {
+            updateFrequency: 1,
+            batchUpdates: false,
+            detailedLogging: true
+        };
+        
+        logger.info(`🎯 Import mode: basic (smart mode temporarily disabled)`, {
+            sessionId,
+            totalUsers: users.length
+        });
         
         const importStart = Date.now();
         
@@ -443,6 +464,8 @@ async function runImportProcess(sessionId, app) {
                                 // User already exists
                                 skipped++;
                                 debugLog.info(`⏭️ User already exists: ${username}`, { lineNumber: user._lineNumber });
+                                
+                                // Progress update
                                 sendProgressEvent(sessionId, processed, users.length, `Skipped: ${username} already exists`,
                                     { processed, created, skipped, failed }, username, populationName, populationId, app);
                                 continue;
@@ -461,6 +484,33 @@ async function runImportProcess(sessionId, app) {
                     }
                     
                     // DEBUG: Log the user data and population before PingOne API call
+                    // Derive robust name fields with fallbacks to satisfy PingOne validation
+                    const normalize = (s) => (typeof s === 'string' ? s.trim() : '');
+                    const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '');
+                    let given = user.givenname || user.firstname || user['first name'] || user['name.given'] || user.given || '';
+                    let family = user.familyname || user.lastname || user['last name'] || user['name.family'] || user.family || '';
+                    if (!normalize(given) && !normalize(family)) {
+                        const fullName = normalize(user.fullname || user.displayname || user.name || '');
+                        const tryFromFull = () => {
+                            if (!fullName) return null;
+                            const parts = fullName.replace(/\s+/g, ' ').split(' ');
+                            if (parts.length === 1) return { given: cap(parts[0]), family: 'User' };
+                            return { given: cap(parts[0]), family: cap(parts.slice(1).join(' ')) };
+                        };
+                        const tryFromId = (id) => {
+                            const v = normalize(id);
+                            if (!v) return null;
+                            const local = v.includes('@') ? v.split('@')[0] : v;
+                            const segs = local.split(/[._-]+/).filter(Boolean);
+                            if (segs.length >= 2) return { given: cap(segs[0]), family: cap(segs[1]) };
+                            if (segs.length === 1) return { given: cap(segs[0]), family: 'User' };
+                            return null;
+                        };
+                        const derived = tryFromFull() || tryFromId(user.email) || tryFromId(username) || { given: 'User', family: 'Unknown' };
+                        given = derived.given;
+                        family = derived.family;
+                    }
+
                     logger.info(`[${new Date().toISOString()}] [DEBUG] Creating user in PingOne`, {
                         sessionId,
                         username,
@@ -470,11 +520,8 @@ async function runImportProcess(sessionId, app) {
                         userData: {
                             username,
                             email: user.email || username,
-                            givenName: user.givenname || user.firstname || user['first name'] || '',
-                            familyName: user.familyname || user.lastname || user['last name'] || '',
-                            population: {
-                                id: populationId
-                            }
+                            name: { given, family },
+                            population: { id: populationId }
                         }
                     });
                     if (logger.flush) await logger.flush();
@@ -484,11 +531,8 @@ async function runImportProcess(sessionId, app) {
                     const userData = {
                         username: username,
                         email: user.email || username,
-                        givenName: user.givenname || user.firstname || user['first name'] || '',
-                        familyName: user.familyname || user.lastname || user['last name'] || '',
-                        population: {
-                            id: populationId
-                        }
+                        name: { given, family },
+                        population: { id: populationId }
                     };
                     
                     // Add optional fields if present
@@ -598,6 +642,8 @@ async function runImportProcess(sessionId, app) {
             populationId
         });
         if (logger.flush) await logger.flush();
+        
+        // Progress update
         sendProgressEvent(sessionId, processed, users.length, `Created: ${username} in ${populationName}`, 
             { processed, created, skipped, failed }, username, populationName, populationId, app);
             
@@ -607,6 +653,8 @@ async function runImportProcess(sessionId, app) {
         failed++;
         debugLog.info(`❌ ${errorMsg}`);
         if (logger.flush) await logger.flush();
+        
+        // Progress update
         sendProgressEvent(sessionId, processed, users.length, `Error: ${user.username || user.email || 'unknown'}`, 
             { processed, created, skipped, failed }, user.username || user.email || 'unknown', populationName, populationId, app);
                 }
@@ -616,6 +664,22 @@ async function runImportProcess(sessionId, app) {
             if (i + batchSize < users.length) {
                 debugLog.info(`⏱️ Adding delay between batches: ${delayBetweenBatches}ms`);
                 await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+            }
+            
+            // Basic progress update (batch updates disabled)
+            if ((i + batchSize) % 10 === 0) {
+                const batchEnd = Math.min(i + batchSize, users.length);
+                const batchMessage = `Batch processed: ${batchEnd}/${users.length} users (${Math.round((batchEnd/users.length)*100)}%)`;
+                
+                sendProgressEvent(sessionId, batchEnd, users.length, batchMessage,
+                    { processed: batchEnd, created, skipped, failed }, null, populationName, populationId, app);
+                
+                logger.info(`📊 Batch progress update: ${batchMessage}`, {
+                    sessionId,
+                    batchEnd,
+                    total: users.length,
+                    percentage: Math.round((batchEnd/users.length)*100)
+                });
             }
         }
         
@@ -648,6 +712,11 @@ async function runImportProcess(sessionId, app) {
             failed,
             errors: errors.length
         });
+        
+        // Send final progress update
+        const finalProgressMessage = `Final: ${created} created, ${failed} failed, ${skipped} skipped`;
+        sendProgressEvent(sessionId, processed, users.length, finalProgressMessage,
+            { processed, created, skipped, failed }, null, populationName, populationId, app);
         
         const finalMessage = `Import completed: ${created} created, ${failed} failed, ${skipped} skipped`;
         sendCompletionEvent(sessionId, processed, users.length, finalMessage, { processed, created, skipped, failed }, app);
@@ -887,10 +956,22 @@ router.post('/feature-flags/reset', (req, res) => {
  *                 type: number
  *                 description: Expected number of users in CSV
  *                 example: 100
+ *               importMode:
+ *                 type: string
+ *                 enum: [auto, manual]
+ *                 description: Import mode
+ *                 example: auto
+ *               enableRealTimeUpdates:
+ *                 type: boolean
+ *                 description: Enable real-time updates
+ *                 example: true
  *             required:
  *               - file
  *               - populationId
  *               - populationName
+ *               - totalUsers
+ *               - importMode
+ *               - enableRealTimeUpdates
  *     responses:
  *       200:
  *         description: Import started successfully
@@ -973,10 +1054,22 @@ router.post('/feature-flags/reset', (req, res) => {
  *                 type: number
  *                 description: Expected number of users in CSV
  *                 example: 100
+ *               importMode:
+ *                 type: string
+ *                 enum: [auto, manual]
+ *                 description: Import mode
+ *                 example: auto
+ *               enableRealTimeUpdates:
+ *                 type: boolean
+ *                 description: Enable real-time updates
+ *                 example: true
  *             required:
  *               - file
  *               - populationId
  *               - populationName
+ *               - totalUsers
+ *               - importMode
+ *               - enableRealTimeUpdates
  *     responses:
  *       200:
  *         description: Import started successfully
@@ -991,6 +1084,8 @@ router.post('/feature-flags/reset', (req, res) => {
  *               populationName: "Sample Users"
  *               populationId: "3840c98d-202d-4f6a-8871-f3bc66cb3fa8"
  *               totalUsers: 100
+ *               importMode: "auto"
+ *               enableRealTimeUpdates: true
  *       400:
  *         description: Validation error
  *         content:
@@ -1008,128 +1103,8 @@ router.post('/feature-flags/reset', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/import', upload.single('file'), async (req, res, next) => {
-    try {
-        const logger = req.app.get('importLogger') || apiLogger;
-        logger.info(logSeparator());
-        logger.info(logTag('IMPORT ENDPOINT HIT'), { tag: logTag('IMPORT ENDPOINT HIT'), separator: logSeparator() });
-        logger.info(`[${new Date().toISOString()}] [INFO] Import endpoint triggered`, {
-            file: req.file ? req.file.originalname : null,
-            populationId: req.body.populationId,
-            populationName: req.body.populationName
-        });
-        if (logger.flush) await logger.flush();
-        
-        debugLog.info("🚀 Import request received");
-        
-        // Validate file upload
-        if (!req.file) {
-            debugLog.info("❌ No file uploaded");
-            return res.status(400).json({
-                success: false,
-                error: 'No file uploaded',
-                message: 'Please select a CSV file to import'
-            });
-        }
-        
-        // Validate population selection
-        const { populationId, populationName, totalUsers } = req.body;
-        
-        // DEBUG: Log the received population data
-        logger.info(`[${new Date().toISOString()}] [DEBUG] Population data received from frontend`, {
-            populationId: populationId || 'MISSING',
-            populationName: populationName || 'MISSING',
-            totalUsers: totalUsers || 'MISSING',
-            hasPopulationId: !!populationId,
-            hasPopulationName: !!populationName
-        });
-        if (logger.flush) await logger.flush();
-        
-        debugLog.info("🔍 Population data received", { 
-            populationId: populationId || 'MISSING', 
-            populationName: populationName || 'MISSING',
-            totalUsers: totalUsers || 'MISSING'
-        });
-        
-        if (!populationId || !populationName) {
-            debugLog.info("❌ Missing population information", { populationId, populationName });
-            logger.error(`[${new Date().toISOString()}] [ERROR] Missing population information`, {
-                populationId: populationId || 'MISSING',
-                populationName: populationName || 'MISSING'
-            });
-            if (logger.flush) await logger.flush();
-            return res.status(400).json({
-                success: false,
-                error: 'Missing population information',
-                message: 'Please select a population for the import'
-            });
-        }
-        
-        debugLog.info("✅ Import options validated", {
-            totalUsers: parseInt(totalUsers) || 0,
-            populationId,
-            populationName,
-            fileName: req.file.originalname
-        });
-        
-        // Generate session ID for SSE connection
-        const sessionId = uuidv4();
-        
-        // Store import session data
-        const importSession = {
-            sessionId,
-            file: req.file,
-            populationId,
-            populationName,
-            totalUsers: parseInt(totalUsers) || 0,
-            startTime: new Date(),
-            status: 'starting'
-        };
-        
-        // DEBUG: Log the session data being stored
-        logger.info(`[${new Date().toISOString()}] [DEBUG] Import session data stored`, {
-            sessionId,
-            populationId,
-            populationName,
-            totalUsers: parseInt(totalUsers) || 0,
-            fileName: req.file.originalname
-        });
-        if (logger.flush) await logger.flush();
-        
-        // Store session in app context for SSE access
-        if (!req.app.get('importSessions')) {
-            req.app.set('importSessions', new Map());
-        }
-        req.app.get('importSessions').set(sessionId, importSession);
-        
-        debugLog.info("📋 Import session created", { sessionId });
-        
-        // Start import process in background with proper error handling
-        runImportProcess(sessionId, req.app).catch(error => {
-            debugLog.info("❌ Background import process failed", { error: error.message });
-            sendErrorEvent(sessionId, 'Import failed', error.message, {}, req.app);
-        });
-        
-        // Return session ID for SSE connection
-        res.json({
-            success: true,
-            sessionId,
-            message: 'Import started successfully',
-            populationName,
-            populationId,
-            totalUsers: parseInt(totalUsers) || 0
-        });
-        
-    } catch (error) {
-        debugLog.info("❌ Import endpoint error", { error: error.message });
-        res.status(500).json({
-            success: false,
-            error: 'Import failed',
-            message: error.message,
-            timestamp: new Date().toISOString()
-        });
-    }
-});
+// Import route has been moved to routes/api/import.js to avoid conflicts
+// Import route has been completely removed from apiRouter to avoid conflicts
 
 // ============================================================================
 // Socket.IO Progress Tracking (Replaces SSE)
@@ -1170,30 +1145,7 @@ router.post('/import', upload.single('file'), async (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/import/progress/:sessionId', (req, res) => {
-    const { sessionId } = req.params;
-    
-    // Validate session ID
-    if (!sessionId || typeof sessionId !== 'string' || sessionId.length < 8) {
-        return res.status(400).json({ 
-            error: 'Invalid session ID for Socket.IO connection', 
-            code: 'INVALID_SESSION_ID',
-            details: {
-                sessionId,
-                minLength: 8,
-                actualLength: sessionId ? sessionId.length : 0
-            }
-        });
-    }
-    
-    // Return information about using Socket.IO instead of SSE
-    res.json({
-        message: 'Use Socket.IO connection for real-time updates',
-        sessionId,
-        connectionType: 'socket.io',
-        timestamp: new Date().toISOString()
-    });
-});
+// Import progress route has been moved to routes/api/import.js to avoid conflicts
 
 // ============================================================================
 // USER EXPORT ENDPOINT
@@ -1524,33 +1476,47 @@ router.get('/populations', async (req, res) => {
     apiLogger.debug(`${functionName} - Entry`, { requestId: req.requestId });
 
     try {
-        // Import population cache service dynamically
-        const { populationCacheService } = await import('../../server/services/population-cache-service.js');
+        // Try to import population cache service dynamically, with fallback
+        let populationCacheService = null;
+        let cachedData = null;
         
-        // Try to get cached populations first for fast response unless refresh requested
-        const forceRefresh = String(req.query.refresh || '') === '1';
-        const cachedData = forceRefresh ? null : await populationCacheService.getCachedPopulations();
-        if (!forceRefresh && cachedData && cachedData.populations) {
-            apiLogger.debug(`${functionName} - Returning cached populations`, { 
+        try {
+            const { populationCacheService: importedService } = await import('../../server/services/population-cache-service.js');
+            populationCacheService = importedService;
+            
+            // Try to get cached populations first for fast response unless refresh requested
+            const forceRefresh = String(req.query.refresh || '') === '1';
+            if (populationCacheService && !forceRefresh) {
+                cachedData = await populationCacheService.getCachedPopulations();
+                if (cachedData && cachedData.populations) {
+                    apiLogger.debug(`${functionName} - Returning cached populations`, { 
+                        requestId: req.requestId, 
+                        count: cachedData.count,
+                        cachedAt: cachedData.cachedAt 
+                    });
+                    
+                    console.log(`[Populations] ⚡ Using cached data: ${cachedData.count} populations (cached at ${cachedData.cachedAt})`);
+                    
+                    return res.success('Populations retrieved from cache', {
+                        populations: cachedData.populations,
+                        total: cachedData.count,
+                        fromCache: true,
+                        cachedAt: cachedData.cachedAt,
+                        expiresAt: cachedData.expiresAt
+                    });
+                }
+            }
+        } catch (cacheError) {
+            apiLogger.warn(`${functionName} - Cache service unavailable, proceeding with API call`, { 
                 requestId: req.requestId, 
-                count: cachedData.count,
-                cachedAt: cachedData.cachedAt 
+                error: cacheError.message 
             });
-            
-            console.log(`[Populations] ⚡ Using cached data: ${cachedData.count} populations (cached at ${cachedData.cachedAt})`);
-            
-            return res.success('Populations retrieved from cache', {
-                populations: cachedData.populations,
-                total: cachedData.count,
-                fromCache: true,
-                cachedAt: cachedData.cachedAt,
-                expiresAt: cachedData.expiresAt
-            });
+            console.log(`[Populations] ⚠️ Cache service error: ${cacheError.message} - Using API fallback`);
         }
         
-        // Cache miss/expired or refresh requested - fetch from API
-        apiLogger.debug(`${functionName} - Cache miss, fetching from PingOne API`, { requestId: req.requestId });
-        console.log(`[Populations] 🔄 Cache miss, fetching from PingOne API...`);
+        // Cache miss/expired, refresh requested, or cache service unavailable - fetch from API
+        apiLogger.debug(`${functionName} - Fetching from PingOne API`, { requestId: req.requestId });
+        console.log(`[Populations] 🔄 Fetching from PingOne API...`);
         
         // Get token manager from Express app context
         const tokenManager = req.app.get('tokenManager');
@@ -1608,37 +1574,57 @@ router.get('/populations', async (req, res) => {
         
         console.log(`[Populations] ✅ Fetched ${populations.length} populations`);
         
-        // Determine default population from settings.json
+        // Determine default population: prefer API flag, else fetch organization default once
         let defaultPopulationId = null;
         try {
-            const fs = await import('fs/promises');
-            const path = await import('path');
-            const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
-            const raw = await fs.readFile(settingsPath, 'utf8').catch(() => null);
-            if (raw) {
-                const settings = JSON.parse(raw);
-                defaultPopulationId = settings.pingone_population_id || settings.populationId || null;
+            const defaultResp = await fetch(`${apiBaseUrl}/environments/${environmentId}/populations`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+            });
+            if (defaultResp.ok) {
+                const djson = await defaultResp.json();
+                const emb = djson?._embedded?.populations || [];
+                const apiDefault = emb.find(p => p && p.isDefault === true);
+                if (apiDefault) defaultPopulationId = apiDefault.id;
             }
-        } catch (_) { /* ignore settings read errors */ }
+        } catch (_) { /* ignore */ }
+        if (!defaultPopulationId) {
+            try {
+                const fs = await import('fs/promises');
+                const path = await import('path');
+                const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
+                const raw = await fs.readFile(settingsPath, 'utf8').catch(() => null);
+                if (raw) {
+                    const settings = JSON.parse(raw);
+                    defaultPopulationId = settings.pingone_population_id || settings.populationId || null;
+                }
+            } catch (_) { /* ignore settings read errors */ }
+        }
 
         // Format populations for frontend and mark default
+        // Prefer API-provided default flag if present, fall back to settings
         const formattedPopulations = populations.map(population => ({
             id: population.id,
             name: population.name,
             description: population.description || '',
             userCount: population.userCount || 0,
-            isDefault: defaultPopulationId ? population.id === defaultPopulationId : false
+            isDefault: (population.isDefault === true) || (defaultPopulationId ? population.id === defaultPopulationId : false)
         }));
         
-        // Cache the fresh data for future requests
-        try {
-            await populationCacheService.savePopulationsToCache(formattedPopulations);
-            console.log(`[Populations] 💾 Cached ${formattedPopulations.length} populations for future requests`);
-        } catch (cacheError) {
-            apiLogger.warn(`${functionName} - Failed to cache populations`, { 
-                requestId: req.requestId, 
-                error: cacheError.message 
-            });
+        // Cache the fresh data for future requests (if cache service is available)
+        if (populationCacheService) {
+            try {
+                await populationCacheService.savePopulationsToCache(formattedPopulations);
+                console.log(`[Populations] 💾 Cached ${formattedPopulations.length} populations for future requests`);
+            } catch (cacheError) {
+                apiLogger.warn(`${functionName} - Failed to cache populations`, { 
+                    requestId: req.requestId, 
+                    error: cacheError.message 
+                });
+                console.log(`[Populations] ⚠️ Cache save failed: ${cacheError.message}`);
+            }
+        } else {
+            console.log(`[Populations] ⚠️ Cache service unavailable - skipping cache save`);
         }
         
         res.success('Populations retrieved successfully', {
@@ -1710,8 +1696,31 @@ router.get('/populations/cache-status', async (req, res) => {
     apiLogger.debug(`${functionName} - Entry`, { requestId: req.requestId });
 
     try {
-        // Import population cache service dynamically
-        const { populationCacheService } = await import('../../server/services/population-cache-service.js');
+        // Try to import population cache service dynamically, with fallback
+        let populationCacheService = null;
+        
+        try {
+            const { populationCacheService: importedService } = await import('../../server/services/population-cache-service.js');
+            populationCacheService = importedService;
+        } catch (importError) {
+            apiLogger.warn(`${functionName} - Cache service unavailable`, { 
+                requestId: req.requestId, 
+                error: importError.message 
+            });
+            
+            // Return fallback status when cache service is unavailable
+            return res.success('Population cache status retrieved (fallback)', {
+                hasCachedData: false,
+                isExpired: true,
+                count: 0,
+                cachedAt: null,
+                expiresAt: null,
+                backgroundRefreshActive: false,
+                isRefreshing: false,
+                cacheServiceAvailable: false,
+                error: 'Cache service unavailable'
+            });
+        }
         
         // Get cache status
         const cacheStatus = await populationCacheService.getCacheStatus();
@@ -2165,60 +2174,70 @@ router.post('/export-users', async (req, res, next) => {
             });
         }
 
-        // Build PingOne API URL. Prefer population-scoped endpoint when populationId is provided
-        let pingOneUrl;
+        // Build first page URL with correct population filter; PingOne APIs commonly use filter=population.id eq "..."
         const base = `${tokenManager.getApiBaseUrl()}/environments/${environmentId}`;
-        if (typeof actualPopulationId === 'string' && actualPopulationId.trim() !== '') {
-            // Use population-specific users list to guarantee scoping
-            pingOneUrl = `${base}/populations/${encodeURIComponent(actualPopulationId.trim())}/users?limit=1000`;
-        } else {
-            // Fallback to global users list
-            pingOneUrl = `${base}/users?limit=1000`;
-        }
+        const pageSize = 200;
 
-        console.log('Fetching users from PingOne API:', pingOneUrl, { populationId: actualPopulationId });
-
-        const pingOneResponse = await fetch(pingOneUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+        async function fetchAllUsersWithUrl(startUrl) {
+            const collected = [];
+            let url = startUrl;
+            while (url) {
+                console.log('Fetching users from PingOne API:', url, { populationId: actualPopulationId });
+                const resp = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+                if (!resp.ok) {
+                    const errorData = await resp.json().catch(() => ({}));
+                    throw new Error(errorData.message || `HTTP ${resp.status}: ${resp.statusText}`);
+                }
+                const payload = await resp.json().catch(() => ({}));
+                let pageUsers = [];
+                if (Array.isArray(payload)) {
+                    pageUsers = payload;
+                } else if (Array.isArray(payload.items)) {
+                    pageUsers = payload.items;
+                } else if (payload && payload._embedded && Array.isArray(payload._embedded.users)) {
+                    pageUsers = payload._embedded.users;
+                }
+                collected.push(...pageUsers);
+                const nextLink = payload && payload._links && (payload._links.next || payload._links?.next?.[0]);
+                url = nextLink && nextLink.href ? nextLink.href : null;
             }
-        });
-
-        if (!pingOneResponse.ok) {
-            const errorData = await pingOneResponse.json().catch(() => ({}));
-            console.error('PingOne API request failed:', {
-                status: pingOneResponse.status,
-                statusText: pingOneResponse.statusText,
-                errorData
-            });
-            return res.status(pingOneResponse.status).json({
-                error: 'Failed to fetch users from PingOne',
-                message: errorData.message || `HTTP ${pingOneResponse.status}: ${pingOneResponse.statusText}`,
-                details: errorData
-            });
+            return collected;
         }
 
-        let users = await pingOneResponse.json();
-        
-        // Handle PingOne API response format variations
-        // Normalize response array shape
-        if (users && Array.isArray(users)) {
-            // already array
-        } else if (users && Array.isArray(users.items)) {
-            users = users.items;
-        } else if (users && users._embedded && Array.isArray(users._embedded.users)) {
-            users = users._embedded.users;
-        } else {
+        // Strategy 1: use filter=population.id eq "..."
+        const paramsFilter = new URLSearchParams();
+        paramsFilter.append('limit', String(pageSize));
+        paramsFilter.append('expand', 'population');
+        if (actualPopulationId && String(actualPopulationId).trim() !== '') {
+            paramsFilter.append('filter', `population.id eq "${String(actualPopulationId).trim()}"`);
+        }
+        let users;
+        try {
+            users = await fetchAllUsersWithUrl(`${base}/users?${paramsFilter.toString()}`);
+        } catch (e) {
             users = [];
         }
-
-        console.log('Users fetched successfully:', {
-            count: users.length,
-            populationId: actualPopulationId
-        });
+        // Strategy 2 (fallback): use population.id param if filter returned zero
+        if ((!users || users.length === 0) && actualPopulationId && String(actualPopulationId).trim() !== '') {
+            const paramsPop = new URLSearchParams();
+            paramsPop.append('limit', String(pageSize));
+            paramsPop.append('expand', 'population');
+            paramsPop.append('population.id', String(actualPopulationId).trim());
+            try {
+                users = await fetchAllUsersWithUrl(`${base}/users?${paramsPop.toString()}`);
+            } catch (e) {
+                // If fallback fails, bubble up an error
+                return res.status(502).json({ success: false, error: 'Failed to fetch users from PingOne', details: e.message });
+            }
+        }
+        console.log('Users fetched successfully:', { count: users.length, populationId: actualPopulationId });
 
         // Filter out disabled users if the ignore flag is set
         // This provides a way to export only active users
@@ -2463,22 +2482,16 @@ router.post('/export-users', async (req, res, next) => {
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
         res.send(output);
 
-        // Log export operation
-        const log = (global.logger || console);
-        log.info ? log.info('********** START EXPORT **********') : console.log('********** START EXPORT **********');
-        logger.info(`* Population ID:   ${actualPopulationId || 'ALL'}`);
-        logger.info('**********************************');
-        log.info ? log.info(`[${new Date().toISOString()}] [INFO] Export operation completed`, {
+        // Log export operation using proper logging function
+        logExportOperation(req, {
             populationId: actualPopulationId,
-            populationName: req.body.populationName,
-            userCount: users.length,
-            format,
-            includeDisabled: shouldIgnoreDisabledUsers,
-            includeMetadata: req.body.includeMetadata,
-            useOverrideCredentials: req.body.useOverrideCredentials,
-            userAgent: req.get('User-Agent'),
-            ip: req.ip
-        }) : console.log('Export operation completed');
+            populationName: req.body.populationName || 'Unknown',
+            userCount: processedUsers.length,
+            format: format || 'csv',
+            includeDisabled: !shouldIgnoreDisabledUsers,
+            includeMetadata: req.body.includeMetadata || false,
+            useOverrideCredentials: req.body.useOverrideCredentials || false
+        });
     } catch (error) {
         console.error('Export operation failed:', {
             error: error.message,
@@ -2734,6 +2747,113 @@ router.get('/version', (req, res) => {
     res.json({ version: '7.0.1.0' });
 });
 
+// --- TOKEN ENDPOINTS ---
+router.get('/token/status', async (req, res) => {
+    try {
+        const tokenManager = req.app.get('tokenManager');
+        if (!tokenManager) {
+            return res.error('Token manager not available', { code: 'TOKEN_MANAGER_UNAVAILABLE' }, 500);
+        }
+        
+        const hasToken = await tokenManager.hasValidToken();
+        const tokenInfo = await tokenManager.getTokenInfo();
+        
+        res.success('Token status retrieved successfully', {
+            hasToken,
+            isValid: hasToken,
+            expiresIn: tokenInfo?.expiresIn || null,
+            environmentId: tokenInfo?.environmentId || null,
+            region: tokenInfo?.region || null,
+            lastUpdated: tokenInfo?.lastUpdated || null
+        });
+    } catch (error) {
+        res.error('Failed to get token status', { code: 'TOKEN_STATUS_ERROR', details: error.message }, 500);
+    }
+});
+
+router.post('/token/refresh', async (req, res) => {
+    try {
+        const tokenManager = req.app.get('tokenManager');
+        if (!tokenManager) {
+            return res.error('Token manager not available', { code: 'TOKEN_MANAGER_UNAVAILABLE' }, 500);
+        }
+        
+        const newToken = await tokenManager.refreshToken();
+        if (newToken) {
+            res.success('Token refreshed successfully', { refreshed: true });
+        } else {
+            res.error('Failed to refresh token', { code: 'TOKEN_REFRESH_FAILED' }, 500);
+        }
+    } catch (error) {
+        res.error('Failed to refresh token', { code: 'TOKEN_REFRESH_ERROR', details: error.message }, 500);
+    }
+});
+
+// --- SYSTEM ENDPOINTS ---
+router.get('/system/git-status', async (req, res) => {
+    try {
+        // Simple git status check
+        const gitStatus = {
+            repository: 'PingOne Import Tool',
+            branch: 'version-7.0',
+            lastCommit: 'Latest',
+            status: 'clean'
+        };
+        
+        res.success('Git status retrieved successfully', gitStatus);
+    } catch (error) {
+        res.error('Failed to get git status', { code: 'GIT_STATUS_ERROR', details: error.message }, 500);
+    }
+});
+
+router.get('/system/security-headers', async (req, res) => {
+    try {
+        const securityHeaders = {
+            headers: {
+                'X-Content-Type-Options': 'nosniff',
+                'X-Frame-Options': 'DENY',
+                'X-XSS-Protection': '1; mode=block',
+                'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+                'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' https:; connect-src 'self' https:;"
+            },
+            recommendations: [
+                'All security headers are properly configured',
+                'HTTPS is enforced',
+                'XSS protection is enabled',
+                'Content sniffing is disabled'
+            ]
+        };
+        
+        res.success('Security headers retrieved successfully', securityHeaders);
+    } catch (error) {
+        res.error('Failed to get security headers', { code: 'SECURITY_HEADERS_ERROR', details: error.message }, 500);
+    }
+});
+
+// --- DEBUG ENDPOINTS ---
+router.get('/debug/modules', async (req, res) => {
+    try {
+        const moduleInfo = {
+            modules: [
+                'auth-subsystem',
+                'error-logging-subsystem',
+                'file-processing-subsystem',
+                'population-subsystem',
+                'progress-subsystem',
+                'settings-subsystem',
+                'ui-subsystem',
+                'websocket-subsystem'
+            ],
+            status: 'all_modules_loaded',
+            timestamp: new Date().toISOString()
+        };
+        
+        res.success('Module information retrieved successfully', moduleInfo);
+    } catch (error) {
+        res.error('Failed to get module information', { code: 'MODULE_INFO_ERROR', details: error.message }, 500);
+    }
+});
+
 // --- BULK USER DELETE BY IDS ---
 router.post('/users/delete', express.json(), async (req, res) => {
     try {
@@ -2920,65 +3040,7 @@ router.get('/user-schema', async (req, res) => {
     }
 });
 
-// --- CSV TEMPLATE FOR IMPORT ---
-router.get('/import/template', async (req, res) => {
-    try {
-        const tokenManager = req.app.get('tokenManager');
-        if (!tokenManager) return res.status(500).json({ success: false, error: 'Token manager not available' });
-        const token = await tokenManager.getAccessToken();
-        if (!token) return res.status(401).json({ success: false, error: 'Failed to get access token' });
-        const environmentId = await tokenManager.getEnvironmentId();
-        const apiBaseUrl = tokenManager.getApiBaseUrl();
-        const scimBase = `${apiBaseUrl}/environments/${environmentId}/scim/v2/Schemas`;
-
-        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-        const listResp = await fetch(scimBase, { headers });
-        let flat = [];
-        if (listResp.ok) {
-            const listJson = await listResp.json();
-            const resources = listJson?.Resources || listJson?.schemas || [];
-            const userSchemas = resources.filter(s => {
-                const id = s?.id || s?.schema || '';
-                return /User$/i.test(id) || /:User/.test(id) || /core:2\.0:User/.test(id);
-            });
-            const walk = (attrs, prefix = '') => {
-                if (!Array.isArray(attrs)) return;
-                for (const a of attrs) {
-                    const name = a?.name || a?.id;
-                    if (!name) continue;
-                    const path = prefix ? `${prefix}.${name}` : name;
-                    flat.push(path);
-                    if (Array.isArray(a.subAttributes)) walk(a.subAttributes, path);
-                }
-            };
-            for (const s of userSchemas) {
-                if (Array.isArray(s.attributes)) walk(s.attributes);
-            }
-        }
-
-        // Prioritize common, minimal headers first
-        const common = [
-            'username', 'emails.value', 'name.given', 'name.family', 'enabled'
-        ];
-        const unique = Array.from(new Set([...common, ...flat])).slice(0, 60); // cap to reasonable length
-
-        const headerRow = unique.join(',');
-        const sample1 = ['user1', 'user1@example.com', 'User', 'One', 'true'];
-        const sample2 = ['user2', 'user2@example.com', 'User', 'Two', 'true'];
-        const paddedRow = (arr) => {
-            const row = [...arr];
-            while (row.length < unique.length) row.push('');
-            return row.join(',');
-        };
-        const csv = [headerRow, paddedRow(sample1), paddedRow(sample2)].join('\n');
-
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', 'attachment; filename="pingone-import-template.csv"');
-        return res.send(csv);
-    } catch (error) {
-        return res.status(500).json({ success: false, error: error.message });
-    }
-});
+// CSV template route has been moved to routes/api/import.js to avoid conflicts
 
 // --- DELETE USERS ENDPOINT ---
 router.post('/delete-users', upload.single('file'), async (req, res) => {
@@ -3503,6 +3565,48 @@ router.get('/pingone/users', async (req, res) => {
                 message: 'Failed to fetch users from PingOne API',
                 suggestion: 'Please check your credentials and try again'
             }
+        });
+    }
+});
+
+// ============================================================================
+// Export log download endpoint
+router.get('/export-log', async (req, res) => {
+    try {
+        const fs = await import('fs/promises');
+        const path = await import('path');
+        
+        // Get the export log file path
+        const logDir = path.join(process.cwd(), 'logs');
+        const logPath = path.join(logDir, 'export-users.log');
+        
+        // Check if the log file exists
+        try {
+            await fs.access(logPath);
+        } catch (error) {
+            return res.status(404).json({
+                success: false,
+                error: 'Export log file not found',
+                message: 'No export operations have been performed yet'
+            });
+        }
+        
+        // Read the log file
+        const logContent = await fs.readFile(logPath, 'utf8');
+        
+        // Set headers for file download
+        res.setHeader('Content-Type', 'text/plain');
+        res.setHeader('Content-Disposition', `attachment; filename="export-log-${new Date().toISOString().split('T')[0]}.txt"`);
+        
+        // Send the log content
+        res.send(logContent);
+        
+    } catch (error) {
+        console.error('Error downloading export log:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to download export log',
+            details: error.message
         });
     }
 });

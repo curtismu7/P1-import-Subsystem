@@ -57,16 +57,40 @@ class PingOneAuth {
         
         if (!hasEnvVars) {
             this.logger.info('Environment variables missing or incomplete, reading from settings file');
-            const settings = await this.credentialEncryptor.readAndDecryptSettings();
+            
+            // Try to read encrypted credentials first
+            let settings = await this.credentialEncryptor.readAndDecryptSettings();
+            
+            // If no encrypted credentials, try to read from plain text settings.json
+            if (!settings) {
+                try {
+                    const fs = await import('fs/promises');
+                    const path = await import('path');
+                    const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
+                    const settingsContent = await fs.readFile(settingsPath, 'utf8');
+                    settings = JSON.parse(settingsContent);
+                    this.logger.info('Read credentials from plain text settings.json');
+                } catch (error) {
+                    this.logger.warn('Could not read plain text settings.json:', error.message);
+                }
+            }
             
             if (settings) {
-                clientId = clientId || settings.apiClientId;
-                environmentId = environmentId || settings.environmentId;
-                region = region || settings.region || 'NorthAmerica';
+                // Map the settings to the expected format (handle both field name variations)
+                const mappedSettings = {
+                    apiClientId: settings.apiClientId || settings.pingone_client_id,
+                    apiSecret: settings.apiSecret || settings.pingone_client_secret,
+                    environmentId: settings.environmentId || settings.pingone_environment_id,
+                    region: settings.region || settings.pingone_region || 'NorthAmerica'
+                };
+                
+                clientId = clientId || mappedSettings.apiClientId;
+                environmentId = environmentId || mappedSettings.environmentId;
+                region = region || mappedSettings.region || 'NorthAmerica';
 
                 // Get decrypted API secret
-                if (!clientSecret && settings.apiSecret) {
-                    clientSecret = settings.apiSecret;
+                if (!clientSecret && mappedSettings.apiSecret) {
+                    clientSecret = mappedSettings.apiSecret;
                 }
             }
         }
@@ -223,13 +247,16 @@ class PingOneAuth {
         const regionToUse = region || this.currentRegion || 'NorthAmerica';
         const domainMap = {
             'NorthAmerica': 'https://api.pingone.com/v1',
+            'NA': 'https://api.pingone.com/v1', // Add NA mapping
             'Europe': 'https://api.eu.pingone.com/v1',
+            'EU': 'https://api.eu.pingone.com/v1',
             'Canada': 'https://api.ca.pingone.com/v1',
             'Asia': 'https://api.apsoutheast.pingone.com/v1',
+            'AsiaPacific': 'https://api.apsoutheast.pingone.com/v1', // Add AsiaPacific mapping
+            'AP': 'https://api.apsoutheast.pingone.com/v1',
+            'APAC': 'https://api.apsoutheast.pingone.com/v1', // Add APAC mapping
             'Australia': 'https://api.aus.pingone.com/v1',
-            'US': 'https://api.pingone.com/v1',
-            'EU': 'https://api.eu.pingone.com/v1',
-            'AP': 'https://api.apsoutheast.pingone.com/v1'
+            'US': 'https://api.pingone.com/v1'
         };
         return domainMap[regionToUse] || 'https://api.pingone.com/v1';
     }

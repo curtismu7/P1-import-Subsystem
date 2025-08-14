@@ -2,6 +2,7 @@
  * PingOne User Management - Custom UI Styles
  * Following Ping Identity Design System
  * https://library.pingidentity.com/page/ping-ux-css
+ * Last updated: 2025-01-27 - Token styling fixes
  */
 
 /* CSS Variables - Ping Identity Color Palette */
@@ -51,7 +52,7 @@
   --nav-width: 280px;
   --nav-width-collapsed: 60px;
   --footer-height: 50px;
-  --status-bar-height: 40px;
+  --status-bar-height: 60px;
   
   /* Typography */
   --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -179,25 +180,79 @@ body {
   gap: var(--spacing-xs);
 }
 
-/* Status Message Bar */
+/* Status Message Bar - Enhanced */
 .status-message-bar {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  background: var(--ping-success) !important;
+  background: linear-gradient(135deg, #059669, #047857) !important;
   color: white !important;
-  padding: 8px 16px !important;
+  padding: 10px 20px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
   z-index: 3000 !important;
-  height: 40px !important;
-  box-shadow: none !important;
+  height: 44px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
   margin: 0 !important;
-  border: none !important;
+}
+
+/* Refresh Token Button Styling */
+#refresh-token-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  height: 28px !important;
+  padding: 0 12px !important;
+  background: white !important;
+  color: #333 !important;
+  border: 1px solid #ddd !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+#refresh-token-btn:hover {
+  background: #f8f9fa !important;
+  border-color: #adb5bd !important;
+  transform: translateY(-1px) !important;
+}
+
+#refresh-token-btn:active {
+  transform: translateY(0) !important;
+  background: #e9ecef !important;
+}
+
+/* Status Message with Green Checkmark */
+.status-message {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  color: #333 !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  padding: 4px 12px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  width: fit-content !important;
+  max-width: 200px !important;
+  white-space: nowrap !important;
+}
+
+#status-icon {
+  color: #10b981 !important;
+  font-size: 16px !important;
+}
+
+#status-text {
+  font-size: 13px !important;
+  font-weight: 500 !important;
 }
 
 /* Layout: place token buttons next to each other, larger sizing */
@@ -556,33 +611,57 @@ select.form-control:not([multiple]) {
   background: var(--ping-info);
 }
 
-/* Top Status Bar */
+/* Top Status Bar - Enhanced */
 .top-status-bar {
-  position: fixed;
-  top: 35px;
-  left: 0;
-  right: 0;
-  height: var(--status-bar-height);
-  background: var(--nav-bg);
-  color: white;
-  z-index: 999;
-  box-shadow: none;
-  margin-top: 0;
+  position: fixed !important;
+  top: 44px !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: var(--status-bar-height) !important;
+  background: linear-gradient(135deg, #1e3a8a, #1e40af) !important;
+  color: white !important;
+  z-index: 999 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
+  margin-top: 0 !important;
+  display: block !important;
+  visibility: visible !important;
 }
 
 .status-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 100%;
-  padding: 0 var(--spacing-lg);
-  font-size: var(--font-size-sm);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  height: 100% !important;
+  padding: 0 var(--spacing-lg) !important;
+  font-size: var(--font-size-sm) !important;
+  color: white !important;
+  min-height: var(--status-bar-height) !important;
+  box-sizing: border-box !important;
 }
 
 .status-left, .status-center, .status-right {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--spacing-md) !important;
+  color: white !important;
+  flex-shrink: 0 !important;
+}
+
+.status-left {
+  min-width: 200px !important;
+  justify-content: flex-start !important;
+}
+
+.status-center {
+  flex: 1 !important;
+  justify-content: center !important;
+  min-width: 0 !important;
+}
+
+.status-right {
+  min-width: 100px !important;
+  justify-content: flex-end !important;
 }
 
 .status-center {
@@ -599,27 +678,171 @@ select.form-control:not([multiple]) {
 }
 
 .header-title {
-  font-size: 1.8rem;
-  font-weight: 600;
-  margin: 0;
-  color: white;
-  text-align: center;
-  letter-spacing: 0.5px;
+  font-size: 1.75rem !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
+  color: white !important;
+  text-align: center !important;
+  letter-spacing: -0.025em !important;
+  line-height: 1.2 !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
 }
 
 .version-info {
-  font-size: 1rem;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.8);
-  letter-spacing: 0.3px;
-  margin: 0;
-  display: inline-block;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  letter-spacing: 0.3px !important;
+  margin: 0 0 0 12px !important;
+  display: inline-block !important;
+  line-height: 1.2 !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  padding: 4px 10px !important;
+  border-radius: 14px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  white-space: nowrap !important;
+  min-width: fit-content !important;
+  width: auto !important;
 }
 
 .token-info {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+}
+
+/* Token text styling - Enhanced readability */
+.token-text {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  color: white !important;
+  margin: 0;
+  display: inline-block;
+  line-height: 1.4;
+  letter-spacing: 0.025em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Token time styling - Apple font */
+.token-time {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  font-family: -apple-system, 'SF Pro Text', 'SF Pro Display', BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  margin: 0;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  min-width: 28px;
+  text-align: center;
+  display: inline-block;
+  line-height: 1.2;
+}
+
+/* Ensure token info container is properly styled */
+.token-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--spacing-xs) !important;
+  color: white !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+}
+
+/* Ensure status indicator is visible */
+.status-indicator.valid {
+  background-color: var(--ping-success) !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  display: inline-block !important;
+}
+
+/* Debug: Ensure all token-related elements are visible */
+#token-info,
+#token-text,
+#token-time,
+#token-indicator {
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: white !important;
+  font-size: inherit !important;
+}
+
+/* Ensure the top status bar and its contents are always visible */
+#top-status-bar,
+#top-status-bar * {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+#top-status-bar .status-content,
+#top-status-bar .status-left,
+#top-status-bar .status-center,
+#top-status-bar .status-right {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Force specific styling for token elements - Enhanced readability */
+#top-status-bar #token-text {
+  color: white !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.4 !important;
+  letter-spacing: 0.025em !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+#top-status-bar #token-time {
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: var(--font-size-xs) !important;
+  font-weight: 500 !important;
+  font-family: -apple-system, 'SF Pro Text', 'SF Pro Display', BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif !important;
+  margin: 0 !important;
+  padding: 3px 8px !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-radius: 6px !important;
+  min-width: 32px !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+#top-status-bar #token-indicator {
+  background-color: var(--ping-success) !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  display: inline-block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+#top-status-bar #token-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--spacing-xs) !important;
+  color: white !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  overflow: visible !important;
 }
 
 .token-indicator, .status-indicator {
@@ -648,7 +871,97 @@ select.form-control:not([multiple]) {
   background-color: var(--ping-success) !important;
 }
 
+/* Status Message Overrides — white background and compact width */
+.status-message {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: auto !important;           /* shrink to content */
+  max-width: max-content !important; /* prefer content width */
+  min-width: calc(6ch + 8px) !important; /* ~6 characters + small buffer */
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+}
+
+.status-message .status-icon {
+  color: var(--ping-success) !important; /* green checkmark */
+}
+
+.status-message-content {
+  background: transparent !important;
+  color: inherit !important;
+}
+
 /* ===== TOKEN MANAGEMENT ENHANCED LAYOUT ===== */
+
+/* ===== High-contrast defaults for readability on forms ===== */
+/* Controls: make text dark, background white, clearer borders */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="search"],
+input[type="url"],
+input[type="number"],
+textarea,
+select,
+.form-control {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border: 1px solid #9aa4b2 !important; /* mid-gray border */
+  box-shadow: none !important;
+}
+
+.form-control::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: #4b5563 !important; /* dark slate placeholder */
+  opacity: 1 !important;
+}
+
+/* Focus: clear, darker border with subtle glow */
+.form-control:focus,
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  border-color: #1f2937 !important; /* dark gray */
+  box-shadow: 0 0 0 3px rgba(31, 41, 55, 0.15) !important; /* subtle focus ring */
+}
+
+/* Labels: darker for readability */
+label,
+.form-label,
+.field-label {
+  color: #111111 !important;
+  font-weight: 600 !important;
+}
+
+/* Helper text and descriptions */
+.form-text,
+.help-text,
+.description-text {
+  color: #374151 !important; /* slate-700 */
+}
+
+/* Input group icons/buttons (e.g., copy) */
+.input-group .btn,
+.input-group .btn i,
+.input-group-append .btn,
+.input-group-append .btn i,
+.copy-btn i {
+  color: #111111 !important;
+}
+
+.input-group .btn:hover,
+.input-group-append .btn:hover,
+.copy-btn:hover {
+  background: #f3f4f6 !important;
+  border-color: #9aa4b2 !important;
+}
 
 /* Token Management Container */
 .token-management-container {
@@ -874,6 +1187,7 @@ select.form-control:not([multiple]) {
 .stat-card {
   background-color: var(--ping-background-light);
   border: 1px solid var(--ping-border);
+  border-left: 4px solid #333;
   border-radius: 8px;
   padding: 1.5rem;
   text-align: center;
@@ -891,6 +1205,24 @@ select.form-control:not([multiple]) {
 
 .stat-card.error {
   border-left: 4px solid var(--ping-error);
+}
+
+/* Specific stat card colors based on content */
+.stat-card:has(#total-requests) {
+  border-left: 4px solid #333;
+}
+
+.stat-card:has(#token-refreshes) {
+  border-left: 4px solid #fbbf24;
+}
+
+/* Fallback for browsers that don't support :has() */
+.stat-card[data-stat="total-requests"] {
+  border-left: 4px solid #333;
+}
+
+.stat-card[data-stat="token-refreshes"] {
+  border-left: 4px solid #fbbf24;
 }
 
 .stat-number {
@@ -1730,8 +2062,8 @@ select.form-control:not([multiple]) {
 /* Main Application Layout */
 .app-container {
   display: flex;
-  margin-top: calc(35px + var(--status-bar-height));
-  min-height: calc(100vh - 35px - var(--status-bar-height) - var(--footer-height));
+  margin-top: calc(44px + var(--status-bar-height)) !important;
+  min-height: calc(100vh - 44px - var(--status-bar-height) - var(--footer-height)) !important;
 }
 
 /* Left Navigation */
@@ -1743,7 +2075,7 @@ select.form-control:not([multiple]) {
   flex-direction: column;
   position: fixed;
   left: 0;
-  top: calc(var(--header-height) + var(--status-bar-height));
+  top: calc(44px + var(--status-bar-height)) !important;
   bottom: var(--footer-height);
   overflow-y: auto;
   transition: width var(--transition-normal);
@@ -1820,6 +2152,17 @@ select.form-control:not([multiple]) {
   width: 20px;
   text-align: center;
   font-size: var(--font-size-base);
+}
+
+/* Ensure left nav icons are visible against nav background */
+.nav-link i {
+  color: var(--nav-text) !important;
+  opacity: 0.95;
+}
+.nav-link:hover i,
+.nav-link.active i {
+  color: var(--nav-text) !important;
+  opacity: 1;
 }
 
 .nav-divider {
@@ -2076,7 +2419,7 @@ select.form-control:not([multiple]) {
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: none;
 }
 
 /* Modern blue progress bar styling (applies across Import/Export/Modify/Delete) */
@@ -2617,7 +2960,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 3000;
-  backdrop-filter: blur(2px);
+  backdrop-filter: none;
 }
 
 .loading-content {
@@ -3436,8 +3779,8 @@ select {
 /* Main Application Layout */
 .app-container {
   display: flex;
-  margin-top: calc(35px + var(--status-bar-height));
-  min-height: calc(100vh - 35px - var(--status-bar-height) - var(--footer-height));
+  margin-top: calc(44px + var(--status-bar-height)) !important;
+  min-height: calc(100vh - 44px - var(--status-bar-height) - var(--footer-height)) !important;
 }
 
 /* Left Navigation */
@@ -3449,7 +3792,7 @@ select {
   flex-direction: column;
   position: fixed;
   left: 0;
-  top: calc(var(--header-height) + var(--status-bar-height));
+  top: calc(44px + var(--status-bar-height)) !important;
   bottom: var(--footer-height);
   overflow-y: auto;
   transition: width var(--transition-normal);
@@ -3764,7 +4107,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: none;
 }
 
 .modal {
@@ -4075,7 +4418,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 3000;
-  backdrop-filter: blur(2px);
+  backdrop-filter: none;
 }
 
 .loading-content {
@@ -4894,8 +5237,8 @@ select {
 /* Main Application Layout */
 .app-container {
   display: flex;
-  margin-top: calc(35px + var(--status-bar-height));
-  min-height: calc(100vh - 35px - var(--status-bar-height) - var(--footer-height));
+  margin-top: calc(44px + var(--status-bar-height)) !important;
+  min-height: calc(100vh - 44px - var(--status-bar-height) - var(--footer-height)) !important;
 }
 
 /* Left Navigation */
@@ -4907,7 +5250,7 @@ select {
   flex-direction: column;
   position: fixed;
   left: 0;
-  top: calc(var(--header-height) + var(--status-bar-height));
+  top: calc(44px + var(--status-bar-height)) !important;
   bottom: var(--footer-height);
   overflow-y: auto;
   transition: width var(--transition-normal);
@@ -5222,7 +5565,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: none;
 }
 
 .modal {
@@ -5533,7 +5876,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 3000;
-  backdrop-filter: blur(2px);
+  backdrop-filter: none;
 }
 
 .loading-content {
@@ -6352,8 +6695,8 @@ select {
 /* Main Application Layout */
 .app-container {
   display: flex;
-  margin-top: calc(35px + var(--status-bar-height));
-  min-height: calc(100vh - 35px - var(--status-bar-height) - var(--footer-height));
+  margin-top: calc(44px + var(--status-bar-height)) !important;
+  min-height: calc(100vh - 44px - var(--status-bar-height) - var(--footer-height)) !important;
 }
 
 /* Left Navigation */
@@ -6365,7 +6708,7 @@ select {
   flex-direction: column;
   position: fixed;
   left: 0;
-  top: calc(var(--header-height) + var(--status-bar-height));
+  top: calc(44px + var(--status-bar-height)) !important;
   bottom: var(--footer-height);
   overflow-y: auto;
   transition: width var(--transition-normal);
@@ -6680,7 +7023,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: none;
 }
 
 .modal {
@@ -6991,7 +7334,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 3000;
-  backdrop-filter: blur(2px);
+  backdrop-filter: none;
 }
 
 .loading-content {
@@ -7810,8 +8153,8 @@ select {
 /* Main Application Layout */
 .app-container {
   display: flex;
-  margin-top: calc(35px + var(--status-bar-height));
-  min-height: calc(100vh - 35px - var(--status-bar-height) - var(--footer-height));
+  margin-top: calc(44px + var(--status-bar-height)) !important;
+  min-height: calc(100vh - 44px - var(--status-bar-height) - var(--footer-height)) !important;
 }
 
 /* Left Navigation */
@@ -7823,7 +8166,7 @@ select {
   flex-direction: column;
   position: fixed;
   left: 0;
-  top: calc(var(--header-height) + var(--status-bar-height));
+  top: calc(44px + var(--status-bar-height)) !important;
   bottom: var(--footer-height);
   overflow-y: auto;
   transition: width var(--transition-normal);
@@ -8138,7 +8481,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: none;
 }
 
 .modal {
@@ -8449,7 +8792,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 3000;
-  backdrop-filter: blur(2px);
+  backdrop-filter: none;
 }
 
 .loading-content {
@@ -9652,7 +9995,15 @@ select.field-error:focus {
 }
 
 .icon-clock::before {
-  content: "\ea0b" !important; /* mdi-chevron-up - using chevron as clock */
+  content: "🕐";
+}
+
+.icon-activity::before {
+  content: "📊";
+}
+
+.icon-users::before {
+  content: "👥";
 }
 
 .icon-code::before {
@@ -10653,4 +11004,280 @@ select.field-error:focus {
   text-align: center;
   font-weight: 600;
   color: var(--ping-text-primary);
+}
+
+/* Home Page Layout Styles - Ping Library Inspired */
+.home-content {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.home-section {
+    margin-bottom: 3rem;
+}
+
+.section-header {
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid var(--ping-gray-200);
+    padding-bottom: 1rem;
+}
+
+.section-header h2 {
+    color: var(--ping-gray-900);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.section-header h2 i {
+    color: var(--ping-blue-primary);
+    font-size: 1.25rem;
+}
+
+.section-description {
+    color: var(--ping-gray-600);
+    font-size: 0.95rem;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.action-cards-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    align-items: stretch;
+}
+
+/* Enhanced Action Card Styles - Smaller and More Distinct */
+.action-card {
+    background: white;
+    border: 2px solid var(--ping-gray-300);
+    border-radius: 8px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 140px;
+    position: relative;
+    overflow: hidden;
+}
+
+.action-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: var(--ping-blue-primary);
+    background: var(--ping-blue-50);
+}
+
+.action-card:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: var(--ping-blue-primary);
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+    flex-shrink: 0;
+}
+
+.card-icon i {
+    font-size: 1.1rem;
+    color: white;
+}
+
+.card-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.card-content h3 {
+    color: var(--ping-gray-900);
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0;
+    line-height: 1.2;
+}
+
+.card-content p {
+    color: var(--ping-gray-600);
+    font-size: 0.8rem;
+    line-height: 1.3;
+    margin: 0 0 0.75rem 0;
+    flex-grow: 1;
+}
+
+.card-status {
+    background: var(--ping-success-light);
+    color: var(--ping-success-dark);
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-align: center;
+    align-self: flex-start;
+    margin-top: auto;
+}
+
+/* Page Header Styles */
+.page-header h1 {
+    color: var(--ping-gray-900);
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    line-height: 1.2;
+}
+
+.page-subtitle {
+    color: var(--ping-gray-600);
+    font-size: 1.1rem;
+    margin: 0 0 2rem 0;
+    line-height: 1.4;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .home-content {
+        padding: 1rem;
+    }
+    
+    .action-cards-row {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 0.75rem;
+    }
+    
+    .section-header h2 {
+        font-size: 1.25rem;
+    }
+    
+    .page-header h1 {
+        font-size: 1.75rem;
+    }
+    
+    .action-card {
+        padding: 0.875rem;
+        min-height: 120px;
+    }
+    
+    .card-icon {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .card-icon i {
+        font-size: 1rem;
+    }
+    
+    .card-content h3 {
+        font-size: 0.9rem;
+    }
+    
+    .card-content p {
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .section-header h2 {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        font-size: 1.1rem;
+    }
+    
+    .action-cards-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .action-card {
+        padding: 0.75rem;
+        min-height: 100px;
+    }
+    
+    .card-icon {
+        width: 32px;
+        height: 32px;
+        margin-bottom: 0.5rem;
+    }
+    
+    .card-icon i {
+        font-size: 0.9rem;
+    }
+    
+    .card-content h3 {
+        font-size: 0.85rem;
+        margin-bottom: 0.2rem;
+    }
+    
+    .card-content p {
+        font-size: 0.7rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .card-status {
+        font-size: 0.65rem;
+        padding: 0.15rem 0.4rem;
+    }
+}
+
+/* Health Dashboard Styles */
+.health-dashboard-container {
+    padding: 1rem;
+}
+
+.error-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    padding: 2rem;
+}
+
+.error-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    text-align: center;
+    max-width: 500px;
+    width: 100%;
+}
+
+.error-icon {
+    font-size: 3rem;
+    color: var(--color-danger, #dc3545);
+    margin-bottom: 1rem;
+}
+
+.error-content h3 {
+    color: var(--color-danger, #dc3545);
+    margin-bottom: 1rem;
+}
+
+.error-content p {
+    color: var(--color-gray, #6c757d);
+    margin-bottom: 0.5rem;
+}
+
+.error-details {
+    font-family: monospace;
+    background: var(--color-light, #f8f9fa);
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    margin: 1rem 0;
 }

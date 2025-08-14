@@ -557,19 +557,27 @@ class EnhancedHealthDashboard {
             console.log('Updating health dashboard...');
             
             // Fetch comprehensive health data
-            const response = await fetch('/api/health/dashboard');
+            const response = await fetch('/api/health');
             const result = await response.json();
             
             if (result.success) {
-                this.updateSystemOverview(result.data.system, result.data.requests, result.data.performance);
-                this.updateTokenStatus(result.data.token);
-                this.updateMemoryStatus(result.data.memory);
-                this.updateRecommendations(result.data.recommendations);
+                // Extract data from nested structure
+                const healthData = result.data.data || result.data;
+                
+                this.updateSystemOverview(healthData.system, healthData.requests, healthData.performance);
+                this.updateTokenStatus(healthData.token);
+                this.updateMemoryStatus(healthData.system?.memory);
+                this.updateServerStatus(healthData.server);
+                this.updateChecksStatus(healthData.checks);
                 
                 this.lastUpdate = new Date();
-                document.getElementById('last-update-time').textContent = this.lastUpdate.toLocaleTimeString();
+                const lastUpdateElement = document.getElementById('last-update-time');
+                if (lastUpdateElement) {
+                    lastUpdateElement.textContent = this.lastUpdate.toLocaleTimeString();
+                }
             } else {
                 console.error('Failed to fetch health data:', result.error);
+                this.showErrorState('Failed to fetch health data');
             }
             
         } catch (error) {
@@ -780,3 +788,6 @@ class EnhancedHealthDashboard {
 
 // Export for use in other modules
 window.EnhancedHealthDashboard = EnhancedHealthDashboard;
+
+// ES Module export
+export { EnhancedHealthDashboard };

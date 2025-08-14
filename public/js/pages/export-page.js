@@ -308,6 +308,9 @@ export class ExportPage {
                             <button type="button" id="download-export" class="btn btn-success">
                                 <i class="mdi mdi-download"></i> Download Export File
                             </button>
+                            <button type="button" id="download-export-log" class="btn btn-outline-secondary">
+                                <i class="mdi mdi-file-document"></i> Download Export Log
+                            </button>
                             <button type="button" id="new-export" class="btn btn-outline-primary">
                                 <i class="mdi mdi-refresh"></i> Start New Export
                             </button>
@@ -497,7 +500,27 @@ export class ExportPage {
         await populationLoader.loadPopulations('export-population-select', {
             showRefreshed: true,
             onError: (error) => {
-                this.app.showNotification('Failed to load populations: ' + error.message, 'error');
+                this.app.showError('Failed to load populations: ' + error.message);
+            },
+            onSuccess: (pops) => {
+                // Update the refresh indicator with name, count, default flag, and time + date
+                try {
+                    const sel = document.getElementById('export-population-select');
+                    const ind = document.getElementById('export-population-select-refresh-indicator');
+                    if (!sel || !ind) return;
+                    const opt = sel.options[sel.selectedIndex] || sel.options[0];
+                    const pop = opt && opt.dataset && opt.dataset.population ? JSON.parse(opt.dataset.population) : null;
+                    const name = pop?.name || opt?.text || 'Population';
+                    const count = pop?.userCount ?? pop?.users ?? '';
+                    const isDefault = pop?.isDefault === true;
+                    const now = new Date();
+                    const time = now.toLocaleTimeString();
+                    const date = now.toLocaleDateString();
+                    ind.style.display = 'inline-block';
+                    ind.style.fontSize = '0.85rem';
+                    ind.style.padding = '2px 6px';
+                    ind.textContent = `${name}${count ? ` (${count} users)` : ''}${isDefault ? ' — Default' : ''} · Loaded at ${time} on ${date}`;
+                } catch (_) { /* ignore */ }
             }
         });
     }
@@ -574,12 +597,15 @@ export class ExportPage {
 
     async handlePreviewExport() {
         if (!this.selectedPopulation) {
-            this.app.showNotification('Please select a population first', 'warning');
+            this.app.showWarning('Please select a population first');
             return;
         }
 
         try {
             this.updateExportOptions();
+
+            // Show loading spinner while preparing preview
+            this.app?.showLoading?.('Preparing export preview…');
 
             // Fetch real users (JSON) for preview
             const includeDisabled = document.getElementById('include-disabled')?.checked ?? false;
@@ -617,7 +643,9 @@ export class ExportPage {
 
         } catch (error) {
             console.error('Error previewing export:', error);
-            this.app.showNotification('Failed to preview export: ' + error.message, 'error');
+            this.app.showError('Failed to preview export: ' + error.message);
+        } finally {
+            this.app?.hideLoading?.();
         }
     }
 
@@ -680,12 +708,18 @@ export class ExportPage {
 
         // Add event listeners
         const startExportButton = document.getElementById('start-export-from-preview');
+        const closeBtn = document.getElementById('close-preview');
 
         if (startExportButton) {
             startExportButton.addEventListener('click', () => {
                 this.closePreviewModal();
                 this.handleStartExport();
             });
+        }
+
+        // Close button listener
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.closePreviewModal());
         }
 
         // Add escape key listener
@@ -807,7 +841,7 @@ export class ExportPage {
             await this.executeExport();
         } catch (error) {
             console.error('Error starting export:', error);
-            this.app.showNotification('Failed to start export: ' + error.message, 'error');
+            this.app.showError('Failed to start export: ' + error.message);
         }
     }
 
@@ -829,7 +863,8 @@ export class ExportPage {
         const usersProcessed = document.getElementById('users-processed');
         const totalUsers = document.getElementById('total-users');
 
-        const total = this.selectedPopulation.userCount || 100;
+        // Use known population size if available, else update dynamically when response arrives
+        let total = this.selectedPopulation?.userCount || 0;
         if (totalUsers) totalUsers.textContent = total;
 
         let currentProgress = 0;
@@ -849,7 +884,8 @@ export class ExportPage {
                 }
 
                 currentProgress += 10;
-                const progress = Math.min((currentProgress / total) * 100, 100);
+                const denominator = total > 0 ? total : Math.max(currentProgress, 1);
+                const progress = Math.min((currentProgress / denominator) * 100, 100);
                 
                 if (progressBar) {
                     progressBar.style.width = `${progress}%`;
@@ -911,18 +947,48 @@ export class ExportPage {
         const progressText = document.getElementById('export-progress-text');
         const progressTextLeft = document.getElementById('export-progress-text-left');
         if (totalUsers) totalUsers.textContent = String(total);
-        if (usersProcessed) usersProcessed.textContent = String(total);
-        if (progressBar) progressBar.style.width = '100%';
-        if (progressText) progressText.textContent = '100%';
-        if (progressTextLeft) progressTextLeft.textContent = '100%';
+        if (usersProcessed) usersProcessed.textContent = '0';
+        if (progressBar) progressBar.style.width = '0%';
+        if (progressText) progressText.textContent = '0%';
+        if (progressTextLeft) progressTextLeft.textContent = '0%';
 
-        // Build CSV with selected attributes from real users
-        const selectedAttributes = this.getSelectedAttributes();
-        const headers = this.getProfileHeaders(selectedAttributes);
-        const rows = [headers.join(',')];
+        // Build CSV from server-flattened users using union of all keys as headers
+        const headerSet = new Set();
         for (const u of users) {
-            const row = selectedAttributes.map(attr => this.extractUserAttribute(u, attr));
-            rows.push(row.map(v => this.csvEscape(v)).join(','));
+            if (u && typeof u === 'object') {
+                for (const k of Object.keys(u)) headerSet.add(k);
+            }
+        }
+        const headers = Array.from(headerSet);
+        const rows = [headers.join(',')];
+        for (let i = 0; i < users.length; i++) {
+            const u = users[i];
+            const row = headers.map(h => this.csvEscape(u && Object.prototype.hasOwnProperty.call(u, h) ? (u[h] ?? '') : ''));
+            rows.push(row.join(','));
+            // Update progress UI incrementally as we build rows
+            const processed = i + 1;
+            if (usersProcessed) usersProcessed.textContent = String(processed);
+            if (total > 0 && progressBar) {
+                const pct = Math.round((processed / total) * 100);
+                progressBar.style.width = `${pct}%`;
+                if (progressText) progressText.textContent = `${pct}%`;
+                if (progressTextLeft) progressTextLeft.textContent = `${pct}%`;
+                const beerFill = document.getElementById('beer-fill');
+                const beerFoam = document.getElementById('beer-foam');
+                if (beerFill) {
+                    const maxHeight = 16;
+                    const height = Math.max(0, Math.min(maxHeight, (pct / 100) * maxHeight));
+                    const y = 26 - height;
+                    beerFill.setAttribute('y', String(y));
+                    beerFill.setAttribute('height', String(height));
+                }
+                if (beerFoam) {
+                    const foamHeight = pct > 0 ? 4 : 0.001;
+                    const yFoam = 26 - Math.max(0, Math.min(16, (pct / 100) * 16)) - foamHeight;
+                    beerFoam.setAttribute('y', String(yFoam));
+                    beerFoam.setAttribute('height', String(foamHeight));
+                }
+            }
         }
         const csvContent = rows.join('\n');
 
@@ -1049,10 +1115,12 @@ export class ExportPage {
 
     setupResultsEventListeners() {
         const downloadBtn = document.getElementById('download-export');
+        const downloadLogBtn = document.getElementById('download-export-log');
         const newExportBtn = document.getElementById('new-export');
 
         console.log('🔍 Setting up results event listeners:');
         console.log('  - Download button:', !!downloadBtn);
+        console.log('  - Download log button:', !!downloadLogBtn);
         console.log('  - New export button:', !!newExportBtn);
 
         if (downloadBtn) {
@@ -1066,6 +1134,19 @@ export class ExportPage {
             });
         } else {
             console.warn('⚠️ Download button not found in results section');
+        }
+
+        if (downloadLogBtn) {
+            // Remove any existing event listeners
+            downloadLogBtn.replaceWith(downloadLogBtn.cloneNode(true));
+            const newDownloadLogBtn = document.getElementById('download-export-log');
+            
+            newDownloadLogBtn.addEventListener('click', () => {
+                console.log('📋 Download export log button clicked!');
+                this.handleDownloadExportLog();
+            });
+        } else {
+            console.warn('⚠️ Download export log button not found in results section');
         }
 
         if (newExportBtn) {
@@ -1084,15 +1165,19 @@ export class ExportPage {
 
     handleDownloadExport() {
         if (!this.selectedPopulation) {
-            this.app.showNotification('No export data available. Please run an export first.', 'warning');
+            this.app.showWarning('No export data available. Please run an export first.');
             return;
         }
 
         try {
             // Prefer last real export if available
-            const hasReal = !!this.lastExportCsv;
-            const content = hasReal ? this.lastExportCsv : this.generateExportData().content;
-            const fileName = hasReal ? (this.lastExportFileName || this.generateFileName()) : this.generateFileName();
+        const hasReal = !!this.lastExportCsv;
+        if (!hasReal) {
+            this.app.showWarning('No export file available yet. Please run an export to generate a file.');
+            return;
+        }
+        const content = this.lastExportCsv;
+        const fileName = this.lastExportFileName || this.generateFileName();
             const blob = new Blob([content], { type: this.getMimeType('csv') });
             
             // Create a download link
@@ -1109,11 +1194,58 @@ export class ExportPage {
             // Clean up the URL object
             URL.revokeObjectURL(downloadLink.href);
             
-            this.app.showNotification(`Export file "${fileName}" downloaded successfully!`, 'success');
+            this.app.showSuccess(`Export file "${fileName}" downloaded successfully!`);
             
         } catch (error) {
             console.error('Error downloading export:', error);
-            this.app.showNotification('Failed to download export file: ' + error.message, 'error');
+            this.app.showError('Failed to download export file: ' + error.message);
+        }
+    }
+
+    async handleDownloadExportLog() {
+        try {
+            this.app.showLoading('Downloading export log...');
+            
+            const response = await fetch('/api/export-log', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'text/plain'
+                }
+            });
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    this.app.showWarning('No export log available yet. Perform an export operation first to generate logs.');
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return;
+            }
+            
+            const logContent = await response.text();
+            
+            // Create a download link for the log file
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const downloadLink = document.createElement('a');
+            downloadLink.href = URL.createObjectURL(blob);
+            downloadLink.download = `export-log-${new Date().toISOString().split('T')[0]}.txt`;
+            downloadLink.style.display = 'none';
+            
+            // Add to DOM, click, and remove
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            // Clean up the URL object
+            URL.revokeObjectURL(downloadLink.href);
+            
+            this.app.showSuccess('Export log downloaded successfully!');
+            
+        } catch (error) {
+            console.error('Error downloading export log:', error);
+            this.app.showError('Failed to download export log: ' + error.message);
+        } finally {
+            this.app.hideLoading();
         }
     }
 
@@ -1494,7 +1626,7 @@ export class ExportPage {
         }
         
         // Show notification
-        this.app.showNotification('Export cancelled successfully', 'info');
+                    this.app.showInfo('Export cancelled successfully');
         
         // Reset progress
         const progressBar = document.getElementById('export-progress-bar');

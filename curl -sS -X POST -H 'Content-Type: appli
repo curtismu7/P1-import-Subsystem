@@ -1,0 +1,1 @@
+curl -sS -X POST -H 'Content-Type: application/json' -d '{"pingone_environment_id":"f0459ecb-75fa-43a5-8d47-0ee9b3dbfa52","pingone_client_id":"ba3d6efc-2642-47ac-8081-4af50c384afc","pingone_client_secret":"HgIpx7CTsbMaak5Echmy3UiQacQabfScIv~MvHZXGtGomBIdqufvlRyUBzQST.LL","pingone_region":"NA","82e36f0f-c57e-49b6-9bf8-c2a20c27d4cb":" "}' http://localhost:4000/api/settings | jq .
