@@ -54,7 +54,7 @@
   --status-bar-height: 40px;
   
   /* Typography */
-  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -99,6 +99,10 @@
 html {
   height: 100%;
   font-size: 16px;
+  /* Improve text rendering for Apple fonts */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
@@ -111,6 +115,351 @@ body {
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  /* Improve text rendering for Apple fonts */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Make text bolder and thicker */
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* Global font improvements for bolder, thicker Apple fonts */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+p, span, div, label, button, input, select, textarea {
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Make buttons and interactive elements even bolder */
+button, .btn, input[type="submit"], input[type="button"] {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Make form labels and important text bolder */
+label, .form-label, .required {
+  font-weight: 600;
+}
+
+/* Make navigation and header text bolder */
+nav, .nav, .navbar, header, .header {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Home page specific improvements */
+.home-container {
+  max-width: none !important;
+  width: 100% !important;
+  padding: 0 var(--spacing-lg);
+}
+
+.status-overview {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+  gap: var(--spacing-lg) !important;
+}
+
+.status-card {
+  font-weight: 500;
+}
+
+.status-label {
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+}
+
+.status-value {
+  font-weight: 700 !important;
+  font-size: 1.2rem !important;
+}
+
+.quick-actions h2 {
+  font-weight: 700 !important;
+  font-size: 1.5rem !important;
+}
+
+.action-card h3 {
+  font-weight: 700 !important;
+  font-size: 1.3rem !important;
+}
+
+.action-card p {
+  font-weight: 500 !important;
+  font-size: 1rem !important;
+}
+
+/* Fix dropdown backgrounds and improve refresh button integration */
+.form-control, .form-select, select {
+  background-color: white !important;
+  border: 1px solid var(--ping-gray-300) !important;
+  color: var(--ping-gray-900) !important;
+  font-weight: 500 !important;
+}
+
+.form-control:focus, .form-select:focus, select:focus {
+  background-color: white !important;
+  border-color: var(--ping-blue-primary) !important;
+  box-shadow: 0 0 0 0.2rem rgba(180, 40, 45, 0.25) !important;
+}
+
+/* Population dropdown container improvements */
+.population-dropdown-container {
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+}
+
+.population-dropdown-container .form-control,
+.population-dropdown-container .form-select,
+.population-dropdown-container select {
+  border-right: none !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  flex: 1 !important;
+}
+
+.population-dropdown-container .btn {
+  border-left: none !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  background-color: var(--ping-gray-100) !important;
+  border-color: var(--ping-gray-300) !important;
+  color: var(--ping-gray-700) !important;
+  transition: all 0.2s ease !important;
+}
+
+.population-dropdown-container .btn:hover {
+  background-color: var(--ping-gray-200) !important;
+  color: var(--ping-gray-900) !important;
+}
+
+/* Ensure dropdowns have proper contrast */
+option {
+  background-color: white !important;
+  color: var(--ping-gray-900) !important;
+  font-weight: 500 !important;
+}
+
+option:hover {
+  background-color: var(--ping-blue-lighter) !important;
+}
+
+/* Ensure btn-danger buttons are visible */
+.btn-danger {
+  background-color: var(--ping-blue-primary) !important;
+  border-color: var(--ping-blue-primary) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  text-shadow: none !important;
+}
+
+.btn-danger:hover {
+  background-color: var(--ping-blue-primary-dark) !important;
+  border-color: var(--ping-blue-primary-dark) !important;
+  color: white !important;
+}
+
+.btn-danger:focus {
+  background-color: var(--ping-blue-primary) !important;
+  border-color: var(--ping-blue-primary) !important;
+  color: white !important;
+  box-shadow: 0 0 0 0.2rem rgba(180, 40, 45, 0.25) !important;
+}
+
+.btn-danger:active {
+  background-color: var(--ping-blue-primary-dark) !important;
+  border-color: var(--ping-blue-primary-dark) !important;
+  color: white !important;
+}
+
+/* Remove dropdown arrows */
+select.form-control,
+select.form-select,
+select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+  background: white !important;
+}
+
+/* Fix refresh button styling to match dropdown */
+.btn-outline-secondary {
+  background-color: white !important;
+  border-color: var(--ping-gray-300) !important;
+  color: var(--ping-gray-700) !important;
+  border-left: none !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  width: 40px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-outline-secondary:hover {
+  background-color: var(--ping-gray-100) !important;
+  border-color: var(--ping-gray-400) !important;
+  color: var(--ping-gray-900) !important;
+}
+
+/* Ensure population dropdown container has proper styling */
+.population-dropdown-container {
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+}
+
+.population-dropdown-container .form-control,
+.population-dropdown-container .form-select,
+.population-dropdown-container select {
+  border-right: none !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  flex: 1 !important;
+  background: white !important;
+}
+
+/* Fix fonts to use proper Apple fonts */
+.token-info, .token-text, .token-time, .status-label, .status-value {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+  font-weight: 600 !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+/* Make status overview boxes horizontal and fit on one line */
+.status-overview {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 0.75rem !important;
+  margin-bottom: 2rem !important;
+  flex-wrap: nowrap !important;
+  overflow-x: visible !important;
+  width: 100% !important;
+  justify-content: space-between !important;
+}
+
+.status-card {
+  flex: 1 !important;
+  min-width: 180px !important;
+  max-width: none !important;
+  background: white !important;
+  border: 1px solid var(--ping-gray-200) !important;
+  border-radius: 12px !important;
+  padding: 0.75rem !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: box-shadow 0.2s ease !important;
+  white-space: nowrap !important;
+}
+
+.status-card:hover {
+  box-shadow: var(--shadow-md) !important;
+}
+
+.status-icon {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 8px !important;
+  background: var(--ping-blue-50) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--ping-blue-primary) !important;
+  font-size: 1.1rem !important;
+  flex-shrink: 0 !important;
+}
+
+.status-label {
+  margin: 0 0 0.2rem 0 !important;
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  color: var(--ping-gray-600) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.4px !important;
+  white-space: nowrap !important;
+}
+
+.status-value {
+  margin: 0 !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  color: var(--ping-gray-900) !important;
+  word-break: break-all !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.status-indicator {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  margin-left: auto !important;
+  flex-shrink: 0 !important;
+}
+
+.status-indicator.valid {
+  background: var(--ping-success) !important;
+}
+
+.status-indicator.invalid {
+  background: var(--ping-error) !important;
+}
+
+/* Header token info styling - make it prominent and Apple-like */
+.token-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 20px !important;
+  padding: 0.5rem 1rem !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+}
+
+.token-text {
+  font-weight: 700 !important;
+  font-size: 0.9rem !important;
+  color: var(--ping-gray-900) !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+.token-time {
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+  color: var(--ping-gray-600) !important;
+  background: var(--ping-gray-100) !important;
+  padding: 0.25rem 0.5rem !important;
+  border-radius: 12px !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
 }
 
 /* macOS-style Browser Frame */
@@ -122,6 +471,265 @@ body {
   z-index: 1000;
   background: linear-gradient(180deg, #f0f0f0 0%, #e8e8e8 100%);
   border-bottom: 1px solid var(--ping-gray-300);
+}
+
+/* Import container improvements - make it wider and better utilize space */
+.import-container {
+  max-width: none !important;
+  width: 100% !important;
+  padding: 0 var(--spacing-lg) !important;
+  min-width: 1200px !important;
+}
+
+.import-section {
+  margin-bottom: 2rem !important;
+  width: 100% !important;
+}
+
+.import-box {
+  background: white !important;
+  border: 1px solid var(--ping-gray-200) !important;
+  border-radius: 12px !important;
+  padding: 2rem !important;
+  box-shadow: var(--shadow-sm) !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* File upload area improvements */
+.file-upload-area {
+  border: 2px dashed var(--ping-gray-300) !important;
+  border-radius: 12px !important;
+  padding: 3rem 2rem !important;
+  text-align: center !important;
+  background: var(--ping-gray-50) !important;
+  transition: all 0.2s ease !important;
+  width: 100% !important;
+  min-height: 200px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.file-upload-area:hover {
+  border-color: var(--ping-blue-primary) !important;
+  background: var(--ping-blue-50) !important;
+}
+
+.upload-icon {
+  font-size: 3rem !important;
+  color: var(--ping-gray-400) !important;
+  margin-bottom: 1rem !important;
+}
+
+.upload-text {
+  font-size: 1.2rem !important;
+  font-weight: 600 !important;
+  color: var(--ping-gray-700) !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.upload-hint {
+  font-size: 1rem !important;
+  color: var(--ping-gray-600) !important;
+}
+
+/* Configuration grid improvements */
+.config-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 1.5rem !important;
+  width: 100% !important;
+}
+
+.form-group {
+  width: 100% !important;
+}
+
+.form-group label {
+  font-weight: 600 !important;
+  color: var(--ping-gray-900) !important;
+  margin-bottom: 0.5rem !important;
+  display: block !important;
+}
+
+.input-group {
+  display: flex !important;
+  width: 100% !important;
+  gap: 0 !important;
+}
+
+.input-group select {
+  flex: 1 !important;
+  border-right: none !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+.input-group .btn {
+  border-left: none !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  width: 48px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Options group improvements */
+.options-group {
+  margin-bottom: 2rem !important;
+  width: 100% !important;
+}
+
+.options-group h4 {
+  font-weight: 600 !important;
+  color: var(--ping-gray-900) !important;
+  margin-bottom: 1rem !important;
+  font-size: 1.1rem !important;
+}
+
+.checkbox-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+  gap: 1rem !important;
+  width: 100% !important;
+}
+
+.form-check {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  padding: 0.5rem !important;
+  border-radius: 8px !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.form-check:hover {
+  background-color: var(--ping-gray-50) !important;
+}
+
+.form-check-input {
+  width: 18px !important;
+  height: 18px !important;
+  margin: 0 !important;
+}
+
+.form-check-label {
+  font-weight: 500 !important;
+  color: var(--ping-gray-700) !important;
+  cursor: pointer !important;
+  margin: 0 !important;
+}
+
+/* File info improvements */
+.file-info {
+  margin-top: 1.5rem !important;
+  padding: 1.5rem !important;
+  background: var(--ping-gray-50) !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--ping-gray-200) !important;
+  width: 100% !important;
+}
+
+.file-details {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.file-meta {
+  flex: 1 !important;
+}
+
+.file-name {
+  font-weight: 600 !important;
+  color: var(--ping-gray-900) !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.file-size {
+  font-size: 0.9rem !important;
+  color: var(--ping-gray-600) !important;
+}
+
+/* Progress section improvements */
+.progress-container {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  margin: 2rem 0 !important;
+  width: 100% !important;
+}
+
+.progress-bar {
+  flex: 1 !important;
+  height: 20px !important;
+  background: var(--ping-gray-200) !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+}
+
+.progress-fill {
+  height: 100% !important;
+  background: var(--ping-blue-primary) !important;
+  transition: width 0.3s ease !important;
+  border-radius: 10px !important;
+}
+
+.progress-text {
+  font-weight: 600 !important;
+  color: var(--ping-gray-700) !important;
+  min-width: 40px !important;
+  text-align: center !important;
+}
+
+/* Info grid improvements */
+.info-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  gap: 1rem !important;
+  margin: 1.5rem 0 !important;
+  width: 100% !important;
+}
+
+.info-item {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 0.75rem !important;
+  background: var(--ping-gray-50) !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--ping-gray-200) !important;
+}
+
+.info-item .label {
+  font-weight: 600 !important;
+  color: var(--ping-gray-700) !important;
+}
+
+.info-item .value {
+  font-weight: 700 !important;
+  color: var(--ping-gray-900) !important;
+}
+
+/* Export actions improvements */
+.export-actions {
+  display: flex !important;
+  gap: 1rem !important;
+  justify-content: center !important;
+  margin-top: 2rem !important;
+  width: 100% !important;
+}
+
+.export-actions .btn {
+  min-width: 140px !important;
+  padding: 0.75rem 1.5rem !important;
+  font-weight: 600 !important;
 }
 
 .browser-header {
@@ -1992,7 +2600,7 @@ select.form-control:not([multiple]) {
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  backdrop-filter: blur(4px);
+  /* backdrop-filter: blur(4px); */
 }
 
 /* Modern blue progress bar styling (applies across Import/Export/Modify/Delete) */
@@ -2533,7 +3141,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 3000;
-  backdrop-filter: blur(2px);
+  /* backdrop-filter: blur(4px); */
 }
 
 .loading-content {
@@ -3680,7 +4288,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  backdrop-filter: blur(4px);
+  /* backdrop-filter: blur(4px); */
 }
 
 .modal {
@@ -3991,7 +4599,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 3000;
-  backdrop-filter: blur(2px);
+  /* backdrop-filter: blur(4px); */
 }
 
 .loading-content {
@@ -5138,7 +5746,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  backdrop-filter: blur(4px);
+  /* backdrop-filter: blur(4px); */
 }
 
 .modal {
@@ -5449,7 +6057,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 3000;
-  backdrop-filter: blur(2px);
+  /* backdrop-filter: blur(4px); */
 }
 
 .loading-content {
@@ -6596,7 +7204,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  backdrop-filter: blur(4px);
+  /* backdrop-filter: blur(4px); */
 }
 
 .modal {
@@ -6907,7 +7515,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 3000;
-  backdrop-filter: blur(2px);
+  /* backdrop-filter: blur(4px); */
 }
 
 .loading-content {
@@ -8054,7 +8662,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  backdrop-filter: blur(4px);
+  /* backdrop-filter: blur(4px); */
 }
 
 .modal {
@@ -8365,7 +8973,7 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 3000;
-  backdrop-filter: blur(2px);
+  /* backdrop-filter: blur(4px); */
 }
 
 .loading-content {

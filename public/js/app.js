@@ -67,11 +67,19 @@ class PingOneApp {
             console.log('⏰ Starting token monitoring...');
             this.startTokenMonitoring();
             
+            // Add a small delay to ensure everything is properly loaded
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
             console.log('🔍 Checking initial modals...');
             await this.checkInitialModals();
             
             console.log('✅ Application initialized successfully');
             this.updateServerStatus('Server Started');
+            
+            // Ensure screen interaction is enabled if no modals are visible
+            if (!this.isModalVisible()) {
+                this.setScreenInteraction(true);
+            }
             
             // Test status update after a short delay
             setTimeout(() => {
@@ -226,40 +234,86 @@ class PingOneApp {
     async checkInitialModals() {
         // Token status is now loaded from server, no need to check localStorage
         
+        // Add a small delay to ensure smooth startup
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         if (this.settings.showDisclaimerModal) {
             this.showDisclaimerModal();
             return;
         }
-        if (this.shouldShowCredentialsModal()) {
+        
+        // Only show credentials modal if we don't have a valid token
+        if (this.shouldShowCredentialsModal() && !this.tokenStatus.isValid) {
             this.showCredentialsModal();
             return;
         }
+        
+        // If we have a valid token, don't show any modals
+        if (this.tokenStatus.isValid) {
+            console.log('✅ Valid token found, skipping modal display');
+            return;
+        }
+        
+        // Only check token status if we don't have a valid token
         await this.checkTokenStatus();
     }
     
     shouldShowCredentialsModal() {
-        // Default to showing credentials modal unless explicitly disabled
-        return this.settings.showCredentialsModal !== false;
+        // Don't show credentials modal if we already have a valid token
+        if (this.tokenStatus && this.tokenStatus.isValid) {
+            return false;
+        }
+        
+        // Don't show if explicitly disabled
+        if (this.settings.showCredentialsModal === false) {
+            return false;
+        }
+        
+        // Show if we have credentials configured (user might want to change them)
+        if (this.settings.pingone_environment_id && this.settings.pingone_client_id) {
+            return true;
+        }
+        
+        // Default to showing if no credentials are configured
+        return true;
     }
     
     // Modal handlers
     showDisclaimerModal() {
         const modal = document.getElementById('disclaimer-modal');
-        if (modal) modal.style.display = 'flex';
+        if (modal) {
+            modal.style.display = 'flex';
+            this.setScreenInteraction(false);
+        }
     }
     
     hideDisclaimerModal() {
         const modal = document.getElementById('disclaimer-modal');
-        if (modal) modal.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'none';
+            // Only re-enable if no other modal is visible
+            if (!this.isModalVisible()) {
+                this.setScreenInteraction(true);
+            }
+        }
     }
     
     showCredentialsModal() {
+        // Don't show if we already have a valid token
+        if (this.tokenStatus && this.tokenStatus.isValid) {
+            console.log('✅ Valid token exists, skipping credentials modal');
+            return;
+        }
+        
         const modal = document.getElementById('credentials-modal');
         if (modal) {
             this.populateCredentialsForm();
             modal.style.display = 'flex';
             // Prevent background page scrolling while modal is open
             try { document.body.style.overflow = 'hidden'; } catch (_) {}
+            // Disable screen interaction
+            this.setScreenInteraction(false);
+            
             // If a valid token already exists, inform the user
             if (this.tokenStatus && this.tokenStatus.isValid) {
                 // Inline banner inside the credentials modal (so it is visible above the overlay)
@@ -295,8 +349,14 @@ class PingOneApp {
     
     hideCredentialsModal() {
         const modal = document.getElementById('credentials-modal');
-        if (modal) modal.style.display = 'none';
-        try { document.body.style.overflow = ''; } catch (_) {}
+        if (modal) {
+            modal.style.display = 'none';
+            try { document.body.style.overflow = ''; } catch (_) {}
+            // Only re-enable if no other modal is visible
+            if (!this.isModalVisible()) {
+                this.setScreenInteraction(true);
+            }
+        }
     }
     
     populateCredentialsForm() {
@@ -591,6 +651,9 @@ class PingOneApp {
     
     // Page management
     showPage(pageName) {
+        // Show screen transition indicator
+        this.showScreenTransition(pageName);
+        
         const pages = document.querySelectorAll('.page');
         pages.forEach(page => page.style.display = 'none');
         
@@ -612,6 +675,9 @@ class PingOneApp {
         this.updateNavigation();
         window.location.hash = pageName;
         sessionStorage.setItem('currentPage', pageName);
+        
+        // Hide transition indicator after page loads
+        setTimeout(() => this.hideScreenTransition(), 500);
     }
     
     async loadPageContent(pageName) {
@@ -1276,6 +1342,69 @@ class PingOneApp {
                 select.setAttribute('data-long-text', 'true');
             }
         });
+    }
+
+    // Check if any modal is currently visible
+    isModalVisible() {
+        const disclaimerModal = document.getElementById('disclaimer-modal');
+        const credentialsModal = document.getElementById('credentials-modal');
+        
+        return (disclaimerModal && disclaimerModal.style.display === 'flex') ||
+               (credentialsModal && credentialsModal.style.display === 'flex');
+    }
+    
+    // Enable/disable screen interaction
+    setScreenInteraction(enabled) {
+        try {
+            if (enabled) {
+                document.body.style.pointerEvents = '';
+                document.body.style.userSelect = '';
+            } else {
+                document.body.style.pointerEvents = 'none';
+                document.body.style.userSelect = 'none';
+            }
+        } catch (_) {}
+    }
+    
+    /**
+     * Show screen transition indicator (spinner + green bar flash)
+     */
+    showScreenTransition(pageName) {
+        // Flash the green status bar
+        this.showStatusMessage(`Navigating to ${pageName}...`, 'success', 2000);
+        
+        // Show spinner overlay
+        const spinner = document.createElement('div');
+        spinner.id = 'screen-transition-spinner';
+        spinner.innerHTML = `
+            <div class="spinner-overlay">
+                <div class="spinner-content">
+                    <div class="spinner"></div>
+                    <div class="spinner-text">Loading ${pageName}...</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(spinner);
+        
+        // Animate in
+        setTimeout(() => {
+            spinner.style.opacity = '1';
+        }, 10);
+    }
+    
+    /**
+     * Hide screen transition indicator
+     */
+    hideScreenTransition() {
+        const spinner = document.getElementById('screen-transition-spinner');
+        if (spinner) {
+            spinner.style.opacity = '0';
+            setTimeout(() => {
+                if (spinner.parentElement) {
+                    spinner.parentElement.removeChild(spinner);
+                }
+            }, 300);
+        }
     }
 }
 
