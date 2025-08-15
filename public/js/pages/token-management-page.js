@@ -452,13 +452,18 @@ export class TokenManagementPage {
                     const result = await response.json();
                     console.log('🔍 Server token status:', result);
                     
-                    if (result.success && result.data && result.data.access_token) {
-                        const tokenInfo = {
-                            token: result.data.access_token,
-                            expiresAt: result.data.expiresAt || null
-                        };
-                        console.log('🔍 Got token from server:', tokenInfo);
-                        return tokenInfo;
+                    if (result.success && result.data && result.data.hasToken) {
+                        // Get the actual token from localStorage since server only returns status
+                        const cachedToken = localStorage.getItem('pingone_token_cache');
+                        if (cachedToken) {
+                            const parsed = JSON.parse(cachedToken);
+                            const tokenInfo = {
+                                token: parsed.token,
+                                expiresAt: parsed.expiresAt || null
+                            };
+                            console.log('🔍 Got token from cache via server status:', tokenInfo);
+                            return tokenInfo;
+                        }
                     }
                 }
             } catch (error) {
