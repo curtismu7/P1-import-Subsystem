@@ -242,13 +242,20 @@ export class RealtimeClient {
         console.warn(`No handler for message type '${message.type}'`);
       }
 
-      // Update app state with message
-      actions.addRealtimeMessage({
-        type: message.type,
-        data: message.data,
-        timestamp: message.timestamp,
-        id: message.id
-      });
+      // Update app state with message (optional integration)
+      try {
+        if (actions && typeof actions.addRealtimeMessage === 'function') {
+          actions.addRealtimeMessage({
+            type: message.type,
+            data: message.data,
+            timestamp: message.timestamp,
+            id: message.id
+          });
+        }
+      } catch (e) {
+        // Don't let optional state integration break runtime
+        console.debug('Skipping addRealtimeMessage: not available');
+      }
 
     } catch (error) {
       console.error('Error handling real-time message:', error);
@@ -447,22 +454,31 @@ export class RealtimeClient {
 // Create singleton instance
 export const realtimeClient = new RealtimeClient();
 
-// Setup default message handlers
+// Setup default message handlers (optional app-state integration)
 realtimeClient.onMessage('progress', (data) => {
-  actions.updateProgress(data);
+  try { if (actions && typeof actions.updateProgress === 'function') actions.updateProgress(data); } catch {}
 });
 
 realtimeClient.onMessage('notification', (data) => {
-  actions.addNotification(data.message, data.type || 'info');
+  try {
+    if (actions && typeof actions.addNotification === 'function') {
+      actions.addNotification({ message: data.message, type: data.type || 'info' });
+    }
+  } catch {}
 });
 
 realtimeClient.onMessage('error', (data) => {
-  actions.addError(data.message);
+  try { if (actions && typeof actions.addError === 'function') actions.addError(data.message); } catch {}
 });
 
 realtimeClient.onSystem('heartbeat-ack', (data) => {
   // Connection is healthy
-  actions.setConnectionStatus('connected');
+  try { if (actions && typeof actions.setConnectionStatus === 'function') actions.setConnectionStatus('connected'); } catch {}
+});
+
+// Log explicit session association acknowledgments from the server
+realtimeClient.onSystem('session-associated', (data) => {
+  console.debug('Server acknowledged session association', data);
 });
 
 // Auto-connect when module loads

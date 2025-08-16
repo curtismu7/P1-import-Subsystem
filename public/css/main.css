@@ -8,7 +8,10 @@
  * Do not edit directly - make changes to source files and re-run consolidation
  */
 
-/* ===== CORE STYLES ===== */\n\n/* From: public/css/core/variables.css */\n/**
+/* ===== CORE STYLES ===== */
+
+/* From: public/css/core/variables.css */
+/**
  * CSS Custom Properties (Variables)
  * 
  * Centralized design tokens for consistent styling
@@ -98,6 +101,18 @@
   --spacing-xl: 2rem;      /* 32px */
   --spacing-2xl: 3rem;     /* 48px */
   --spacing-3xl: 4rem;     /* 64px */
+}
+
+/* Specific: Top status bar's inline status message appearance */
+#status-message-bar .status-message#status-message {
+    background-color: #ffffff !important; /* white background */
+    color: #0b5ed7 !important;            /* blue text */
+    border-color: #e5e7eb !important;     /* subtle border to match white bg */
+}
+
+/* Specific: Green check icon inside the status message */
+#status-message-bar #status-message #status-icon {
+    color: #28a745 !important;            /* green check */
 }
 
 /* Global font improvements for bolder, thicker Apple fonts */
@@ -205,6 +220,7 @@ html {
   100% { transform: rotate(360deg); }
 }
   
+:root {
   /* Layout */
   --container-max-width: 1400px;
   --sidebar-width: 240px;
@@ -2032,13 +2048,8 @@ select.form-control option {
     width: 80px;
     height: 80px;
   }
-}\n\n/* ===== APPLICATION STYLES ===== */\n\n/* From: public/css/styles.css */\n:root {
-    /* Ping Identity Brand Colors */
-    --ping-primary-red: #E1001A;
-    --ping-dark-red: #B00014;
-    --ping-black: #222222;
-    --ping-gray-lightest: #F5F7FA;
-    --ping-gray-lighter: #E5E8ED;
+}
+:root {
     --ping-gray-light: #D1D6DB;
     --ping-gray: #6E6E6E;
     --ping-accent-blue: #0073C8;
@@ -2048,7 +2059,7 @@ select.form-control option {
     --ping-white: #FFFFFF;
 
     /* Typography */
-    --font-family-base: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;, 'Roboto', Arial, sans-serif;
+    --font-family-base: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, 'Roboto', sans-serif;
     --font-size-base: 16px;
     --font-size-lg: 20px;
     --font-size-sm: 14px;
@@ -15289,7 +15300,11 @@ label {
     .startup-progress-text {
         font-size: 0.6rem;
     }
-}\n\n/* From: public/css/styles-fixed.css */\n:root {
+}
+
+/* From: public/css/styles-fixed.css */
+
+:root {
     /* Ping Identity Brand Colors */
     --ping-primary-red: #E1001A;
     --ping-dark-red: #B00014;
@@ -15305,7 +15320,7 @@ label {
     --ping-white: #FFFFFF;
 
     /* Typography */
-    --font-family-base: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;, 'Roboto', Arial, sans-serif;
+    --font-family-base: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, 'Roboto', sans-serif;
     --font-size-base: 16px;
     --font-size-lg: 20px;
     --font-size-sm: 14px;
@@ -21992,7 +22007,7 @@ button:focus {
 }
 
 .delete-container .user-item:last-child {
-    /* No special styling needed for grid layout */
+    margin-bottom: 0; /* avoid empty ruleset */
 }
 
 .delete-container .user-item input[type="checkbox"] {

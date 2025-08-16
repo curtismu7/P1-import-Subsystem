@@ -218,7 +218,25 @@ class PingOneClient extends BaseApiClient {
         const response = await this.post(url, userData, options);
         
         if (!response.ok) {
-            throw new Error(`Failed to create user: ${response.status} ${response.statusText}`);
+            // Enrich error with status details and body to allow caller logic (e.g., skip duplicates)
+            let bodyText = '';
+            try {
+                // Try JSON first, fallback to text
+                const ct = response.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    const json = await response.json();
+                    bodyText = JSON.stringify(json);
+                } else {
+                    bodyText = await response.text();
+                }
+            } catch (_) {
+                // ignore body parsing errors
+            }
+            const err = new Error(`Failed to create user: ${response.status} ${response.statusText}`);
+            err.status = response.status;
+            err.statusText = response.statusText;
+            err.body = bodyText;
+            throw err;
         }
         
         return await response.json();

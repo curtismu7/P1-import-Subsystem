@@ -9,6 +9,7 @@ export class ExportPage {
         this.selectedPopulation = null;
         this.lastTokenValidity = null; // Track token validity changes
         this.exportInterval = null; // Track export progress interval
+        this.lastExport = null; // Cache last export artifact and metadata
         this.exportOptions = {
             format: 'csv',
             profile: 'pingone',
@@ -16,6 +17,144 @@ export class ExportPage {
             includeDisabledUsers: false,
             attributes: []
         };
+    }
+
+    /**
+     * Transform a single user's attributes based on the selected export profile.
+     * Returns an object whose property insertion order matches the headers.
+     * @param {string[]} selectedAttributes
+     * @param {number} index
+     * @param {string} userStatus
+     */
+    applyProfileTransform(selectedAttributes, index, userStatus) {
+        const profile = this.exportOptions.profile || 'pingone';
+        const headers = this.getProfileHeaders(selectedAttributes);
+        const out = {};
+        const v = (key) => this.getAttributeValue(key, index);
+
+        if (profile === 'pingone') {
+            headers.forEach(h => {
+                // Direct mapping for PingOne style fields
+                if (h === 'enabled') out[h] = v('enabled');
+                else if (h === 'groups') out[h] = v('groups');
+                else out[h] = v(h);
+            });
+            return out;
+        }
+
+        if (profile === 'ad') {
+            // Ensure order matches headers
+            headers.forEach(h => {
+                switch (h) {
+                    case 'sAMAccountName':
+                        out[h] = v('sAMAccountName') || v('username');
+                        break;
+                    case 'mail':
+                        out[h] = v('mail') || v('email');
+                        break;
+                    case 'givenName':
+                        out[h] = v('givenName') || v('firstName');
+                        break;
+                    case 'sn':
+                        out[h] = v('sn') || v('familyName') || v('lastName');
+                        break;
+                    case 'distinguishedName': {
+                        const sam = (v('sAMAccountName') || v('username') || 'user').toString();
+                        out[h] = v('distinguishedName') || `CN=${sam},OU=Users,DC=example,DC=com`;
+                        break;
+                    }
+                    default:
+                        out[h] = v(h);
+                }
+            });
+            return out;
+        }
+
+        if (profile === 'okta') {
+            headers.forEach(h => {
+                switch (h) {
+                    case 'login':
+                        out[h] = v('login') || v('username') || v('email');
+                        break;
+                    case 'email':
+                        out[h] = v('email');
+                        break;
+                    case 'firstName':
+                        out[h] = v('firstName') || v('givenName');
+                        break;
+                    case 'lastName':
+                        out[h] = v('lastName') || v('familyName');
+                        break;
+                    case 'status':
+                        out[h] = userStatus || v('status');
+                        break;
+                    case 'groups':
+                        out[h] = v('groups');
+                        break;
+                    default:
+                        out[h] = v(h);
+                }
+            });
+            return out;
+        }
+
+        if (profile === 'siem') {
+            headers.forEach(h => {
+                switch (h) {
+                    case 'id':
+                        out[h] = v('id');
+                        break;
+                    case 'username':
+                        out[h] = v('username');
+                        break;
+                    case 'email':
+                        out[h] = v('email');
+                        break;
+                    case 'enabled':
+                        out[h] = v('enabled');
+                        break;
+                    case 'createdDate':
+                        out[h] = v('createdDate');
+                        break;
+                    case 'lastLogin':
+                        out[h] = v('lastLogin');
+                        break;
+                    default:
+                        out[h] = v(h);
+                }
+            });
+            return out;
+        }
+
+        // Fallback: map selected/deduced headers directly
+        headers.forEach(h => { out[h] = v(h); });
+        return out;
+    }
+
+    // Format bytes to human readable string
+    formatBytes(bytes) {
+        try {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            const value = (bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 2);
+            return `${value} ${sizes[i]}`;
+        } catch {
+            return `${bytes} B`;
+        }
+    }
+
+    // Format date/time consistently
+    formatDateTime(date) {
+        try {
+            return new Intl.DateTimeFormat(undefined, {
+                year: 'numeric', month: 'short', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            }).format(date);
+        } catch {
+            return new Date(date).toLocaleString();
+        }
     }
 
     async load() {
@@ -142,39 +281,17 @@ export class ExportPage {
                                     <input type="checkbox" id="attrs-unselect-all" class="form-check-input">
                                     <label for="attrs-unselect-all" class="form-check-label">Unselect All</label>
                                 </div>
+                                <div class="form-check">
+                                    <button type="button" id="attrs-refresh" class="btn btn-outline-secondary btn-sm">
+                                        <i class="mdi mdi-refresh"></i> Refresh Attributes
+                                    </button>
+                                </div>
                             </div>
                             <div id="attributes-selection" class="attributes-grid">
+                                <!-- Dynamically populated -->
                                 <div class="form-check">
-                                    <input type="checkbox" id="attr-username" class="form-check-input" checked disabled>
+                                    <input type="checkbox" id="attr-username" class="form-check-input" checked disabled data-key="username">
                                     <label for="attr-username" class="form-check-label">Username (Required)</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-email" class="form-check-input" checked>
-                                    <label for="attr-email" class="form-check-label">Email</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-firstname" class="form-check-input" checked>
-                                    <label for="attr-firstname" class="form-check-label">First Name</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-lastname" class="form-check-input" checked>
-                                    <label for="attr-lastname" class="form-check-label">Last Name</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-status" class="form-check-input">
-                                    <label for="attr-status" class="form-check-label">Status</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-groups" class="form-check-input">
-                                    <label for="attr-groups" class="form-check-label">Groups</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-roles" class="form-check-input">
-                                    <label for="attr-roles" class="form-check-label">Roles</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-custom" class="form-check-input">
-                                    <label for="attr-custom" class="form-check-label">Custom Attributes</label>
                                 </div>
                             </div>
                         </div>
@@ -285,6 +402,8 @@ export class ExportPage {
             console.log('📝 Event listeners set up, loading populations...');
             await this.loadPopulations();
             console.log('📝 Populations loading completed');
+            // Load attributes dynamically
+            await this.loadAttributes();
         } else {
             console.error('❌ Export page element not found!');
         }
@@ -340,10 +459,13 @@ export class ExportPage {
         if (optionsUnselectAll) optionsUnselectAll.addEventListener('change', (e) => { if (e.target.checked) { toggleGroup(optionIds, false); if (optionsSelectAll) optionsSelectAll.checked = false; this.updateExportOptions(); } });
 
         // Attribute selection
-        const attributeCheckboxes = document.querySelectorAll('#attributes-selection input[type="checkbox"]');
-        attributeCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', () => this.updateExportOptions());
-        });
+        const bindAttributeCheckboxListeners = () => {
+            const attributeCheckboxes = document.querySelectorAll('#attributes-selection input[type="checkbox"]');
+            attributeCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', () => this.updateExportOptions());
+            });
+        };
+        bindAttributeCheckboxListeners();
 
         // Select All / Unselect All for attributes (exclude required username)
         const attrsSelectAll = document.getElementById('attrs-select-all');
@@ -364,6 +486,17 @@ export class ExportPage {
                 this.updateExportOptions();
             }
         });
+
+        // Refresh attributes button
+        const attrsRefresh = document.getElementById('attrs-refresh');
+        if (attrsRefresh) {
+            attrsRefresh.addEventListener('click', async () => {
+                await this.loadAttributes(true);
+                // Re-bind listeners after DOM update
+                bindAttributeCheckboxListeners();
+                this.updateExportOptions();
+            });
+        }
 
         // Action buttons
         const previewBtn = document.getElementById('preview-export');
@@ -407,7 +540,7 @@ export class ExportPage {
         // Use the unified service to load populations
         await populationLoader.loadPopulations('export-population-select', {
             onError: (error) => {
-                this.app.showNotification('Failed to load populations: ' + error.message, 'error');
+                this.app?.showNotification?.('Failed to load populations: ' + error.message, 'error');
             }
         });
     }
@@ -465,16 +598,18 @@ export class ExportPage {
         this.exportOptions.includeDisabledUsers = includeDisabled?.checked || false;
         this.exportOptions.includeMetadata = includeMetadata?.checked || false;
 
-        // Update selected attributes
+        // Update selected attributes using data-key to support dotted keys (e.g., custom.foo)
         const attributeCheckboxes = document.querySelectorAll('#attributes-selection input[type="checkbox"]:checked');
-        this.exportOptions.attributes = Array.from(attributeCheckboxes).map(cb => cb.id.replace('attr-', ''));
+        this.exportOptions.attributes = Array.from(attributeCheckboxes)
+            .map(cb => cb.dataset.key)
+            .filter(Boolean);
 
         console.log('Export options updated:', this.exportOptions);
     }
 
     async handlePreviewExport() {
         if (!this.selectedPopulation) {
-            this.app.showNotification('Please select a population first', 'warning');
+            this.app?.showNotification?.('Please select a population first', 'warning');
             return;
         }
 
@@ -486,7 +621,7 @@ export class ExportPage {
             
         } catch (error) {
             console.error('Error previewing export:', error);
-            this.app.showNotification('Failed to preview export: ' + error.message, 'error');
+            this.app?.showNotification?.('Failed to preview export: ' + error.message, 'error');
         }
     }
 
@@ -670,6 +805,13 @@ export class ExportPage {
 
         try {
             this.updateExportOptions();
+            // Guard: prevent export when selected population has 0 users
+            const rawCount = this.selectedPopulation?.userCount;
+            const totalCount = Number(rawCount ?? 0);
+            if (!Number.isFinite(totalCount) || totalCount <= 0) {
+                this.app?.showNotification?.('No records to export: the selected population has 0 users.', 'warning');
+                return;
+            }
             
             // Show progress section
             const progressSection = document.getElementById('export-progress');
@@ -688,7 +830,7 @@ export class ExportPage {
             
         } catch (error) {
             console.error('Error starting export:', error);
-            this.app.showNotification('Failed to start export: ' + error.message, 'error');
+            this.app?.showNotification?.('Failed to start export: ' + error.message, 'error');
         }
     }
 
@@ -710,12 +852,27 @@ export class ExportPage {
         const usersProcessed = document.getElementById('users-processed');
         const totalUsers = document.getElementById('total-users');
 
-        const total = this.selectedPopulation.userCount || 100;
+        const total = Number(this.selectedPopulation?.userCount ?? 0);
         if (totalUsers) totalUsers.textContent = total;
 
         let currentProgress = 0;
         
         return new Promise((resolve) => {
+            // If no users to export, exit gracefully
+            if (total <= 0) {
+                if (statusText) statusText.textContent = 'No users to export';
+                if (usersProcessed) usersProcessed.textContent = '0';
+                if (progressBar) progressBar.style.width = '0%';
+                if (progressText) progressText.textContent = '0%';
+                if (progressTextLeft) progressTextLeft.textContent = '0%';
+                const cancelBtn = document.getElementById('cancel-export');
+                if (cancelBtn) cancelBtn.style.display = 'none';
+                const progressSection = document.getElementById('export-progress');
+                if (progressSection) progressSection.style.display = 'none';
+                this.app?.showNotification?.('No records to export: the selected population has 0 users.', 'info');
+                resolve();
+                return;
+            }
             this.exportInterval = setInterval(() => {
                 if (currentProgress >= total) {
                     clearInterval(this.exportInterval);
@@ -790,46 +947,64 @@ export class ExportPage {
                     <div class="result-card success">
                         <i class="mdi mdi-check-circle"></i>
                         <div>
-                            <h3>Export Summary</h3>
-                            <div class="result-stats">
-                                <div class="stat-item">
-                                    <span class="stat-label">Total Users:</span>
-                                    <span class="stat-value">${total}</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Exported:</span>
-                                    <span class="stat-value success">${success}</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Skipped:</span>
-                                    <span class="stat-value warning">${skipped}</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Failed:</span>
-                                    <span class="stat-value error">${failed}</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Success Rate:</span>
-                                    <span class="stat-value">${successRate}%</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Format:</span>
-                                    <span class="stat-value">${this.exportOptions.format.toUpperCase()}</span>
-                                </div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Format</div>
+                                <div class="metric-value">${this.exportOptions.format.toUpperCase()}</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Headers</div>
+                                <div class="metric-value">${this.exportOptions.includeHeaders ? 'Included' : 'Excluded'}</div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="result-details">
-                        <h4>Export Details</h4>
-                        <ul>
-                            <li><strong>Target Population:</strong> ${this.selectedPopulation.name}</li>
-                            <li><strong>File:</strong> ${this.generateFileName()}</li>
-                            <li><strong>Completed:</strong> ${new Date().toLocaleString()}</li>
-                        </ul>
+                <div class="file-details-section" style="background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; margin-top: 12px;">
+                    <div class="file-details" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <i class="mdi mdi-file-document" style="font-size:22px; color:#374151;"></i>
+                            <div class="file-meta">
+                                <div class="file-name" id="file-name" style="font-weight:600; color:#111827;">${this.lastExport?.fileName || this.generateFileName()}</div>
+                                <div class="file-extra" style="font-size:12px; color:#4b5563;">
+                                    <span id="file-size">${sizeText}</span>
+                                    <span style="padding:0 6px; color:#9ca3af;">|</span>
+                                    <span id="file-created">Created: ${createdText}</span>
+                                    <span style="padding:0 6px; color:#9ca3af;">|</span>
+                                    <span id="file-modified">Last Modified: ${modifiedText}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button type="button" id="download-export" class="btn btn-success" style="border-radius: 4px; padding: 8px 14px; display:inline-flex; align-items:center; gap:6px;">
+                                <i class="mdi mdi-download"></i> <span>Download</span>
+                            </button>
+                            <button type="button" id="remove-file" class="btn btn-danger btn-sm" style="border-radius: 4px; padding: 8px 12px; display:inline-flex; align-items:center; gap:6px;">
+                                <i class="mdi mdi-delete"></i> <span>Remove</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
+
+                <div class="result-details">
+                    <h4>Export Details</h4>
+                    <ul>
+                        <li><strong>Target Population:</strong> ${this.selectedPopulation.name}</li>
+                        <li><strong>Completed:</strong> ${this.formatDateTime(new Date())}</li>
+                    </ul>
+                </div>
             `;
+
+            // Wire up Remove button to clear cached export
+            const removeBtn = document.getElementById('remove-file');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', () => {
+                    this.lastExport = null;
+                    const details = document.querySelector('.file-details-section');
+                    if (details) details.remove();
+                    this.app?.showNotification?.('Export file removed from session.', 'info');
+                });
+            }
         }
     }
 
@@ -870,7 +1045,7 @@ export class ExportPage {
 
     handleDownloadExport() {
         if (!this.selectedPopulation) {
-            this.app.showNotification('No export data available. Please run an export first.', 'warning');
+            this.app?.showNotification?.('No export data available. Please run an export first.', 'warning');
             return;
         }
 
@@ -878,11 +1053,11 @@ export class ExportPage {
             // Generate the export data
             const exportData = this.generateExportData();
             const fileName = this.generateFileName();
-            
-            // Create a Blob with the export data
-            const blob = new Blob([exportData.content], { 
-                type: this.getMimeType(this.exportOptions.format) 
-            });
+            const blob = this.lastExport?.blob || new Blob([exportData.content], { type: this.getMimeType(this.exportOptions.format) });
+            const size = blob.size;
+            const createdAt = new Date();
+            const modifiedAt = createdAt;
+            this.lastExport = { blob, fileName, size, createdAt, modifiedAt, type: exportData.type };
             
             // Create a download link
             const downloadLink = document.createElement('a');
@@ -896,14 +1071,14 @@ export class ExportPage {
             document.body.removeChild(downloadLink);
             
             // Clean up the URL object
-            URL.revokeObjectURL(downloadLink.href);
-            
-            this.app.showNotification(`Export file "${fileName}" downloaded successfully!`, 'success');
-            
-        } catch (error) {
-            console.error('Error downloading export:', error);
-            this.app.showNotification('Failed to download export file: ' + error.message, 'error');
-        }
+        URL.revokeObjectURL(downloadLink.href);
+        
+        this.app?.showNotification?.(`Export file "${fileName}" downloaded successfully!`, 'success');
+        
+    } catch (error) {
+        console.error('Error downloading export:', error);
+        this.app?.showNotification?.('Failed to download export file: ' + error.message, 'error');
+    }
     }
 
     generateExportData() {
@@ -1019,68 +1194,6 @@ export class ExportPage {
         return selectedAttributes.map(attr => this.getAttributeDisplayName(attr));
     }
 
-    applyProfileTransform(selectedAttributes, index, status) {
-        const profile = this.exportOptions.profile || 'pingone';
-        const base = {};
-        // Build from selected attributes first (default mapping)
-        selectedAttributes.forEach(attr => {
-            const key = this.getAttributeKey(attr);
-            base[key] = attr === 'status' ? status : this.getAttributeValue(attr, index);
-        });
-        if (profile === 'pingone') {
-            return {
-                username: base.username,
-                email: base.email,
-                givenName: base.first_name || 'User',
-                familyName: base.last_name || String(index),
-                enabled: (status || base.status) !== 'Disabled',
-                groups: base.groups || ''
-            };
-        }
-        if (profile === 'ad') {
-            const username = (base.username || `user${index}`);
-            const sam = String(username).includes('@') ? username.split('@')[0] : username;
-            const dn = `uid=${sam},ou=Users,dc=example,dc=com`;
-            return {
-                sAMAccountName: sam,
-                mail: base.email || `${sam}@example.com`,
-                givenName: base.first_name || 'User',
-                sn: base.last_name || String(index),
-                distinguishedName: dn
-            };
-        }
-        if (profile === 'okta') {
-            return {
-                login: base.email || `${base.username || `user${index}`}@example.com`,
-                email: base.email || `${base.username || `user${index}`}@example.com`,
-                firstName: base.first_name || 'User',
-                lastName: base.last_name || String(index),
-                status: status || base.status || 'ACTIVE',
-                groups: base.groups || ''
-            };
-        }
-        if (profile === 'siem') {
-            return {
-                id: `u-${index}`,
-                username: base.username || `user${index}`,
-                email: base.email || `${base.username || `user${index}`}@example.com`,
-                enabled: (status || base.status) !== 'Disabled',
-                createdDate: base.created_date || new Date().toISOString(),
-                lastLogin: base.last_login || new Date().toISOString()
-            };
-        }
-        return base;
-    }
-
-    convertUsersToXML(users) {
-        const escape = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
-        const rows = users.map(u => {
-            const fields = Object.entries(u).map(([k,v]) => `    <${k}>${escape(v)}</${k}>`).join('\n');
-            return `  <user>\n${fields}\n  </user>`;
-        }).join('\n');
-        return `<users>\n${rows}\n</users>`;
-    }
-
     convertUsersToLDIF(users) {
         const lines = users.map(u => {
             const uid = (u.username || u.login || u.sAMAccountName || 'user').toString();
@@ -1126,30 +1239,80 @@ export class ExportPage {
      * Get selected attributes from checkboxes
      */
     getSelectedAttributes() {
-        const attributes = [];
-        
-        // Always include username (required)
-        attributes.push('username');
-        
-        // Check other attribute checkboxes
-        const attributeCheckboxes = [
-            { id: 'attr-email', key: 'email' },
-            { id: 'attr-firstname', key: 'firstname' },
-            { id: 'attr-lastname', key: 'lastname' },
-            { id: 'attr-status', key: 'status' },
-            { id: 'attr-groups', key: 'groups' },
-            { id: 'attr-roles', key: 'roles' },
-            { id: 'attr-custom', key: 'custom' }
-        ];
-        
-        attributeCheckboxes.forEach(({ id, key }) => {
-            const checkbox = document.getElementById(id);
-            if (checkbox && checkbox.checked) {
-                attributes.push(key);
-            }
+        const attributes = ['username'];
+        const checked = document.querySelectorAll('#attributes-selection input[type="checkbox"]:checked');
+        checked.forEach(cb => {
+            const key = cb.dataset.key;
+            if (key && key !== 'username') attributes.push(key);
         });
-        
         return attributes;
+    }
+
+    /**
+     * Fetch and render attributes dynamically from backend
+     * @param {boolean} forceRefresh
+     */
+    async loadAttributes(forceRefresh = false) {
+        try {
+            const url = `/api/export/attributes${forceRefresh ? '?forceRefresh=true' : ''}`;
+            const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            const json = await resp.json();
+            if (!resp.ok || json.success === false) {
+                throw new Error(json.error || json.message || 'Failed fetching attributes');
+            }
+            const attributes = json.data?.attributes || json.attributes || [];
+            this.renderAttributes(attributes);
+            this.updateExportOptions();
+        } catch (err) {
+            console.error('Failed to load attributes:', err);
+            this.app?.showNotification?.(`Failed to load attributes: ${err.message}`, 'error');
+        }
+    }
+
+    /**
+     * Render attribute checkboxes into #attributes-selection
+     * @param {Array<{key:string,label:string,group?:string,required?:boolean}>} attributes
+     */
+    renderAttributes(attributes) {
+        const container = document.getElementById('attributes-selection');
+        if (!container) return;
+
+        // Preserve the required username checkbox
+        container.innerHTML = '';
+        const usernameId = 'attr-username';
+        container.insertAdjacentHTML('beforeend', `
+            <div class="form-check">
+                <input type="checkbox" id="${usernameId}" class="form-check-input" checked disabled data-key="username">
+                <label for="${usernameId}" class="form-check-label">Username (Required)</label>
+            </div>
+        `);
+
+        // Sort attributes: standard/name/relations/metadata/custom; username first already added
+        const order = { standard: 1, name: 2, relations: 3, metadata: 4, custom: 5 };
+        const items = attributes
+            .filter(a => a.key !== 'username')
+            .slice()
+            .sort((a, b) => (order[a.group || 'standard'] - order[b.group || 'standard']) || a.label.localeCompare(b.label));
+
+        // Defaults to check
+        const defaultChecked = new Set(['email','givenName','familyName','enabled','groups']);
+
+        for (const attr of items) {
+            const id = `attr-${this.sanitizeId(attr.key)}`;
+            const label = attr.label || attr.key;
+            const required = !!attr.required;
+            const checked = required || defaultChecked.has(attr.key);
+            container.insertAdjacentHTML('beforeend', `
+                <div class="form-check">
+                    <input type="checkbox" id="${id}" class="form-check-input" ${checked ? 'checked' : ''} ${required ? 'disabled' : ''} data-key="${attr.key}">
+                    <label for="${id}" class="form-check-label">${label}</label>
+                </div>
+            `);
+        }
+    }
+
+    sanitizeId(key) {
+        return String(key).replace(/[^a-zA-Z0-9_-]/g, '_');
     }
     
     /**
@@ -1200,21 +1363,58 @@ export class ExportPage {
         const createdDate = new Date(now.getTime() - (Math.random() * 365 * 24 * 60 * 60 * 1000));
         const lastUpdated = new Date(createdDate.getTime() + (Math.random() * 30 * 24 * 60 * 60 * 1000));
         const lastLogin = new Date(lastUpdated.getTime() + (Math.random() * 7 * 24 * 60 * 60 * 1000));
-        
-        const values = {
+        const isDisabled = index % 5 === 0; // ~20% disabled for preview richness
+
+        const map = {
+            // core identifiers
+            'id': `u-${index}`,
             'username': `user${index}`,
+            'userName': `user${index}`,
             'email': `user${index}@example.com`,
+
+            // legacy simple names
             'firstname': 'User',
-            'lastname': index.toString(),
-            'status': index % 10 === 0 ? 'Disabled' : 'Active', // 10% disabled
+            'lastname': String(index),
+
+            // SCIM name object and synonyms
+            'givenName': 'User',
+            'familyName': String(index),
+            'name.givenName': 'User',
+            'name.familyName': String(index),
+
+            // enable/active/status
+            'status': isDisabled ? 'Disabled' : 'Active',
+            'enabled': !isDisabled,
+            'active': !isDisabled,
+
+            // relations and groups
             'groups': 'Default Group',
             'roles': 'User',
-            'custom': 'Custom Value',
+
+            // dates
             'created_date': createdDate.toISOString().split('T')[0],
             'last_updated': lastUpdated.toISOString().split('T')[0],
-            'last_login': lastLogin.toISOString().split('T')[0]
+            'last_login': lastLogin.toISOString().split('T')[0],
+            'created': createdDate.toISOString(),
+            'lastModified': lastUpdated.toISOString(),
+            'meta.created': createdDate.toISOString(),
+            'meta.lastModified': lastUpdated.toISOString()
         };
-        return values[attr] || '';
+
+        // Support custom dotted attributes like custom.foo, x-... or urn:...:extension
+        if (attr && typeof attr === 'string') {
+            if (attr.startsWith('custom.')) {
+                const key = attr.split('.').slice(1).join('_') || 'attr';
+                return `custom_${key}_${index}`;
+            }
+            if (attr.includes('.')) {
+                // generic dotted key fallback e.g., addresses.workStreet
+                const baseKey = attr.split('.').pop();
+                if (baseKey && map[baseKey] !== undefined) return map[baseKey];
+            }
+        }
+
+        return map[attr] !== undefined ? map[attr] : '';
     }
 
     generateFileName() {
@@ -1282,7 +1482,7 @@ export class ExportPage {
         }
         
         // Show notification
-        this.app.showNotification('Export cancelled successfully', 'info');
+        this.app?.showNotification?.('Export cancelled successfully', 'info');
         
         // Reset progress
         const progressBar = document.getElementById('export-progress-bar');

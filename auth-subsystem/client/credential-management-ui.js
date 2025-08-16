@@ -84,7 +84,8 @@ class CredentialManagementUI {
                                         </span>
                                     </label>
                                     <input type="text" id="client-id" name="clientId" 
-                                           placeholder="Enter PingOne Client ID" required>
+                                           placeholder="Enter PingOne Client ID" required
+                                           autocomplete="username" autocapitalize="off" spellcheck="false">
                                     <small class="help-text">Your PingOne application's Client ID</small>
                                 </div>
 
@@ -97,7 +98,8 @@ class CredentialManagementUI {
                                     </label>
                                     <div class="password-input-group">
                                         <input type="password" id="client-secret" name="clientSecret" 
-                                               placeholder="Enter PingOne Client Secret" required>
+                                               placeholder="Enter PingOne Client Secret" required
+                                               autocomplete="current-password" autocapitalize="off" spellcheck="false">
                                         <button type="button" class="toggle-password" id="toggle-client-secret">
                                             <i class="fas fa-eye"></i>
                                         </button>
@@ -113,7 +115,8 @@ class CredentialManagementUI {
                                         </span>
                                     </label>
                                     <input type="text" id="environment-id" name="environmentId" 
-                                           placeholder="Enter PingOne Environment ID" required>
+                                           placeholder="Enter PingOne Environment ID" required
+                                           autocomplete="off" autocapitalize="off" spellcheck="false">
                                     <small class="help-text">Your PingOne environment's unique identifier</small>
                                 </div>
 

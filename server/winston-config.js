@@ -590,7 +590,7 @@ export function createWinstonLogger(options = {}) {
 
     // Enhanced formatter for all logs with colors and separators
     const enhancedFormatter = winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
-        const separator = '═'.repeat(80);
+        const separator = '-'.repeat(80);
         const levelColors = {
             error: '🔴',
             warn: '🟡', 
@@ -686,9 +686,9 @@ export function createWinstonLogger(options = {}) {
 
     // Add file transports for production and development (not test)
     if (enableFileLogging) {
-        // Error logs with rotation and compression
+        // Error logs (pretty, human-readable)
         logger.add(new winston.transports.File({ 
-            filename: path.join(__dirname, '../logs/error.log'),
+            filename: path.join(__dirname, '../logs/error-pretty.log'),
             level: 'error',
             maxsize: 10 * 1024 * 1024, // 10MB
             maxFiles: 10,
@@ -732,10 +732,29 @@ export function createWinstonLogger(options = {}) {
                 })
             )
         }));
-        
-        // Server logs with enhanced formatting
+
+        // Error logs (machine-readable JSON)
         logger.add(new winston.transports.File({
-            filename: path.join(__dirname, '../logs/server.log'),
+            filename: path.join(__dirname, '../logs/error.log'),
+            level: 'error',
+            maxsize: 10 * 1024 * 1024, // 10MB
+            maxFiles: 10,
+            tailable: true,
+            zippedArchive: true,
+            handleExceptions: true,
+            handleRejections: true,
+            format: winston.format.combine(
+                winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss.SSS'
+                }),
+                winston.format.errors({ stack: true }),
+                winston.format.json()
+            )
+        }));
+        
+        // Server logs (pretty, human-readable)
+        logger.add(new winston.transports.File({
+            filename: path.join(__dirname, '../logs/server-pretty.log'),
             level: 'info',
             maxsize: 10 * 1024 * 1024, // 10MB
             maxFiles: 5,
@@ -749,10 +768,27 @@ export function createWinstonLogger(options = {}) {
                 enhancedFormatter
             )
         }));
+
+        // Server logs (machine-readable JSON)
+        logger.add(new winston.transports.File({
+            filename: path.join(__dirname, '../logs/server.log'),
+            level: 'info',
+            maxsize: 10 * 1024 * 1024, // 10MB
+            maxFiles: 5,
+            tailable: true,
+            zippedArchive: true,
+            format: winston.format.combine(
+                winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss.SSS'
+                }),
+                winston.format.errors({ stack: true }),
+                winston.format.json()
+            )
+        }));
         
-        // Combined logs with daily rotation and enhanced formatting
+        // Combined logs with daily rotation (pretty, human-readable)
         logger.add(new DailyRotateFile({
-            filename: path.join(__dirname, '../logs/combined-%DATE%.log'),
+            filename: path.join(__dirname, '../logs/combined-pretty-%DATE%.log'),
             datePattern: 'YYYY-MM-DD',
             maxSize: '20m',
             maxFiles: '14d',
@@ -765,8 +801,41 @@ export function createWinstonLogger(options = {}) {
                 enhancedFormatter
             )
         }));
+
+        // Combined logs with daily rotation (machine-readable JSON/NDJSON)
+        logger.add(new DailyRotateFile({
+            filename: path.join(__dirname, '../logs/combined-%DATE%.log'),
+            datePattern: 'YYYY-MM-DD',
+            maxSize: '20m',
+            maxFiles: '14d',
+            zippedArchive: true,
+            format: winston.format.combine(
+                winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss.SSS'
+                }),
+                winston.format.errors({ stack: true }),
+                winston.format.json()
+            )
+        }));
         
-        // Combined logs (non-rotating for immediate access)
+        // Combined logs (non-rotating pretty for immediate human viewing)
+        logger.add(new winston.transports.File({
+            filename: path.join(__dirname, '../logs/combined-pretty.log'),
+            level: 'debug',
+            maxsize: 20 * 1024 * 1024, // 20MB
+            maxFiles: 3,
+            tailable: true,
+            zippedArchive: true,
+            format: winston.format.combine(
+                winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss.SSS'
+                }),
+                winston.format.errors({ stack: true }),
+                enhancedFormatter
+            )
+        }));
+
+        // Combined logs (non-rotating machine-readable for APIs/UI)
         logger.add(new winston.transports.File({
             filename: path.join(__dirname, '../logs/combined.log'),
             level: 'debug',
@@ -778,6 +847,7 @@ export function createWinstonLogger(options = {}) {
                 winston.format.timestamp({
                     format: 'YYYY-MM-DD HH:mm:ss.SSS'
                 }),
+                winston.format.errors({ stack: true }),
                 winston.format.json()
             )
         }));
@@ -1085,7 +1155,24 @@ export function createServerLogger() {
         return logLine;
     });
     
-    // Add server-specific file transport with enhanced formatting
+    // Add server-specific file transport (pretty)
+    logger.add(new winston.transports.File({
+        filename: path.join(__dirname, '../logs/server-pretty.log'),
+        level: 'info',
+        maxsize: 10 * 1024 * 1024, // 10MB
+        maxFiles: 5,
+        tailable: true,
+        zippedArchive: true,
+        format: winston.format.combine(
+            winston.format.timestamp({
+                format: 'YYYY-MM-DD HH:mm:ss.SSS'
+            }),
+            winston.format.errors({ stack: true }),
+            serverFormatter
+        )
+    }));
+
+    // Add server-specific file transport (JSON)
     logger.add(new winston.transports.File({
         filename: path.join(__dirname, '../logs/server.log'),
         level: 'info',
@@ -1098,7 +1185,7 @@ export function createServerLogger() {
                 format: 'YYYY-MM-DD HH:mm:ss.SSS'
             }),
             winston.format.errors({ stack: true }),
-            serverFormatter
+            winston.format.json()
         )
     }));
     
@@ -1147,7 +1234,24 @@ export function createClientLogger() {
         return logLine;
     });
     
-    // Add client-specific file transport with enhanced formatting
+    // Add client-specific file transport (pretty)
+    logger.add(new winston.transports.File({
+        filename: path.join(__dirname, '../logs/client-pretty.log'),
+        level: 'info',
+        maxsize: 10 * 1024 * 1024, // 10MB
+        maxFiles: 5,
+        tailable: true,
+        zippedArchive: true,
+        format: winston.format.combine(
+            winston.format.timestamp({
+                format: 'YYYY-MM-DD HH:mm:ss.SSS'
+            }),
+            winston.format.errors({ stack: true }),
+            clientFormatter
+        )
+    }));
+
+    // Add client-specific file transport (JSON)
     logger.add(new winston.transports.File({
         filename: path.join(__dirname, '../logs/client.log'),
         level: 'info',
@@ -1160,7 +1264,7 @@ export function createClientLogger() {
                 format: 'YYYY-MM-DD HH:mm:ss.SSS'
             }),
             winston.format.errors({ stack: true }),
-            clientFormatter
+            winston.format.json()
         )
     }));
     

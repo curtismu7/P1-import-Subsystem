@@ -657,6 +657,22 @@ select {
   color: var(--ping-gray-600) !important;
 }
 
+.file-dates {
+  display: flex !important;
+  gap: 1rem !important;
+  margin-top: 0.25rem !important;
+  flex-wrap: wrap !important;
+}
+
+.file-date {
+  font-size: 0.85rem !important;
+  color: var(--ping-gray-600) !important;
+  background: var(--ping-gray-50) !important;
+  border: 1px solid var(--ping-gray-200) !important;
+  border-radius: 6px !important;
+  padding: 4px 8px !important;
+}
+
 /* Progress section improvements */
 .progress-container {
   display: flex !important;
@@ -11042,4 +11058,102 @@ select.field-error:focus {
   text-align: center;
   font-weight: 600;
   color: var(--ping-text-primary);
+}
+
+/* Final overrides: Left navigation spacing and text color */
+/* Remove any remaining gap above the left nav */
+.left-nav {
+  top: 0 !important;
+}
+
+/* Force left nav text (links, title, icons) to white for better contrast */
+.left-nav .nav-title,
+.left-nav .nav-link,
+.left-nav .nav-link .nav-text,
+.left-nav .nav-link i {
+  color: var(--nav-text) !important; /* typically #FFFFFF */
+}
+
+/* Preserve hover/active color as white as well */
+.left-nav .nav-link:hover,
+.left-nav .nav-link.active {
+  color: var(--nav-text) !important;
+}
+
+/* Final overrides: Shaded File Info Panel (applies to import/modify/delete pages) */
+/* This block is intentionally at the end to win specificity over earlier rules and main.css */
+.file-info {
+    display: block !important;
+    margin-top: 1.5rem !important;
+    padding: 1.5rem !important;
+    background: var(--ping-blue-50) !important; /* subtle shaded panel */
+    border: 1px solid var(--ping-blue-200) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.08) !important;
+    width: 100% !important;
+}
+
+.file-details {
+    display: flex !important;
+    align-items: center !important;
+    gap: 1rem !important;
+    margin-bottom: 1rem !important;
+}
+
+.file-details i {
+    font-size: 1.5rem !important;
+    color: var(--ping-blue-primary) !important;
+}
+
+.file-meta { flex: 1 !important; }
+
+.file-name {
+    font-weight: 600 !important;
+    color: var(--ping-gray-900) !important;
+    font-size: 1.05rem !important;
+    margin-bottom: 0.25rem !important;
+}
+
+.file-size {
+    color: var(--ping-gray-700) !important;
+    font-size: 0.9rem !important;
+}
+
+.file-preview {
+    margin-top: 1rem !important;
+    padding: 1rem !important;
+    background: #ffffff !important;
+    border: 1px solid var(--ping-blue-100, #e0f2fe) !important;
+    border-radius: 8px !important;
+}
+
+.file-preview h4 {
+    margin: 0 0 1rem 0 !important;
+    color: var(--ping-gray-800) !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+}
+
+.file-preview-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 0.875rem !important;
+}
+
+.file-preview-table td {
+    padding: 0.5rem !important;
+    border: 1px solid var(--ping-gray-200) !important;
+    white-space: nowrap !important;
+}
+
+.file-preview-table .header-cell {
+    background: var(--ping-gray-100) !important;
+    font-weight: 600 !important;
+    color: var(--ping-gray-800) !important;
+}
+
+.preview-more {
+    margin-top: 0.75rem !important;
+    color: var(--ping-gray-600) !important;
+    font-style: italic !important;
 }

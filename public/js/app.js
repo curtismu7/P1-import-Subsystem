@@ -13,7 +13,7 @@ import { SwaggerPage } from './pages/swagger-page.js';
 
 class PingOneApp {
     constructor() {
-        this.version = '7.3.0';
+        this.version = '...';
         this.currentPage = 'home';
         this.settings = {};
         this.tokenStatus = { isValid: false, expiresAt: null, timeLeft: null };
@@ -41,7 +41,7 @@ class PingOneApp {
             swagger: new SwaggerPage(this)
         };
         
-        console.log('🚀 PingOne User Management App v' + this.version + ' initializing...');
+        console.log('🚀 PingOne User Management App initializing...');
     }
     
     async init() {
@@ -51,9 +51,27 @@ class PingOneApp {
             
             console.log('🔧 Loading settings...');
             await this.loadSettings();
+
+            console.log('🔎 Loading version from server...');
+            await this.loadVersion();
             
             console.log('🔑 Loading token status...');
             await this.loadTokenStatus(); // Load current token status from server
+            // If token is not valid at startup, try a one-time auto-refresh to improve UX
+            try {
+                if (!this.tokenStatus.isValid) {
+                    await this.attemptAutoRefresh('startup');
+                }
+            } catch (autoErr) {
+                console.warn('Auto-refresh on startup failed:', autoErr?.message || autoErr);
+            }
+            
+            // Show a concise startup status message (Token + Populations)
+            try {
+                await this.updateStartupStatusMessage();
+            } catch (e) {
+                console.warn('Startup status message failed:', e?.message || e);
+            }
             
             console.log('🎯 Setting up event listeners...');
             this.setupEventListeners();
@@ -75,10 +93,13 @@ class PingOneApp {
             
             console.log('✅ Application initialized successfully');
             this.updateServerStatus('Server Started');
+            // Set default status bar with server started timestamp
+            this.setDefaultStatusBar();
             
             // Ensure screen interaction is enabled if no modals are visible
             if (!this.isModalVisible()) {
                 this.setScreenInteraction(true);
+                this.ensureInteractionIntegrity();
             }
             
             // Test status update after a short delay
@@ -90,6 +111,20 @@ class PingOneApp {
         } catch (error) {
             console.error('❌ Failed to initialize application:', error);
             this.showError('Failed to initialize application: ' + error.message);
+        }
+    }
+
+    async loadVersion() {
+        try {
+            const resp = await fetch('/api/version');
+            const data = await resp.json().catch(() => ({}));
+            if (resp.ok && data && (data.version || data.APP_VERSION)) {
+                this.version = data.version || data.APP_VERSION;
+            }
+        } catch (_) {
+            // keep placeholder or previously set version
+        } finally {
+            this.updateVersionDisplay();
         }
     }
     
@@ -155,20 +190,7 @@ class PingOneApp {
             if (result.success && result.data) {
                 const tokenData = result.data;
                 console.log('🔑 Token status loaded from server:', tokenData);
-                
-                // Update token status based on server response
-                if (tokenData.hasToken && tokenData.isValid) {
-                    this.tokenStatus.isValid = true;
-                    this.tokenStatus.expiresAt = new Date(Date.now() + (tokenData.expiresIn * 1000));
-                    this.tokenStatus.timeLeft = tokenData.expiresIn;
-                    console.log('✅ Token is valid, expires in:', tokenData.expiresIn, 'seconds');
-                    console.log('🔄 Updating token status object:', this.tokenStatus);
-                } else {
-                    this.tokenStatus.isValid = false;
-                    this.tokenStatus.expiresAt = null;
-                    this.tokenStatus.timeLeft = null;
-                    console.log('❌ Token is invalid or expired');
-                }
+                this.applyTokenStatusFromServer(tokenData);
                 
                 console.log('🔄 Calling updateTokenUI()...');
                 this.updateTokenUI();
@@ -180,6 +202,103 @@ class PingOneApp {
             console.warn('⚠️ Could not load token status:', error.message);
             // Keep default invalid status
             this.showInfo('Please enter credentials for your PingOne Environment');
+        }
+    }
+
+    /**
+     * Attempt a one-time token refresh via backend when token is invalid.
+     * Handles friendly error codes and opens credentials modal on settings issues.
+     */
+    async attemptAutoRefresh(reason = 'unknown') {
+        try {
+            console.log(`🔄 attemptAutoRefresh invoked (reason=${reason})`);
+            const resp = await fetch('/api/token/refresh', { method: 'POST' });
+            const payload = await resp.json().catch(() => ({}));
+            console.log('🔁 Refresh response:', resp.status, payload);
+
+            if (resp.ok && payload && payload.success) {
+                const data = payload.data || payload.message || {};
+                this.applyTokenStatusFromServer(data);
+                this.updateTokenUI();
+                if (this.tokenStatus.isValid) {
+                    this.showSuccess('Token refreshed successfully');
+                }
+                return true;
+            }
+
+            // Handle friendly error mapping from backend
+            const code = payload && (payload.code || payload.errorCode);
+            const details = payload && (payload.details || payload.data || {});
+            const message = payload && (payload.message || payload.error || 'Token refresh failed');
+            this.showFriendlyTokenError(code, details, message);
+
+            // If settings incomplete, prompt user immediately
+            if (code === 'SETTINGS_INCOMPLETE') {
+                // Ensure modal opens with populated fields
+                this.showCredentialsModal();
+            }
+            return false;
+        } catch (e) {
+            console.warn('Auto-refresh error:', e?.message || e);
+            this.showWarning('Network issue while refreshing token. Please check your connection.');
+            return false;
+        }
+    }
+
+    /**
+     * Apply standardized token status object from server (status or refresh endpoints)
+     * Expected shape: { hasToken, isValid, expiresIn }
+     */
+    applyTokenStatusFromServer(tokenData = {}) {
+        try {
+            if (tokenData && tokenData.hasToken && tokenData.isValid) {
+                const expiresIn = Number(tokenData.expiresIn || tokenData.expires_in || 0);
+                this.tokenStatus.isValid = true;
+                this.tokenStatus.expiresAt = new Date(Date.now() + (expiresIn * 1000));
+                this.tokenStatus.timeLeft = expiresIn;
+                console.log('✅ Token is valid, expires in:', expiresIn, 'seconds');
+            } else {
+                this.tokenStatus.isValid = false;
+                this.tokenStatus.expiresAt = null;
+                this.tokenStatus.timeLeft = null;
+                console.log('❌ Token is invalid or expired');
+            }
+        } catch (e) {
+            console.warn('applyTokenStatusFromServer failed:', e?.message || e);
+        }
+    }
+
+    /**
+     * Display friendly token error messages mapped by backend codes
+     */
+    showFriendlyTokenError(code, details = {}, fallbackMessage = 'Token error') {
+        const missing = Array.isArray(details.missing) ? details.missing : [];
+        const missingList = missing.length ? `Missing: ${missing.join(', ')}` : '';
+        switch (code) {
+            case 'SETTINGS_INCOMPLETE':
+                this.showWarning(`Settings incomplete. ${missingList} Please open Credentials and complete all fields.`);
+                break;
+            case 'INVALID_CREDENTIALS':
+                this.showError('Invalid PingOne credentials. Please verify Client ID and Secret.');
+                break;
+            case 'FORBIDDEN_ACCESS':
+                this.showError('Access forbidden for these credentials. Check environment and permissions.');
+                break;
+            case 'RATE_LIMIT':
+                this.showWarning('Rate limited by PingOne. Please wait and try again shortly.');
+                break;
+            case 'TIMEOUT':
+                this.showWarning('PingOne request timed out. Please try again.');
+                break;
+            case 'NETWORK_ERROR':
+                this.showWarning('Network error reaching PingOne. Check your connection.');
+                break;
+            default:
+                if (fallbackMessage) {
+                    this.showWarning(fallbackMessage);
+                } else {
+                    this.showWarning('Token refresh failed. Please check credentials.');
+                }
         }
     }
     
@@ -294,6 +413,7 @@ class PingOneApp {
             // Only re-enable if no other modal is visible
             if (!this.isModalVisible()) {
                 this.setScreenInteraction(true);
+                this.ensureInteractionIntegrity();
             }
         }
     }
@@ -355,6 +475,7 @@ class PingOneApp {
             // Only re-enable if no other modal is visible
             if (!this.isModalVisible()) {
                 this.setScreenInteraction(true);
+                this.ensureInteractionIntegrity();
             }
         }
     }
@@ -654,6 +775,14 @@ class PingOneApp {
         // Show screen transition indicator
         this.showScreenTransition(pageName);
         
+        // Lifecycle: notify current page we are hiding
+        try {
+            const current = this.pages && this.pages[this.currentPage];
+            if (current && typeof current.onHide === 'function') {
+                current.onHide();
+            }
+        } catch (_) { /* non-blocking */ }
+
         const pages = document.querySelectorAll('.page');
         pages.forEach(page => page.style.display = 'none');
         
@@ -667,6 +796,15 @@ class PingOneApp {
             targetPage.style.display = 'block';
             this.currentPage = pageName;
             this.loadPageContent(pageName);
+            // Lifecycle: notify new page we are shown (after a tick to allow load to render DOM)
+            setTimeout(() => {
+                try {
+                    const next = this.pages && this.pages[this.currentPage];
+                    if (next && typeof next.onShow === 'function') {
+                        next.onShow();
+                    }
+                } catch (_) { /* non-blocking */ }
+            }, 0);
             
             // Fix dropdown heights after page content is loaded
             setTimeout(() => this.fixDropdownHeights(), 100);
@@ -678,6 +816,13 @@ class PingOneApp {
         
         // Hide transition indicator after page loads
         setTimeout(() => this.hideScreenTransition(), 500);
+
+        // Safety: if no modal is actually visible, clear any lingering modal side-effects
+        setTimeout(() => {
+            if (!this.isModalVisible()) {
+                this.ensureInteractionIntegrity();
+            }
+        }, 0);
     }
     
     async loadPageContent(pageName) {
@@ -1175,6 +1320,122 @@ class PingOneApp {
     }
     
     // Utility methods
+
+    /**
+     * Fetch a quick populations availability snapshot.
+     * Prefers cache-status for speed; falls back to fetching populations list.
+     */
+    async getPopulationsSnapshot() {
+        try {
+            // Try cache status first (fast, lightweight)
+            const cs = await fetch('/api/populations/cache-status');
+            if (cs.ok) {
+                const data = await cs.json();
+                const payload = (data && data.success && data.data) ? data.data : data;
+                return {
+                    ok: true,
+                    count: Number(payload?.count || payload?.size || 0),
+                    source: 'cache'
+                };
+            }
+        } catch (_) { /* ignore and try fallback */ }
+
+        try {
+            // Fallback: fetch populations
+            const res = await fetch('/api/populations');
+            if (res.ok) {
+                const json = await res.json();
+                const arr = (json && json.success && json.data && json.data.populations) ? json.data.populations : (json?.populations || []);
+                return { ok: true, count: Array.isArray(arr) ? arr.length : 0, source: 'api' };
+            }
+        } catch (e) {
+            console.warn('Populations snapshot failed:', e?.message || e);
+        }
+
+        return { ok: false, count: 0, source: 'none' };
+    }
+
+    /**
+     * Build and display the startup status message combining token and populations state.
+     */
+    async updateStartupStatusMessage() {
+        // Token part
+        const tokenValid = !!(this.tokenStatus && this.tokenStatus.isValid);
+        const tokenPart = tokenValid
+            ? `Token: Valid${this.tokenStatus.timeLeft ? ` (${this.formatTimeLeft(this.tokenStatus.timeLeft)})` : ''}`
+            : 'Token: Missing or Expired';
+
+        // Populations part
+        const pop = await this.getPopulationsSnapshot();
+        const popPart = pop.ok
+            ? `Populations: ${pop.count} loaded`
+            : 'Populations: Not available';
+
+        const message = `${tokenPart} • ${popPart}`;
+        const type = tokenValid && pop.ok ? 'success' : (tokenValid || pop.ok ? 'warning' : 'error');
+
+        this.showStatusMessage(message, type);
+    }
+
+    /**
+     * Return true if any app modal is currently visible
+     */
+    isModalVisible() {
+        try {
+            // Check known modals first
+            const ids = ['credentials-modal', 'disclaimer-modal'];
+            for (const id of ids) {
+                const el = document.getElementById(id);
+                if (el && (el.style.display === 'flex' || el.style.display === 'block')) {
+                    return true;
+                }
+            }
+            // Generic fallback: any element with class 'modal' that is visible
+            const modals = document.querySelectorAll('.modal');
+            for (const m of modals) {
+                const style = window.getComputedStyle ? window.getComputedStyle(m) : m.style;
+                if (style && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+                    return true;
+                }
+            }
+        } catch (_) {}
+        return false;
+    }
+
+    /**
+     * Globally enable/disable screen interaction (used while modals are open)
+     */
+    setScreenInteraction(enabled) {
+        try {
+            if (enabled) {
+                document.body.style.pointerEvents = '';
+                document.body.style.userSelect = '';
+            } else {
+                document.body.style.pointerEvents = 'none';
+                document.body.style.userSelect = 'none';
+            }
+        } catch (_) {}
+    }
+
+    /**
+     * Ensure there are no lingering interaction blockers if no modal is visible
+     */
+    ensureInteractionIntegrity() {
+        try {
+            if (!this.isModalVisible()) {
+                // Re-enable interaction and scrolling
+                this.setScreenInteraction(true);
+                try { document.body.style.overflow = ''; } catch (_) {}
+
+                // Remove any stale overlays from previous modals
+                const leftovers = document.querySelectorAll('.modal-backdrop, .modal-overlay');
+                leftovers.forEach(el => {
+                    try { el.remove(); } catch (_) {}
+                });
+            }
+        } catch (_) {}
+    }
+
     showLoading(message = 'Loading...') {
         const overlay = document.getElementById('loading-overlay');
         const text = document.getElementById('loading-text');
@@ -1255,13 +1516,33 @@ class PingOneApp {
             
             // Auto-clear after 4 seconds and return to default system status
             setTimeout(() => {
-                const currentTime = new Date().toLocaleTimeString();
-                statusText.textContent = `System Status - ${currentTime}`;
+                statusText.textContent = this.formatServerStartedNow();
                 if (statusIcon) statusIcon.className = 'icon-check-circle';
                 statusBar.className = 'status-message-bar';
                 // Keep it visible but with default styling
             }, 4000);
         }
+    }
+
+    // Helper: default status bar message and formatting
+    formatServerStartedNow() {
+        try {
+            const now = new Date();
+            const date = now.toLocaleDateString();
+            const time = now.toLocaleTimeString();
+            return `Server started at: ${date} ${time}`;
+        } catch (_) {
+            return 'Server started at: --/--/---- --:--:--';
+        }
+    };
+
+    setDefaultStatusBar() {
+        const statusBar = document.getElementById('status-message-bar');
+        const statusText = document.getElementById('status-text');
+        const statusIcon = document.getElementById('status-icon');
+        if (statusText) statusText.textContent = this.formatServerStartedNow();
+        if (statusIcon) statusIcon.className = 'icon-check-circle';
+        if (statusBar) statusBar.className = 'status-message-bar';
     }
 
     // Show a status bar message with an inline action button (e.g., Undo)
@@ -1343,36 +1624,14 @@ class PingOneApp {
             }
         });
     }
-
-    // Check if any modal is currently visible
-    isModalVisible() {
-        const disclaimerModal = document.getElementById('disclaimer-modal');
-        const credentialsModal = document.getElementById('credentials-modal');
-        
-        return (disclaimerModal && disclaimerModal.style.display === 'flex') ||
-               (credentialsModal && credentialsModal.style.display === 'flex');
-    }
-    
-    // Enable/disable screen interaction
-    setScreenInteraction(enabled) {
-        try {
-            if (enabled) {
-                document.body.style.pointerEvents = '';
-                document.body.style.userSelect = '';
-            } else {
-                document.body.style.pointerEvents = 'none';
-                document.body.style.userSelect = 'none';
-            }
-        } catch (_) {}
-    }
     
     /**
-     * Show screen transition indicator (spinner + green bar flash)
+     * Show screen transition indicator
      */
     showScreenTransition(pageName) {
         // Flash the green status bar
-        this.showStatusMessage(`Navigating to ${pageName}...`, 'success', 2000);
-        
+        this.showStatusMessage(`Navigating to ${pageName}...`, 'success');
+
         // Show spinner overlay
         const spinner = document.createElement('div');
         spinner.id = 'screen-transition-spinner';
@@ -1391,7 +1650,6 @@ class PingOneApp {
             spinner.style.opacity = '1';
         }, 10);
     }
-    
     /**
      * Hide screen transition indicator
      */

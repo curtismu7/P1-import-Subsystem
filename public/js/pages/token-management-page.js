@@ -206,6 +206,23 @@ export class TokenManagementPage {
         this.loadTokenHistory();
         this.startTokenMonitoring();
         this.initializeTokenAnalytics();
+
+        // Safety: ensure no lingering interaction blockers after render
+        setTimeout(() => {
+            try {
+                if (this.app && typeof this.app.isModalVisible === 'function' && !this.app.isModalVisible()) {
+                    if (typeof this.app.ensureInteractionIntegrity === 'function') {
+                        this.app.ensureInteractionIntegrity();
+                    } else {
+                        // Fallback: explicitly re-enable interactions
+                        if (typeof this.app.setScreenInteraction === 'function') {
+                            this.app.setScreenInteraction(true);
+                        }
+                        try { document.body.style.overflow = ''; } catch (_) {}
+                    }
+                }
+            } catch (_) {}
+        }, 0);
     }
 
     setupEventListeners() {
@@ -253,6 +270,11 @@ export class TokenManagementPage {
     }
 
     async updateTokenDisplay() {
+        // Guard: if page is not visible, skip any DOM work or logs
+        const pageEl = document.getElementById('token-management-page');
+        if (!pageEl || pageEl.style.display === 'none') {
+            return;
+        }
         console.log('🔄 Updating token display...');
         
         // Load token from localStorage and server
@@ -1025,9 +1047,37 @@ export class TokenManagementPage {
 
     startTokenMonitoring() {
         // Update token display every 30 seconds
+        // Guard: only run when the Token Management page is visible
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+        }
         this.refreshInterval = setInterval(async () => {
+            const pageEl = document.getElementById('token-management-page');
+            if (!pageEl || pageEl.style.display === 'none') {
+                // Page not visible; skip work to avoid noisy logs
+                return;
+            }
             await this.updateTokenDisplay();
         }, 30000);
+    }
+    
+    // Stop periodic monitoring when navigating away
+    stopTokenMonitoring() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
+    }
+    
+    // Lifecycle hooks used by app.js if available
+    onHide() {
+        this.stopTokenMonitoring();
+    }
+    
+    onShow() {
+        if (!this.refreshInterval) {
+            this.startTokenMonitoring();
+        }
     }
     
     /**
