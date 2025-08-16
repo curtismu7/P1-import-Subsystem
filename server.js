@@ -82,6 +82,7 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
+import { ensureLogsDirectory } from './scripts/ensure-logs-directory.js';
 import { createWinstonLogger, createRequestLogger, createErrorLogger, createPerformanceLogger, serverLogger, apiLogger } from './server/winston-config.js';
 import { logStartupSuccess, logStartupFailure, runStartupTests } from './src/server/services/startup-diagnostics.js';
 // Enhanced real-time communication (replaces old connection manager)
@@ -103,6 +104,7 @@ import pingoneProxyRouter from './routes/pingone-proxy-fixed.js';
 import { tokenService } from './server/services/token-service.js';
 import { populationCacheService } from './server/services/population-cache-service.js';
 import { webSocketService } from './server/services/websocket-service.js';
+import { APP_VERSION } from './src/version.js';
 
 // Import routes
 import { runStartupTokenTest } from './server/startup-token-test.js';
@@ -115,6 +117,7 @@ import indexRouter from './routes/index.js';
 import testRunnerRouter from './routes/test-runner.js';
 import importRouter from './routes/api/import.js';
 import exportRouter from './routes/api/export.js';
+import tokenRouter from './routes/api/token.js';
 import { setupSwagger } from './swagger-modern.js';
 import session from 'express-session';
 import { createRequire } from 'module';
@@ -122,7 +125,6 @@ const require = createRequire(import.meta.url);
 const { version: appVersion } = require('./package.json');
 
 // Import new middleware for improved backend-frontend communication
-import { responseWrapper } from './server/utils/api-response.js';
 import { errorHandler, notFoundHandler, asyncHandler } from './server/middleware/error-handler.js';
 import { sanitizeInput } from './server/middleware/validation.js';
 import { WebSocketServer } from 'ws';
@@ -223,7 +225,7 @@ async function loadSettingsFromFile() {
         if (region === 'NorthAmerica' || region === 'NA') region = 'NA';
         else if (region === 'Europe' || region === 'EU') region = 'EU';
         else if (region === 'AsiaPacific' || region === 'APAC') region = 'APAC';
-        else if (region === 'Canada') region = 'NA';
+        else if (region === 'Canada' || region === 'CA') region = 'Canada';
 
         // Mask secrets for logging
         const mask = (val) => val ? `${val.substring(0,4)}...${val.substring(val.length-4)}` : '[NOT_SET]';
@@ -256,6 +258,9 @@ async function loadSettingsFromFile() {
         return false;
     }
 }
+
+// Ensure logs directory exists before any file transports initialize
+await ensureLogsDirectory();
 
 // Create production-ready Winston logger
 const logger = createWinstonLogger({
@@ -306,8 +311,8 @@ app.set('debugMode', process.env.DEBUG_MODE === 'true');
 // Rate limit value
 app.set('rateLimit', Number(process.env.RATE_LIMIT) || 90);
 
-// Initialize WebSocket service
-webSocketService.initialize(server);
+// Initialize WebSocket service (deferred): we'll attach the existing Socket.IO instance below
+// Avoid initializing a separate Socket.IO server here to prevent conflicts
 
 // Attach token manager to app for route access
 app.set('tokenManager', tokenManager);
@@ -345,16 +350,23 @@ app.use(cors({
 
 // Add headers to ensure proper HTTP/1.1 handling
 app.use((req, res, next) => {
-    // Force HTTP/1.1 for compatibility
-    res.setHeader('Connection', 'close');
+    // Do NOT force 'Connection: close' on WebSocket upgrade or Socket.IO endpoints
+    const isSocketIO = req.url.startsWith('/socket.io/');
+    const isUpgrade = (req.headers.upgrade || '').toString().toLowerCase() === 'websocket' ||
+                      (req.headers.connection || '').toString().toLowerCase().includes('upgrade');
+
+    if (!isSocketIO && !isUpgrade) {
+        res.setHeader('Connection', 'close');
+    }
+
     res.setHeader('X-Powered-By', 'PingOne Import Tool');
-    
+
     // Add debugging headers in development
     if (process.env.NODE_ENV !== 'production') {
         res.setHeader('X-Server-Protocol', req.protocol);
         res.setHeader('X-Server-Version', req.httpVersion);
     }
-    
+
     next();
 });
 
@@ -386,9 +398,6 @@ import { standardizeResponse, addRequestId } from './server/middleware/response-
 app.use(addRequestId);
 app.use(standardizeResponse);
 
-// Standardized API response wrapper
-app.use(responseWrapper);
-
 // Example: Use rate limit value in middleware (plug in your rate limiter here)
 // const rateLimit = require('express-rate-limit');
 // app.use(rateLimit({
@@ -401,7 +410,7 @@ app.use(responseWrapper);
 app.get('/api/module-info', (req, res) => {
     res.json({
         success: true,
-        version: '7.1.1',
+        version: appVersion,
         name: 'PingOne Import Tool',
         description: 'User import/export tool for PingOne',
         timestamp: new Date().toISOString()
@@ -587,6 +596,32 @@ app.use('/src', express.static(path.join(__dirname, 'src'), {
 console.log('📦 Source files served at /src for Import Maps');
 console.log('🗺️  Import Maps version available at http://localhost:4000/');
 
+// SPA fallback: serve index.html for non-API HTML requests to avoid 404 on refresh
+app.get('*', async (req, res, next) => {
+    try {
+        if (req.method !== 'GET') return next();
+        const accept = (req.headers['accept'] || '').toString();
+        // Only handle HTML navigations
+        if (!accept.includes('text/html')) return next();
+        const url = req.url || '';
+        // Skip API, websockets, swagger, static, and logs endpoints
+        if (
+            url.startsWith('/api') ||
+            url.startsWith('/socket.io') ||
+            url.startsWith('/swagger') ||
+            url.startsWith('/public/') ||
+            url.startsWith('/src/') ||
+            url.startsWith('/logs')
+        ) {
+            return next();
+        }
+        const htmlPath = path.join(__dirname, 'public', 'index.html');
+        await injectSettingsIntoHtml(htmlPath, res);
+    } catch (e) {
+        return next();
+    }
+});
+
 // Debug route to check module system status
 app.get('/api/debug/modules', (req, res) => {
     res.json({
@@ -600,6 +635,9 @@ app.get('/api/debug/modules', (req, res) => {
 console.log('📚 Swagger UI available at http://localhost:4000/swagger.html');
 console.log('📄 Swagger JSON available at http://localhost:4000/swagger.json');
 console.log('🔍 Debug endpoint available at http://localhost:4000/api/debug/modules');
+
+// Mount API routers
+app.use('/api/token', tokenRouter);
 
 /**
  * @swagger
@@ -736,7 +774,7 @@ app.get('/api/module-info', async (req, res) => {
         
         res.json({
             type: 'import-maps',
-            version: packageVersion,
+            version: appVersion,
             timestamp: new Date().toISOString(),
             imports: importMaps.imports
         });
@@ -931,85 +969,9 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Token management endpoints
-app.get('/api/token/status', async (req, res) => {
-    try {
-        // First check the server-side token service
-        let status = tokenService.getTokenStatus();
-        
-        // If server-side token is invalid, try to get a new token using settings
-        if (!status.isValid && status.expiresIn <= 0) {
-            try {
-                // Load settings from file
-                const settingsPath = path.join(__dirname, 'data', 'settings.json');
-                const settingsData = await fs.readFile(settingsPath, 'utf8');
-                const settings = JSON.parse(settingsData);
-                
-                // Try to acquire a new token using settings
-                if (settings.pingone_environment_id && settings.pingone_client_id && settings.pingone_client_secret) {
-                    logger.info('Attempting to acquire token using settings for status check');
-                    
-                    const newToken = await tokenService.getToken({
-                        environmentId: settings.pingone_environment_id,
-                        clientId: settings.pingone_client_id,
-                        clientSecret: settings.pingone_client_secret,
-                        region: settings.pingone_region || 'NA'
-                    });
-                    
-                    // Update status with the new token
-                    status = tokenService.getTokenStatus();
-                }
-            } catch (settingsError) {
-                logger.warn('Could not acquire token using settings for status check', { error: settingsError.message });
-            }
-        }
-        
-        // Create a response that the middleware recognizes as already standardized
-        // to prevent double-wrapping
-        res.json({
-            success: true,
-            message: status.isValid ? 'Token is valid' : 'Token is invalid or expired',
-            data: {
-                hasToken: status.hasToken,
-                isValid: status.isValid,
-                expiresIn: status.expiresIn,
-                environmentId: status.environmentId,
-                region: status.region,
-                lastUpdated: status.lastUpdated
-            },
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        logger.error('Token status check failed', { error: error.message });
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
+// NOTE: Token status endpoint is handled in routes/api/token.js
 
-// Token refresh endpoint
-app.post('/api/token/refresh', async (req, res) => {
-    try {
-        const token = await tokenService.getToken();
-        const status = tokenService.getTokenStatus();
-        
-        // Broadcast the new token status to all clients
-        webSocketService.broadcastTokenStatus();
-        
-        res.json({ 
-            success: true,
-            expiresIn: status.expiresIn,
-            environmentId: status.environmentId,
-            region: status.region
-        });
-    } catch (error) {
-        logger.error('Token refresh failed', { error: error.message });
-        res.status(500).json({ 
-            success: false, 
-            error: error.message 
-        });
-    }
-});
+// NOTE: Token refresh endpoint is handled in routes/api/token.js
 
 // API routes with enhanced logging
 app.use('/api', apiRouter); // Main API router includes: logs, auth, export, import, history, pingone, version, settings
@@ -1126,11 +1088,9 @@ app.use(notFoundHandler);
 // Centralized error handler with logging and standardized responses
 app.use(errorHandler);
 
-// Import the logs directory check
-import { ensureLogsDirectory } from './scripts/ensure-logs-directory.js';
+// (ensureLogsDirectory imported and executed at top to guarantee availability for file transports)
 
-// Version constant for DRYness
-const APP_VERSION = '6.5.2.4';
+// APP_VERSION is sourced from './src/version.js' to keep versioning consistent
 
 // Server startup with enhanced logging
 const startServer = async () => {
@@ -1275,64 +1235,122 @@ const startServer = async () => {
                     console.log('❌ Startup optimization: FAILED');
                 }
                 
-                // Test token acquisition on startup with retry logic for WebSocket notifications
-                const maxRetries = 3;
-                let attempt = 0;
-                let success = false;
-                let lastError = null;
-                
-                while (attempt < maxRetries && !success) {
-                    attempt++;
-                    
+                // Test token acquisition on startup with validation and retry logic
+                const requiredEnv = ['PINGONE_ENVIRONMENT_ID', 'PINGONE_CLIENT_ID', 'PINGONE_CLIENT_SECRET'];
+                const missingEnv = requiredEnv.filter(k => !process.env[k] || String(process.env[k]).trim() === '');
+
+                if (missingEnv.length > 0) {
+                    logger.warn('⚠️ Skipping token warm-up: settings incomplete', { missing: missingEnv });
                     try {
-                        // Notify clients of token acquisition attempt
-                        webSocketService.broadcastNotification(
-                            'info', 
-                            `Acquiring PingOne API token (attempt ${attempt}/${maxRetries})...`
-                        );
-                        
-                        // Attempt to get a token
-                        const token = await tokenService.getToken();
-                        success = true;
-                        
-                        // ✅ Mark PingOne as initialized after successful token acquisition
-                        serverState.pingOneInitialized = true;
-                        logger.info('✅ PingOne connection established successfully', {
-                            environmentId: tokenService.tokenCache.environmentId,
-                            region: tokenService.tokenCache.region,
-                            expiresIn: tokenService.getTokenStatus().expiresIn
-                        });
-                        
-                        webSocketService.broadcastNotification(
-                            'success', 
-                            'Successfully acquired PingOne API token',
-                            { 
+                        webSocketService.broadcastNotification('warning', 'Settings incomplete for PingOne token. Open Credentials to complete setup.', { missing: missingEnv });
+                    } catch (_) { /* no-op if websockets not ready */ }
+                } else {
+                    const maxRetries = 3;
+                    let attempt = 0;
+                    let success = false;
+                    let lastError = null;
+
+                    while (attempt < maxRetries && !success) {
+                        attempt++;
+
+                        try {
+                            // Notify clients of token acquisition attempt
+                            webSocketService.broadcastNotification(
+                                'info', 
+                                `Acquiring PingOne API token (attempt ${attempt}/${maxRetries})...`
+                            );
+
+                            // Structured diagnostics (non-sensitive)
+                            logger.info('🔑 Token warm-up attempt', {
+                                attempt,
+                                maxRetries,
+                                hasEnv: !!process.env.PINGONE_ENVIRONMENT_ID,
+                                hasClientId: !!process.env.PINGONE_CLIENT_ID,
+                                hasClientSecret: !!process.env.PINGONE_CLIENT_SECRET,
+                                region: process.env.PINGONE_REGION || 'NA'
+                            });
+
+                            // Attempt to get a token using explicit credentials
+                            await tokenService.getToken({
+                                environmentId: process.env.PINGONE_ENVIRONMENT_ID,
+                                clientId: process.env.PINGONE_CLIENT_ID,
+                                clientSecret: process.env.PINGONE_CLIENT_SECRET,
+                                region: process.env.PINGONE_REGION || 'NA'
+                            });
+                            success = true;
+
+                            // ✅ Mark PingOne as initialized after successful token acquisition
+                            serverState.pingOneInitialized = true;
+                            logger.info('✅ PingOne connection established successfully', {
                                 environmentId: tokenService.tokenCache.environmentId,
                                 region: tokenService.tokenCache.region,
                                 expiresIn: tokenService.getTokenStatus().expiresIn
+                            });
+
+                            webSocketService.broadcastNotification(
+                                'success', 
+                                'Successfully acquired PingOne API token',
+                                { 
+                                    environmentId: tokenService.tokenCache.environmentId,
+                                    region: tokenService.tokenCache.region,
+                                    expiresIn: tokenService.getTokenStatus().expiresIn
+                                }
+                            );
+
+                        } catch (error) {
+                            lastError = error;
+
+                            // Sanitize and log error details for diagnostics
+                            const err = {
+                                name: error?.name,
+                                message: error?.message,
+                                code: error?.code,
+                                status: error?.response?.status,
+                                statusText: error?.response?.statusText,
+                                pingOneError: error?.response?.data?.error || undefined,
+                                pingOneErrorDescription: error?.response?.data?.error_description || undefined,
+                            };
+                            logger.warn('⚠️ Token warm-up attempt failed', err);
+                            try {
+                                webSocketService.broadcastNotification('warning', 'Token warm-up attempt failed', {
+                                    attempt,
+                                    code: err.code,
+                                    status: err.status,
+                                    reason: err.pingOneError || err.message
+                                });
+                            } catch (_) {}
+
+                            if (attempt < maxRetries) {
+                                // Exponential backoff: 2s, 4s, 8s, etc.
+                                const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+
+                                // Wait before retrying
+                                await new Promise(resolve => setTimeout(resolve, delay));
                             }
-                        );
-                        
-                    } catch (error) {
-                        lastError = error;
-                        
-                        if (attempt < maxRetries) {
-                            // Exponential backoff: 2s, 4s, 8s, etc.
-                            const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
-                            
-                            // Wait before retrying
-                            await new Promise(resolve => setTimeout(resolve, delay));
                         }
+                    }
+
+                    if (!success) {
+                        const finalErr = {
+                            name: lastError?.name,
+                            message: lastError?.message,
+                            code: lastError?.code,
+                            status: lastError?.response?.status,
+                            statusText: lastError?.response?.statusText,
+                            pingOneError: lastError?.response?.data?.error || undefined,
+                            pingOneErrorDescription: lastError?.response?.data?.error_description || undefined,
+                        };
+                        logger.error('❌ Failed to acquire PingOne token after maximum retries', finalErr);
+                        try {
+                            webSocketService.broadcastNotification(
+                                'error', 
+                                'Failed to acquire PingOne token after maximum retries',
+                                { code: finalErr.code, status: finalErr.status, reason: finalErr.pingOneError || finalErr.message }
+                            );
+                        } catch (_) {}
                     }
                 }
                 
-                if (!success && lastError) {
-                    webSocketService.broadcastNotification(
-                        'error', 
-                        'Failed to acquire PingOne token after maximum retries',
-                        { error: lastError.message }
-                    );
-                }
                 
             } catch (error) {
                 // Log startup failure with comprehensive diagnostics
@@ -1375,7 +1393,6 @@ const startServer = async () => {
 
     // --- Socket.IO server for primary real-time updates ---
     const io = new SocketIOServer(server, {
-        wsEngine: WebSocketServer,
         cors: {
             origin: [`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`],
             methods: ['GET', 'POST'],
@@ -1400,6 +1417,23 @@ const startServer = async () => {
     app.set('realtimeManager', realtimeManager);
     app.set('connectionManager', realtimeManager); // Backward compatibility
     
+    // Wire WebSocketService to existing Socket.IO instance (avoid duplicate servers)
+    try {
+        if (webSocketService && !webSocketService.io) {
+            webSocketService.io = io;
+            // Safely setup handlers and start broadcast interval
+            if (typeof webSocketService.setupEventHandlers === 'function') {
+                webSocketService.setupEventHandlers();
+            }
+            if (typeof webSocketService.startTokenStatusBroadcast === 'function') {
+                webSocketService.startTokenStatusBroadcast();
+            }
+            logger.info('WebSocketService attached to existing Socket.IO server');
+        }
+    } catch (e) {
+        logger.warn('Failed to attach WebSocketService to Socket.IO server', { error: e.message });
+    }
+
     // Add error handling to Socket.IO server
     io.on('error', (error) => {
         logger.error('Socket.IO server error', {

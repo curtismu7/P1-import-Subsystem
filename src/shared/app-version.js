@@ -9,7 +9,7 @@
  */
 
 // Application version - update this single location for all version references
-export const APP_VERSION = '6.5.2.3';
+export const APP_VERSION = '7.4.4.0';
 
 // Build information (can be populated by build process)
 export const BUILD_INFO = {

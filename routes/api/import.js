@@ -8,6 +8,12 @@
 import express from 'express';
 import multer from 'multer';
 import nodemailer from 'nodemailer';
+import fs from 'fs';
+import path from 'path';
+import { importLogger, logSeparator } from '../../server/winston-config.js';
+import TokenManager from '../../server/token-manager.js';
+import { createPingOneClient } from '../../api-client-subsystem/index.js';
+import CSVParser from '../../file-processing-subsystem/parsers/csv-parser.js';
 const router = express.Router();
 
 // Configure multer for file uploads
@@ -30,6 +36,30 @@ let importStatus = {
     sessionId: null,
     status: 'idle' // idle, running, completed, failed, cancelled
 };
+
+// Import logging routed through Winston importLogger
+const IMPORT_LOG_FILE = path.join(process.cwd(), 'logs', 'import.log');
+function ensureLogsDir() {
+    try {
+        const dir = path.dirname(IMPORT_LOG_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    } catch (_) { /* no-op */ }
+}
+function importLog(msg, meta) {
+    try {
+        if (process.env.DEBUG_IMPORT_LOG !== '1') return;
+        ensureLogsDir();
+        const ts = new Date().toISOString();
+        const level = /failed|error/i.test(msg)
+            ? 'error'
+            : (/warn|rate limited|duplicate/i.test(msg) ? 'warn' : 'info');
+        importLogger.log(level, msg, {
+            ...meta,
+            timestamp: ts,
+            separator: logSeparator('═', 80)
+        });
+    } catch (_) { /* no-op */ }
+}
 
 /**
  * GET /api/import/status
@@ -219,6 +249,21 @@ router.post('/', upload.single('file'), async (req, res) => {
             return res.error('Population ID is required', { code: 'POPULATION_ID_REQUIRED' }, 400);
         }
 
+        // Pre-flight: validate credentials/token before starting import
+        try {
+            const tm = new TokenManager(importLogger);
+            await tm.getAccessToken();
+        } catch (authErr) {
+            importLogger.error('❌ Import aborted: invalid credentials or token', {
+                error: authErr?.message,
+                separator: logSeparator('═', 80)
+            });
+            return res.error('Authentication failed: Please verify PingOne Client ID/Secret, Environment ID, and Region in Settings, then try again.', {
+                code: 'INVALID_CREDENTIALS',
+                details: authErr?.message
+            }, 401);
+        }
+
         // Get file details
         const fileName = req.file.originalname;
         const fileSize = req.file.size;
@@ -248,7 +293,13 @@ router.post('/', upload.single('file'), async (req, res) => {
         };
         
         // Log import start
-        console.log(`🔄 Import started: ${fileName}, ${totalRecords} records, session: ${sessionId}`);
+        importLogger.info('🔄 Import started', {
+            fileName,
+            totalRecords,
+            sessionId,
+            separator: logSeparator('═', 80)
+        });
+        importLog('Import started', { fileName, totalRecords, sessionId });
         
         // Return success response immediately
         res.success('Import started successfully', { 
@@ -259,15 +310,22 @@ router.post('/', upload.single('file'), async (req, res) => {
             populationId: req.body.populationId 
         });
         
-        // In a real implementation, you would start a background process to handle the import
-        // For now, we'll simulate progress updates
-        simulateImportProgress(sessionId, totalRecords, {
-            sendWelcome: String(req.body.sendWelcome) === 'true',
-            csvContent
+        // Kick off real import worker (non-blocking)
+        const realtimeManager = req.app.get('realtimeManager');
+        const populationId = req.body.populationId;
+        const sendWelcome = String(req.body.sendWelcome) === 'true';
+        runRealImportWorker({
+            sessionId,
+            populationId,
+            csvContent,
+            sendWelcome,
+            realtimeManager
+        }).catch(err => {
+            importLogger.warn('Import worker failed', { error: err?.message || String(err) });
         });
         
     } catch (error) {
-        console.error('Import error:', error);
+        importLogger.error('Import error', { error: error?.message, stack: error?.stack, separator: logSeparator('═', 80) });
         res.error('Failed to start import', { code: 'IMPORT_START_ERROR', details: error.message }, 500);
     }
 });
@@ -321,9 +379,9 @@ async function sendWelcomeEmailBatch(emails) {
 
     try {
         await transporter.sendMail(message);
-        console.log(`✉️ Sent welcome emails to ${emails.length} recipients`);
+        importLogger.info('✉️ Sent welcome emails', { recipients: emails.length, separator: logSeparator('─', 60) });
     } catch (err) {
-        console.warn('Failed to send welcome emails:', err.message);
+        importLogger.warn('Failed to send welcome emails', { error: err.message });
     }
 }
 
@@ -343,50 +401,194 @@ function extractEmailsFromCsv(csv) {
     return Array.from(new Set(emails));
 }
 
-function simulateImportProgress(sessionId, totalRecords, options = {}) {
-    let processed = 0;
-    const updateInterval = Math.max(100, Math.min(500, totalRecords > 100 ? 100 : 50));
-    
-    const progressInterval = setInterval(async () => {
-        // Increment processed count
-        processed += Math.floor(Math.random() * 5) + 1;
-        
-        // Update import status
-        importStatus.processed = Math.min(processed, totalRecords);
-        importStatus.progress = Math.round((importStatus.processed / totalRecords) * 100);
-        
-        // Add some random errors and warnings
-        if (Math.random() > 0.9) {
-            importStatus.errors += 1;
-        }
-        if (Math.random() > 0.8) {
-            importStatus.warnings += 1;
-        }
-        
-        // Check if import is complete
-        if (processed >= totalRecords) {
-            clearInterval(progressInterval);
-            
-            // Mark import as complete
-            importStatus.isRunning = false;
-            importStatus.endTime = Date.now();
-            importStatus.status = 'completed';
-            importStatus.processed = totalRecords;
-            importStatus.progress = 100;
-            
-            console.log(`✅ Import completed: ${importStatus.sessionId}, ${totalRecords} records processed`);
+async function runRealImportWorker({ sessionId, populationId, csvContent, sendWelcome, realtimeManager }) {
+    // Parse CSV
+    const parser = new CSVParser({ logger: importLogger });
+    const { headers, data } = parser.parse(csvContent || '');
+    const totalRecords = Array.isArray(data) ? data.length : 0;
 
-            // If requested, send welcome emails to all parsed addresses
-            if (options.sendWelcome) {
-                const emails = extractEmailsFromCsv(options.csvContent || '');
-                if (emails.length > 0) {
-                    await sendWelcomeEmailBatch(emails);
-                } else {
-                    console.warn('sendWelcome requested but no email column found in CSV');
+    // Update import status
+    importStatus.total = totalRecords;
+    importStatus.processed = 0;
+    importStatus.errors = 0;
+    importStatus.warnings = 0;
+    importStatus.status = 'running';
+    importStatus.startTime = importStatus.startTime || Date.now();
+
+    if (!populationId) throw new Error('populationId is required for import');
+
+    // Prepare PingOne client
+    const client = createPingOneClient({ logger: console });
+
+    let created = 0;
+    let failed = 0;
+    let skipped = 0;
+    const createdEmails = [];
+
+    const emitProgress = async () => {
+        if (!realtimeManager || !sessionId) return;
+        try {
+            const payload = {
+                processed: importStatus.processed,
+                total: totalRecords,
+                stats: {
+                    created,
+                    failed,
+                    skipped,
+                    errors: importStatus.errors,
+                    warnings: importStatus.warnings
+                },
+                fileName: importStatus.currentFile
+            };
+            importLogger.debug('[ImportWorker] Emitting progress', {
+                sessionId,
+                processed: payload.processed,
+                total: payload.total,
+                created: payload.stats.created,
+                skipped: payload.stats.skipped,
+                failed: payload.stats.failed,
+                separator: logSeparator('─', 60)
+            });
+            await realtimeManager.sendToSession(sessionId, 'progress', payload, { queue: true });
+        } catch (e) {
+            importLogger.warn('Failed to emit progress update', { error: e.message, separator: logSeparator('─', 60) });
+        }
+    };
+
+    // Resolve environment details for better diagnostics
+    let environmentId = null;
+    try {
+        environmentId = await client.tokenManager.getEnvironmentId();
+    } catch (e) {
+        importLogger.warn('[ImportWorker] Could not resolve environmentId from token manager', { error: e.message });
+    }
+    importLogger.info('[ImportWorker] Processing users', { sessionId, environmentId, populationId, totalRecords, separator: logSeparator('─', 60) });
+    importLog('Processing users', { sessionId, environmentId, populationId, totalRecords });
+
+    for (const row of data) {
+        // Map CSV fields
+        const username = row.username || row.userName || row.userid || row.userId || '';
+        const email = row.email || row.mail || '';
+        const given = row.firstName || row.givenName || row.given || '';
+        const family = row.lastName || row.familyName || row.family || '';
+
+        if (!email && !username) {
+            skipped++;
+            importStatus.processed++;
+            await emitProgress();
+            continue;
+        }
+
+        const userPayload = {
+            username: username || email,
+            email,
+            name: { given, family }
+        };
+        // Map optional 'enabled' column if provided in CSV
+        if (typeof row.enabled !== 'undefined') {
+            const enabledStr = String(row.enabled).trim().toLowerCase();
+            userPayload.enabled = !(enabledStr === 'false' || enabledStr === '0' || enabledStr === 'no');
+        }
+
+        try {
+            console.debug('[ImportWorker] Creating user', { username: userPayload.username, email: userPayload.email });
+            importLog('Creating user', { username: userPayload.username, email: userPayload.email });
+            // Log the API request that will be made (sanitized)
+            try {
+                const baseUrl = client?.config?.baseUrl || 'https://api.pingone.com/v1';
+                const apiUrl = `${baseUrl}/environments/${environmentId}/populations/${populationId}/users`;
+                const payloadPreview = {
+                    username: userPayload.username,
+                    email: userPayload.email,
+                    name: userPayload.name,
+                    ...(typeof userPayload.enabled !== 'undefined' ? { enabled: userPayload.enabled } : {})
+                };
+                importLog('API request', { method: 'POST', url: apiUrl, environmentId, populationId, payload: payloadPreview });
+            } catch (_) { /* no-op */ }
+            const createdUser = await client.createUser(populationId, userPayload);
+            created++;
+            if (email) createdEmails.push(email);
+            // Minimal success log (avoid sensitive data)
+            try {
+                importLogger.info('[ImportWorker] User created', { id: createdUser?.id, username: createdUser?.username || userPayload.username, email: userPayload.email, separator: logSeparator('─', 60) });
+                importLog('User created', { id: createdUser?.id, username: createdUser?.username || userPayload.username, email: userPayload.email });
+            } catch (_) { /* no-op */ }
+        } catch (err) {
+            // Treat duplicates as skips, not errors
+            const status = err?.status;
+            const body = err?.body || '';
+            const isDuplicate = status === 409 || /duplicate|already exists/i.test(String(body));
+            if (isDuplicate) {
+                skipped++;
+                // Optional: minimal log for visibility
+                const snippet = (String(body).slice(0, 180) || '').replace(/\s+/g, ' ');
+                console.info('Duplicate detected, skipping user', { status, snippet });
+                importLog('Duplicate detected, skipping user', { status, snippet, username: userPayload.username, email: userPayload.email });
+            } else {
+                failed++;
+                importStatus.errors++;
+                const snippet = (String(body).slice(0, 180) || '').replace(/\s+/g, ' ');
+                console.warn('Create user failed', { status, message: err?.message, snippet });
+                importLog('Create user failed', { status, message: err?.message, snippet, username: userPayload.username, email: userPayload.email });
+                if (status === 429) {
+                    console.warn('[ImportWorker] Rate limited when creating user. Consider adjusting throughput or enabling backoff.');
+                    importLog('Rate limited (429) during create', { username: userPayload.username, email: userPayload.email });
                 }
             }
+        } finally {
+            importStatus.processed++;
+            await emitProgress();
         }
-    }, updateInterval);
+    }
+
+    // Complete
+    importStatus.isRunning = false;
+    importStatus.endTime = Date.now();
+    importStatus.status = 'completed';
+    importStatus.progress = 100;
+
+    try {
+        if (realtimeManager && sessionId) {
+            const payload = {
+                processed: importStatus.processed,
+                total: totalRecords,
+                stats: {
+                    created,
+                    failed,
+                    skipped,
+                    errors: importStatus.errors,
+                    warnings: importStatus.warnings
+                },
+                durationMs: importStatus.endTime - importStatus.startTime,
+                fileName: importStatus.currentFile,
+                // Non-breaking additional diagnostics
+                environmentId,
+                populationId,
+                createdEmailsSample: createdEmails.slice(0, 5)
+            };
+            console.log(`[ImportWorker] Emitting completion`, {
+                sessionId,
+                processed: payload.processed,
+                total: payload.total,
+                created: payload.stats.created,
+                skipped: payload.stats.skipped,
+                failed: payload.stats.failed,
+                durationMs: payload.durationMs
+            });
+            importLog('Import completed', { sessionId, processed: payload.processed, total: payload.total, created: payload.stats.created, skipped: payload.stats.skipped, failed: payload.stats.failed, durationMs: payload.durationMs, environmentId, populationId });
+            await realtimeManager.sendToSession(sessionId, 'completion', payload, { queue: true });
+        }
+    } catch (e) {
+        console.warn('Failed to emit completion event:', e.message);
+    }
+
+    // Optional: send welcome emails
+    if (sendWelcome) {
+        const emails = extractEmailsFromCsv(csvContent || '');
+        if (emails.length > 0) {
+            await sendWelcomeEmailBatch(emails);
+        }
+    }
 }
 
 export default router;

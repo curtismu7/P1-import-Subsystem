@@ -1,6 +1,8 @@
 // Import Page Module
 // PingOne User Management Tool v7.3.0
 
+import { realtimeClient } from '../services/realtime-client.js';
+
 export class ImportPage {
     constructor(app) {
         this.app = app;
@@ -8,6 +10,18 @@ export class ImportPage {
         this.selectedFile = null;
         this.uploadProgress = 0;
         this.isUploading = false;
+        this.sessionId = null;
+        this._progressHandler = null;
+        this._completionHandler = null;
+        this._errorHandler = null;
+        this._lastProcessedSample = null; // { t, processed }
+        // Watchdog/fallback tracking
+        this._watchdogInterval = null;
+        this._lastMessageAt = 0;
+        this._lastProgress = null; // last payload received
+        this._completed = false;
+        // Token status cache for gating UI actions
+        this.tokenStatus = { hasToken: false, isValid: false, expiresIn: 0, environmentId: null, region: null };
     }
     
     async load() {
@@ -32,6 +46,19 @@ export class ImportPage {
             </div>
             
             <div class="import-container">
+                <!-- Token Status Banner -->
+                <section class="import-section" id="token-status-section">
+                    <div id="token-status" class="alert alert-warning" role="status" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                        <div id="token-status-text">Checking token status…</div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <span id="token-env" class="badge bg-secondary" style="display:none;"></span>
+                            <span id="token-expires" class="badge bg-secondary" style="display:none;"></span>
+                            <button type="button" id="token-refresh-btn" class="btn btn-outline-secondary btn-sm">
+                                <i class="mdi mdi-refresh"></i> Refresh Token
+                            </button>
+                        </div>
+                    </div>
+                </section>
                 <!-- File Upload Section -->
                 <section class="import-section">
                     <div class="import-box">
@@ -76,9 +103,13 @@ export class ImportPage {
                                 <div class="file-meta">
                                     <div class="file-name" id="file-name"></div>
                                     <div class="file-size" id="file-size"></div>
+                                    <div class="file-dates">
+                                        <div class="file-date"><strong>Modified:</strong> <span id="file-modified">—</span></div>
+                                        <div class="file-date"><strong>Created:</strong> <span id="file-created">—</span></div>
+                                    </div>
                                 </div>
-                                <button type="button" id="remove-file" class="btn btn-danger btn-sm">
-                                    <i class="mdi mdi-delete"></i> Remove
+                                <button type="button" id="remove-file" class="btn btn-danger btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+                                    <i class="mdi mdi-delete"></i> <span>Remove</span>
                                 </button>
                             </div>
                             <div class="file-preview" id="file-preview"></div>
@@ -114,10 +145,7 @@ export class ImportPage {
                                     <input type="radio" id="mode-create" name="importMode" value="create" class="form-check-input" checked>
                                     <label class="form-check-label" for="mode-create">Create new users only</label>
                                 </div>
-                                <div class="form-check">
-                                    <input type="radio" id="mode-update" name="importMode" value="update" class="form-check-input">
-                                    <label class="form-check-label" for="mode-update">Update existing users</label>
-                                </div>
+                                
                                 <div class="form-check">
                                     <input type="radio" id="mode-upsert" name="importMode" value="upsert" class="form-check-input">
                                     <label class="form-check-label" for="mode-upsert">Create or update users</label>
@@ -245,7 +273,7 @@ export class ImportPage {
                         </div>
                         
                         <div class="export-actions">
-                            <button type="button" id="download-log-btn" class="btn btn-outline-info">
+                            <button type="button" id="download-log-btn" class="btn btn-danger">
                                 <i class="mdi mdi-download"></i> Download Log
                             </button>
                             <button type="button" id="new-import-btn" class="btn btn-outline-primary">
@@ -262,6 +290,8 @@ export class ImportPage {
             this.setupEventListeners();
             this.loadPopulations();
             this.updateButtonStates(); // Ensure buttons start in correct state
+            // Initialize token status and banner
+            this.refreshTokenStatus().catch(() => {});
             
             // Display existing file info if available
             if (hasExistingFile && this.selectedFile) {
@@ -330,6 +360,7 @@ export class ImportPage {
         const startImport = document.getElementById('start-import');
         const cancelImport = document.getElementById('cancel-import');
         const refreshPopulations = document.getElementById('refresh-populations');
+        const tokenRefreshBtn = document.getElementById('token-refresh-btn');
         
         if (validateFile) {
             validateFile.addEventListener('click', this.handleValidateFile.bind(this));
@@ -345,6 +376,19 @@ export class ImportPage {
         
         if (refreshPopulations) {
             refreshPopulations.addEventListener('click', this.loadPopulations.bind(this));
+        }
+        if (tokenRefreshBtn) {
+            tokenRefreshBtn.addEventListener('click', async () => {
+                try {
+                    this.app.showLoading('Refreshing token…');
+                    await fetch('/api/token/refresh', { method: 'POST' }).then(r => r.json());
+                } catch (e) {
+                    console.warn('Token refresh request failed', e);
+                } finally {
+                    this.app.hideLoading();
+                }
+                await this.refreshTokenStatus();
+            });
         }
         
         // Population selection change
@@ -364,6 +408,74 @@ export class ImportPage {
                 this.downloadLog();
             }
         });
+    }
+    
+    async refreshTokenStatus() {
+        try {
+            const res = await fetch('/api/token/status');
+            const json = await res.json().catch(() => ({}));
+            const data = json?.data || json || {};
+            this.tokenStatus = {
+                hasToken: !!data.hasToken,
+                isValid: !!data.isValid,
+                expiresIn: Number.isFinite(Number(data.expiresIn)) ? Number(data.expiresIn) : 0,
+                environmentId: data.environmentId || null,
+                region: data.region || null
+            };
+        } catch (e) {
+            this.tokenStatus = { hasToken: false, isValid: false, expiresIn: 0, environmentId: null, region: null };
+        }
+        this.renderTokenBanner();
+        this.updateButtonStates();
+    }
+    
+    renderTokenBanner() {
+        const banner = document.getElementById('token-status');
+        const text = document.getElementById('token-status-text');
+        const env = document.getElementById('token-env');
+        const exp = document.getElementById('token-expires');
+        if (!banner || !text) return;
+        
+        const { hasToken, isValid, expiresIn, environmentId, region } = this.tokenStatus || {};
+        let expText = '';
+        if (expiresIn > 0) {
+            const m = Math.floor(expiresIn / 60);
+            const s = Math.floor(expiresIn % 60);
+            expText = `${m}m ${s}s`;
+        }
+        
+        const setAlertClass = (cls) => {
+            banner.classList.remove('alert-success','alert-warning','alert-danger');
+            banner.classList.add(cls);
+        };
+        
+        if (isValid) {
+            setAlertClass('alert-success');
+            text.textContent = 'Token valid';
+        } else if (hasToken) {
+            setAlertClass('alert-warning');
+            text.textContent = 'Token expired or invalid. Please refresh before starting an import.';
+        } else {
+            setAlertClass('alert-danger');
+            text.textContent = 'No token available. Please refresh to obtain a token.';
+        }
+        
+        if (env) {
+            if (environmentId) {
+                env.style.display = 'inline-block';
+                env.textContent = `Env: ${environmentId}${region ? ` (${region})` : ''}`;
+            } else {
+                env.style.display = 'none';
+            }
+        }
+        if (exp) {
+            if (expiresIn > 0) {
+                exp.style.display = 'inline-block';
+                exp.textContent = `Expires in: ${expText}`;
+            } else {
+                exp.style.display = 'none';
+            }
+        }
     }
     
     handleDragOver(event) {
@@ -434,13 +546,36 @@ export class ImportPage {
         const fileName = document.getElementById('file-name');
         const fileSize = document.getElementById('file-size');
         const uploadArea = document.getElementById('upload-area');
+        const fileModified = document.getElementById('file-modified');
+        const fileCreated = document.getElementById('file-created');
         
         if (fileInfo && fileName && fileSize && uploadArea) {
             fileName.textContent = file.name;
             fileSize.textContent = this.formatFileSize(file.size);
+            // File API exposes lastModified; creation date is typically unavailable in browsers
+            const modified = file.lastModified ? this.formatDate(file.lastModified) : '—';
+            if (fileModified) fileModified.textContent = modified;
+            if (fileCreated) fileCreated.textContent = modified; // best-effort (same as modified)
             
             fileInfo.style.display = 'block';
             uploadArea.style.display = 'none';
+        }
+    }
+
+    formatDate(input) {
+        try {
+            const d = new Date(input);
+            if (isNaN(d.getTime())) return '—';
+            // Example: 2025-08-16 14:05
+            const pad = (n) => String(n).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            const mm = pad(d.getMonth() + 1);
+            const dd = pad(d.getDate());
+            const hh = pad(d.getHours());
+            const mi = pad(d.getMinutes());
+            return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+        } catch {
+            return '—';
         }
     }
     
@@ -588,6 +723,18 @@ export class ImportPage {
             this.app.showError('Please select a target population');
             return;
         }
+        // Ensure token is valid before starting
+        try {
+            if (!this.tokenStatus?.isValid) {
+                // Try a quick refresh, then re-check
+                await fetch('/api/token/refresh', { method: 'POST' }).catch(() => {});
+                await this.refreshTokenStatus();
+            }
+        } catch {}
+        if (!this.tokenStatus?.isValid) {
+            this.app.showError('Token is missing or invalid. Please refresh token and try again.');
+            return;
+        }
         
         try {
             this.isUploading = true;
@@ -599,6 +746,17 @@ export class ImportPage {
                 startBtn.classList.add('btn-success');
             }
             
+            // Ensure real-time connection is established before starting the import
+            try {
+                if (!realtimeClient.isConnected && !realtimeClient.isConnecting) {
+                    console.debug('[ImportPage] Establishing real-time connection before starting import');
+                    await realtimeClient.connect();
+                    console.debug('[ImportPage] Real-time connection status after connect:', realtimeClient.getStatus());
+                }
+            } catch (connErr) {
+                console.warn('[ImportPage] Proceeding despite real-time connection issue:', connErr?.message);
+            }
+
             const formData = new FormData();
             formData.append('file', this.selectedFile);
             formData.append('populationId', targetPopulation);
@@ -640,13 +798,31 @@ export class ImportPage {
                 method: 'POST',
                 body: formData
             });
-            
+            const result = await response.json().catch(() => ({}));
+
             if (response.ok) {
-                // Start monitoring progress
-                this.startProgressMonitoring();
+                // API responses may be standardized as { success, message, data }
+                const payload = (result && typeof result === 'object' && 'data' in result) ? (result.data || {}) : result;
+                const respSessionId = payload?.sessionId;
+                const respTotal = Number(payload?.total ?? 0);
+
+                // Capture session info and begin real-time monitoring
+                this.sessionId = respSessionId || this.sessionId;
+                // IMPORTANT: Register handlers BEFORE associating session to avoid missing
+                // immediate delivery of queued messages on association.
+                this.startProgressMonitoring(this.sessionId, respTotal);
+                if (this.sessionId) {
+                    try {
+                        // Slight microtask delay to ensure handlers are fully registered
+                        await Promise.resolve();
+                        realtimeClient.associateSession(this.sessionId);
+                        console.debug('[ImportPage] Associated realtime session. Status:', realtimeClient.getStatus());
+                    } catch (e) {
+                        console.warn('Could not associate realtime session:', e.message);
+                    }
+                }
             } else {
-                const error = await response.json();
-                throw new Error(error.error || 'Import failed to start');
+                throw new Error(result.error || 'Import failed to start');
             }
             
         } catch (error) {
@@ -704,19 +880,171 @@ export class ImportPage {
         if (resultsSection) resultsSection.style.display = 'none';
     }
     
-    startProgressMonitoring() {
-        // This would connect to Server-Sent Events or WebSocket for real-time updates
-        // For now, we'll simulate progress
-        let progress = 0;
-        const interval = setInterval(() => {
-            progress += Math.random() * 10;
-            if (progress >= 100) {
-                progress = 100;
-                clearInterval(interval);
-                this.completeImport();
+    showResultsSection() {
+        const resultsSection = document.getElementById('results-section');
+        const progressSection = document.getElementById('progress-section');
+        const fileUploadSection = document.querySelector('.import-section:first-child');
+        const startImport = document.getElementById('start-import');
+        const cancelImport = document.getElementById('cancel-import');
+
+        // Hide non-result sections
+        if (progressSection) progressSection.style.display = 'none';
+        if (fileUploadSection) fileUploadSection.style.display = 'none';
+
+        // Update action buttons
+        if (startImport) startImport.style.display = 'inline-block';
+        if (cancelImport) cancelImport.style.display = 'none';
+
+        // Show results and bring into view
+        if (resultsSection) {
+            resultsSection.style.display = 'block';
+            setTimeout(() => {
+                try { resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {}
+            }, 50);
+        }
+    }
+    
+    startProgressMonitoring(sessionId, totalFromStart) {
+        // Clear any previous handlers to avoid duplicates
+        if (this._progressHandler) realtimeClient.offMessage('progress');
+        if (this._completionHandler) realtimeClient.offMessage('completion');
+        if (this._errorHandler) realtimeClient.offMessage('error');
+
+        // Reset tracking
+        this._completed = false;
+        this._lastMessageAt = Date.now();
+        this._lastProgress = null;
+
+        console.log('[ImportPage] Initializing progress monitoring', {
+            sessionId,
+            totalFromStart
+        });
+
+        // Helper to update the UI from a progress payload
+        const applyProgress = (payload) => {
+            if (!payload) return;
+            const processed = Number(payload.processed ?? payload.stats?.processed ?? 0);
+            const total = Number(payload.total ?? totalFromStart ?? 0);
+            const created = Number(payload.stats?.created ?? 0);
+            const skipped = Number(payload.stats?.skipped ?? 0);
+            const failed = Number(payload.stats?.failed ?? 0);
+
+            const percentage = total > 0 ? Math.min(100, Math.max(0, (processed / total) * 100)) : 0;
+            this.updateProgress(percentage);
+            this.updateProgressStats({ processed, total, created, skipped, failed });
+
+            // Update last message/progress
+            this._lastMessageAt = Date.now();
+            this._lastProgress = { processed, total, stats: { created, skipped, failed }, raw: payload };
+        };
+
+        // Register real-time handlers
+        this._progressHandler = (data/*, message*/) => {
+            console.debug('[ImportPage] progress message received', {
+                processed: Number(data?.processed ?? data?.stats?.processed ?? 0),
+                total: Number(data?.total ?? totalFromStart ?? 0)
+            });
+            applyProgress(data);
+        };
+
+        this._completionHandler = (data/*, message*/) => {
+            console.debug('[ImportPage] completion message received');
+            // Ensure final UI reflects completion stats
+            applyProgress(data);
+            this._completed = true;
+            this.completeImport(data);
+        };
+
+        this._errorHandler = (data/*, message*/) => {
+            const msg = data?.message || 'Import error';
+            console.warn('[ImportPage] error message received', msg);
+            this.app.showError(msg);
+        };
+
+        // Attach handlers to realtime client
+        try {
+            realtimeClient.onMessage('progress', this._progressHandler);
+            realtimeClient.onMessage('completion', this._completionHandler);
+            realtimeClient.onMessage('error', this._errorHandler);
+            console.debug('[ImportPage] Real-time handlers registered', {
+                hasProgress: !!this._progressHandler,
+                hasCompletion: !!this._completionHandler,
+                hasError: !!this._errorHandler,
+                sessionId: this.sessionId
+            });
+        } catch (e) {
+            console.error('[ImportPage] Failed to register realtime handlers:', e);
+        }
+
+        // Proactively (re)associate the session a few times until first message arrives
+        // to avoid any timing gaps between association and handler readiness.
+        if (sessionId) {
+            let attempts = 0;
+            const maxAttempts = 5;
+            const tickMs = 1000;
+            if (this._associateRetry) clearInterval(this._associateRetry);
+            this._associateRetry = setInterval(() => {
+                // Stop retrying once we start receiving messages or finish
+                if (this._completed || (Date.now() - (this._lastMessageAt || 0)) < tickMs) {
+                    clearInterval(this._associateRetry);
+                    this._associateRetry = null;
+                    return;
+                }
+                attempts++;
+                try {
+                    if (realtimeClient.isConnected) {
+                        realtimeClient.associateSession(sessionId);
+                        console.debug('[ImportPage] Re-associate attempt', { attempts, sessionId });
+                    }
+                } catch (e) {
+                    console.warn('[ImportPage] Re-associate failed', e?.message);
+                }
+                if (attempts >= maxAttempts) {
+                    clearInterval(this._associateRetry);
+                    this._associateRetry = null;
+                }
+            }, tickMs);
+        }
+
+        // Start a watchdog to detect stalls or missing completion events
+        if (this._watchdogInterval) clearInterval(this._watchdogInterval);
+        this._watchdogInterval = setInterval(() => {
+            const now = Date.now();
+            const sinceLast = now - (this._lastMessageAt || now);
+
+            // If we've processed all records but didn't get completion in time, finalize
+            if (!this._completed && this._lastProgress && this._lastProgress.total > 0) {
+                const { processed, total } = this._lastProgress;
+                if (processed >= total && sinceLast > 10000) { // 10s after last progress
+                    console.warn('[ImportPage] Progress indicates completion but no completion event received. Finalizing import (fallback).', { processed, total, sinceLast });
+                    this._completed = true;
+                    try {
+                        // Construct a completion-like payload from last progress
+                        const fallback = {
+                            processed,
+                            total,
+                            stats: this._lastProgress.stats || {},
+                            durationMs: undefined,
+                            fileName: undefined
+                        };
+                        this.completeImport(fallback);
+                    } finally {
+                        // Cleanup watchdog after fallback completes
+                        if (this._watchdogInterval) {
+                            clearInterval(this._watchdogInterval);
+                            this._watchdogInterval = null;
+                        }
+                    }
+                }
             }
-            this.updateProgress(progress);
-        }, 500);
+
+            // If we've had no messages for a long time, surface a warning
+            if (!this._completed && sinceLast > 30000) { // 30s without any messages
+                console.warn('[ImportPage] No real-time updates received for 30s. Import may be stalled.', { sinceLast, sessionId: this.sessionId });
+                // Only show once per stall period; reset marker
+                this._lastMessageAt = now; // prevent repeated warnings every tick
+            }
+        }, 5000);
     }
     
     updateProgress(percentage) {
@@ -725,11 +1053,11 @@ export class ImportPage {
         const progressTextLeft = document.getElementById('progress-text-left');
         const beerFill = document.getElementById('beer-fill-import');
         const beerFoam = document.getElementById('beer-foam-import');
-        
+
         if (progressFill) {
             progressFill.style.width = percentage + '%';
         }
-        
+
         if (progressPercentage) {
             progressPercentage.textContent = Math.round(percentage) + '%';
         }
@@ -752,92 +1080,128 @@ export class ImportPage {
             beerFoam.setAttribute('height', String(foamHeight));
         }
     }
-    
-    completeImport() {
-        this.isUploading = false;
-        this.hideProgressSection();
-        this.showResultsSection();
-        
-        // Show file upload section for new imports
-        const fileUploadSection = document.querySelector('.import-section:first-child');
-        if (fileUploadSection) {
-            fileUploadSection.style.display = 'block';
-        }
-        
-        this.app.showSuccess('Import completed successfully!');
-        // Record in history (using sample totals for now)
-        this.app.addHistoryEntry('import', 'success', 'CSV import completed', 150, Math.floor(Math.random()*150000)+10000);
+
+completeImport(finalData) {
+    // Prevent duplicate completion
+    if (this._completed !== true) {
+        this._completed = true;
     }
+
+    // Cleanup handlers and watchdog
+    try { realtimeClient.offMessage('progress'); } catch {}
+    try { realtimeClient.offMessage('completion'); } catch {}
+    try { realtimeClient.offMessage('error'); } catch {}
+    if (this._watchdogInterval) {
+        clearInterval(this._watchdogInterval);
+        this._watchdogInterval = null;
+    }
+
+    this.isUploading = false;
+    this.hideProgressSection();
+    this.showResultsSection();
     
-    showResultsSection() {
-        const resultsSection = document.getElementById('results-section');
-        if (resultsSection) resultsSection.style.display = 'block';
-        
-        // Get actual import options for display
-        const importMode = document.querySelector('input[name="importMode"]:checked');
-        const skipExistingUsername = document.getElementById('skip-existing-username');
-        const skipExistingUserid = document.getElementById('skip-existing-userid');
-        
-        const importModeText = importMode ? importMode.value : 'create';
-        const skipOptions = [];
-        if (skipExistingUsername && skipExistingUsername.checked) skipOptions.push('Username exists');
-        if (skipExistingUserid && skipExistingUserid.checked) skipOptions.push('User ID exists');
-        const skipOptionsText = skipOptions.length > 0 ? skipOptions.join(', ') : 'None';
-        
-        // This would be populated with actual results from the server
-        const summary = document.getElementById('results-summary');
-        if (summary) {
-            summary.innerHTML = `
-                <div class="results-grid">
-                    <div class="result-card success">
-                        <i class="mdi mdi-check-circle"></i>
-                        <div>
-                            <h3>Import Summary</h3>
-                            <div class="result-stats">
-                                <div class="stat-item">
-                                    <span class="stat-label">Total Users:</span>
-                                    <span class="stat-value">150</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Successfully Imported:</span>
-                                    <span class="stat-value success">140</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Skipped:</span>
-                                    <span class="stat-value warning">8</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Failed:</span>
-                                    <span class="stat-value error">2</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Success Rate:</span>
-                                    <span class="stat-value">93.3%</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Duration:</span>
-                                    <span class="stat-value">2m 34s</span>
-                                </div>
+    // Log final payload for diagnostics
+    try {
+        console.debug('[ImportPage] Final completion payload:', finalData);
+    } catch {}
+
+    // Extract stats from final payload with sensible fallbacks
+    const processed = Number(finalData?.processed ?? finalData?.stats?.processed ?? this._lastProgress?.processed ?? 0);
+    const total = Number(finalData?.total ?? this._lastProgress?.total ?? 0);
+    const created = Number(finalData?.stats?.created ?? 0);
+    const skipped = Number(finalData?.stats?.skipped ?? 0);
+    const failed = Number(finalData?.stats?.failed ?? 0);
+    const warnings = Array.isArray(finalData?.stats?.warnings) ? finalData.stats.warnings : [];
+    const errors = Array.isArray(finalData?.stats?.errors) ? finalData.stats.errors : [];
+
+    const successBase = processed > 0 ? processed : total;
+    const successRate = successBase > 0 ? Math.round(((created) / successBase) * 1000) / 10 : 0; // one decimal place
+
+    // Duration formatting
+    const durationMs = Number(finalData?.durationMs ?? 0);
+    const formatDuration = (ms) => {
+        if (!Number.isFinite(ms) || ms <= 0) return '—';
+        const s = Math.round(ms / 1000);
+        const m = Math.floor(s / 60);
+        const sec = s % 60;
+        return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+    };
+
+    // File name and population display
+    const fileName = finalData?.fileName || this.selectedFile?.name || '—';
+    const popSelect = document.getElementById('target-population');
+    const populationLabel = popSelect && popSelect.options && popSelect.selectedIndex >= 0
+        ? popSelect.options[popSelect.selectedIndex].text
+        : '—';
+
+    // Import options chosen
+    const importMode = document.querySelector('input[name="importMode"]:checked');
+    const importModeValue = importMode ? importMode.value : 'create';
+    const skipExistingUsername = document.getElementById('skip-existing-username');
+    const skipExistingUserid = document.getElementById('skip-existing-userid');
+    const skipOptions = [];
+    if (skipExistingUsername?.checked) skipOptions.push('Username exists');
+    if (skipExistingUserid?.checked) skipOptions.push('User ID exists');
+    const skipOptionsText = skipOptions.length > 0 ? skipOptions.join(', ') : 'None';
+
+    // Populate results UI
+    const summary = document.getElementById('results-summary');
+    if (summary) {
+        summary.innerHTML = `
+            <div class="results-grid">
+                <div class="result-card success">
+                    <i class="mdi mdi-check-circle"></i>
+                    <div>
+                        <h3>Import Summary</h3>
+                        <div class="result-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Total Users:</span>
+                                <span class="stat-value">${total || processed}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Successfully Imported:</span>
+                                <span class="stat-value success">${created}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Skipped:</span>
+                                <span class="stat-value warning">${skipped}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Failed:</span>
+                                <span class="stat-value error">${failed}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Success Rate:</span>
+                                <span class="stat-value">${successRate}%</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Duration:</span>
+                                <span class="stat-value">${formatDuration(durationMs)}</span>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="result-details">
-                        <h4>Import Details</h4>
-                        <ul>
-                            <li><strong>Target Population:</strong> Production Users</li>
-                            <li><strong>Import Mode:</strong> ${importModeText === 'create' ? 'Create new users only' : importModeText === 'update' ? 'Update existing users' : 'Create or update users'}</li>
-                            <li><strong>Skip Options:</strong> ${skipOptionsText}</li>
-                            <li><strong>File:</strong> users_import.csv (2.3 MB)</li>
-                            <li><strong>Started:</strong> ${new Date().toLocaleString()}</li>
-                        </ul>
-                    </div>
-                    
-
                 </div>
-            `;
-        }
+                
+                <div class="result-details">
+                    <h4>Import Details</h4>
+                    <ul>
+                        <li><strong>Target Population:</strong> ${populationLabel}</li>
+                        <li><strong>Import Mode:</strong> ${importModeValue === 'create' ? 'Create new users only' : 'Create or update users'}</li>
+                        <li><strong>Skip Options:</strong> ${skipOptionsText}</li>
+                        <li><strong>File:</strong> ${fileName}</li>
+                    </ul>
+                    <div style="margin-top:10px">
+                        <small>
+                            ${warnings.length ? `Warnings: ${warnings.length}` : ''}
+                            ${warnings.length && errors.length ? ' | ' : ''}
+                            ${errors.length ? `Errors: ${errors.length}` : ''}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
     }
+}
     
     startNewImport() {
         console.log('🔄 Starting new import...');
@@ -910,8 +1274,32 @@ export class ImportPage {
     
     downloadLog() {
         console.log('📥 Downloading import log...');
-        // TODO: Implement actual log download functionality
-        this.app.showInfo('Log download functionality will be implemented in a future update');
+        // Fetch recent debug log lines and trigger browser download
+        const params = new URLSearchParams({ lines: '2000' });
+        fetch(`/api/debug-log/file?${params.toString()}`)
+            .then(res => res.json())
+            .then(json => {
+                if (!json || (json.success === false && !json.entries)) {
+                    throw new Error(json?.error || 'Failed to fetch log');
+                }
+                const entries = json.data?.entries || json.entries || [];
+                const content = Array.isArray(entries) ? entries.join('\n') : String(entries || '');
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const ts = new Date().toISOString().replace(/[:.]/g, '-');
+                a.href = url;
+                a.download = `import-debug-${ts}.log`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+                this.app.showSuccess('Log downloaded');
+            })
+            .catch(err => {
+                console.error('Log download failed:', err);
+                this.app.showError('Failed to download log: ' + err.message);
+            });
     }
     
     updateButtonStates() {
@@ -929,6 +1317,7 @@ export class ImportPage {
             const hasFile = !!this.selectedFile;
             const hasPopulation = targetPopulation && targetPopulation.value;
             startImportBtn.disabled = !hasFile || !hasPopulation;
+            startImportBtn.title = '';
         }
     }
     
@@ -955,3 +1344,40 @@ export class ImportPage {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 }
+
+// Non-export helper methods added to prototype to keep class concise
+ImportPage.prototype.updateProgressStats = function(stats) {
+    const { processed = 0, total = 0, created = 0, skipped = 0, failed = 0 } = stats || {};
+
+    // Update textual stats
+    const elProcessed = document.getElementById('users-processed');
+    const elTotal = document.getElementById('total-users');
+    const elSuccessRate = document.getElementById('success-rate');
+    const elEta = document.getElementById('estimated-time');
+
+    if (elProcessed) elProcessed.textContent = String(processed);
+    if (elTotal) elTotal.textContent = String(total || '0');
+
+    const successRate = processed > 0 ? Math.round(((created) / processed) * 100) : 0;
+    if (elSuccessRate) elSuccessRate.textContent = `${successRate}%`;
+
+    // Estimate remaining time using simple moving sample
+    const now = Date.now();
+    const last = this._lastProcessedSample;
+    this._lastProcessedSample = { t: now, processed };
+
+    let etaText = 'Calculating...';
+    if (total > 0 && last && processed > last.processed) {
+        const dt = (now - last.t) / 1000; // seconds
+        const dp = processed - last.processed;
+        const rate = dp / Math.max(dt, 0.001); // items/sec
+        const remaining = Math.max(total - processed, 0);
+        const secondsLeft = rate > 0 ? Math.round(remaining / rate) : null;
+        if (Number.isFinite(secondsLeft)) {
+            const m = Math.floor(secondsLeft / 60);
+            const s = secondsLeft % 60;
+            etaText = m > 0 ? `${m}m ${s}s` : `${s}s`;
+        }
+    }
+    if (elEta) elEta.textContent = etaText;
+};

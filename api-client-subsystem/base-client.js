@@ -16,6 +16,9 @@
  */
 
 import TokenManager from '../server/token-manager.js';
+import fs from 'fs';
+import path from 'path';
+import { importLogger, logSeparator } from '../server/winston-config.js';
 
 /**
  * Base API Client
@@ -73,6 +76,25 @@ class BaseApiClient {
         this.put = this.put.bind(this);
         this.delete = this.delete.bind(this);
         this.patch = this.patch.bind(this);
+
+        // Winston-backed import log writer
+        this._importLogPath = path.join(process.cwd(), 'logs', 'import.log');
+        this._writeImportLog = (msg, meta) => {
+            try {
+                if (process.env.DEBUG_IMPORT_LOG !== '1') return;
+                const dir = path.dirname(this._importLogPath);
+                if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+                const ts = new Date().toISOString();
+                const level = /failed|error/i.test(msg)
+                    ? 'error'
+                    : (/warn|rate limited/i.test(msg) ? 'warn' : 'info');
+                importLogger.log(level, msg, {
+                    ...meta,
+                    timestamp: ts,
+                    separator: logSeparator('═', 80)
+                });
+            } catch (_) { /* no-op */ }
+        };
     }
 
     /**
@@ -277,11 +299,28 @@ class BaseApiClient {
             let headers = { ...config.headers };
             
             if (config.authenticated !== false) {
-                const token = await this.tokenManager.getAccessToken();
+                let token = await this.tokenManager.getAccessToken();
+                // Defensive check: token should look like a JWT (contain at least one '.')
+                if (token && !String(token).includes('.')) {
+                    this.logger.warn('Suspicious access token format (no dot). Forcing refresh.');
+                    this.tokenManager.clearToken();
+                    token = await this.tokenManager.getAccessToken();
+                }
+                // Sanitize token (trim whitespace and quotes)
+                if (typeof token === 'string') {
+                    token = token.trim().replace(/^"|"$/g, '');
+                }
                 headers = {
                     ...headers,
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
                 };
+                // Log safe preview of Authorization without exposing the token
+                try {
+                    const preview = token ? `${String(token).slice(0, 12)}... (len=${String(token).length})` : 'null';
+                    this.logger.debug('Authorization header set', { scheme: 'Bearer', tokenPreview: preview });
+                    this._writeImportLog('Outbound request auth', { scheme: 'Bearer', tokenPreview: preview });
+                } catch (_) { /* ignore logging preview errors */ }
             }
             
             // Make request
@@ -290,6 +329,40 @@ class BaseApiClient {
             
             while (retries <= this.config.retries) {
                 try {
+                    // Build sanitized headers for logging
+                    const safeHeaders = { ...headers };
+                    if (safeHeaders.Authorization) {
+                        const val = String(safeHeaders.Authorization);
+                        const masked = val.startsWith('Bearer ')
+                            ? `Bearer ${val.slice(7, 19)}... (len=${val.length - 7})`
+                            : `*** (len=${val.length})`;
+                        safeHeaders.Authorization = masked;
+                    }
+
+                    // Prepare safe body preview if JSON
+                    let safeBody = undefined;
+                    const contentType = (headers['Content-Type'] || headers['content-type'] || '').toString();
+                    if (config.body && typeof config.body === 'string') {
+                        if (contentType.includes('application/json')) {
+                            try {
+                                safeBody = JSON.parse(config.body);
+                            } catch (_) {
+                                safeBody = String(config.body).slice(0, 500);
+                            }
+                        } else {
+                            // Non-JSON body: log only length
+                            safeBody = `{non-json body len=${String(config.body).length}}`;
+                        }
+                    }
+
+                    // Log outbound request with full details (sanitized)
+                    this._writeImportLog('Outbound request (full)', {
+                        method: (config.method || 'GET'),
+                        url: resolvedUrl,
+                        headers: safeHeaders,
+                        body: safeBody
+                    });
+
                     response = await fetch(resolvedUrl, {
                         ...config,
                         headers,
@@ -299,6 +372,18 @@ class BaseApiClient {
                     // Check if token expired
                     if (response.status === 401 && retries < this.config.retries) {
                         this.logger.warn('Token expired, retrying with new token');
+                        this.tokenManager.clearToken();
+                        const newToken = await this.tokenManager.getAccessToken();
+                        headers = {
+                            ...headers,
+                            'Authorization': `Bearer ${newToken}`
+                        };
+                        retries++;
+                        continue;
+                    }
+                    // Additional safeguard: if unauthorized/forbidden due to malformed Authorization (e.g., 403), try once to refresh
+                    if (response.status === 403 && retries < this.config.retries) {
+                        this.logger.warn('Received 403 Forbidden; refreshing token in case of malformed Authorization');
                         this.tokenManager.clearToken();
                         const newToken = await this.tokenManager.getAccessToken();
                         headers = {

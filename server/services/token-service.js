@@ -31,6 +31,15 @@ class TokenService {
     async getToken(credentials = null) {
         // If we have a valid cached token, return it
         if (this.tokenCache.accessToken && Date.now() < this.tokenCache.expiresAt - 300000) {
+            try {
+                const now = Date.now();
+                const expiresInMs = Math.max(0, (this.tokenCache.expiresAt || 0) - now);
+                logger.info('Using cached access token', {
+                    expiresInSec: Math.floor(expiresInMs / 1000),
+                    environmentId: this.tokenCache.environmentId,
+                    region: this.tokenCache.region
+                });
+            } catch (_) { /* no-op */ }
             return this.tokenCache.accessToken;
         }
 
@@ -103,7 +112,8 @@ class TokenService {
                 expiresAt: Date.now() + (tokenData.expires_in * 1000),
                 refreshToken: tokenData.refresh_token,
                 environmentId: env.environmentId,
-                region: env.region
+                region: env.region,
+                lastUpdated: Date.now()
             };
 
             // Schedule token refresh
@@ -167,6 +177,7 @@ class TokenService {
             'Europe': 'auth.pingone.eu',
             'Asia': 'auth.pingone.asia',
             'Canada': 'auth.pingone.ca',
+            'CA': 'auth.pingone.ca',
             'Australia': 'auth.pingone.com.au'
         };
 

@@ -6,6 +6,8 @@
  */
 
 import express from 'express';
+import fetch from 'node-fetch';
+import workerTokenManager from '../../auth/workerTokenManager.js';
 const router = express.Router();
 
 // In-memory storage for export status (in production, use database)
@@ -24,6 +26,126 @@ let exportStatus = {
     outputFile: null,
     downloadUrl: null
 };
+
+// Simple in-memory cache for discovered attributes
+let attributesCache = {
+    data: null,
+    cachedAt: 0,
+    ttlMs: 10 * 60 * 1000 // 10 minutes
+};
+
+// Region to API base URL map (keep consistent with pingone-proxy-fixed.js)
+const PINGONE_API_BASE_URLS = {
+    'NorthAmerica': 'https://api.pingone.com',
+    'Europe': 'https://api.eu.pingone.com',
+    'Canada': 'https://api.ca.pingone.com',
+    'Asia': 'https://api.apsoutheast.pingone.com',
+    'Australia': 'https://api.aus.pingone.com',
+    'US': 'https://api.pingone.com',
+    'EU': 'https://api.eu.pingone.com',
+    'AP': 'https://api.apsoutheast.pingone.com',
+    'default': 'https://api.pingone.com'
+};
+
+/**
+ * GET /api/export/attributes
+ * Discover available user attributes (standard + custom) from PingOne
+ * Strategy: fetch a single user and introspect fields, including custom attributes
+ */
+router.get('/attributes', async (req, res) => {
+    try {
+        // Serve from cache unless forceRefresh requested
+        const forceRefresh = String(req.query.forceRefresh || 'false').toLowerCase() === 'true';
+        const now = Date.now();
+        if (!forceRefresh && attributesCache.data && (now - attributesCache.cachedAt) < attributesCache.ttlMs) {
+            return res.success('Export attributes retrieved (cache)', { attributes: attributesCache.data, cache: true });
+        }
+
+        const environmentId = process.env.PINGONE_ENVIRONMENT_ID;
+        const region = process.env.PINGONE_REGION || 'NorthAmerica';
+        if (!environmentId) {
+            return res.error('Environment ID not configured', { code: 'ENV_NOT_CONFIGURED' }, 400);
+        }
+
+        // Acquire token via shared token manager
+        const accessToken = await workerTokenManager.getAccessToken({
+            apiClientId: process.env.PINGONE_CLIENT_ID,
+            apiSecret: process.env.PINGONE_CLIENT_SECRET,
+            environmentId,
+            region
+        });
+
+        const baseUrl = PINGONE_API_BASE_URLS[region] || PINGONE_API_BASE_URLS.default;
+        const url = `${baseUrl}/v1/environments/${environmentId}/users?limit=1`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            return res.error('Failed to query PingOne users for attribute discovery', { code: 'PINGONE_USERS_ERROR', status: response.status, details: text }, 502);
+        }
+
+        const data = await response.json();
+        const sampleUser = data?._embedded?.users?.[0] || {};
+
+        // Build normalized attributes list
+        const attributes = [];
+
+        // Helper to push attribute entries uniquely
+        const seen = new Set();
+        const addAttr = (key, label, group = 'standard', required = false, type = 'string') => {
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            attributes.push({ key, label, group, required, type });
+        };
+
+        // Standard/common fields
+        addAttr('username', 'Username', 'standard', true, 'string');
+        if (sampleUser.email || sampleUser.emails) addAttr('email', 'Email', 'standard', false, 'string');
+        // Name block varies; map to givenName/familyName for export semantics
+        if (sampleUser.name?.given || sampleUser.name?.givenName) addAttr('givenName', 'First Name', 'name', false, 'string');
+        if (sampleUser.name?.family || sampleUser.name?.familyName) addAttr('familyName', 'Last Name', 'name', false, 'string');
+        if (typeof sampleUser.enabled === 'boolean') addAttr('enabled', 'Enabled', 'standard', false, 'boolean');
+        if (sampleUser.status) addAttr('status', 'Status', 'standard', false, 'string');
+
+        // Groups and roles often appear via links or arrays; include if present
+        if (Array.isArray(sampleUser.groups) || sampleUser._embedded?.groups) addAttr('groups', 'Groups', 'relations', false, 'array');
+        if (Array.isArray(sampleUser.roles) || sampleUser._embedded?.roles) addAttr('roles', 'Roles', 'relations', false, 'array');
+
+        // Metadata
+        if (sampleUser.createdAt || sampleUser.created) addAttr('createdAt', 'Created At', 'metadata', false, 'string');
+        if (sampleUser.updatedAt || sampleUser.lastUpdated) addAttr('updatedAt', 'Last Updated', 'metadata', false, 'string');
+        if (sampleUser.lastSignOn) addAttr('lastSignOn', 'Last Sign-On', 'metadata', false, 'string');
+
+        // Custom attributes (PingOne often exposes as customAttributes object)
+        const custom = sampleUser.customAttributes || sampleUser.custom_attributes || {};
+        Object.keys(custom).forEach((k) => {
+            // Normalize to safe key for export
+            const key = `custom.${k}`;
+            addAttr(key, `Custom: ${k}`, 'custom', false, typeof custom[k]);
+        });
+
+        // Fallback: if no sample user, at least expose baseline
+        if (attributes.length === 0) {
+            addAttr('username', 'Username', 'standard', true, 'string');
+            addAttr('email', 'Email', 'standard', false, 'string');
+            addAttr('givenName', 'First Name', 'name', false, 'string');
+            addAttr('familyName', 'Last Name', 'name', false, 'string');
+        }
+
+        // Cache and return
+        attributesCache = { data: attributes, cachedAt: now, ttlMs: attributesCache.ttlMs };
+        res.success('Export attributes retrieved', { attributes, cache: false });
+    } catch (error) {
+        res.error('Failed to discover export attributes', { code: 'EXPORT_ATTR_DISCOVERY_ERROR', details: error.message }, 500);
+    }
+});
 
 /**
  * GET /api/export/status

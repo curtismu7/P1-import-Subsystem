@@ -141,7 +141,7 @@ export class SettingsPage {
                         <div class="info-grid">
                             <div class="info-item">
                                 <span class="label">Application Version:</span>
-                                <span id="settings-app-version" class="version">v7.3.0</span>
+                                <span id="settings-app-version" class="version">v...</span>
                             </div>
                             <div class="info-item">
                                 <span class="label">Server Status:</span>
@@ -163,6 +163,11 @@ export class SettingsPage {
         if (settingsPage) {
             settingsPage.innerHTML = pageContent;
             this.setupEventListeners();
+            // Update version display from app state
+            const versionEl = document.getElementById('settings-app-version');
+            if (versionEl) {
+                versionEl.textContent = 'v' + (this.app?.version || '...');
+            }
             await this.populateForm(); // Make this async
             
             // Apply final inline styles to ensure buttons render with black outline and light blue background
@@ -191,6 +196,23 @@ export class SettingsPage {
             }, 2000);
             
             this.isLoaded = true;
+
+            // Safety: ensure no lingering interaction blockers after render
+            setTimeout(() => {
+                try {
+                    if (this.app && typeof this.app.isModalVisible === 'function' && !this.app.isModalVisible()) {
+                        if (typeof this.app.ensureInteractionIntegrity === 'function') {
+                            this.app.ensureInteractionIntegrity();
+                        } else {
+                            // Fallback: explicitly re-enable interactions
+                            if (typeof this.app.setScreenInteraction === 'function') {
+                                this.app.setScreenInteraction(true);
+                            }
+                            try { document.body.style.overflow = ''; } catch (_) {}
+                        }
+                    }
+                } catch (_) {}
+            }, 0);
         }
     }
     

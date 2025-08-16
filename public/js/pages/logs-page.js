@@ -353,14 +353,29 @@ export class LogsPage {
         noLogs.style.display = 'none';
         logCountDisplay.textContent = `Showing ${this.filteredLogs.length} logs`;
 
+        const iconFor = (level) => ({
+            error: '🔴',
+            warn: '🟡',
+            info: '🟢',
+            debug: '🔵',
+            verbose: '🟣',
+            silly: '⚪'
+        })[level] || '⚪';
+
+        const separator = '═'.repeat(80);
+
         logsList.innerHTML = this.filteredLogs.map((log, idx) => {
             const detailsStr = this.formatLogDetails(log);
             return `
+            <div class="log-separator" style="grid-column: 1 / -1; color:#9ca3af; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; margin: ${idx===0?'0 0 6px 0':'12px 0 6px 0'};">${separator}</div>
             <div class="log-entry log-${log.level}" data-log-id="${log.id}"
-                 style="display:grid; grid-template-columns: 200px 110px 1fr auto; gap: 12px; align-items:center; padding:10px 12px; ${idx>0?'border-top:1px solid rgba(0,0,0,0.08);':''}">
+                 style="display:grid; grid-template-columns: 220px 140px 1fr auto; gap: 12px; align-items:center; padding:10px 12px;">
                 <div class="log-timestamp" style="color:#374151; font-weight:600;">${new Date(log.timestamp).toLocaleString()}</div>
-                <div class="log-level log-level-${log.level}" style="text-transform:uppercase; font-weight:700;">${log.level}</div>
-                <div class="log-message"><span class="log-source" style="color:#6b7280; font-weight:600;">${log.source}:</span> ${log.message}</div>
+                <div class="log-level log-level-${log.level}" style="text-transform:uppercase; font-weight:800; display:flex; align-items:center; gap:8px;">
+                    <span class="log-icon" aria-hidden="true">${iconFor(log.level)}</span>
+                    <span>${log.level}</span>
+                </div>
+                <div class="log-message"><span class="log-source" style="color:#6b7280; font-weight:700;">${log.source || 'application'}:</span> ${log.message}</div>
                 <div class="log-actions" style="justify-self:end;">
                     <button class="btn btn-sm btn-outline-secondary toggle-details-btn">
                         <i class="fas fa-chevron-down"></i> Details

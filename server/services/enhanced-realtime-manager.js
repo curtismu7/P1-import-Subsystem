@@ -60,6 +60,20 @@ class EnhancedConnection {
     // Session management
     this.socket.on('associate-session', (data) => {
       this.manager.associateSession(this, data.sessionId);
+      // Send explicit acknowledgment back to client for debugging/awareness
+      try {
+        this.sendSystemMessage('session-associated', {
+          sessionId: data.sessionId,
+          connectionId: this.id,
+          timestamp: Date.now()
+        });
+      } catch (err) {
+        this.manager.logger.warn('Failed to send session-associated ack', {
+          error: err?.message,
+          connectionId: this.id,
+          sessionId: data?.sessionId
+        });
+      }
     });
 
     // Subscription management
