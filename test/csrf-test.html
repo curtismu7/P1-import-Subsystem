@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSRF Protection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; border: none; border-radius: 3px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🛡️ CSRF Protection Test</h1>
+    
+    <div class="test-section info">
+        <h3>Test Overview</h3>
+        <p>This page tests the CSRF protection implementation. It will:</p>
+        <ul>
+            <li>Test CSRF token retrieval</li>
+            <li>Test protected API endpoints with valid tokens</li>
+            <li>Test protected API endpoints without tokens (should fail)</li>
+            <li>Verify token refresh functionality</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>1. CSRF Token Retrieval</h3>
+        <button class="btn-primary" onclick="testTokenRetrieval()">Get CSRF Token</button>
+        <div id="token-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Test Protected Endpoint (With Token)</h3>
+        <button class="btn-primary" onclick="testProtectedEndpoint()">Test with CSRF Token</button>
+        <div id="protected-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Test Protected Endpoint (Without Token)</h3>
+        <button class="btn-danger" onclick="testWithoutToken()">Test without CSRF Token</button>
+        <div id="unprotected-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Token Refresh Test</h3>
+        <button class="btn-primary" onclick="testTokenRefresh()">Test Token Refresh</button>
+        <div id="refresh-result"></div>
+    </div>
+
+    <script type="module">
+        import csrfManager from '/js/utils/csrf-utils.js';
+
+        window.testTokenRetrieval = async function() {
+            const resultDiv = document.getElementById('token-result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const token = await csrfManager.getToken();
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Success!</h4>
+                        <p>CSRF token retrieved successfully</p>
+                        <pre>Token: ${token.substring(0, 20)}...</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Error</h4>
+                        <p>Failed to retrieve CSRF token</p>
+                        <pre>${error.message}</pre>
+                    </div>
+                `;
+            }
+        };
+
+        window.testProtectedEndpoint = async function() {
+            const resultDiv = document.getElementById('protected-result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await csrfManager.fetchWithCSRF('/api/module-info');
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Success!</h4>
+                        <p>Protected endpoint accessed successfully with CSRF token</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Error</h4>
+                        <p>Failed to access protected endpoint</p>
+                        <pre>${error.message}</pre>
+                    </div>
+                `;
+            }
+        };
+
+        window.testWithoutToken = async function() {
+            const resultDiv = document.getElementById('unprotected-result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch('/api/module-info', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ test: 'data' })
+                });
+                
+                if (response.status === 403) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Success!</h4>
+                            <p>CSRF protection working correctly - request blocked without token</p>
+                            <pre>Status: ${response.status} - Forbidden</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>⚠️ Warning</h4>
+                            <p>Request was not blocked - CSRF protection may not be working</p>
+                            <pre>Status: ${response.status}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Error</h4>
+                        <p>Request failed</p>
+                        <pre>${error.message}</pre>
+                    </div>
+                `;
+            }
+        };
+
+        window.testTokenRefresh = async function() {
+            const resultDiv = document.getElementById('refresh-result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const oldToken = await csrfManager.getToken();
+                await csrfManager.refreshToken();
+                const newToken = await csrfManager.getToken();
+                
+                if (oldToken !== newToken) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Success!</h4>
+                            <p>Token refreshed successfully</p>
+                            <pre>Old: ${oldToken.substring(0, 20)}...
+New: ${newToken.substring(0, 20)}...</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="info">
+                            <h4>ℹ️ Info</h4>
+                            <p>Token refresh completed (same token returned)</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Error</h4>
+                        <p>Token refresh failed</p>
+                        <pre>${error.message}</pre>
+                    </div>
+                `;
+            }
+        };
+
+        // Initialize CSRF manager on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await csrfManager.getToken();
+                console.log('CSRF manager initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize CSRF manager:', error);
+            }
+        });
+    </script>
+</body>
+</html>
