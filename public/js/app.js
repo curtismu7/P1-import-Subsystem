@@ -10,6 +10,7 @@ import { LogsPage } from './pages/logs-page.js';
 import { TokenManagementPage } from './pages/token-management-page.js';
 import { HistoryPage } from './pages/history-page.js';
 import { SwaggerPage } from './pages/swagger-page.js';
+import csrfManager from 'csrf-utils';
 
 class PingOneApp {
     constructor() {
@@ -48,6 +49,9 @@ class PingOneApp {
         try {
             console.log('🚀 App initialization started...');
             this.showLoading('Initializing application...');
+            
+            console.log('🛡️ Initializing CSRF protection...');
+            await this.initializeCSRF();
             
             console.log('🔧 Loading settings...');
             await this.loadSettings();
@@ -125,6 +129,30 @@ class PingOneApp {
             // keep placeholder or previously set version
         } finally {
             this.updateVersionDisplay();
+        }
+    }
+
+    /**
+     * Initialize CSRF protection for the application
+     */
+    async initializeCSRF() {
+        try {
+            // Get initial CSRF token
+            await csrfManager.getToken();
+            console.log('✅ CSRF protection initialized successfully');
+            
+            // Set up periodic token refresh (every 12 hours)
+            setInterval(async () => {
+                try {
+                    await csrfManager.refreshToken();
+                } catch (error) {
+                    console.warn('CSRF token refresh failed:', error);
+                }
+            }, 12 * 60 * 60 * 1000); // 12 hours
+            
+        } catch (error) {
+            console.error('❌ Failed to initialize CSRF protection:', error);
+            // Don't block app initialization for CSRF failures
         }
     }
     

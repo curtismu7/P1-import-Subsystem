@@ -82,6 +82,7 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
+import { doubleCsrf } from 'csrf-csrf';
 import { ensureLogsDirectory } from './scripts/ensure-logs-directory.js';
 import { createWinstonLogger, createRequestLogger, createErrorLogger, createPerformanceLogger, serverLogger, apiLogger } from './server/winston-config.js';
 import { logStartupSuccess, logStartupFailure, runStartupTests } from './src/server/services/startup-diagnostics.js';
@@ -348,6 +349,59 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
+// ============================================================================
+// CSRF PROTECTION - PREVENTS CROSS-SITE REQUEST FORGERY ATTACKS
+// ============================================================================
+
+// Configure CSRF protection with double submit cookie pattern
+const csrfProtection = doubleCsrf({
+    getSecret: () => process.env.CSRF_SECRET || 'your-csrf-secret-key-change-in-production',
+    cookieName: 'X-CSRF-Token',
+    cookieOptions: {
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    },
+    size: 64, // Token size in bytes
+    ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
+    getTokenFromRequest: (req) => req.headers['x-csrf-token'] || req.body._csrf
+});
+
+// Apply CSRF protection to all routes except static files and WebSocket endpoints
+app.use((req, res, next) => {
+    // Skip CSRF for static files, WebSocket upgrades, and health checks
+    const isStaticFile = req.path.startsWith('/css/') || 
+                        req.path.startsWith('/js/') || 
+                        req.path.startsWith('/vendor/') ||
+                        req.path.startsWith('/swagger/') ||
+                        req.path.endsWith('.html') ||
+                        req.path.endsWith('.css') ||
+                        req.path.endsWith('.js') ||
+                        req.path.endsWith('.png') ||
+                        req.path.endsWith('.ico');
+    
+    const isWebSocket = req.path.startsWith('/socket.io/') || 
+                       req.headers.upgrade === 'websocket';
+    
+    const isHealthCheck = req.path === '/health' || req.path === '/api/health';
+    
+    if (isStaticFile || isWebSocket || isHealthCheck) {
+        return next();
+    }
+    
+    // Apply CSRF protection to all other routes
+    csrfProtection(req, res, next);
+});
+
+// Add CSRF token to all responses for frontend access
+app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/socket.io/')) {
+        res.locals.csrfToken = req.csrfToken?.() || null;
+    }
+    next();
+});
+
 // Add headers to ensure proper HTTP/1.1 handling
 app.use((req, res, next) => {
     // Do NOT force 'Connection: close' on WebSocket upgrade or Socket.IO endpoints
@@ -415,6 +469,24 @@ app.get('/api/module-info', (req, res) => {
         description: 'User import/export tool for PingOne',
         timestamp: new Date().toISOString()
     });
+});
+
+// CSRF token endpoint for frontend
+app.get('/api/csrf-token', (req, res) => {
+    try {
+        const token = req.csrfToken?.();
+        res.json({
+            success: true,
+            csrfToken: token,
+            message: 'CSRF token generated successfully'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to generate CSRF token',
+            message: error.message
+        });
+    }
 });
 
 // --- Auth routes ---
