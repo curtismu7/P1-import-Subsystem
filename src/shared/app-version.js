@@ -8,26 +8,19 @@
  * @version 1.0.0
  */
 
-// Application version - update this single location for all version references
-export const APP_VERSION = '7.4.4.0';
+// Application version - SINGLE SOURCE OF TRUTH
+export const APP_VERSION = '7.4.5.0';
 
-// Build information (can be populated by build process)
-export const BUILD_INFO = {
-  version: APP_VERSION,
-  buildDate: new Date().toISOString(),
-  environment: process.env.NODE_ENV || 'development',
-  commit: process.env.GIT_COMMIT || 'unknown'
-};
+// Helper functions for version formatting
+export function getFormattedVersion() {
+      return `v7.4.5.0`;
+}
 
-// Version display utilities
-export const getVersionDisplay = () => `v${APP_VERSION}`;
-export const getFullVersionInfo = () => `${APP_VERSION} (${BUILD_INFO.environment})`;
-export const getBuildTimestamp = () => BUILD_INFO.buildDate;
-
-// Export default for easy importing
-export default {
-  version: APP_VERSION,
-  display: getVersionDisplay(),
-  full: getFullVersionInfo(),
-  buildInfo: BUILD_INFO
-};
+export function getVersionInfo() {
+  return {
+    version: APP_VERSION,
+    buildTimestamp: new Date().toISOString(),
+    // Backward-compatibility: some routes expect buildDate
+    buildDate: new Date().toISOString()
+  };
+}
