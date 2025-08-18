@@ -5,7 +5,7 @@
  * for debugging and monitoring server initialization.
  * 
  * @fileoverview Startup diagnostics and logging utilities
- * @version 7.0.0.2
+ * @version Uses centralized APP_VERSION
  */
 
 import fs from 'fs/promises';
@@ -13,6 +13,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fetch from 'node-fetch';
 import { STANDARD_KEYS, standardizeConfigKeys, createBackwardCompatibleConfig } from '../../utils/config-standardization.js';
+import { APP_VERSION } from '../../version.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,9 +38,9 @@ async function getApplicationVersion() {
     try {
         const packageJsonPath = path.resolve(__dirname, '../../../package.json');
         const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
-        return packageJson.version || '7.0.0.2';
+        return packageJson.version || APP_VERSION;
     } catch (error) {
-        return '7.0.0.2'; // Fallback version
+        return APP_VERSION; // Fallback version
     }
 }
 
@@ -98,7 +99,7 @@ async function getAPIStatus(port) {
             
             const response = await fetch(`${baseUrl}${endpoint.path}`, {
                 signal: controller.signal,
-                headers: { 'User-Agent': 'StartupDiagnostics/7.0.0.2' }
+                headers: { 'User-Agent': `StartupDiagnostics/${APP_VERSION}` }
             });
             
             clearTimeout(timeoutId);

@@ -124,6 +124,7 @@ import session from 'express-session';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const { version: appVersion } = require('./package.json');
+import cookieParser from 'cookie-parser';
 
 // Import new middleware for improved backend-frontend communication
 import { errorHandler, notFoundHandler, asyncHandler } from './server/middleware/error-handler.js';
@@ -346,15 +347,18 @@ app.use(cors({
         true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-CSRF-Token']
 }));
 
 // ============================================================================
 // CSRF PROTECTION - PREVENTS CROSS-SITE REQUEST FORGERY ATTACKS
 // ============================================================================
 
+// Ensure cookies are parsed before CSRF protection
+app.use(cookieParser());
+
 // Configure CSRF protection with double submit cookie pattern
-const csrfProtection = doubleCsrf({
+const csrfUtilities = doubleCsrf({
     getSecret: () => process.env.CSRF_SECRET || 'your-csrf-secret-key-change-in-production',
     cookieName: 'X-CSRF-Token',
     cookieOptions: {
@@ -365,8 +369,12 @@ const csrfProtection = doubleCsrf({
     },
     size: 64, // Token size in bytes
     ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
-    getTokenFromRequest: (req) => req.headers['x-csrf-token'] || req.body._csrf
+    // Correct option name per csrf-csrf docs
+    getTokenFromRequest: (req) => req.headers['x-csrf-token'] || req.body?._csrf,
+    // Provide a stable session identifier even without express-session
+    getSessionIdentifier: (req) => req.headers['x-request-id'] || req.ip || 'anonymous'
 });
+const { doubleCsrfProtection, generateCsrfToken } = csrfUtilities;
 
 // Apply CSRF protection to all routes except static files and WebSocket endpoints
 app.use((req, res, next) => {
@@ -391,13 +399,17 @@ app.use((req, res, next) => {
     }
     
     // Apply CSRF protection to all other routes
-    csrfProtection(req, res, next);
+    doubleCsrfProtection(req, res, next);
 });
 
 // Add CSRF token to all responses for frontend access
 app.use((req, res, next) => {
     if (req.method === 'GET' && !req.path.startsWith('/socket.io/')) {
-        res.locals.csrfToken = req.csrfToken?.() || null;
+        try {
+            res.locals.csrfToken = (typeof req.csrfToken === 'function' ? req.csrfToken() : generateCsrfToken(req, res)) || null;
+        } catch {
+            res.locals.csrfToken = null;
+        }
     }
     next();
 });
@@ -474,7 +486,7 @@ app.get('/api/module-info', (req, res) => {
 // CSRF token endpoint for frontend
 app.get('/api/csrf-token', (req, res) => {
     try {
-        const token = req.csrfToken?.();
+        const token = (typeof req.csrfToken === 'function' ? req.csrfToken() : generateCsrfToken(req, res));
         res.json({
             success: true,
             csrfToken: token,
@@ -783,9 +795,9 @@ app.use('/api/token', tokenRouter);
  *               error: "Health check failed"
  *               timestamp: "2025-07-12T15:35:29.053Z"
  */
-// Endpoint to get the application version
+// Endpoint to get the application version (centralized)
 app.get('/api/version', (req, res) => {
-    res.json({ version: appVersion });
+    res.json({ version: APP_VERSION });
 });
 
 // Startup diagnostics endpoint for boot-time health and readiness
