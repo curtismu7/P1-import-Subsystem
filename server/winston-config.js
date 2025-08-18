@@ -190,6 +190,7 @@ import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { APP_VERSION } from '../src/version.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -662,7 +663,7 @@ export function createWinstonLogger(options = {}) {
             service,
             env,
             pid: process.pid,
-            version: process.env.APP_VERSION || '7.0.0.2'
+            version: APP_VERSION
         },
         transports: [
             // Console transport for all environments

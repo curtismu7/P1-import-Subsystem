@@ -18,6 +18,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createReadableFormatter } from './log-formatter.js';
+import { APP_VERSION } from '../../version.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -149,7 +150,7 @@ export function createWinstonLogger(options = {}) {
             service,
             env,
             pid: process.pid,
-            version: process.env.APP_VERSION || '7.0.0.2'
+            version: process.env.APP_VERSION || APP_VERSION
         },
         transports: [
             // Console transport for all environments
