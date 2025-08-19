@@ -1,186 +1,101 @@
-# BULLETPROOF CODING PRINCIPLES
-
-1. **Bulletproof Architecture**
-   - Multiple fallback layers, error isolation, graceful degradation, recovery mechanisms.
-2. **Configuration Management**
-   - Standardized keys (`pingone_*`), backward compatibility, multi-source loading, safe access.
-3. **Error Handling Standards**
-   - Always use try-catch, multiple fallback layers, user-friendly error messages.
-4. **Memory Management**
-   - Resource cleanup, memory monitoring, leak prevention, efficient caching.
-5. **Version Management**
-   - Consistent versioning, git integration, bundle management, documentation updates.
-6. **API Design Patterns**
-   - Standardized responses, proper HTTP status codes, comprehensive logging, error handling.
-7. **Client-Side Architecture**
-   - Subsystem pattern, safe DOM operations, event-driven, fallback UI.
-8. **Security Standards**
-   - Credential protection, secure storage, input validation, authentication.
-9. **Testing Requirements**
-   - Multi-layer testing, error scenario testing, performance testing, cross-browser testing.
-10. **Code Organization**
-    - Modular src/ structure, clear separation of concerns.
-11. **Documentation Standards**
-    - Comprehensive comments, API docs, memory updates, README updates.
-12. **Deployment Rules**
-    - Bundle cleanup, version consistency, health checks, rollback plan.
-13. **Logging Standards**
-    - Structured logging, sensitive data masking.
-14. **Performance Rules**
-    - Lazy loading, efficient updates, memory limits, fast response times.
-15. **User Experience Principles**
-    - Progressive enhancement, responsive design, accessibility, user feedback.
-
----
-
-### Advanced Enhancements
-
-16. **Observability & Telemetry**
-    - Distributed tracing, metrics collection, real-time monitoring.
-17. **Dependency Management**
-    - Pin versions, automated updates, vulnerability scanning.
-18. **Internationalization & Localization**
-    - Multi-language support, resource files for text.
-19. **Continuous Integration/Continuous Deployment (CI/CD)**
-    - Automated testing/deployment, rollback automation.
-20. **Data Integrity & Consistency**
-    - Atomic operations, schema/type validation.
-21. **Developer Experience**
-    - Pre-commit hooks, code review, onboarding docs.
-
----
-
-*All code, architecture, and documentation must comply with these principles. If any area is found lacking, refactor immediately to restore compliance.*
-
 # PingOne Import Tool
 
-A modern web application for importing users into PingOne using the PingOne Admin API.
+A modern web application to manage PingOne users at scale. It provides import, export, modify, and population operations with real-time progress, robust logging, and a secure authentication subsystem.
 
-## Features
+## What It Does
+- **User Import**: Upload CSVs to create users with validation and error handling
+- **User Export**: Export users from a selected PingOne population to CSV
+- **User Modify**: Update user attributes in bulk from CSV
+- **Population Management**: List/select default population for operations
+- **Token Management**: Obtain/refresh API tokens with clear UI status
+- **Real-Time Progress**: Live operation progress and status updates
+- **Comprehensive Logging**: Structured, persistent logs for debugging and audits
+- **API Documentation**: Built-in Swagger UI for API testing
 
-- **User Import**: Bulk import users from CSV files with validation and error handling
-- **User Export**: Export users from specific populations with customizable options
-- **User Modification**: Update existing user attributes and data
-- **Population Management**: Create, delete, and manage user populations
-- **Real-time Progress**: Live progress tracking with detailed status updates
-- **Comprehensive Logging**: Detailed logs for debugging and audit trails
+## How It Works (High Level)
+- **Frontend (Vanilla JS + Import Maps)**: UI, pages, and components under `public/`
+- **Backend (Express)**: Routes in `routes/` for import/export/modify/settings/token/status/version
+- **Auth Subsystem**: Isolated client/server components for secure credential handling in `auth-subsystem/`
+- **Services/Utilities**: Reusable modules in `server/` and `src/`
+- **Logs**: Rotating logs under `logs/`
+- **Data**: Exports and config under `data/`
 
-## Installation
+## Token & Version Indicators
+- **Token Status** shows three states:
+  - Valid: green indicator; shows time-left
+  - Refreshing: animated indicator; spinner icon
+  - Invalid: red indicator
+- **Version Display**:
+  - Fetched from `/api/version`
+  - Shown in header `#version-info` and footer `#footer-version` as `vX.Y.Z`
 
-```bash
-# Clone the repository
-git clone https://github.com/your-org/pingone-import.git
-cd pingone-import
+## Key Endpoints
+- GET `/api/version` → app version and build info
+- GET `/api/token/status` → token presence/validity/time-left
+- POST `/api/token/refresh` → refresh token
+- GET `/api/settings` and POST `/api/settings` → app settings
+- Export/Import/Modify routes under `/api/export`, `/api/import`, `/api/modify`
 
-# Install dependencies
-npm install
+## Project Structure (Short)
+- `public/` — UI, pages, styles, client JS
+- `routes/` — Express route handlers
+- `server/` — server services, middleware, utils
+- `auth-subsystem/` — secure auth client/server
+- `data/` — exports and settings
+- `logs/` — application logs
+- `tests/` — unit, integration, e2e, UI tests
+- `docs/` — documentation
 
-# Set up environment variables
-cp .env.example .env
-```
+## Getting Started
+1) Install dependencies
+   - `npm install`
+2) Configure environment
+   - `cp .env.example .env`
+   - Set PingOne credentials (client id/secret, environment id, region)
+3) Run in development
+   - `npm run dev`
+4) Open the app UI and enter credentials to obtain a token
 
-## Running the Server
-
-The server automatically starts in background mode by default for production use.
-
-```bash
-# Start server in background mode (default)
-npm start
-
-# Check server status
-npm run status:background
-
-# Stop background server
-npm run stop:background
-
-# Restart background server
-npm run restart:background
-```
-
-If you need to run the server in foreground mode (for development):
-
-```bash
-# Start in foreground mode
-npm run start:foreground
-
-# Or use the development mode with auto-reload
-npm run dev
-```
-
-## Server Management
-
-### Background Mode Commands
-
-```bash
-# Start server in background
-npm run start:background
-
-# Stop background server
-npm run stop:background
-
-# Restart background server
-npm run restart:background
-
-# Check background server status
-npm run status:background
-```
-
-### Daemon Mode Commands
-
-```bash
-# Start server as daemon
-npm run start:daemon
-
-# Stop daemon
-npm run stop:daemon
-
-# Restart daemon
-npm run restart:daemon
-
-# Check daemon status
-npm run status:daemon
-```
-
-## Development
-
-```bash
-# Start with auto-reloading
-npm run dev
-
-# Build client-side bundle
-npm run build:bundle
-
-# Build optimized production bundle
-npm run build:production
-```
+## Running
+- Start: `npm start`
+- Development (auto-reload): `npm run dev`
+- Build client bundle: `npm run build:bundle`
 
 ## Testing
+- All tests: `npm test`
+- Unit/Integration/API/Frontend: `npm run test:unit` | `npm run test:integration` | `npm run test:api` | `npm run test:frontend`
+- Coverage: `npm run test:coverage`
 
-```bash
-# Run all tests
-npm test
+## Security
+- Credentials handled by an isolated auth subsystem
+- Sensitive values are never logged
+- CSRF protection enabled for client API calls
 
-# Run specific test categories
-npm run test:unit
-npm run test:integration
-npm run test:api
-npm run test:frontend
+## Workflows
+- __/restart__: Rebuild bundle and restart server (see `.windsurf/workflows/restart.md`).
+- __/testit__: Rebuild bundle and restart server with import maps (see `.windsurf/workflows/testit.md`).
+- __/commit-to-github__: Commit changes with version update (see `.windsurf/workflows/commit-to-github.md`).
+- __/import-maps-migration__: Manage Import Maps migration (see `.windsurf/workflows/import-maps-migration.md`).
 
-# Run tests with coverage
-npm run test:coverage
-```
+These workflows streamline routine tasks directly from the IDE.
 
-## Environment Configuration
+## Deployment
+- __Platform__: Render (configured via `render.yaml`).
+- __Server start__: `npm start`
+- __Environment variables__: See `.env.example` for required `PINGONE_*` settings and standard `PORT`, `NODE_ENV`.
+- __Build step__: Client bundle built via `npm run build:bundle` if needed; app serves `public/` and API routes under `routes/`.
 
-The application uses environment variables for configuration, which can be set in a `.env` file:
+Deployment checklist (high level):
+- __Set secrets__: `PINGONE_CLIENT_ID`, `PINGONE_CLIENT_SECRET`, `PINGONE_ENVIRONMENT_ID`, `PINGONE_REGION`.
+- __Verify version endpoint__: `/api/version` returns expected version/build fields.
+- __Logs__: Ensure persistent volume or external logging if required; app writes to `logs/`.
 
-- `PINGONE_CLIENT_ID`: PingOne API client ID
-- `PINGONE_CLIENT_SECRET`: PingOne API client secret
-- `PINGONE_ENVIRONMENT_ID`: PingOne environment ID
-- `PINGONE_REGION`: PingOne region code
-- `PORT`: Server port (default: 4000)
-- `NODE_ENV`: Environment (development, test, production)
+For detailed steps, see:
+- `docs/deployment/DEPLOYMENT.md`
+- `docs/deployment/DEPLOYMENT_CHECKLIST.md`
+
+## Logs
+- `logs/access.log`, `logs/error.log`, `logs/application.log`, `logs/combined.log`, `logs/performance.log`
 
 ## License
-
 ISC

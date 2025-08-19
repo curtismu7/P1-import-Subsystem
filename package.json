@@ -1,6 +1,6 @@
 {
   "name": "pingone-import-cursor",
-  "version": "7.4.4.0",
+  "version": "7.4.6.1",
   "description": "A modern web application for importing users into PingOne using the PingOne Admin API.",
   "main": "server.js",
   "type": "module",
@@ -89,6 +89,7 @@
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
     "connect-redis": "^7.1.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "csrf-csrf": "^4.0.3",
     "csv-parse": "^5.6.0",

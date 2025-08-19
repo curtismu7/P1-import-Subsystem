@@ -358,6 +358,10 @@ export class ExportPage {
                                 <span id="total-users" class="value">0</span>
                             </div>
                             <div class="info-item">
+                                <span class="label">Ignored Users:</span>
+                                <span id="ignored-users" class="value">0</span>
+                            </div>
+                            <div class="info-item">
                                 <span class="label">Estimated Time:</span>
                                 <span id="estimated-time" class="value">Calculating...</span>
                             </div>
@@ -825,8 +829,26 @@ export class ExportPage {
             // Scroll to progress section
             this.scrollToSection(progressSection);
 
-            // Simulate export process (replace with actual API call)
-            await this.simulateExport();
+            // Start backend export session
+            const outputFileName = this.generateFileName();
+            const startResp = await fetch('/api/export/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: `export_${Date.now()}`,
+                    totalRecords: totalCount,
+                    populationId: this.selectedPopulation.id,
+                    populationName: this.selectedPopulation.name,
+                    outputFileName
+                })
+            });
+            const startJson = await startResp.json();
+            if (!startResp.ok || startJson.success === false) {
+                throw new Error(startJson.error || startJson.message || 'Failed to start export');
+            }
+
+            // Drive progress and keep backend status updated (including ignoredUsers)
+            await this.driveBackendExportProgress(totalCount);
             
         } catch (error) {
             console.error('Error starting export:', error);
@@ -834,14 +856,91 @@ export class ExportPage {
         }
     }
 
-    scrollToSection(section) {
-        if (section) {
-            section.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'start',
-                inline: 'nearest'
-            });
+    async driveBackendExportProgress(total) {
+        // Cache UI elements
+        const progressBar = document.getElementById('export-progress-bar');
+        const progressText = document.getElementById('export-progress-text');
+        const progressTextLeft = document.getElementById('export-progress-text-left');
+        const statusText = document.getElementById('export-status');
+        const usersProcessed = document.getElementById('users-processed');
+        const totalUsers = document.getElementById('total-users');
+        const ignoredUsersEl = document.getElementById('ignored-users');
+        const cancelBtn = document.getElementById('cancel-export');
+
+        if (typeof total === 'number' && totalUsers) {
+            totalUsers.textContent = total;
         }
+
+        // Clear any existing interval first
+        if (this.exportInterval) {
+            clearInterval(this.exportInterval);
+            this.exportInterval = null;
+        }
+
+        const updateUIFromStatus = (data) => {
+            try {
+                const pct = Math.max(0, Math.min(100, Number(data?.progress?.percentage ?? 0)));
+                const processed = Number(data?.progress?.current ?? data?.statistics?.processed ?? 0);
+                const totalCount = Number(data?.progress?.total ?? total ?? 0);
+                const ignored = Number(data?.statistics?.ignoredUsers ?? 0);
+
+                if (totalUsers && Number.isFinite(totalCount)) totalUsers.textContent = totalCount;
+                if (usersProcessed) usersProcessed.textContent = processed;
+                if (ignoredUsersEl) ignoredUsersEl.textContent = ignored;
+
+                if (progressBar) {
+                    progressBar.style.width = `${pct}%`;
+                    // Force repaint to keep CSS animation
+                    // eslint-disable-next-line no-unused-expressions
+                    progressBar.offsetHeight;
+                }
+                if (progressText) progressText.textContent = `${pct}%`;
+                if (progressTextLeft) progressTextLeft.textContent = `${pct}%`;
+                if (statusText) statusText.textContent = data?.status ? `Status: ${data.status}` : 'Export in progress...';
+
+                // Beer mug visual
+                const beerFill = document.getElementById('beer-fill');
+                const beerFoam = document.getElementById('beer-foam');
+                if (beerFill) beerFill.style.height = `${(pct / 100) * 16}px`;
+                if (beerFoam) beerFoam.style.top = `${16 - ((pct / 100) * 16)}px`;
+
+                return { pct, processed, totalCount, ignored, status: data?.status };
+            } catch (e) {
+                console.warn('Failed updating export UI from status:', e);
+                return { pct: 0, processed: 0, totalCount: total ?? 0, ignored: 0, status: 'running' };
+            }
+        };
+
+        // Poll backend status periodically
+        this.exportInterval = setInterval(async () => {
+            try {
+                const resp = await fetch('/api/export/status', { headers: { 'Accept': 'application/json' } });
+                const json = await resp.json();
+                if (!resp.ok || json.success === false) {
+                    throw new Error(json.error || json.message || 'Failed to get export status');
+                }
+
+                const data = json.data || json; // some middleware wraps in {success,data}
+                const { pct, processed, totalCount, status } = updateUIFromStatus(data);
+
+                const done = (status && ['completed','failed','cancelled','canceled'].includes(String(status)))
+                    || (totalCount > 0 && processed >= totalCount) || pct >= 100;
+                if (done) {
+                    clearInterval(this.exportInterval);
+                    this.exportInterval = null;
+                    if (cancelBtn) cancelBtn.style.display = 'none';
+                    // Slight delay for UX polish
+                    setTimeout(() => this.showExportResults(), 300);
+                }
+            } catch (err) {
+                console.error('Polling export status failed:', err);
+                // Stop polling on persistent error
+                clearInterval(this.exportInterval);
+                this.exportInterval = null;
+                if (statusText) statusText.textContent = 'Export status error';
+                this.app?.showNotification?.('Failed to poll export status: ' + err.message, 'error');
+            }
+        }, 800);
     }
 
     async simulateExport() {
@@ -851,9 +950,15 @@ export class ExportPage {
         const statusText = document.getElementById('export-status');
         const usersProcessed = document.getElementById('users-processed');
         const totalUsers = document.getElementById('total-users');
+        const ignoredUsersEl = document.getElementById('ignored-users');
 
         const total = Number(this.selectedPopulation?.userCount ?? 0);
         if (totalUsers) totalUsers.textContent = total;
+
+        // Determine how many will be ignored based on includeDisabledUsers option.
+        // Our preview/sample logic marks every 5th user as Disabled.
+        const includeDisabled = !!this.exportOptions.includeDisabledUsers;
+        const totalDisabled = includeDisabled ? 0 : Math.floor(total / 5);
 
         let currentProgress = 0;
         
@@ -916,6 +1021,13 @@ export class ExportPage {
                 if (progressTextLeft) progressTextLeft.textContent = `${Math.round(progress)}%`;
                 if (statusText) statusText.textContent = currentProgress >= total ? 'Export complete!' : 'Exporting users...';
                 if (usersProcessed) usersProcessed.textContent = Math.min(currentProgress, total);
+
+                // Update ignored users gradually in proportion to progress
+                if (ignoredUsersEl) {
+                    const processedNow = Math.min(currentProgress, total);
+                    const ignoredSoFar = Math.min(Math.floor(processedNow / 5), totalDisabled);
+                    ignoredUsersEl.textContent = ignoredSoFar;
+                }
             }, 200);
         });
     }
@@ -937,10 +1049,20 @@ export class ExportPage {
         if (summaryDiv) {
             const total = Number(document.getElementById('total-users')?.textContent || this.selectedPopulation.userCount || 0);
             const processed = Number(document.getElementById('users-processed')?.textContent || total);
+            const ignored = Number(document.getElementById('ignored-users')?.textContent || 0);
             const success = processed; // for now assume all processed succeeded
             const failed = 0;
             const skipped = 0;
             const successRate = total > 0 ? ((success / total) * 100).toFixed(1) : '0.0';
+
+            // Prepare file metadata safely
+            const fileName = this.lastExport?.fileName || this.generateFileName();
+            const fileSizeBytes = this.lastExport?.size ?? this.lastExport?.blob?.size ?? 0;
+            const sizeText = fileSizeBytes > 0 ? this.formatBytes(fileSizeBytes) : 'N/A';
+            const createdDate = this.lastExport?.createdAt || new Date();
+            const modifiedDate = this.lastExport?.modifiedAt || createdDate;
+            const createdText = this.formatDateTime(createdDate);
+            const modifiedText = this.formatDateTime(modifiedDate);
 
             summaryDiv.innerHTML = `
                 <div class="results-grid">
@@ -956,6 +1078,10 @@ export class ExportPage {
                                 <div class="metric-label">Headers</div>
                                 <div class="metric-value">${this.exportOptions.includeHeaders ? 'Included' : 'Excluded'}</div>
                             </div>
+                            <div class="metric">
+                                <div class="metric-label">Ignored Users</div>
+                                <div class="metric-value">${ignored}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -965,7 +1091,7 @@ export class ExportPage {
                         <div style="display:flex; align-items:center; gap:10px;">
                             <i class="mdi mdi-file-document" style="font-size:22px; color:#374151;"></i>
                             <div class="file-meta">
-                                <div class="file-name" id="file-name" style="font-weight:600; color:#111827;">${this.lastExport?.fileName || this.generateFileName()}</div>
+                                <div class="file-name" id="file-name" style="font-weight:600; color:#111827;">${fileName}</div>
                                 <div class="file-extra" style="font-size:12px; color:#4b5563;">
                                     <span id="file-size">${sizeText}</span>
                                     <span style="padding:0 6px; color:#9ca3af;">|</span>
@@ -991,6 +1117,9 @@ export class ExportPage {
                     <ul>
                         <li><strong>Target Population:</strong> ${this.selectedPopulation.name}</li>
                         <li><strong>Completed:</strong> ${this.formatDateTime(new Date())}</li>
+                        <li><strong>Total Users:</strong> ${total}</li>
+                        <li><strong>Processed Users:</strong> ${processed}</li>
+                        <li><strong>Ignored Users:</strong> ${ignored}</li>
                     </ul>
                 </div>
             `;
@@ -1460,36 +1589,54 @@ export class ExportPage {
         this.handlePopulationChange('');
     }
 
-    handleCancelExport() {
+    async handleCancelExport() {
         console.log('🛑 Canceling export process...');
-        
-        // Stop the export simulation
+
+        // Ask backend to cancel
+        try {
+            const resp = await fetch('/api/export/cancel', { method: 'POST', headers: { 'Accept': 'application/json' } });
+            // Best-effort: don't block on cancel errors
+            if (!resp.ok) {
+                const t = await resp.text();
+                console.warn('Backend cancel returned non-OK:', t);
+            }
+        } catch (e) {
+            console.warn('Cancel request failed (continuing UI cleanup):', e);
+        }
+
+        // Stop polling
         if (this.exportInterval) {
             clearInterval(this.exportInterval);
             this.exportInterval = null;
         }
-        
+
         // Hide progress section
         const progressSection = document.getElementById('export-progress');
         if (progressSection) {
             progressSection.style.display = 'none';
         }
-        
+
         // Hide cancel button
         const cancelBtn = document.getElementById('cancel-export');
         if (cancelBtn) {
             cancelBtn.style.display = 'none';
         }
-        
+
         // Show notification
         this.app?.showNotification?.('Export cancelled successfully', 'info');
-        
+
         // Reset progress
         const progressBar = document.getElementById('export-progress-bar');
         const progressText = document.getElementById('export-progress-text');
+        const progressTextLeft = document.getElementById('export-progress-text-left');
+        const usersProcessed = document.getElementById('users-processed');
+        const ignoredUsersEl = document.getElementById('ignored-users');
         if (progressBar) progressBar.style.width = '0%';
         if (progressText) progressText.textContent = '0%';
-        
+        if (progressTextLeft) progressTextLeft.textContent = '0%';
+        if (usersProcessed) usersProcessed.textContent = '0';
+        if (ignoredUsersEl) ignoredUsersEl.textContent = '0';
+
         console.log('✅ Export cancellation completed');
     }
 

@@ -56,10 +56,10 @@ export class SettingsPage {
                                 <label for="settings-region"><i class="mdi mdi-map-marker"></i> PingOne Region *</label>
                                 <select id="settings-region" name="region" class="form-control" required>
                                     <option value="">Select Region</option>
-                                    <option value="NorthAmerica">North America</option>
-                                    <option value="Europe">Europe</option>
-                                    <option value="AsiaPacific">Asia Pacific</option>
-                                    <option value="Canada">Canada</option>
+                                    <option value="NorthAmerica">NA — North America</option>
+                                    <option value="Europe">EU — Europe</option>
+                                    <option value="AsiaPacific">AP — Asia Pacific</option>
+                                    <option value="Canada">CA — Canada</option>
                                 </select>
                                 <div class="form-help">Your PingOne environment region</div>
                             </div>

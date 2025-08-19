@@ -18,6 +18,7 @@ let exportStatus = {
     processed: 0,
     errors: 0,
     warnings: 0,
+    ignoredUsers: 0,
     startTime: null,
     endTime: null,
     currentPopulation: null,
@@ -164,7 +165,8 @@ router.get('/status', (req, res) => {
             statistics: {
                 processed: exportStatus.processed,
                 errors: exportStatus.errors,
-                warnings: exportStatus.warnings
+                warnings: exportStatus.warnings,
+                ignoredUsers: exportStatus.ignoredUsers
             },
             timing: {
                 startTime: exportStatus.startTime,
@@ -206,6 +208,7 @@ router.post('/start', express.json(), (req, res) => {
             processed: 0,
             errors: 0,
             warnings: 0,
+            ignoredUsers: 0,
             startTime: Date.now(),
             endTime: null,
             currentPopulation: populationName || populationId || null,
@@ -227,7 +230,7 @@ router.post('/start', express.json(), (req, res) => {
  */
 router.post('/progress', express.json(), (req, res) => {
     try {
-        const { processed, errors, warnings, currentPopulation } = req.body;
+        const { processed, errors, warnings, currentPopulation, ignoredUsers } = req.body;
 
         if (!exportStatus.isRunning) {
             return res.error('No export operation running', { code: 'EXPORT_NOT_RUNNING', details: null }, 400);
@@ -237,6 +240,7 @@ router.post('/progress', express.json(), (req, res) => {
         if (typeof errors === 'number') exportStatus.errors = errors;
         if (typeof warnings === 'number') exportStatus.warnings = warnings;
         if (currentPopulation) exportStatus.currentPopulation = currentPopulation;
+        if (typeof ignoredUsers === 'number') exportStatus.ignoredUsers = ignoredUsers;
 
         res.success('Progress updated', { status: exportStatus.status });
     } catch (error) {
@@ -260,6 +264,7 @@ router.post('/complete', express.json(), (req, res) => {
             exportStatus.processed = finalStats.processed || exportStatus.processed;
             exportStatus.errors = finalStats.errors || exportStatus.errors;
             exportStatus.warnings = finalStats.warnings || exportStatus.warnings;
+            exportStatus.ignoredUsers = finalStats.ignoredUsers || exportStatus.ignoredUsers;
         }
 
         if (outputFile) exportStatus.outputFile = outputFile;
@@ -271,6 +276,7 @@ router.post('/complete', express.json(), (req, res) => {
                 processed: exportStatus.processed,
                 errors: exportStatus.errors,
                 warnings: exportStatus.warnings,
+                ignoredUsers: exportStatus.ignoredUsers,
                 duration: exportStatus.endTime - exportStatus.startTime
             },
             outputFile: exportStatus.outputFile,
@@ -314,6 +320,7 @@ router.delete('/reset', (req, res) => {
             processed: 0,
             errors: 0,
             warnings: 0,
+            ignoredUsers: 0,
             startTime: null,
             endTime: null,
             currentPopulation: null,
@@ -354,6 +361,7 @@ router.post('/', express.json(), async (req, res) => {
             processed: 0,
             errors: 0,
             warnings: 0,
+            ignoredUsers: 0,
             startTime: Date.now(),
             endTime: null,
             currentPopulation: populationName || populationId,
@@ -418,6 +426,8 @@ router.post('/', express.json(), async (req, res) => {
         exportStatus.status = 'completed';
         exportStatus.processed = mockUsers.length;
         exportStatus.total = mockUsers.length;
+        // For mock flow, no users are disabled; if wiring real data, set this accordingly
+        exportStatus.ignoredUsers = 0;
         exportStatus.outputFile = filename;
 
         res.json({
@@ -427,6 +437,7 @@ router.post('/', express.json(), async (req, res) => {
             filename: filename,
             format: format,
             recordCount: mockUsers.length,
+            ignoredUsers: exportStatus.ignoredUsers,
             sessionId: sessionId
         });
 

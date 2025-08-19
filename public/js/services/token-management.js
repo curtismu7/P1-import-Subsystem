@@ -472,7 +472,7 @@ class TokenManager {
     }
 }
 
-export default TokenManager;
+export { TokenManager };
 
 
 
@@ -612,7 +612,7 @@ class TokenRefreshHandler {
 
 // Create and export a singleton instance
 const tokenRefreshHandler = new TokenRefreshHandler();
-export default tokenRefreshHandler;
+export { tokenRefreshHandler };
 
 
 /* From: public/js/modules/token-status-indicator.js */
@@ -906,15 +906,16 @@ class TokenStatusIndicator {
                 }
             }
 
-            // If no token in localStorage or expired, check server
-            console.log('🔍 No valid token in localStorage, checking server...');
-            const response = await fetch('/api/health');
+            // If no token in localStorage or expired, check server token status
+            console.log('🔍 No valid token in localStorage, checking server /api/token/status...');
+            const response = await fetch('/api/token/status');
             if (!response.ok) {
-                throw new Error(`Server health check failed: ${response.status}`);
+                throw new Error(`Token status check failed: ${response.status}`);
             }
 
-            const healthData = await response.json();
-            const serverToken = healthData.token;
+            const statusPayload = await response.json();
+            const serverStatus = statusPayload && (statusPayload.data || statusPayload.status || statusPayload);
+            const serverToken = serverStatus && (serverStatus.data || serverStatus); // normalize
 
             if (!serverToken || !serverToken.hasToken || !serverToken.isValid) {
                 return {
@@ -926,7 +927,7 @@ class TokenStatusIndicator {
                 };
             }
 
-            // Server has valid token, calculate time remaining
+            // Server has valid token, calculate time remaining (exposed as seconds)
             const timeRemaining = (serverToken.expiresIn || 0) * 1000; // Convert seconds to ms
             
             if (timeRemaining <= 0) {
@@ -1194,7 +1195,8 @@ class TokenStatusIndicator {
         try {
             console.log('Requesting new token...');
             
-            const response = await fetch('/api/pingone/get-token', {
+            // Use unified backend refresh endpoint
+            const response = await fetch('/api/token/refresh', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1205,20 +1207,15 @@ class TokenStatusIndicator {
                 throw new Error(`Failed to get token: ${response.status}`);
             }
 
-            const data = await response.json();
-            
-            // Store token in localStorage
-            const expiryTime = Date.now() + (data.expires_in * 1000);
-            await TokenAccess.setToken(data.access_token, Date.now() + 3600000);
-            localStorage.setItem('pingone_token_expiry', expiryTime.toString());
+            // The refresh endpoint returns status only; token is stored server-side.
+            // Simply update the UI based on new status.
+            await response.json().catch(() => ({}));
 
             // Update status
             await this.updateStatus();
 
             // Dispatch event for other components
-            window.dispatchEvent(new CustomEvent('token-updated', {
-                detail: { token: data.access_token, expiresIn: data.expires_in }
-            }));
+            window.dispatchEvent(new CustomEvent('token-updated'));
 
             console.log('New token obtained successfully');
         } catch (error) {
@@ -1268,7 +1265,6 @@ class TokenStatusIndicator {
 
 // ES Modules export
 export { TokenStatusIndicator };
-export default TokenStatusIndicator;
 
 // Browser global fallback for legacy compatibility
 if (typeof window !== 'undefined') {
@@ -1615,13 +1611,16 @@ class TokenManagerUIIntegration {
             const envIdEl = document.getElementById('token-environment-id');
             if (envIdEl) {
                 try {
-                    const serverHealth = await fetch('/api/health').then(r => r.json());
-                    if (serverHealth.token && serverHealth.token.environmentId) {
-                        envIdEl.textContent = serverHealth.token.environmentId;
+                    const resp = await fetch('/api/settings');
+                    const payload = await resp.json();
+                    const settings = payload && (payload.data || payload) || {};
+                    const environmentId = settings.environmentId || settings.ENVIRONMENT_ID || settings.environment_id || '';
+                    if (environmentId) {
+                        envIdEl.textContent = environmentId;
                         envIdEl.title = 'Click to copy';
                         envIdEl.style.cursor = 'pointer';
                         envIdEl.onclick = () => {
-                            navigator.clipboard.writeText(serverHealth.token.environmentId);
+                            navigator.clipboard.writeText(environmentId);
                             this.showToast('Environment ID copied to clipboard');
                         };
                     } else {
@@ -1815,32 +1814,22 @@ class TokenManagerUIIntegration {
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
             btn.disabled = true;
-        }
+            try {
+                const response = await fetch('/api/token/status');
+                const payload = await response.json();
+                const statusData = payload && (payload.data || payload.status || payload);
+                const token = statusData && (statusData.data || statusData);
 
-        try {
-            const response = await fetch('/api/health');
-            const health = await response.json();
-
-            if (health.token && health.token.hasToken && health.token.isValid) {
-                this.showToast('Token test successful - Token is valid');
-                btn.style.backgroundColor = '#28a745';
-                setTimeout(() => {
-                    btn.style.backgroundColor = '';
-                }, 2000);
-            } else {
-                this.showToast('Token test failed - Token is invalid', 'error');
-                btn.style.backgroundColor = '#dc3545';
-                setTimeout(() => {
-                    btn.style.backgroundColor = '';
-                }, 2000);
-            }
-
-        } catch (error) {
-            console.error('Error testing token:', error);
-            this.showToast('Error testing token: ' + error.message, 'error');
-        } finally {
-            if (btn) {
-                btn.innerHTML = '<i class="fas fa-vial"></i> Test Token';
+                if (token && token.hasToken && token.isValid) {
+                    this.showToast('Token is valid');
+                } else {
+                    this.showToast('Token is invalid or expired', 'warning');
+                }
+            } catch (error) {
+                console.error('Error testing token:', error);
+                this.showToast('Error testing token: ' + error.message, 'error');
+            } finally {
+                btn.innerHTML = originalText || '<i class="fas fa-vial"></i> Test Token';
                 btn.disabled = false;
             }
         }

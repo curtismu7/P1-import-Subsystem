@@ -21,6 +21,9 @@ class TokenService {
         this.refreshTimeout = null;
         this.pendingTokenRequest = null;
         this.isRefreshing = false;
+        this.defaultTimeoutMs = 10000; // 10s timeout for network calls
+        this.maxRetries = 3;
+        this.retryBackoffMs = [500, 1500, 3000];
     }
 
     /**
@@ -84,9 +87,9 @@ class TokenService {
         const authHeader = `Basic ${Buffer.from(`${env.clientId}:${env.clientSecret}`).toString('base64')}`;
 
         try {
-            logger.info('Requesting new access token', { environmentId: env.environmentId, region: env.region });
-            
-            const response = await fetch(tokenUrl, {
+            logger.info('Requesting new access token', { environmentId: env.environmentId, region: env.region, authDomain });
+
+            const response = await this.fetchWithRetry(tokenUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -131,9 +134,55 @@ class TokenService {
             logger.error('Failed to acquire access token', {
                 error: error.message,
                 environmentId: env.environmentId,
-                region: env.region
+                region: env.region,
+                authDomain,
+                url: tokenUrl,
+                name: error.name,
+                code: error.code
             });
             throw error;
+        }
+    }
+
+    /**
+     * Fetch with timeout and retry/backoff for transient network errors
+     * @private
+     */
+    async fetchWithRetry(url, options = {}) {
+        const controller = new AbortController();
+        const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
+        const transientErrorRegex = /(ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN|NetworkError|network|fetch failed|socket hang up)/i;
+        let attempt = 0;
+
+        while (true) {
+            attempt += 1;
+            const timeout = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const resp = await fetch(url, { ...options, signal: controller.signal });
+                clearTimeout(timeout);
+                return resp;
+            } catch (err) {
+                clearTimeout(timeout);
+                const isTransient = transientErrorRegex.test(String(err && (err.code || err.message || err.name)));
+                const canRetry = attempt < this.maxRetries && isTransient;
+                logger.warn('Token fetch attempt failed', {
+                    attempt,
+                    maxRetries: this.maxRetries,
+                    transient: isTransient,
+                    error: err.message,
+                    code: err.code,
+                    name: err.name
+                });
+                if (!canRetry) throw err;
+                const backoff = this.retryBackoffMs[Math.min(attempt - 1, this.retryBackoffMs.length - 1)] || 1000;
+                await new Promise(res => setTimeout(res, backoff));
+                // Reset controller for next attempt
+                try { controller.abort(); } catch {}
+                // Create a new controller for the next loop
+                // eslint-disable-next-line no-param-reassign
+                options.signal = undefined;
+                continue;
+            }
         }
     }
 
