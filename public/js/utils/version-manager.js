@@ -13,11 +13,14 @@ export class VersionManager {
 
   async init() {
     try {
-      // Get version from server
-      const response = await fetch('/api/module-info');
-      const data = await response.json();
-      
-      this.version = data.version || '7.1.0';
+      // Get version from server (standardized API response)
+      // The backend exposes /api/version => { success, message, data: { version } }
+      const response = await fetch('/api/version');
+      const payload = await response.json();
+
+      // Prefer payload.data.version, fallback to payload.version for legacy
+      const resolved = (payload && payload.data && payload.data.version) || payload.version;
+      this.version = resolved || '7.4.6.0';
       this.updateVersionDisplays();
       this.updatePageTitle();
       this.initialized = true;
@@ -25,7 +28,8 @@ export class VersionManager {
       console.log(`Version Manager initialized: ${this.version}`);
     } catch (error) {
       console.warn('Failed to load version info:', error);
-      this.version = '7.1.0'; // Fallback version
+      // Fallback to known app version if server call fails
+      this.version = '7.4.6.0';
       this.updateVersionDisplays();
       this.updatePageTitle();
     }

@@ -40,6 +40,9 @@ export class HomePage {
                             <div class="status-label">Token Status</div>
                             <div class="status-value" id="token-status">Checking...</div>
                         </div>
+                        <button id="token-refresh-btn" class="status-action-btn" title="Refresh token" aria-label="Refresh token">
+                            <i class="icon-sync" id="token-refresh-icon"></i>
+                        </button>
                         <div class="status-indicator" id="token-indicator"></div>
                     </div>
                     
@@ -211,7 +214,21 @@ export class HomePage {
     
     setupEventListeners() {
         // Action cards are handled by the main app navigation handler
-        // No additional event listeners needed for this page
+        const refreshBtn = document.getElementById('token-refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const icon = document.getElementById('token-refresh-icon');
+                try {
+                    refreshBtn.disabled = true;
+                    if (icon) icon.classList.add('spinning');
+                    await this.app.attemptAutoRefresh('manual-home');
+                } finally {
+                    refreshBtn.disabled = false;
+                    if (icon) icon.classList.remove('spinning');
+                }
+            });
+        }
     }
     
     async loadDashboardData() {
@@ -278,16 +295,28 @@ export class HomePage {
         const tokenStatus = document.getElementById('token-status');
         const tokenIndicator = document.getElementById('token-indicator');
         const tokenIcon = document.getElementById('token-icon');
+        const refreshBtn = document.getElementById('token-refresh-btn');
+        const refreshIcon = document.getElementById('token-refresh-icon');
         
-        if (this.app.tokenStatus.isValid) {
+        if (this.app.tokenStatus.isRefreshing) {
+            if (tokenStatus) tokenStatus.textContent = 'Refreshing...';
+            if (tokenIndicator) tokenIndicator.className = 'status-indicator refreshing';
+            if (tokenIcon) tokenIcon.className = 'icon-sync';
+            if (refreshBtn) refreshBtn.disabled = true;
+            if (refreshIcon) refreshIcon.classList.add('spinning');
+        } else if (this.app.tokenStatus.isValid) {
             const timeLeft = this.app.formatTimeLeft(this.app.tokenStatus.timeLeft);
             if (tokenStatus) tokenStatus.textContent = `Valid (${timeLeft})`;
             if (tokenIndicator) tokenIndicator.className = 'status-indicator valid';
             if (tokenIcon) tokenIcon.className = 'icon-key';
+            if (refreshBtn) refreshBtn.disabled = false;
+            if (refreshIcon) refreshIcon.classList.remove('spinning');
         } else {
             if (tokenStatus) tokenStatus.textContent = 'Invalid or Expired';
             if (tokenIndicator) tokenIndicator.className = 'status-indicator invalid';
             if (tokenIcon) tokenIcon.className = 'icon-key-off';
+            if (refreshBtn) refreshBtn.disabled = false;
+            if (refreshIcon) refreshIcon.classList.remove('spinning');
         }
     }
     
@@ -386,9 +415,10 @@ export class HomePage {
         }
         
         if (regionInfo) {
-            const regionCode = this.app.settings.pingone_region;
-            const regionName = this.getRegionFullName(regionCode);
-            regionInfo.textContent = regionName || 'Not configured';
+            const rawRegion = this.app.settings.pingone_region;
+            const code = this.getRegionCode(rawRegion);
+            const name = this.getRegionFullName(rawRegion);
+            regionInfo.textContent = (code && name) ? `${code} — ${name}` : (name || code || 'Not configured');
         }
     }
     
@@ -399,22 +429,34 @@ export class HomePage {
      */
     getRegionFullName(regionCode) {
         const regionMap = {
-            'NA': 'North America region (excluding Canada)',
-            'CA': 'Canada region',
-            'EU': 'European Union region',
-            'AU': 'Australia region',
-            'SG': 'Singapore region',
-            'AP': 'Asia-Pacific region',
-            // Alternative codes that might be used
-            'NorthAmerica': 'North America region (excluding Canada)',
-            'Canada': 'Canada region',
-            'Europe': 'European Union region',
-            'Australia': 'Australia region',
-            'Singapore': 'Singapore region',
-            'Asia': 'Asia-Pacific region'
+            'NA': 'North America',
+            'CA': 'Canada',
+            'EU': 'Europe',
+            'AP': 'Asia Pacific',
+            // Alternative legacy names
+            'NorthAmerica': 'North America',
+            'Canada': 'Canada',
+            'Europe': 'Europe',
+            'AsiaPacific': 'Asia Pacific'
         };
-        
         return regionMap[regionCode] || regionCode;
+    }
+
+    /**
+     * Normalize to short region code from either legacy or code
+     * @param {string} region - e.g. 'NorthAmerica' or 'NA'
+     * @returns {string} - 'NA' | 'EU' | 'AP' | 'CA' or empty string
+     */
+    getRegionCode(region) {
+        const legacyToCode = {
+            'NorthAmerica': 'NA',
+            'Europe': 'EU',
+            'AsiaPacific': 'AP',
+            'Canada': 'CA'
+        };
+        if (!region) return '';
+        if (['NA', 'EU', 'AP', 'CA'].includes(region)) return region;
+        return legacyToCode[region] || '';
     }
     
     updateSwaggerVisibility() {

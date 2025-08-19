@@ -56,11 +56,23 @@ class CSRFManager {
 
             const data = await response.json();
             
-            if (!data.success || !data.csrfToken) {
+            // Accept multiple response shapes for robustness
+            // Preferred: { success: true, csrfToken: '...' }
+            // Also accept: { success: true, data: { csrfToken: '...' } }
+            // Legacy/fallback: { token: '...' } or { data: { token: '...' } }
+            const resolvedToken = (
+                (data && data.csrfToken) ||
+                (data && data.data && data.data.csrfToken) ||
+                (data && data.token) ||
+                (data && data.data && data.data.token) ||
+                null
+            );
+
+            if (!data || data.success === false || !resolvedToken) {
                 throw new Error('Invalid CSRF token response');
             }
 
-            this.token = data.csrfToken;
+            this.token = resolvedToken;
             // Set expiry to 23 hours (slightly less than server's 24 hours)
             this.tokenExpiry = Date.now() + (23 * 60 * 60 * 1000);
 

@@ -17,7 +17,7 @@ class PingOneApp {
         this.version = '...';
         this.currentPage = 'home';
         this.settings = {};
-        this.tokenStatus = { isValid: false, expiresAt: null, timeLeft: null };
+        this.tokenStatus = { isValid: false, expiresAt: null, timeLeft: null, isRefreshing: false };
         
         // File state persistence across pages
         this.fileState = {
@@ -121,9 +121,13 @@ class PingOneApp {
     async loadVersion() {
         try {
             const resp = await fetch('/api/version');
-            const data = await resp.json().catch(() => ({}));
-            if (resp.ok && data && (data.version || data.APP_VERSION)) {
-                this.version = data.version || data.APP_VERSION;
+            const payload = await resp.json().catch(() => ({}));
+            // Standard shape: { success, message, data: { version } }
+            const resolved = (payload && payload.data && payload.data.version)
+                || payload.version /* legacy */
+                || payload.APP_VERSION /* legacy */;
+            if (resp.ok && resolved) {
+                this.version = resolved;
             }
         } catch (_) {
             // keep placeholder or previously set version
@@ -215,8 +219,12 @@ class PingOneApp {
             const result = await response.json();
             console.log('📡 Raw response data:', result);
             
-            if (result.success && result.data) {
-                const tokenData = result.data;
+            if (result.success && (result.data || result.message)) {
+                // Support multiple response envelopes
+                // Standard: { success, data: { hasToken, isValid, expiresIn } }
+                // Nested:   { success, data: { message, data: { hasToken, isValid, expiresIn } } }
+                const wrapped = result.data || {};
+                const tokenData = (wrapped && (wrapped.data || wrapped)) || {};
                 console.log('🔑 Token status loaded from server:', tokenData);
                 this.applyTokenStatusFromServer(tokenData);
                 
@@ -240,12 +248,36 @@ class PingOneApp {
     async attemptAutoRefresh(reason = 'unknown') {
         try {
             console.log(`🔄 attemptAutoRefresh invoked (reason=${reason})`);
-            const resp = await fetch('/api/token/refresh', { method: 'POST' });
+            // Mark UI as refreshing
+            this.tokenStatus.isRefreshing = true;
+            this.updateTokenUI();
+            // Ensure we have a CSRF token, try refresh if missing
+            try {
+                if (!window.csrfManager?.token) {
+                    await csrfManager.refreshToken();
+                }
+            } catch (e) {
+                console.warn('CSRF token not available before refresh:', e?.message || e);
+            }
+
+            const csrfToken = (window.csrfManager && window.csrfManager.token) || null;
+            const resp = await fetch('/api/token/refresh', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
+                }
+            });
             const payload = await resp.json().catch(() => ({}));
             console.log('🔁 Refresh response:', resp.status, payload);
 
             if (resp.ok && payload && payload.success) {
-                const data = payload.data || payload.message || {};
+                // Support multiple response envelopes
+                // Standard: { success, data: { hasToken, isValid, expiresIn } }
+                // Nested:   { success, data: { message, data: { hasToken, isValid, expiresIn } } }
+                const wrapped = payload.data || {};
+                const data = (wrapped && (wrapped.data || wrapped)) || (payload.message || {});
                 this.applyTokenStatusFromServer(data);
                 this.updateTokenUI();
                 if (this.tokenStatus.isValid) {
@@ -270,6 +302,10 @@ class PingOneApp {
             console.warn('Auto-refresh error:', e?.message || e);
             this.showWarning('Network issue while refreshing token. Please check your connection.');
             return false;
+        } finally {
+            // Clear refreshing flag and update UI regardless of outcome
+            this.tokenStatus.isRefreshing = false;
+            this.updateTokenUI();
         }
     }
 
@@ -284,11 +320,13 @@ class PingOneApp {
                 this.tokenStatus.isValid = true;
                 this.tokenStatus.expiresAt = new Date(Date.now() + (expiresIn * 1000));
                 this.tokenStatus.timeLeft = expiresIn;
+                this.tokenStatus.isRefreshing = false;
                 console.log('✅ Token is valid, expires in:', expiresIn, 'seconds');
             } else {
                 this.tokenStatus.isValid = false;
                 this.tokenStatus.expiresAt = null;
                 this.tokenStatus.timeLeft = null;
+                this.tokenStatus.isRefreshing = false;
                 console.log('❌ Token is invalid or expired');
             }
         } catch (e) {
@@ -334,6 +372,23 @@ class PingOneApp {
         document.addEventListener('click', this.handleNavigation.bind(this));
         this.setupModalEventListeners();
         window.addEventListener('resize', this.handleResize.bind(this));
+
+        // Header manual token refresh button
+        const headerRefreshBtn = document.getElementById('header-token-refresh-btn');
+        const headerRefreshIcon = document.getElementById('header-token-refresh-icon');
+        if (headerRefreshBtn) {
+            headerRefreshBtn.addEventListener('click', async () => {
+                if (this.tokenStatus.isRefreshing) return;
+                try {
+                    headerRefreshBtn.disabled = true;
+                    if (headerRefreshIcon) headerRefreshIcon.classList.add('spinning');
+                    await this.attemptAutoRefresh('manual-header');
+                } finally {
+                    if (headerRefreshIcon) headerRefreshIcon.classList.remove('spinning');
+                    headerRefreshBtn.disabled = false;
+                }
+            });
+        }
     }
     
     setupModalEventListeners() {
@@ -406,23 +461,26 @@ class PingOneApp {
     }
     
     shouldShowCredentialsModal() {
-        // Don't show credentials modal if we already have a valid token
+        // 1) If we already have a valid token, do not show the modal
         if (this.tokenStatus && this.tokenStatus.isValid) {
             return false;
         }
-        
-        // Don't show if explicitly disabled
-        if (this.settings.showCredentialsModal === false) {
-            return false;
-        }
-        
-        // Show if we have credentials configured (user might want to change them)
-        if (this.settings.pingone_environment_id && this.settings.pingone_client_id) {
-            return true;
-        }
-        
-        // Default to showing if no credentials are configured
-        return true;
+
+        // 2) Respect explicit flags
+        if (this.settings.showCredentialsModal === false) return false; // explicitly hidden
+        if (this.settings.showCredentialsModal === true) return true;   // explicitly forced visible
+
+        // 3) Show only if required credentials are missing
+        const hasEnv = !!this.settings.pingone_environment_id;
+        const hasClientId = !!this.settings.pingone_client_id;
+        const hasSecret = !!this.settings.pingone_client_secret;
+        const missingCreds = !(hasEnv && hasClientId && hasSecret);
+
+        // If credentials are missing and no valid token, show modal
+        if (missingCreds) return true;
+
+        // 4) Otherwise, do not show; the server-side warm-up will acquire/validate the token
+        return false;
     }
     
     // Modal handlers
@@ -979,6 +1037,8 @@ class PingOneApp {
         const headerTokenIndicator = document.getElementById('token-indicator');
         const headerTokenText = document.getElementById('token-text');
         const headerTokenTime = document.getElementById('token-time');
+        const headerRefreshBtn = document.getElementById('header-token-refresh-btn');
+        const headerRefreshIcon = document.getElementById('header-token-refresh-icon');
         
         console.log('🔍 Header elements found:', {
             indicator: !!headerTokenIndicator,
@@ -998,22 +1058,31 @@ class PingOneApp {
             return;
         }
         
+        const state = this.tokenStatus.isRefreshing ? 'refreshing' : (this.tokenStatus.isValid ? 'valid' : 'invalid');
         if (headerTokenIndicator) {
-            const newClass = 'status-indicator ' + (this.tokenStatus.isValid ? 'valid' : 'invalid');
+            const newClass = 'status-indicator ' + state;
             console.log('🎨 Setting header indicator class to:', newClass);
             headerTokenIndicator.className = newClass;
         }
         
         if (headerTokenText) {
-            const newText = this.tokenStatus.isValid ? 'Token: Valid' : 'Token: Invalid';
+            const newText = this.tokenStatus.isRefreshing ? 'Token: Refreshing' : (this.tokenStatus.isValid ? 'Token: Valid' : 'Token: Invalid');
             console.log('📝 Setting header text to:', newText);
             headerTokenText.textContent = newText;
         }
         
         if (headerTokenTime) {
-            const newTime = this.tokenStatus.isValid ? this.formatTimeLeft(this.tokenStatus.timeLeft) : '';
+            const showTime = (this.tokenStatus.isValid || this.tokenStatus.isRefreshing) && this.tokenStatus.timeLeft != null;
+            const newTime = showTime ? this.formatTimeLeft(this.tokenStatus.timeLeft) : '';
             console.log('⏰ Setting header time to:', newTime);
             headerTokenTime.textContent = newTime;
+        }
+
+        // Header refresh button state
+        if (headerRefreshBtn) headerRefreshBtn.disabled = !!this.tokenStatus.isRefreshing;
+        if (headerRefreshIcon) {
+            if (this.tokenStatus.isRefreshing) headerRefreshIcon.classList.add('spinning');
+            else headerRefreshIcon.classList.remove('spinning');
         }
         
         // Update footer token indicator
@@ -1022,15 +1091,17 @@ class PingOneApp {
         const footerTokenTime = document.getElementById('footer-token-time');
         
         if (footerTokenIndicator) {
-            footerTokenIndicator.className = 'token-indicator ' + (this.tokenStatus.isValid ? 'valid' : 'invalid');
+            footerTokenIndicator.className = 'token-indicator ' + state;
         }
         
         if (footerTokenText) {
-            footerTokenText.textContent = this.tokenStatus.isValid ? 'Token: Valid' : 'Token: Invalid';
+            footerTokenText.textContent = this.tokenStatus.isRefreshing ? 'Token: Refreshing' : (this.tokenStatus.isValid ? 'Token: Valid' : 'Token: Invalid');
         }
         
         if (footerTokenTime) {
-            footerTokenTime.textContent = this.tokenStatus.isValid ? this.formatTimeLeft(this.tokenStatus.timeLeft) : '';
+            footerTokenTime.textContent = (this.tokenStatus.isValid || this.tokenStatus.isRefreshing) && this.tokenStatus.timeLeft != null
+                ? this.formatTimeLeft(this.tokenStatus.timeLeft)
+                : '';
         }
         
         // Update home page token status card
@@ -1039,16 +1110,21 @@ class PingOneApp {
         const homeTokenIcon = document.getElementById('token-icon');
         
         if (homeTokenIndicator) {
-            homeTokenIndicator.className = 'status-indicator ' + (this.tokenStatus.isValid ? 'valid' : 'invalid');
+            homeTokenIndicator.className = 'status-indicator ' + state;
         }
         
         if (homeTokenStatus) {
-            homeTokenStatus.textContent = this.tokenStatus.isValid ? 
-                `Valid (${this.formatTimeLeft(this.tokenStatus.timeLeft)})` : 'Invalid or Expired';
+            if (this.tokenStatus.isRefreshing) {
+                homeTokenStatus.textContent = `Refreshing${this.tokenStatus.timeLeft != null ? ` (${this.formatTimeLeft(this.tokenStatus.timeLeft)})` : ''}`;
+            } else if (this.tokenStatus.isValid) {
+                homeTokenStatus.textContent = `Valid${this.tokenStatus.timeLeft != null ? ` (${this.formatTimeLeft(this.tokenStatus.timeLeft)})` : ''}`;
+            } else {
+                homeTokenStatus.textContent = 'Invalid or Expired';
+            }
         }
         
         if (homeTokenIcon) {
-            homeTokenIcon.className = this.tokenStatus.isValid ? 'icon-key' : 'icon-key-off';
+            homeTokenIcon.className = this.tokenStatus.isRefreshing ? 'icon-sync' : (this.tokenStatus.isValid ? 'icon-key' : 'icon-key-off');
         }
         
         console.log('🔄 Token UI updated:', {
@@ -1066,111 +1142,50 @@ class PingOneApp {
             }
         });
     }
-    
+
+    // Update only the visual token-related UI without notifying pages
     updateTokenUIOnly() {
-        // Update header token indicator (top status bar)
+        // Header elements
         const headerTokenIndicator = document.getElementById('token-indicator');
         const headerTokenText = document.getElementById('token-text');
         const headerTokenTime = document.getElementById('token-time');
-        
-        if (headerTokenIndicator) {
-            headerTokenIndicator.className = 'status-indicator ' + (this.tokenStatus.isValid ? 'valid' : 'invalid');
+        const headerRefreshBtn = document.getElementById('header-token-refresh-btn');
+        const headerRefreshIcon = document.getElementById('header-token-refresh-icon');
+
+        const state = this.tokenStatus.isRefreshing ? 'refreshing' : (this.tokenStatus.isValid ? 'valid' : 'invalid');
+        if (headerTokenIndicator) headerTokenIndicator.className = 'status-indicator ' + state;
+        if (headerTokenText) headerTokenText.textContent = this.tokenStatus.isRefreshing ? 'Token: Refreshing' : (this.tokenStatus.isValid ? 'Token: Valid' : 'Token: Invalid');
+        if (headerTokenTime) headerTokenTime.textContent = (this.tokenStatus.isValid || this.tokenStatus.isRefreshing) && this.tokenStatus.timeLeft != null ? this.formatTimeLeft(this.tokenStatus.timeLeft) : '';
+        if (headerRefreshBtn) headerRefreshBtn.disabled = !!this.tokenStatus.isRefreshing;
+        if (headerRefreshIcon) {
+            if (this.tokenStatus.isRefreshing) headerRefreshIcon.classList.add('spinning');
+            else headerRefreshIcon.classList.remove('spinning');
         }
-        
-        if (headerTokenText) {
-            headerTokenText.textContent = this.tokenStatus.isValid ? 'Token: Valid' : 'Token: Invalid';
-        }
-        
-        if (headerTokenTime) {
-            headerTokenTime.textContent = this.tokenStatus.isValid ? this.formatTimeLeft(this.tokenStatus.timeLeft) : '';
-        }
-        
-        // Update footer token indicator
+
+        // Footer elements
         const footerTokenIndicator = document.getElementById('footer-token-indicator');
         const footerTokenText = document.getElementById('footer-token-text');
         const footerTokenTime = document.getElementById('footer-token-time');
-        
-        if (footerTokenIndicator) {
-            footerTokenIndicator.className = 'token-indicator ' + (this.tokenStatus.isValid ? 'valid' : 'invalid');
-        }
-        
-        if (footerTokenText) {
-            footerTokenText.textContent = this.tokenStatus.isValid ? 'Token: Valid' : 'Token: Invalid';
-        }
-        
-        if (footerTokenTime) {
-            footerTokenTime.textContent = this.tokenStatus.isValid ? this.formatTimeLeft(this.tokenStatus.timeLeft) : '';
-        }
-        
-        // Update home page token status card
+        if (footerTokenIndicator) footerTokenIndicator.className = 'token-indicator ' + state;
+        if (footerTokenText) footerTokenText.textContent = this.tokenStatus.isRefreshing ? 'Token: Refreshing' : (this.tokenStatus.isValid ? 'Token: Valid' : 'Token: Invalid');
+        if (footerTokenTime) footerTokenTime.textContent = (this.tokenStatus.isValid || this.tokenStatus.isRefreshing) && this.tokenStatus.timeLeft != null ? this.formatTimeLeft(this.tokenStatus.timeLeft) : '';
+
+        // Home card elements
         const homeTokenIndicator = document.querySelector('#home-page #token-indicator');
         const homeTokenStatus = document.getElementById('token-status');
         const homeTokenIcon = document.getElementById('token-icon');
-        
-        if (homeTokenIndicator) {
-            homeTokenIndicator.className = 'status-indicator ' + (this.tokenStatus.isValid ? 'valid' : 'invalid');
-        }
-        
+        if (homeTokenIndicator) homeTokenIndicator.className = 'status-indicator ' + state;
         if (homeTokenStatus) {
-            homeTokenStatus.textContent = this.tokenStatus.isValid ? 
-                `Valid (${this.formatTimeLeft(this.tokenStatus.timeLeft)})` : 'Invalid or Expired';
-        }
-        
-        if (homeTokenIcon) {
-            homeTokenIcon.className = this.tokenStatus.isValid ? 'icon-key' : 'icon-key-off';
-        }
-        
-        // Note: This method does NOT notify pages of token status change
-        // It only updates the UI elements for countdown display
-    }
-    
-    updateServerStatus(statusText) {
-        console.log('🔄 updateServerStatus called with:', statusText);
-        
-        // Check if DOM is ready
-        if (document.readyState === 'loading') {
-            console.log('⏳ DOM not ready yet, deferring server status update');
-            document.addEventListener('DOMContentLoaded', () => this.updateServerStatus(statusText));
-            return;
-        }
-        
-        const serverStatusText = document.getElementById('footer-server-text');
-        const serverStatusIndicator = document.getElementById('footer-server-indicator');
-        
-        console.log('🔍 Server status elements found:', {
-            text: !!serverStatusText,
-            indicator: !!serverStatusIndicator
-        });
-        
-        // Debug: Check if elements exist
-        if (!serverStatusText) console.warn('⚠️ Footer server text not found');
-        if (!serverStatusIndicator) console.warn('⚠️ Footer server indicator not found');
-        
-        // If elements not found, retry after a short delay
-        if (!serverStatusText || !serverStatusIndicator) {
-            console.log('🔄 Retrying server status update in 100ms...');
-            setTimeout(() => this.updateServerStatus(statusText), 100);
-            return;
-        }
-        
-        if (serverStatusText) {
-            serverStatusText.textContent = statusText;
-            console.log('✅ Server status text updated to:', statusText);
-        }
-        
-        if (serverStatusIndicator) {
-            // Set indicator color based on status
-            if (statusText === 'Server Started') {
-                serverStatusIndicator.className = 'status-indicator status-valid';
-                console.log('✅ Server status indicator set to green');
-                // Server status indicator set to green
+            if (this.tokenStatus.isRefreshing) {
+                homeTokenStatus.textContent = `Refreshing${this.tokenStatus.timeLeft != null ? ` (${this.formatTimeLeft(this.tokenStatus.timeLeft)})` : ''}`;
+            } else if (this.tokenStatus.isValid) {
+                homeTokenStatus.textContent = `Valid${this.tokenStatus.timeLeft != null ? ` (${this.formatTimeLeft(this.tokenStatus.timeLeft)})` : ''}`;
             } else {
-                serverStatusIndicator.className = 'status-indicator';
-                console.log('✅ Server status indicator set to default');
+                homeTokenStatus.textContent = 'Invalid or Expired';
             }
         }
+        if (homeTokenIcon) homeTokenIcon.className = this.tokenStatus.isRefreshing ? 'icon-sync' : (this.tokenStatus.isValid ? 'icon-key' : 'icon-key-off');
     }
-    
     formatTimeLeft(seconds) {
         if (!seconds || seconds <= 0) return '';
         if (seconds < 300) {
@@ -1180,6 +1195,34 @@ class PingOneApp {
         } else {
             const mins = Math.floor(seconds / 60);
             return `${mins}m`;
+        }
+    }
+
+    // Safely update footer server status text and indicator
+    updateServerStatus(statusText = 'Server Started') {
+        // Defer until DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.updateServerStatus(statusText));
+            return;
+        }
+
+        const serverStatusText = document.getElementById('footer-server-text');
+        const serverStatusIndicator = document.getElementById('footer-server-indicator');
+
+        // Retry briefly if elements not yet in DOM
+        if (!serverStatusText || !serverStatusIndicator) {
+            setTimeout(() => this.updateServerStatus(statusText), 100);
+            return;
+        }
+
+        // Update text
+        serverStatusText.textContent = statusText || 'Server Started';
+
+        // Update indicator coloring
+        if (statusText === 'Server Started') {
+            serverStatusIndicator.className = 'status-indicator valid';
+        } else {
+            serverStatusIndicator.className = 'status-indicator';
         }
     }
     

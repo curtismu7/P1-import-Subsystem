@@ -155,6 +155,30 @@ nav, .nav, .navbar, header, .header {
   letter-spacing: -0.01em;
 }
 
+/* Make the Home nav link wider/more prominent without affecting others */
+.left-nav .nav-link[data-page="home"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 12px 20px !important; /* increase horizontal tap target */
+  min-height: 44px !important;   /* taller for emphasis */
+  width: 100% !important;        /* make background span full nav width */
+  box-sizing: border-box !important;
+}
+
+.left-nav .nav-link[data-page="home"] .nav-text {
+  font-weight: 700 !important;
+}
+
+/* Apply same full-width pill treatment to all left nav links */
+.left-nav .nav-link {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  min-height: 44px !important;
+  padding: 12px 20px !important;
+  border-radius: 10px !important;
+}
+
 /* Home page specific improvements */
 .home-container {
   max-width: none !important;
@@ -372,6 +396,89 @@ select {
   white-space: nowrap !important;
 }
 
+/* Token status action button inside status-card */
+.status-action-btn {
+  margin-left: auto !important;
+  margin-right: 0.25rem !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 6px !important;
+  border: 1px solid var(--ping-gray-300) !important;
+  background: #f8f9fa !important;
+  color: var(--ping-gray-700) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast) !important;
+}
+
+.status-action-btn:hover {
+  background: #e9ecef !important;
+  border-color: var(--ping-gray-400) !important;
+  color: var(--ping-gray-900) !important;
+}
+
+.status-action-btn:active {
+  transform: scale(0.97) !important;
+}
+
+.status-action-btn:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+}
+
+/* Header refresh button styling (top status bar) */
+.top-status-bar .status-left {
+  gap: 12px !important; /* add space between token info and button */
+}
+
+.top-status-bar #header-token-refresh-btn {
+  margin-left: 6px !important; /* small extra gap to ensure separation */
+}
+
+.top-status-bar .status-action-btn {
+  height: 32px !important;
+  min-width: 32px !important;
+  padding: 0 10px !important;
+  gap: 8px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(255,255,255,0.35) !important;
+  background: rgba(255,255,255,0.12) !important;
+  color: #ffffff !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+
+.top-status-bar .status-action-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.2) !important;
+  border-color: rgba(255,255,255,0.5) !important;
+}
+
+.top-status-bar .status-action-btn:active:not(:disabled) {
+  transform: scale(0.97) !important;
+}
+
+.top-status-bar .status-action-btn i {
+  font-size: 16px !important;
+  line-height: 1 !important;
+  color: #ffffff !important;
+}
+
+.top-status-bar .status-action-btn .btn-text {
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+  white-space: nowrap !important;
+}
+
+.top-status-bar .status-action-btn:disabled i {
+  opacity: 0.8 !important;
+}
+
 .status-card:hover {
   box-shadow: var(--shadow-md) !important;
 }
@@ -410,6 +517,21 @@ select {
   text-overflow: ellipsis !important;
 }
 
+/* Allow the Environment status card to show full value by wrapping */
+.status-card > div:nth-child(2) {
+  /* ensure the middle content column can grow and wrap */
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+#environment-status.status-value {
+  white-space: normal !important;     /* allow multi-line */
+  overflow: visible !important;       /* don't clip */
+  text-overflow: clip !important;     /* remove ellipsis */
+  word-break: break-word !important;  /* wrap long IDs nicely */
+  line-break: anywhere !important;    /* better wrap behavior */
+}
+
 .status-indicator {
   width: 10px !important;
   height: 10px !important;
@@ -424,6 +546,20 @@ select {
 
 .status-indicator.invalid {
   background: var(--ping-error) !important;
+}
+
+.status-indicator.refreshing {
+  background: var(--ping-warning) !important;
+}
+
+/* Spinning animation used for refresh icon */
+@keyframes spin360 {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinning {
+  animation: spin360 1s linear infinite !important;
 }
 
 /* Header token info styling - make it prominent and Apple-like */
@@ -1208,6 +1344,27 @@ select.form-control:not([multiple]) {
 
 .token-indicator.warning, .status-indicator.warning {
   background-color: var(--ping-warning);
+}
+
+/* Explicit visual state for token/server when in Refreshing state */
+.token-indicator.refreshing, .status-indicator.refreshing {
+  background-color: var(--ping-warning);
+  animation: ping-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes ping-pulse {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+/* Spin the sync icon to indicate activity when refreshing */
+.icon-sync {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Specific rule for server status indicator */
