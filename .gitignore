@@ -28,10 +28,30 @@ Thumbs.db
 !.vscode/extensions.json
 .idea/
 *.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
 
-# Ignore release archives over 100MB
-backups/releases/*.tar.gz
+  # Ignore release archives over 100MB
+  backups/releases/*.tar.gz
+
+  # Generated test artifacts (screenshots, videos, traces)
+  test-results/
+  playwright-report/
+  **/*.webm
+  **/*.mp4
+  **/*.zip.tmp
+
+  # Large binary/package formats (prevent accidental commits)
+  *.tar
+  *.tar.gz
+  *.tgz
+  *.zip
+  *.7z
+  *.gz
+  *.bz2
+  *.xz
+  *.dmg
+  *.iso
+  *.msi
+  *.vsix
+
+  # Additional backups and release builds
+  backups/releases/**
