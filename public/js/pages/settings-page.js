@@ -56,10 +56,10 @@ export class SettingsPage {
                                 <label for="settings-region"><i class="mdi mdi-map-marker"></i> PingOne Region *</label>
                                 <select id="settings-region" name="region" class="form-control" required>
                                     <option value="">Select Region</option>
-                                    <option value="NorthAmerica">NA — North America</option>
-                                    <option value="Europe">EU — Europe</option>
-                                    <option value="AsiaPacific">AP — Asia Pacific</option>
-                                    <option value="Canada">CA — Canada</option>
+                                    <option value="NA">NA — North America</option>
+                                    <option value="EU">EU — Europe</option>
+                                    <option value="AP">AP — Asia Pacific</option>
+                                    <option value="CA">CA — Canada</option>
                                 </select>
                                 <div class="form-help">Your PingOne environment region</div>
                             </div>
@@ -215,6 +215,32 @@ export class SettingsPage {
             }, 0);
         }
     }
+
+    /**
+     * Normalize region to two-letter codes used across the app (NA, EU, AP, CA)
+     * Accepts legacy labels like 'NorthAmerica', 'Europe', 'AsiaPacific', 'Canada'
+     */
+    _normalizeRegion(region) {
+        if (!region) return 'NA';
+        const map = {
+            NA: 'NA', EU: 'EU', AP: 'AP', CA: 'CA',
+            NorthAmerica: 'NA', 'North America': 'NA', US: 'NA', USA: 'NA',
+            Europe: 'EU', 'EU Region': 'EU',
+            AsiaPacific: 'AP', 'Asia Pacific': 'AP', APAC: 'AP', 'AP Region': 'AP',
+            Canada: 'CA'
+        };
+        // Direct match
+        if (map[region]) return map[region];
+        // Case-insensitive, strip non-letters
+        const key = String(region).toLowerCase().replace(/[^a-z]/g, '');
+        const alt = {
+            na: 'NA', northamerica: 'NA', us: 'NA', usa: 'NA',
+            eu: 'EU', europe: 'EU', euregion: 'EU',
+            ap: 'AP', apac: 'AP', asiapacific: 'AP', apregion: 'AP',
+            ca: 'CA', canada: 'CA'
+        };
+        return alt[key] || 'NA';
+    }
     
     setupEventListeners() {
         // Form submission handling
@@ -250,7 +276,7 @@ export class SettingsPage {
         // Default region to North America if empty
         const regionSelect = document.getElementById('settings-region');
         if (regionSelect && (!regionSelect.value || regionSelect.value === '')) {
-            regionSelect.value = 'NorthAmerica';
+            regionSelect.value = 'NA';
         }
         
         // Token action buttons
@@ -307,7 +333,7 @@ export class SettingsPage {
         const fields = {
             'settings-environment-id': settings.pingone_environment_id || '',
             'settings-client-id': settings.pingone_client_id || '',
-            'settings-region': settings.pingone_region || 'NorthAmerica',
+            'settings-region': this._normalizeRegion(settings.pingone_region) || 'NA',
             'settings-population-id': settings.pingone_population_id || ''
         };
         
@@ -602,11 +628,12 @@ export class SettingsPage {
             }
             
             const formData = new FormData(form);
+            const normalizedRegion = this._normalizeRegion(formData.get('region'));
             const settings = {
                 pingone_environment_id: formData.get('environmentId'),
                 pingone_client_id: formData.get('clientId'),
                 pingone_client_secret: formData.get('clientSecret'),
-                pingone_region: formData.get('region'),
+                pingone_region: normalizedRegion,
                 pingone_population_id: formData.get('populationId')
             };
             
@@ -614,7 +641,7 @@ export class SettingsPage {
                 environmentId: formData.get('environmentId'),
                 clientId: formData.get('clientId'),
                 clientSecret: formData.get('clientSecret'),
-                region: formData.get('region'),
+                region: normalizedRegion,
                 populationId: formData.get('populationId')
             });
             

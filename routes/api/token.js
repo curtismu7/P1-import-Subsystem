@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { tokenService } from '../../server/services/token-service.js';
 import { serverLogger as logger } from '../../server/winston-config.js';
 import CredentialEncryptor from '../../auth-subsystem/server/credential-encryptor.js';
+import regionMapper from '../../src/utils/region-mapper.js';
 
 const router = express.Router();
 
@@ -39,14 +40,8 @@ function findMissingRequired(settings) {
 
 // Normalize region variants into accepted short codes
 function normalizeRegion(region) {
-  const r = (region || '').toString();
-  if (!r) return 'NA';
-  if (/^NA$|^NorthAmerica$/i.test(r)) return 'NA';
-  if (/^EU$|^Europe$/i.test(r)) return 'EU';
-  if (/^APAC$|^AsiaPacific$/i.test(r)) return 'APAC';
-  if (/^CA$|^Canada$/i.test(r)) return 'Canada';
-  // Default to NA if unknown to avoid blowing up; caller may still validate downstream
-  return 'NA';
+  // Delegate to centralized mapper which returns NA/EU/CA/AP
+  return regionMapper.toApiCode(region || 'NA');
 }
 
 // Decrypt pingone_client_secret if it is stored with the 'enc:' prefix

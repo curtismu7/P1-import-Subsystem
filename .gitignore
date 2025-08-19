@@ -32,3 +32,6 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Ignore release archives over 100MB
+backups/releases/*.tar.gz

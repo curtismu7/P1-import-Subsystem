@@ -12,6 +12,7 @@
 import express from 'express';
 import { apiLogger, apiLogHelpers } from '../../server/winston-config.js';
 import EnhancedServerAuth from '../../auth-subsystem/server/enhanced-server-auth.js';
+import regionMapper from '../../src/utils/region-mapper.js';
 
 const router = express.Router();
 
@@ -130,18 +131,19 @@ router.post('/validate-credentials', requireAuth, async (req, res) => {
         }
 
         // Test credentials
+        const normalizedRegion = regionMapper.toApiCode(region || 'NA');
         const validation = await enhancedAuth.validateCredentials({
             apiClientId: clientId,
             apiSecret: clientSecret,
             environmentId: environmentId,
-            region: region || 'NorthAmerica'
+            region: normalizedRegion
         });
 
         res.success(validation.message, {
             details: validation.success ? {
                 clientId: clientId,
                 environmentId: environmentId,
-                region: region || 'NorthAmerica',
+                region: normalizedRegion,
                 testedAt: new Date().toISOString()
             } : null
         });
@@ -169,11 +171,12 @@ router.post('/save-credentials', requireAuth, async (req, res) => {
         }
 
         // Validate credentials before saving
+        const normalizedRegion = regionMapper.toApiCode(credentials.region || 'NA');
         const validation = await enhancedAuth.validateCredentials({
             apiClientId: credentials.clientId,
             apiSecret: credentials.clientSecret,
             environmentId: credentials.environmentId,
-            region: credentials.region || 'NorthAmerica'
+            region: normalizedRegion
         });
 
         if (!validation.success) {
@@ -182,7 +185,7 @@ router.post('/save-credentials', requireAuth, async (req, res) => {
 
         // Save to specified locations
         const saveResults = await enhancedAuth.saveCredentialsToMultipleLocations(
-            credentials,
+            { ...credentials, region: normalizedRegion },
             targets.filter(target => target !== 'localStorage') // localStorage handled client-side
         );
 
@@ -212,7 +215,7 @@ router.post('/clear-credentials', requireAuth, async (req, res) => {
                 clientId: '',
                 clientSecret: '',
                 environmentId: '',
-                region: 'NorthAmerica'
+                region: 'NA'
             },
             ['env', 'settings']
         );

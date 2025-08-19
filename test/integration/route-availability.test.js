@@ -209,10 +209,15 @@ describe('Route Availability Integration Tests', () => {
             
             for (const route of routes) {
                 const response = await request(app).get(route);
+                // Content-Type should indicate JSON
+                expect(response.type).toMatch(/json/);
+                // Status should be successful for existing routes
+                expect([200, 204]).toContain(response.status);
+            }
+        });
         
         test('error responses should have consistent format', async () => {
             const response = await request(app).get('/api/non-existent');
-            
             expect(response.status).toBe(404);
             expect(response.type).toBe('application/json');
             // Could check for consistent error format if implemented
@@ -223,8 +228,6 @@ describe('Route Availability Integration Tests', () => {
 describe('Route Health Check System', () => {
     let app;
     
-import { expect } from 'chai';
-import fetch from 'node-fetch';
 
     beforeAll(async () => {
         const { createTestApp } = await import('./test-helpers/app-factory.js');

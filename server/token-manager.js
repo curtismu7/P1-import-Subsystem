@@ -19,6 +19,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import regionMapper from '../src/utils/region-mapper.js';
+import CredentialEncryptor from '../auth-subsystem/server/credential-encryptor.js';
 
 // Extract utility functions from the region mapper
 const { toApiCode, toDisplayName } = regionMapper;
@@ -62,6 +63,9 @@ class TokenManager {
         
         // Region tracking
         this.currentRegion = null;
+
+        // Credential encryption/decryption helper
+        this.encryptor = new CredentialEncryptor(this.logger);
     }
 
     /**
@@ -138,43 +142,42 @@ class TokenManager {
                                   getSetting(settings, 'pingone_region', 'region') || 
                                   'NA';
                 
-                // Convert to standardized region code
-                const region = toApiCode(rawRegion);
+                // Convert to standardized region code (avoid shadowing outer 'region')
+                const mappedRegion = toApiCode(rawRegion);
                 
                 // Check if we converted from legacy format
-                if (rawRegion !== region) {
+                if (rawRegion !== mappedRegion) {
                     usingLegacyRegion = true;
-                    this.logger.debug(` Converting legacy region format in credentials: ${rawRegion} → ${region}`);
+                    this.logger.debug(` Converting legacy region format in credentials: ${rawRegion} → ${mappedRegion}`);
                 }
                 
                 // Accept multiple naming conventions, including legacy pingone_* keys
                 clientId = clientId || getSetting(settings, 'apiClientId', 'api-client-id', 'pingone_client_id');
                 environmentId = environmentId || getSetting(settings, 'environmentId', 'environment-id', 'pingone_environment_id');
-                region = region || getSetting(settings, 'region', 'pingone_region') || 'NA';
+                // Use mapped region as primary, fall back to settings if somehow empty
+                region = mappedRegion || getSetting(settings, 'region', 'pingone_region') || 'NA';
 
                 // Prefer plain api-secret if both exist; also support legacy pingone_client_secret
                 let apiSecret = getSetting(settings, 'api-secret', 'apiSecret', 'pingone_client_secret');
                 
                 this.logger.debug('API secret selected:', apiSecret ? (apiSecret.startsWith('enc:') ? '[ENCRYPTED]' : '[PLAIN]') : 'not found');
                 if (!clientSecret && apiSecret) {
-                    if (apiSecret.startsWith('enc:')) {
-                        // This is an encrypted value, try to decrypt it
+                    if (typeof apiSecret === 'string' && apiSecret.startsWith('enc:')) {
+                        // Encrypted with AES via CredentialEncryptor
                         try {
-                            clientSecret = await this.decryptApiSecret(apiSecret);
+                            clientSecret = await this.encryptor.decrypt(apiSecret);
                             if (clientSecret) {
                                 this.logger.info('Successfully decrypted API secret from settings file');
                             } else {
-                                this.logger.warn('Failed to decrypt API secret, trying as plain text');
-                                // If decryption fails, try using the value after 'enc:' as plain text
-                                clientSecret = apiSecret.substring(4);
+                                this.logger.error('Decryption returned empty value for API secret');
                             }
                         } catch (error) {
-                            this.logger.warn('Failed to decrypt API secret, using as plain text:', error.message);
-                            // If decryption fails, try using the value after 'enc:' as plain text
-                            clientSecret = apiSecret.substring(4);
+                            this.logger.error('Failed to decrypt API secret with CredentialEncryptor', { error: error.message });
+                            // Do NOT fall back to using ciphertext; require proper key
+                            throw new Error('Failed to decrypt API secret. Ensure AUTH_SUBSYSTEM_ENCRYPTION_KEY is set and correct.');
                         }
                     } else {
-                        // This is an unencrypted value - use it directly
+                        // Unencrypted value - use it directly
                         clientSecret = apiSecret;
                         this.logger.info('Using plain text API secret from settings file');
                     }
@@ -221,24 +224,11 @@ class TokenManager {
      * @private
      */
     async decryptApiSecret(encryptedValue) {
+        // Backward-compat shim: use proper AES decryptor
         try {
-            // Remove the 'enc:' prefix
-            const encryptedData = encryptedValue.substring(4);
-            
-            // For now, we'll use a simple base64 decode as a fallback
-            // This assumes the frontend is using a simple encryption method
-            const decoded = Buffer.from(encryptedData, 'base64').toString('utf8');
-            
-            // If the decoded value looks like a valid API secret (contains valid characters)
-            if (decoded && decoded.length > 0 && !decoded.includes('')) {
-                return decoded;
-            }
-            
-            // If base64 decode didn't work, the value might be encrypted with a different method
-            this.logger.warn('API secret appears to be encrypted with a method not supported by server');
-            return null;
+            return await this.encryptor.decrypt(encryptedValue);
         } catch (error) {
-            this.logger.error('Failed to decrypt API secret:', error.message);
+            this.logger.error('decryptApiSecret failed using CredentialEncryptor', { error: error.message });
             return null;
         }
     }

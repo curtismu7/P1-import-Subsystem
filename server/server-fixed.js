@@ -36,7 +36,6 @@ await setPingOneEnvVars();
 // Core dependencies
 import express from 'express';
 import http from 'http';
-import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
 import { Server } from 'socket.io';
@@ -49,7 +48,6 @@ import { isPortAvailable, findAvailablePort } from './port-checker.js';
 
 // Import routes
 import apiRouter from '../routes/api/index.js';
-import authRouter from '../routes/auth.js';
 import settingsRouter from '../routes/settings.js';
 import debugLogRouter from '../routes/api/debug-log.js';
 import logsRouter from '../routes/logs.js';
@@ -165,7 +163,6 @@ app.post('/api/token/refresh', async (req, res) => {
 
 // API routes
 app.use('/api', apiRouter);
-app.use('/auth', authRouter);
 app.use('/settings', settingsRouter);
 app.use('/api/debug', debugLogRouter);
 app.use('/logs', logsRouter);
