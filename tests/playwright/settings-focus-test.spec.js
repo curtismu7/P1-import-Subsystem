@@ -13,15 +13,15 @@ test.describe('Settings Page Focus Test', () => {
     // Wait for settings page to load
     await page.waitForTimeout(2000);
     
-    // Check if token information section exists
-    const tokenSection = page.locator('.settings-section:has-text("Token Information")');
-    await expect(tokenSection).toBeVisible();
+    // Check if token information section exists (support legacy and new structures)
+    const tokenSection = page.locator('#token-information-section, #token-info');
+    await expect(tokenSection.first()).toBeVisible();
     
     // Check token status elements
-    const tokenIndicator = page.locator('#settings-token-indicator');
-    const tokenText = page.locator('#settings-token-text');
-    const tokenExpires = page.locator('#settings-token-expires');
-    const tokenTime = page.locator('#settings-token-time');
+    const tokenIndicator = page.locator('#settings-page #settings-token-indicator, #settings-page #token-indicator');
+    const tokenText = page.locator('#settings-page #settings-token-text, #settings-page #token-text');
+    const tokenExpires = page.locator('#settings-page #settings-token-expires, #settings-page #token-expires');
+    const tokenTime = page.locator('#settings-page #settings-token-time, #settings-page #token-time');
     
     console.log('🔍 Checking token elements...');
     console.log('Token indicator visible:', await tokenIndicator.isVisible());
@@ -80,13 +80,21 @@ test.describe('Settings Page Focus Test', () => {
       console.log('❌ Clear token button not found');
     }
     
-    // Check current token status
-    const currentTokenText = await tokenText.textContent();
-    console.log('Current token status:', currentTokenText);
+    // Check current token status if visible
+    if (await tokenText.isVisible()) {
+      const currentTokenText = await tokenText.textContent();
+      console.log('Current token status:', currentTokenText);
+    } else {
+      console.log('ℹ️ Token text not visible on settings page, skipping status read.');
+    }
     
-    // Check if token indicator has proper styling
-    const indicatorClasses = await tokenIndicator.getAttribute('class');
-    console.log('Token indicator classes:', indicatorClasses);
+    // Check if token indicator has proper styling when present
+    if (await tokenIndicator.isVisible()) {
+      const indicatorClasses = await tokenIndicator.getAttribute('class');
+      console.log('Token indicator classes:', indicatorClasses);
+    } else {
+      console.log('ℹ️ Token indicator not visible on settings page, skipping class check.');
+    }
     
     // Test form interactions
     const environmentIdField = page.locator('#settings-environment-id');

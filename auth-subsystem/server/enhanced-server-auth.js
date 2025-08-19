@@ -18,11 +18,14 @@ import { authLogger } from '../../server/winston-config.js';
 import { promises as fs } from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import { loadSettings as loadCentralSettings } from '../../server/services/settings-loader.js';
+import regionMapper from '../../src/utils/region-mapper.js';
 
 class EnhancedServerAuth extends PingOneAuth {
     constructor(logger = authLogger) {
         super(logger);
-        this.credentialSources = ['env', 'settings', 'fallback'];
+        // Standardize on settings.json as the exclusive credential source
+        this.credentialSources = ['settings'];
         this.startupToken = null;
         this.startupTokenExpiry = null;
         this.isInitialized = false;
@@ -114,9 +117,6 @@ class EnhancedServerAuth extends PingOneAuth {
                 
                 let credentials = null;
                 switch (source) {
-                    case 'env':
-                        credentials = await this.credentialManager.env.loadCredentials();
-                        break;
                     case 'settings':
                         credentials = await this.credentialManager.settings.loadCredentials();
                         break;
@@ -287,15 +287,9 @@ class EnvCredentialManager {
     }
 
     async loadCredentials() {
-        // Reload .env file to get latest values
-        dotenv.config({ path: this.envPath });
-        
-        return {
-            clientId: process.env.PINGONE_CLIENT_ID,
-            clientSecret: process.env.PINGONE_CLIENT_SECRET,
-            environmentId: process.env.PINGONE_ENVIRONMENT_ID,
-            region: process.env.PINGONE_REGION || 'NorthAmerica'
-        };
+        // Deprecated: environment variable sourcing is no longer used for PingOne credentials
+        // Keep method for interface compatibility; return null to force settings.json usage
+        return null;
     }
 
     async saveCredentials(credentials) {
@@ -315,7 +309,7 @@ class EnvCredentialManager {
                 PINGONE_CLIENT_ID: credentials.clientId || credentials.apiClientId,
                 PINGONE_CLIENT_SECRET: credentials.clientSecret || credentials.apiSecret,
                 PINGONE_ENVIRONMENT_ID: credentials.environmentId,
-                PINGONE_REGION: credentials.region || 'NorthAmerica'
+                PINGONE_REGION: regionMapper.toApiCode(credentials.region || 'NA')
             };
 
             // Parse existing content and update
@@ -369,26 +363,40 @@ class SettingsCredentialManager {
     }
 
     async loadCredentials() {
-        const settings = await this.credentialEncryptor.readAndDecryptSettings();
-        if (!settings) return null;
-
-        return {
-            clientId: settings['api-client-id'] || settings.apiClientId,
-            clientSecret: settings['api-secret'] || settings.apiSecret,
-            environmentId: settings['environment-id'] || settings.environmentId,
-            region: settings.region || 'NorthAmerica'
-        };
+        // Use centralized loader for consistent decryption and normalization
+        try {
+            const { environmentId, clientId, clientSecret, region } = await loadCentralSettings(this.logger);
+            return { clientId, clientSecret, environmentId, region };
+        } catch (e) {
+            this.logger.error('Failed to load credentials from settings.json via centralized loader:', e.message);
+            return null;
+        }
     }
 
     async saveCredentials(credentials) {
-        const credentialsToSave = {
-            apiClientId: credentials.clientId || credentials.apiClientId,
-            apiSecret: credentials.clientSecret || credentials.apiSecret,
-            environmentId: credentials.environmentId,
-            region: credentials.region || 'NorthAmerica'
-        };
+        try {
+            const region = regionMapper.toApiCode(credentials.region || 'NA');
+            const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
 
-        return await this.credentialEncryptor.encryptAndSaveSettings(credentialsToSave);
+            // Prepare object with PINGONE_* keys as canonical storage
+            const toWrite = {
+                PINGONE_CLIENT_ID: credentials.clientId || credentials.apiClientId,
+                PINGONE_ENVIRONMENT_ID: credentials.environmentId,
+                PINGONE_REGION: region
+            };
+
+            const rawSecret = credentials.clientSecret || credentials.apiSecret || '';
+            toWrite.PINGONE_CLIENT_SECRET = this.credentialEncryptor.isEncrypted(rawSecret)
+                ? rawSecret
+                : await this.credentialEncryptor.encrypt(rawSecret);
+
+            // Write pretty JSON
+            await fs.writeFile(settingsPath, JSON.stringify(toWrite, null, 2), 'utf8');
+            return true;
+        } catch (error) {
+            this.logger.error('Failed to save credentials to settings.json:', error.message);
+            return false;
+        }
     }
 }
 

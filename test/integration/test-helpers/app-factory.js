@@ -11,6 +11,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import { addRequestId, standardizeResponse } from '../../../server/middleware/response-standardization.js';
 
 /**
  * Create a test Express app with minimal configuration
@@ -27,6 +28,9 @@ export async function createTestApp() {
         contentSecurityPolicy: false,
         crossOriginEmbedderPolicy: false
     }));
+    // Standardize responses to provide res.success/res.error used by routes
+    app.use(addRequestId);
+    app.use(standardizeResponse);
     
     // Import and mount API routes
     try {

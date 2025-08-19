@@ -84,7 +84,8 @@ test.describe('PingOne Import Tool Interactive UI Tests', () => {
     
     // Import page buttons
     await page.click('.nav-link[data-page="import"]');
-    const importButton = page.locator('button#import-btn, button[data-action="import"], button:has-text("Import")');
+    // Prefer a single, stable selector to avoid strict mode multi-match
+    const importButton = page.locator('#start-import');
     if (await importButton.isVisible()) {
       await expect(importButton).toBeVisible();
       console.log('✅ Import button is available');
@@ -92,7 +93,7 @@ test.describe('PingOne Import Tool Interactive UI Tests', () => {
     
     // Export page buttons
     await page.click('.nav-link[data-page="export"]');
-    const exportButton = page.locator('button#export-btn, button[data-action="export"], button:has-text("Export")');
+    const exportButton = page.locator('#start-export');
     if (await exportButton.isVisible()) {
       await expect(exportButton).toBeVisible();
       console.log('✅ Export button is available');
@@ -107,7 +108,8 @@ test.describe('PingOne Import Tool Interactive UI Tests', () => {
     // Check if navigation is responsive
     const navToggle = page.locator('#nav-toggle');
     if (await navToggle.isVisible()) {
-      await navToggle.click();
+      // Dispatch a click event instead of pointer click to avoid offscreen issues
+      await navToggle.dispatchEvent('click');
       await expect(page.locator('#left-nav')).toBeVisible();
       console.log('✅ Mobile navigation works');
     }

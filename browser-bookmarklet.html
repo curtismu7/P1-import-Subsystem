@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PingOne Import - Cache Bust Bookmarklets</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .bookmarklet {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 10px 15px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .bookmarklet:hover {
+            background: #0056b3;
+        }
+        .bookmarklet.danger {
+            background: #dc3545;
+        }
+        .bookmarklet.danger:hover {
+            background: #c82333;
+        }
+        .bookmarklet.success {
+            background: #28a745;
+        }
+        .bookmarklet.success:hover {
+            background: #1e7e34;
+        }
+        .instructions {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .code {
+            background: #f1f3f4;
+            padding: 10px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 PingOne Import - Cache Bust Bookmarklets</h1>
+    
+    <div class="instructions">
+        <h3>📖 How to Use</h3>
+        <ol>
+            <li><strong>Drag any bookmarklet below to your browser's bookmarks bar</strong></li>
+            <li><strong>Click the bookmarklet when you want to clear caches</strong></li>
+            <li><strong>Choose the appropriate level of cache clearing</strong></li>
+        </ol>
+        
+        <p><strong>Note:</strong> These bookmarklets work on any page of your PingOne Import application.</p>
+    </div>
+
+    <div class="warning">
+        <h4>⚠️ Important</h4>
+        <p>These bookmarklets will clear your application data and force a page reload. Make sure you've saved any important work before using them.</p>
+    </div>
+
+    <h2>🔄 Cache Bust Bookmarklets</h2>
+    
+    <h3>🚀 Full Cache Bust (Recommended)</h3>
+    <p>Clears all caches and forces a complete page reload with fresh code.</p>
+    <a href="javascript:(function(){console.log('🧹 Starting full cache bust...');const keys=Object.keys(localStorage);keys.forEach(key=>{if(key.includes('cache')||key.includes('settings')||key.includes('token')||key.includes('app_')){localStorage.removeItem(key);console.log('🗑️ Cleared:',key);}});sessionStorage.clear();const timestamp=Date.now();const url=new URL(window.location.href);url.searchParams.set('cb',timestamp);url.searchParams.set('v',timestamp);console.log('🔄 Reloading with cache bust...');setTimeout(()=>window.location.href=url.toString(),1000);})()" class="bookmarklet success">🧹 Full Cache Bust</a>
+    
+    <h3>⚡ Quick Cache Clear</h3>
+    <p>Clears basic caches without reloading the page.</p>
+    <a href="javascript:(function(){console.log('⚡ Quick cache clear...');sessionStorage.clear();const keys=Object.keys(localStorage);keys.forEach(key=>{if(key.includes('cache')||key.includes('token')||key.includes('app_')){localStorage.removeItem(key);}});console.log('✅ Quick cache clear completed');})()" class="bookmarklet">⚡ Quick Clear</a>
+    
+    <h3>💥 Force Hard Reload</h3>
+    <p>Clears all storage and forces a hard reload bypassing all caches.</p>
+    <a href="javascript:(function(){console.log('💥 Force hard reload...');localStorage.clear();sessionStorage.clear();window.location.reload(true);})()" class="bookmarklet danger">💥 Hard Reload</a>
+    
+    <h3>🔍 Debug Cache Status</h3>
+    <p>Shows current cache status without clearing anything.</p>
+    <a href="javascript:(function(){console.log('🔍 Cache Status Report:');console.log('localStorage keys:',Object.keys(localStorage));console.log('sessionStorage keys:',Object.keys(sessionStorage));console.log('Cache size:',JSON.stringify(localStorage).length,'bytes');})()" class="bookmarklet">🔍 Cache Status</a>
+
+    <h2>📱 Manual Console Commands</h2>
+    
+    <div class="instructions">
+        <p>You can also run these commands directly in your browser's developer console:</p>
+        
+        <h4>Full Cache Bust:</h4>
+        <div class="code">
+            // Clear all caches and reload
+            localStorage.clear(); sessionStorage.clear(); window.location.reload(true);
+        </div>
+        
+        <h4>Selective Cache Clear:</h4>
+        <div class="code">
+            // Clear only app-related caches
+            Object.keys(localStorage).forEach(key => {
+                if (key.includes('cache') || key.includes('token') || key.includes('app_')) {
+                    localStorage.removeItem(key);
+                }
+            });
+        </div>
+        
+        <h4>Force Reload with Cache Bust:</h4>
+        <div class="code">
+            // Add timestamp to URL and reload
+            const url = new URL(window.location.href);
+            url.searchParams.set('v', Date.now());
+            window.location.href = url.toString();
+        </div>
+    </div>
+
+    <h2>🛠️ Server-Side Cache Busting</h2>
+    
+    <div class="instructions">
+        <p>For complete cache busting including server-side changes, run this script on your server:</p>
+        
+        <div class="code">
+            node scripts/restart-and-cache-bust.js
+        </div>
+        
+        <p>Or for a quick restart:</p>
+        
+        <div class="code">
+            node scripts/quick-restart.js
+        </div>
+    </div>
+
+    <h2>📋 Troubleshooting</h2>
+    
+    <div class="instructions">
+        <h4>If bookmarklets don't work:</h4>
+        <ul>
+            <li>Make sure JavaScript is enabled in your browser</li>
+            <li>Check that you're on the correct domain</li>
+            <li>Try running the console commands manually</li>
+            <li>Check browser console for error messages</li>
+        </ul>
+        
+        <h4>If caches persist:</h4>
+        <ul>
+            <li>Use the "Force Hard Reload" bookmarklet</li>
+            <li>Hold Shift while clicking the reload button</li>
+            <li>Clear browser data manually in settings</li>
+            <li>Restart the server using the server scripts</li>
+        </ul>
+    </div>
+
+    <footer style="margin-top: 40px; text-align: center; color: #6c757d;">
+        <p>PingOne Import Tool - Cache Busting Utilities</p>
+        <p>Generated: <span id="timestamp"></span></p>
+    </footer>
+
+    <script>
+        // Set timestamp
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        
+        // Add click tracking for bookmarklets
+        document.querySelectorAll('.bookmarklet').forEach(bookmarklet => {
+            bookmarklet.addEventListener('click', function(e) {
+                console.log('Bookmarklet clicked:', this.textContent);
+            });
+        });
+    </script>
+</body>
+</html>

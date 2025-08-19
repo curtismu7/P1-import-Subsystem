@@ -22,18 +22,29 @@ router.get('/', async (req, res) => {
         const packageJsonContent = await fs.readFile(packageJsonPath, 'utf8');
         const packageJson = JSON.parse(packageJsonContent);
         
-        res.json({
-            version: APP_VERSION,
+        // Backward-compatible top-level version + standardized wrapper with data
+        const payload = {
+            version: APP_VERSION, // top-level for legacy clients/tests
             name: packageJson.name,
             description: packageJson.description,
             timestamp: new Date().toISOString(),
             buildDate: versionInfo.buildDate
+        };
+
+        res.json({
+            success: true,
+            message: 'Operation completed successfully',
+            data: payload,
+            // Also include top-level fields for compatibility
+            ...payload
         });
     } catch (error) {
         console.error('Error getting version information:', error);
         res.status(500).json({
+            success: false,
+            message: 'Failed to read version information',
             error: 'Failed to read version information',
-            version: APP_VERSION || 'unknown' // Fallback to APP_VERSION constant if available
+            version: APP_VERSION || 'unknown'
         });
     }
 });

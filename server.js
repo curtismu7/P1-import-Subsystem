@@ -203,7 +203,8 @@ const settingsSchema = Joi.object({
     environmentId: Joi.string().guid({ version: ['uuidv4', 'uuidv1'] }).required(),
     apiClientId: Joi.string().guid({ version: ['uuidv4', 'uuidv1'] }).required(),
     apiSecret: Joi.string().min(8).required(),
-    region: Joi.string().valid('NorthAmerica', 'Europe', 'AsiaPacific', 'Canada').required()
+    // Accept both PingOne short codes and legacy long-form names
+    region: Joi.string().valid('NA', 'EU', 'AP', 'CA', 'NorthAmerica', 'Europe', 'AsiaPacific', 'Canada').required()
 });
 
 async function loadSettingsFromFile() {

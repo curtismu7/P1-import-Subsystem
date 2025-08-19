@@ -7,6 +7,7 @@
 
 import fetch from 'node-fetch';
 import { serverLogger as logger } from '../winston-config.js';
+import { loadSettings } from './settings-loader.js';
 
 class TokenService {
     constructor() {
@@ -65,12 +66,18 @@ class TokenService {
      * @private
      */
     async acquireToken(credentials = null) {
-        const env = credentials || {
-            environmentId: process.env.PINGONE_ENVIRONMENT_ID,
-            clientId: process.env.PINGONE_CLIENT_ID,
-            clientSecret: process.env.PINGONE_CLIENT_SECRET,
-            region: process.env.PINGONE_REGION || 'NorthAmerica'
-        };
+        let env;
+        if (credentials) {
+            env = credentials;
+        } else {
+            const s = await loadSettings(logger);
+            env = {
+                environmentId: s.environmentId,
+                clientId: s.clientId,
+                clientSecret: s.clientSecret,
+                region: s.region || 'NorthAmerica'
+            };
+        }
 
         // Validate required credentials
         const missingFields = [];
@@ -88,6 +95,7 @@ class TokenService {
 
         try {
             logger.info('Requesting new access token', { environmentId: env.environmentId, region: env.region, authDomain });
+            logger.debug('Token endpoint URL', { tokenUrl });
 
             const response = await this.fetchWithRetry(tokenUrl, {
                 method: 'POST',
@@ -100,7 +108,20 @@ class TokenService {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Token request failed with status ${response.status}: ${errorText}`);
+                const preview = errorText && errorText.length > 800 ? errorText.slice(0, 800) + '…(truncated)' : errorText;
+                const masked = {
+                    environmentId: (env.environmentId || '').slice(0, 6) + '...' + (env.environmentId || '').slice(-4),
+                    clientId: (env.clientId || '').slice(0, 6) + '...' + (env.clientId || '').slice(-4),
+                    region: env.region,
+                    tokenUrl
+                };
+                logger.error('Token endpoint error', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    bodyPreview: preview,
+                    context: masked
+                });
+                throw new Error(`Token request failed: ${response.status} ${response.statusText}`);
             }
 
             const tokenData = await response.json();

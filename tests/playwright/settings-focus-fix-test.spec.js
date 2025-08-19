@@ -13,12 +13,12 @@ test.describe('Settings Page Focus Fix Test', () => {
     // Wait for settings page to load
     await page.waitForTimeout(2000);
     
-    // Check token section
-    const tokenSection = page.locator('#token-information-section');
-    await expect(tokenSection).toBeVisible();
+    // Check token section (support legacy and new IDs)
+    const tokenSection = page.locator('#token-information-section, #token-info');
+    await expect(tokenSection.first()).toBeVisible();
     
     // Check token status
-    const tokenText = page.locator('#settings-token-text');
+    const tokenText = page.locator('#settings-token-text, #token-text');
     const tokenStatus = await tokenText.textContent();
     console.log('Current token status:', tokenStatus);
     

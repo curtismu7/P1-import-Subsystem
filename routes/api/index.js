@@ -1524,6 +1524,39 @@ router.get('/populations', async (req, res) => {
     apiLogger.debug(`${functionName} - Entry`, { requestId: req.requestId });
 
     try {
+        // Local helper to map errors to clear responses
+        const mapError = (err) => {
+            const msg = (err?.message || '').toString();
+            const statusMatch = msg.match(/status\s(\d{3})/i);
+            const status = statusMatch ? Number(statusMatch[1]) : (err?.status || err?.code);
+            let http = 500;
+            let code = 'POPULATIONS_FETCH_FAILED';
+            let userMessage = 'Failed to fetch populations. Please try again.';
+
+            if (status === 400 || status === 401 || /invalid_client|unauthorized/i.test(msg)) {
+                http = 401;
+                code = 'INVALID_CREDENTIALS';
+                userMessage = 'Invalid PingOne credentials. Update credentials and try again.';
+            } else if (status === 403 || /forbidden/i.test(msg)) {
+                http = 403;
+                code = 'FORBIDDEN_ACCESS';
+                userMessage = 'Access forbidden. Check environment and app permissions.';
+            } else if (status === 429) {
+                http = 429;
+                code = 'RATE_LIMIT';
+                userMessage = 'Too many requests to PingOne. Please wait and try again.';
+            } else if (status === 408) {
+                http = 408;
+                code = 'TIMEOUT';
+                userMessage = 'Request to PingOne timed out. Please try again.';
+            } else if (/network|fetch failed|ENOTFOUND|ECONN|EAI_AGAIN/i.test(msg)) {
+                http = 503;
+                code = 'NETWORK_ERROR';
+                userMessage = 'Network error contacting PingOne. Check connectivity.';
+            }
+
+            return { http, code, userMessage };
+        };
         // Import population cache service dynamically
         const { populationCacheService } = await import('../../server/services/population-cache-service.js');
         
@@ -1569,15 +1602,40 @@ router.get('/populations', async (req, res) => {
         const apiBaseUrl = tokenManager.getApiBaseUrl();
 
         // Get access token
-        const token = await tokenManager.getAccessToken();
+        let token;
+        try {
+            token = await tokenManager.getAccessToken();
+        } catch (tokenErr) {
+            const mapped = mapError(tokenErr);
+            apiLogger.error(`${functionName} - Access token error`, { requestId: req.requestId, error: tokenErr.message, code: mapped.code });
+            return res.status(mapped.http).json({ success: false, error: mapped.userMessage, code: mapped.code });
+        }
         if (!token) {
             apiLogger.error(`${functionName} - Failed to get access token`, { requestId: req.requestId });
-            return res.error('Failed to get access token', { code: 'TOKEN_ACCESS_ERROR' }, 401);
+            return res.status(401).json({ success: false, error: 'Failed to get access token', code: 'TOKEN_ACCESS_ERROR' });
         }
 
         // Fetch populations from PingOne API
         const populationsUrl = `${apiBaseUrl}/environments/${environmentId}/populations`;
         apiLogger.debug(`${functionName} - Fetching populations from PingOne API`, { requestId: req.requestId, url: populationsUrl });
+
+        // Optional debug logging: append ?debug=1 to log full URL and context (token truncated)
+        if (String(req.query.debug) === '1') {
+            try {
+                const region = tokenManager.currentRegion || 'NA';
+                const tokenPreview = (token || '').slice(0, 12) + '...' + (token || '').slice(-6);
+                console.log('[Populations][DEBUG] Full request context:', {
+                    url: populationsUrl,
+                    environmentId,
+                    apiBaseUrl,
+                    region,
+                    headers: {
+                        Authorization: `Bearer ${tokenPreview}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+            } catch (_) { /* no-op */ }
+        }
 
         const response = await fetch(populationsUrl, {
             method: 'GET',
@@ -1586,6 +1644,25 @@ router.get('/populations', async (req, res) => {
                 'Content-Type': 'application/json'
             }
         });
+
+        if (String(req.query.debug) === '1') {
+            try {
+                const headerEntries = Array.from(response.headers.entries());
+                const safeHeaders = headerEntries
+                    .filter(([k]) => ['content-type', 'date', 'server', 'x-request-id'].includes(k.toLowerCase()))
+                    .reduce((acc, [k, v]) => { acc[k] = v; return acc; }, {});
+                const clone = response.clone();
+                const text = await clone.text();
+                const bodyPreview = text ? (text.length > 800 ? text.slice(0, 800) + '…(truncated)' : text) : '';
+                console.log('[Populations][DEBUG] Response context:', {
+                    status: response.status,
+                    ok: response.ok,
+                    statusText: response.statusText,
+                    headers: safeHeaders,
+                    bodyPreview
+                });
+            } catch (_) { /* no-op */ }
+        }
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -1635,11 +1712,29 @@ router.get('/populations', async (req, res) => {
         
     } catch (error) {
         console.error(`[Populations] ❌ Populations error: ${error.message}`);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch populations',
-            details: error.message
-        });
+        // Attempt to map to clearer client-facing error
+        const msg = (error?.message || '').toString();
+        const statusMatch = msg.match(/status\s(\d{3})/i);
+        const status = statusMatch ? Number(statusMatch[1]) : (error?.status || error?.code);
+        let http = 500;
+        let code = 'POPULATIONS_FETCH_FAILED';
+        let userMessage = 'Failed to fetch populations. Please try again.';
+
+        if (status === 400 || status === 401 || /invalid_client|unauthorized/i.test(msg)) {
+            http = 401;
+            code = 'INVALID_CREDENTIALS';
+            userMessage = 'Invalid PingOne credentials. Update credentials and try again.';
+        } else if (status === 403 || /forbidden/i.test(msg)) {
+            http = 403;
+            code = 'FORBIDDEN_ACCESS';
+            userMessage = 'Access forbidden. Check environment and app permissions.';
+        } else if (/network|fetch failed|ENOTFOUND|ECONN|EAI_AGAIN/i.test(msg)) {
+            http = 503;
+            code = 'NETWORK_ERROR';
+            userMessage = 'Network error contacting PingOne. Check connectivity.';
+        }
+
+        res.status(http).json({ success: false, error: userMessage, code, details: error.message });
     }
 });
 
