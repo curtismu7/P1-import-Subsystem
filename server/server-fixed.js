@@ -13,6 +13,7 @@ import path from 'path';
 async function setPingOneEnvVars() {
     try {
         const settingsPath = path.resolve(process.cwd(), 'data/settings.json');
+        const appConfigPath = path.resolve(process.cwd(), 'data/app-config.json');
         try {
             await fs.access(settingsPath);
             const settingsRaw = await fs.readFile(settingsPath, 'utf8');
@@ -20,8 +21,29 @@ async function setPingOneEnvVars() {
             process.env.PINGONE_ENVIRONMENT_ID = settings.pingone_environment_id || '';
             process.env.PINGONE_CLIENT_ID = settings.pingone_client_id || '';
             process.env.PINGONE_CLIENT_SECRET = settings.pingone_client_secret || '';
-            process.env.PINGONE_REGION = settings.pingone_region || 'NorthAmerica';
-            console.warn('[PingOne ENV] Environment variables set from settings.json.');
+            // Prefer region from settings.json; if absent, fall back to app-config.json
+            let regionSetFrom = 'default';
+            if (settings.pingone_region) {
+                process.env.PINGONE_REGION = settings.pingone_region;
+                regionSetFrom = 'settings.json';
+            } else {
+                try {
+                    await fs.access(appConfigPath);
+                    const appConfigRaw = await fs.readFile(appConfigPath, 'utf8');
+                    const appConfig = JSON.parse(appConfigRaw);
+                    if (appConfig.pingone_region) {
+                        process.env.PINGONE_REGION = appConfig.pingone_region;
+                        regionSetFrom = 'app-config.json';
+                    } else if (!process.env.PINGONE_REGION) {
+                        process.env.PINGONE_REGION = 'NorthAmerica';
+                    }
+                } catch {
+                    if (!process.env.PINGONE_REGION) {
+                        process.env.PINGONE_REGION = 'NorthAmerica';
+                    }
+                }
+            }
+            console.warn(`[PingOne ENV] Environment variables set (region from ${regionSetFrom}).`);
         } catch {
             console.warn('[PingOne ENV] settings.json not found. Environment variables not set.');
         }
@@ -39,6 +61,9 @@ import http from 'http';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
 import { Server } from 'socket.io';
+import cookieParser from 'cookie-parser';
+import { doubleCsrf } from 'csrf-csrf';
+import { addRequestId, standardizeResponse } from './middleware/response-standardization.js';
 
 // Import services
 import { tokenService } from './services/token-service.js';
@@ -48,7 +73,6 @@ import { isPortAvailable, findAvailablePort } from './port-checker.js';
 
 // Import routes
 import apiRouter from '../routes/api/index.js';
-import settingsRouter from '../routes/settings.js';
 import debugLogRouter from '../routes/api/debug-log.js';
 import logsRouter from '../routes/logs.js';
 import indexRouter from '../routes/index.js';
@@ -66,12 +90,44 @@ webSocketService.initialize(server);
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Cookie parser is required for CSRF token cookie handling
+app.use(cookieParser());
+// Attach standardized response helpers and request IDs BEFORE routes
+app.use(addRequestId);
+app.use(standardizeResponse);
+
+// Initialize CSRF utilities (double submit cookie pattern)
+const csrfUtilities = doubleCsrf({
+    getSecret: () => process.env.CSRF_SECRET || 'your-csrf-secret-key-change-in-production',
+    cookieName: 'X-CSRF-Token',
+    cookieOptions: {
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000
+    },
+    size: 64,
+    ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
+    getTokenFromRequest: (req) => req.headers['x-csrf-token'] || req.body?._csrf,
+    getSessionIdentifier: (req) => req.headers['x-request-id'] || req.ip || 'anonymous'
+});
+const { generateCsrfToken } = csrfUtilities;
 
 // Create logger
 const logger = createWinstonLogger({
     service: 'pingone-import',
     env: process.env.NODE_ENV || 'development',
     logLevel: process.env.LOG_LEVEL || 'info'
+});
+
+// CSRF token endpoint for frontend initialization
+app.get('/api/csrf-token', (req, res) => {
+    try {
+        const token = generateCsrfToken(req, res);
+        res.json({ success: true, csrfToken: token });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Failed to generate CSRF token', message: error.message });
+    }
 });
 
 // Health check endpoint
@@ -163,7 +219,6 @@ app.post('/api/token/refresh', async (req, res) => {
 
 // API routes
 app.use('/api', apiRouter);
-app.use('/settings', settingsRouter);
 app.use('/api/debug', debugLogRouter);
 app.use('/logs', logsRouter);
 app.use('/test-runner', testRunnerRouter);
@@ -173,9 +228,34 @@ app.use('/api/import', importRouter);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Catch-all route for SPA
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/index.html'));
+// Catch-all route for SPA (only for HTML navigations)
+app.get('*', (req, res, next) => {
+    try {
+        // Only handle GET requests that prefer HTML
+        if (req.method !== 'GET') return next();
+        const accept = (req.headers['accept'] || '').toString();
+        if (!accept.includes('text/html')) return next();
+
+        // Do not intercept API, websockets, swagger, logs, or static asset paths
+        const url = req.url || '';
+        if (
+            url.startsWith('/api') ||
+            url.startsWith('/socket.io') ||
+            url.startsWith('/swagger') ||
+            url.startsWith('/logs') ||
+            url.startsWith('/src/') ||
+            url.startsWith('/public/') ||
+            url.startsWith('/js/') ||
+            url.startsWith('/css/') ||
+            url.startsWith('/vendor/')
+        ) {
+            return next();
+        }
+
+        res.sendFile(path.join(__dirname, '../public/index.html'));
+    } catch (_) {
+        return next();
+    }
 });
 
 // Error handling middleware

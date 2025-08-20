@@ -1213,7 +1213,6 @@ const swaggerOptions = {
   },
   apis: [
     './routes/api/index.js',
-    './routes/settings.js',
     './routes/logs.js',
     './routes/api/history.js',
     './routes/api/logging.js',

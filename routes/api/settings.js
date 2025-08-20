@@ -32,9 +32,40 @@ const __filename = fileURLToPath(
 const __dirname = path.dirname(__filename);
 const router = express.Router();
 
-// Path to settings file
+// Paths to config files
 const SETTINGS_FILE = path.join(__dirname, '../../data/settings.json');
+const APP_CONFIG_FILE = path.join(__dirname, '../../data/app-config.json');
 console.log('Settings file path:', SETTINGS_FILE);
+
+// Helpers for app-config read/write
+async function readJsonSafe(filePath, fallback = {}) {
+    try {
+        const raw = await fs.readFile(filePath, 'utf8');
+        return JSON.parse(raw || '{}');
+    } catch (_) {
+        return { ...fallback };
+    }
+}
+
+async function writeJson(filePath, data) {
+    const dir = path.dirname(filePath);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+}
+
+function isMaskedSecret(value) {
+    // Treat any all-asterisk string (length >= 3) as a masked secret
+    return typeof value === 'string' && /^\*{3,}$/.test(value.trim());
+}
+
+function isUuid(value) {
+    return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+function getWriteMode() {
+    const mode = (process.env.SETTINGS_WRITE_MODE || 'safe').toLowerCase();
+    return ['locked', 'safe', 'open'].includes(mode) ? mode : 'safe';
+}
 
 /**
  * Validate PingOne credentials
@@ -134,50 +165,38 @@ function cleanAndDeduplicateSettings(settings) {
  */
 router.get('/', asyncHandler(async (req, res) => {
     try {
-        const settingsContent = await fs.readFile(SETTINGS_FILE, 'utf8');
-        const rawSettings = JSON.parse(settingsContent);
+        const rawSettings = await readJsonSafe(SETTINGS_FILE, {});
+        const appConfig = await readJsonSafe(APP_CONFIG_FILE, {});
 
-        // Clean and de-duplicate settings on read
-        const cleanedSettings = cleanAndDeduplicateSettings(rawSettings);
+        // Compose view: credentials from settings; region/rateLimit from app-config or fallback
+        const composed = {
+            ...rawSettings,
+            pingone_region: appConfig.pingone_region || rawSettings.pingone_region || DEFAULT_REGION,
+            rateLimit: typeof appConfig.rateLimit === 'number' ? appConfig.rateLimit : (rawSettings.rateLimit || 100)
+        };
 
-        // If settings were cleaned, save the cleaned version
-        const originalKeys = Object.keys(rawSettings);
-        const cleanedKeys = Object.keys(cleanedSettings);
-        const hasLegacyKeys = originalKeys.some(key =>
-            !cleanedKeys.includes(key) &&
-            !['lastUpdated'].includes(key)
-        );
+        const cleanedSettings = cleanAndDeduplicateSettings(composed);
 
-        if (hasLegacyKeys) {
-            console.log('🧹 Cleaning duplicate credential keys from settings.json');
-            await fs.writeFile(SETTINGS_FILE, JSON.stringify(cleanedSettings, null, 2));
-        }
+        // No rewrite to settings.json here to avoid polluting credentials file with non-credentials
 
         // Validate credentials (for informational purposes)
         const validation = validateCredentials(cleanedSettings);
 
-        // Don't send sensitive data like secrets
+        // Public response shape preserved
         const publicSettings = {
-            // Standardized keys (primary)
             [STANDARD_KEYS.ENVIRONMENT_ID]: cleanedSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
             [STANDARD_KEYS.REGION]: cleanedSettings[STANDARD_KEYS.REGION] || '',
             [STANDARD_KEYS.CLIENT_ID]: cleanedSettings[STANDARD_KEYS.CLIENT_ID] || '',
             [STANDARD_KEYS.POPULATION_ID]: cleanedSettings[STANDARD_KEYS.POPULATION_ID] || '',
-
-            // Application preferences
             rateLimit: cleanedSettings.rateLimit || 100,
             showDisclaimerModal: cleanedSettings.showDisclaimerModal !== false,
             showCredentialsModal: cleanedSettings.showCredentialsModal !== false,
             showSwaggerPage: cleanedSettings.showSwaggerPage === true,
             autoRefreshToken: cleanedSettings.autoRefreshToken !== false,
-
-            // Legacy keys for backward compatibility
             environmentId: cleanedSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
             region: cleanedSettings[STANDARD_KEYS.REGION] || '',
             apiClientId: cleanedSettings[STANDARD_KEYS.CLIENT_ID] || '',
             populationId: cleanedSettings[STANDARD_KEYS.POPULATION_ID] || '',
-
-            // Metadata
             lastUpdated: cleanedSettings.lastUpdated || null,
             credentialsValid: validation.isValid,
             credentialsWarnings: validation.warnings
@@ -187,8 +206,6 @@ router.get('/', asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error('Error reading settings:', error);
-
-        // Return default settings if file doesn't exist
         const defaultSettings = {
             [STANDARD_KEYS.ENVIRONMENT_ID]: '',
             [STANDARD_KEYS.REGION]: DEFAULT_REGION,
@@ -206,7 +223,6 @@ router.get('/', asyncHandler(async (req, res) => {
             credentialsValid: false,
             credentialsWarnings: ['Settings file not found or invalid']
         };
-
         res.success('Default settings returned (settings file not found)', defaultSettings);
     }
 }));
@@ -218,44 +234,70 @@ router.get('/', asyncHandler(async (req, res) => {
 router.post('/',
     validateBody(schemas.settingsUpdate),
     asyncHandler(async (req, res) => {
-        const newSettings = req.validatedBody;
+        const incoming = req.validatedBody;
 
-        // Read existing settings
-        let existingSettings = {};
-        try {
-            const settingsContent = await fs.readFile(SETTINGS_FILE, 'utf8');
-            existingSettings = JSON.parse(settingsContent);
-        } catch (error) {
-            // File doesn't exist or is invalid, start with empty settings
-            console.log('Creating new settings file');
+        // Read existing state
+        const existingSettings = await readJsonSafe(SETTINGS_FILE, {});
+        const existingAppConfig = await readJsonSafe(APP_CONFIG_FILE, {});
+
+        // Standardize incoming
+        const standardizedNew = standardizeConfigKeys(incoming);
+
+        // Preserve secret if masked/empty
+        const incomingSecret = standardizedNew[STANDARD_KEYS.CLIENT_SECRET];
+        const preservedSecret = (isMaskedSecret(incomingSecret) || !incomingSecret)
+            ? existingSettings[STANDARD_KEYS.CLIENT_SECRET]
+            : incomingSecret;
+
+        // Determine write mode constraints
+        const mode = getWriteMode();
+        const incomingEnv = standardizedNew[STANDARD_KEYS.ENVIRONMENT_ID];
+        const incomingClientId = standardizedNew[STANDARD_KEYS.CLIENT_ID];
+        const existingEnv = existingSettings[STANDARD_KEYS.ENVIRONMENT_ID];
+        const existingClientId = existingSettings[STANDARD_KEYS.CLIENT_ID];
+
+        const isCredentialChange = (
+            (incomingEnv && incomingEnv !== existingEnv) ||
+            (incomingClientId && incomingClientId !== existingClientId) ||
+            (incomingSecret && !isMaskedSecret(incomingSecret) && incomingSecret !== existingSettings[STANDARD_KEYS.CLIENT_SECRET])
+        );
+
+        // Basic placeholder protection: require UUIDs for env/client IDs when changing in safe/locked
+        if ((mode === 'safe' || mode === 'locked') && isCredentialChange) {
+            const envOk = incomingEnv ? isUuid(incomingEnv) : true;
+            const idOk = incomingClientId ? isUuid(incomingClientId) : true;
+            if (!envOk || !idOk) {
+                return res.status(423).json({
+                    success: false,
+                    error: 'Blocked by SETTINGS_WRITE_MODE policy',
+                    details: ['Credential change requires valid UUIDs in safe/locked modes']
+                });
+            }
+            if (mode === 'locked') {
+                return res.status(423).json({
+                    success: false,
+                    error: 'Blocked: settings are locked',
+                    details: ['Credential updates are disabled in locked mode']
+                });
+            }
         }
 
-        // Standardize incoming settings
-        const standardizedNewSettings = standardizeConfigKeys(newSettings);
-
-        // Merge with existing settings, preserving non-credential fields
-        const mergedSettings = {
+        // Compose cleaned view for validation
+        const composedForValidation = cleanAndDeduplicateSettings({
             ...existingSettings,
-            [STANDARD_KEYS.ENVIRONMENT_ID]: standardizedNewSettings[STANDARD_KEYS.ENVIRONMENT_ID] || existingSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
-            [STANDARD_KEYS.REGION]: standardizedNewSettings[STANDARD_KEYS.REGION] || existingSettings[STANDARD_KEYS.REGION] || DEFAULT_REGION,
-            [STANDARD_KEYS.CLIENT_ID]: standardizedNewSettings[STANDARD_KEYS.CLIENT_ID] || existingSettings[STANDARD_KEYS.CLIENT_ID] || '',
-            [STANDARD_KEYS.CLIENT_SECRET]: standardizedNewSettings[STANDARD_KEYS.CLIENT_SECRET] || existingSettings[STANDARD_KEYS.CLIENT_SECRET] || '',
-            [STANDARD_KEYS.POPULATION_ID]: standardizedNewSettings[STANDARD_KEYS.POPULATION_ID] || existingSettings[STANDARD_KEYS.POPULATION_ID] || '',
+            [STANDARD_KEYS.ENVIRONMENT_ID]: standardizedNew[STANDARD_KEYS.ENVIRONMENT_ID] || existingSettings[STANDARD_KEYS.ENVIRONMENT_ID] || '',
+            [STANDARD_KEYS.CLIENT_ID]: standardizedNew[STANDARD_KEYS.CLIENT_ID] || existingSettings[STANDARD_KEYS.CLIENT_ID] || '',
+            [STANDARD_KEYS.CLIENT_SECRET]: preservedSecret || existingSettings[STANDARD_KEYS.CLIENT_SECRET] || '',
+            [STANDARD_KEYS.REGION]: standardizedNew[STANDARD_KEYS.REGION] || existingAppConfig.pingone_region || existingSettings[STANDARD_KEYS.REGION] || DEFAULT_REGION,
+            [STANDARD_KEYS.POPULATION_ID]: standardizedNew[STANDARD_KEYS.POPULATION_ID] || existingSettings[STANDARD_KEYS.POPULATION_ID] || '',
+            rateLimit: typeof standardizedNew.rateLimit === 'number' ? standardizedNew.rateLimit : (existingAppConfig.rateLimit ?? existingSettings.rateLimit ?? 100),
+            showDisclaimerModal: standardizedNew.showDisclaimerModal ?? (existingSettings.showDisclaimerModal !== false),
+            showCredentialsModal: standardizedNew.showCredentialsModal ?? (existingSettings.showCredentialsModal !== false),
+            showSwaggerPage: standardizedNew.showSwaggerPage ?? (existingSettings.showSwaggerPage === true),
+            autoRefreshToken: standardizedNew.autoRefreshToken ?? (existingSettings.autoRefreshToken !== false)
+        });
 
-            // Application preferences
-            rateLimit: standardizedNewSettings.rateLimit || existingSettings.rateLimit || 100,
-            showDisclaimerModal: standardizedNewSettings.showDisclaimerModal !== undefined ? standardizedNewSettings.showDisclaimerModal : (existingSettings.showDisclaimerModal !== false),
-            showCredentialsModal: standardizedNewSettings.showCredentialsModal !== undefined ? standardizedNewSettings.showCredentialsModal : (existingSettings.showCredentialsModal !== false),
-            showSwaggerPage: standardizedNewSettings.showSwaggerPage !== undefined ? standardizedNewSettings.showSwaggerPage : (existingSettings.showSwaggerPage === true),
-            autoRefreshToken: standardizedNewSettings.autoRefreshToken !== undefined ? standardizedNewSettings.autoRefreshToken : (existingSettings.autoRefreshToken !== false)
-        };
-
-        // Clean and de-duplicate settings (removes legacy keys)
-        const cleanedSettings = cleanAndDeduplicateSettings(mergedSettings);
-
-        // Validate credentials
-        const validation = validateCredentials(cleanedSettings);
-
+        const validation = validateCredentials(composedForValidation);
         if (!validation.isValid) {
             return res.status(400).json({
                 success: false,
@@ -265,45 +307,38 @@ router.post('/',
             });
         }
 
-        // Log warnings if any
-        if (validation.hasWarnings) {
-            console.warn('⚠️ Credential validation warnings:', validation.warnings);
-        }
+        // Persist split: credentials -> settings.json; non-credentials -> app-config.json
+        const credentialsToSave = {
+            [STANDARD_KEYS.ENVIRONMENT_ID]: composedForValidation[STANDARD_KEYS.ENVIRONMENT_ID],
+            [STANDARD_KEYS.CLIENT_ID]: composedForValidation[STANDARD_KEYS.CLIENT_ID],
+            [STANDARD_KEYS.CLIENT_SECRET]: composedForValidation[STANDARD_KEYS.CLIENT_SECRET],
+            [STANDARD_KEYS.POPULATION_ID]: composedForValidation[STANDARD_KEYS.POPULATION_ID],
+            lastUpdated: new Date().toISOString()
+        };
+        await writeJson(SETTINGS_FILE, credentialsToSave);
 
-        // Ensure data directory exists
-        const dataDir = path.dirname(SETTINGS_FILE);
-        await fs.mkdir(dataDir, {
-            recursive: true
-        });
+        const appConfigToSave = {
+            pingone_region: composedForValidation[STANDARD_KEYS.REGION] || DEFAULT_REGION,
+            rateLimit: composedForValidation.rateLimit ?? 100
+        };
+        await writeJson(APP_CONFIG_FILE, appConfigToSave);
 
-        // Save cleaned settings (no legacy keys)
-        await fs.writeFile(SETTINGS_FILE, JSON.stringify(cleanedSettings, null, 2));
-
-        console.log('✅ Settings saved successfully with validation');
-
-        // Return success without sensitive data
+        // Response mirrors previous shape
         const responseData = {
-            // Standardized keys (primary)
-            [STANDARD_KEYS.ENVIRONMENT_ID]: cleanedSettings[STANDARD_KEYS.ENVIRONMENT_ID],
-            [STANDARD_KEYS.REGION]: cleanedSettings[STANDARD_KEYS.REGION],
-            [STANDARD_KEYS.CLIENT_ID]: cleanedSettings[STANDARD_KEYS.CLIENT_ID],
-            [STANDARD_KEYS.POPULATION_ID]: cleanedSettings[STANDARD_KEYS.POPULATION_ID],
-
-            // Application preferences
-            rateLimit: cleanedSettings.rateLimit,
-            showDisclaimerModal: cleanedSettings.showDisclaimerModal,
-            showCredentialsModal: cleanedSettings.showCredentialsModal,
-            showSwaggerPage: cleanedSettings.showSwaggerPage,
-            autoRefreshToken: cleanedSettings.autoRefreshToken,
-
-            // Legacy keys for backward compatibility
-            environmentId: cleanedSettings[STANDARD_KEYS.ENVIRONMENT_ID],
-            region: cleanedSettings[STANDARD_KEYS.REGION],
-            apiClientId: cleanedSettings[STANDARD_KEYS.CLIENT_ID],
-            populationId: cleanedSettings[STANDARD_KEYS.POPULATION_ID],
-
-            // Metadata
-            lastUpdated: cleanedSettings.lastUpdated,
+            [STANDARD_KEYS.ENVIRONMENT_ID]: credentialsToSave[STANDARD_KEYS.ENVIRONMENT_ID],
+            [STANDARD_KEYS.REGION]: appConfigToSave.pingone_region,
+            [STANDARD_KEYS.CLIENT_ID]: credentialsToSave[STANDARD_KEYS.CLIENT_ID],
+            [STANDARD_KEYS.POPULATION_ID]: credentialsToSave[STANDARD_KEYS.POPULATION_ID],
+            rateLimit: appConfigToSave.rateLimit,
+            showDisclaimerModal: composedForValidation.showDisclaimerModal,
+            showCredentialsModal: composedForValidation.showCredentialsModal,
+            showSwaggerPage: composedForValidation.showSwaggerPage,
+            autoRefreshToken: composedForValidation.autoRefreshToken,
+            environmentId: credentialsToSave[STANDARD_KEYS.ENVIRONMENT_ID],
+            region: appConfigToSave.pingone_region,
+            apiClientId: credentialsToSave[STANDARD_KEYS.CLIENT_ID],
+            populationId: credentialsToSave[STANDARD_KEYS.POPULATION_ID],
+            lastUpdated: credentialsToSave.lastUpdated,
             credentialsValid: validation.isValid,
             credentialsWarnings: validation.warnings
         };
@@ -322,6 +357,18 @@ router.post('/validate',
 
         // Standardize incoming credentials
         const standardizedCredentials = standardizeConfigKeys(credentials);
+
+        // If secret is masked or omitted, preserve existing secret from settings for validation
+        try {
+            const existingSettings = await readJsonSafe(SETTINGS_FILE, {});
+            const existingStd = standardizeConfigKeys(existingSettings);
+            const incomingSecret = standardizedCredentials[STANDARD_KEYS.CLIENT_SECRET];
+            if (!incomingSecret || isMaskedSecret(incomingSecret)) {
+                if (existingStd[STANDARD_KEYS.CLIENT_SECRET]) {
+                    standardizedCredentials[STANDARD_KEYS.CLIENT_SECRET] = existingStd[STANDARD_KEYS.CLIENT_SECRET];
+                }
+            }
+        } catch (_) { /* ignore */ }
 
         // Validate credentials
         const validation = validateCredentials(standardizedCredentials);

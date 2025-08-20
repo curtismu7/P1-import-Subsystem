@@ -96,6 +96,7 @@ class CSRFManager {
         const token = await this.getToken();
         
         return {
+            credentials: 'include',
             ...options,
             headers: {
                 ...options.headers,
@@ -111,8 +112,32 @@ class CSRFManager {
      * @returns {Promise<Response>} Fetch response
      */
     async fetchWithCSRF(url, options = {}) {
-        const updatedOptions = await this.addTokenToRequest(options);
-        return fetch(url, updatedOptions);
+        // First attempt
+        let response = await fetch(url, await this.addTokenToRequest(options));
+
+        if (response.ok) return response;
+
+        // If CSRF likely failed, refresh token and retry once
+        const shouldRetry = (response.status === 403 || response.status === 400);
+        if (shouldRetry) {
+            try {
+                const clone = response.clone();
+                let bodyText = '';
+                try { bodyText = await clone.text(); } catch (_) {}
+                const indicator = String(bodyText || '').toLowerCase();
+                const looksLikeCsrf = indicator.includes('csrf') || indicator.includes('ebadcsrftoken') || indicator.includes('forbidden');
+                if (looksLikeCsrf) {
+                    // Force refresh and retry once
+                    this.clearToken();
+                    await this.refreshToken();
+                    response = await fetch(url, await this.addTokenToRequest(options));
+                }
+            } catch (_) {
+                // Fall through and return original response
+            }
+        }
+
+        return response;
     }
 
     /**

@@ -2,6 +2,7 @@
 // PingOne User Management Tool v7.3.0
 
 import { realtimeClient } from '../services/realtime-client.js';
+import csrfManager from '../utils/csrf-utils.js';
 
 export class ImportPage {
     constructor(app) {
@@ -381,7 +382,7 @@ export class ImportPage {
             tokenRefreshBtn.addEventListener('click', async () => {
                 try {
                     this.app.showLoading('Refreshing token…');
-                    await fetch('/api/token/refresh', { method: 'POST' }).then(r => r.json());
+                    await csrfManager.fetchWithCSRF('/api/token/refresh', { method: 'POST', credentials: 'include' }).then(r => r.json());
                 } catch (e) {
                     console.warn('Token refresh request failed', e);
                 } finally {
@@ -412,9 +413,33 @@ export class ImportPage {
     
     async refreshTokenStatus() {
         try {
-            const res = await fetch('/api/token/status');
-            const json = await res.json().catch(() => ({}));
-            const data = json?.data || json || {};
+            let res = await fetch('/api/token/status', { credentials: 'include' });
+            let json = await res.json().catch(() => ({}));
+            let data = json?.data || json || {};
+            // Some endpoints standardize as {success, message, data:{...}}
+            if (data && typeof data === 'object' && data.data && data.hasToken === undefined && (data.data.hasToken !== undefined || data.data.isValid !== undefined)) {
+                data = data.data;
+            }
+            let hasToken = !!data.hasToken;
+            let isValid = !!data.isValid;
+
+            // Proactively refresh if missing/invalid, then re-check
+            if (!hasToken || !isValid) {
+                try {
+                    await csrfManager.fetchWithCSRF('/api/token/refresh', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    res = await fetch('/api/token/status', { credentials: 'include' });
+                    json = await res.json().catch(() => ({}));
+                    data = json?.data || json || {};
+                    if (data && typeof data === 'object' && data.data && data.hasToken === undefined && (data.data.hasToken !== undefined || data.data.isValid !== undefined)) {
+                        data = data.data;
+                    }
+                } catch (_) {}
+            }
+
             this.tokenStatus = {
                 hasToken: !!data.hasToken,
                 isValid: !!data.isValid,
@@ -685,8 +710,9 @@ export class ImportPage {
                 formData.append('populationId', targetPopulation.value);
             }
             
-            const response = await fetch('/api/import', {
+            const response = await csrfManager.fetchWithCSRF('/api/import', {
                 method: 'POST',
+                credentials: 'include',
                 body: formData
             });
             
@@ -727,7 +753,7 @@ export class ImportPage {
         try {
             if (!this.tokenStatus?.isValid) {
                 // Try a quick refresh, then re-check
-                await fetch('/api/token/refresh', { method: 'POST' }).catch(() => {});
+                await csrfManager.fetchWithCSRF('/api/token/refresh', { method: 'POST', credentials: 'include' }).catch(() => {});
                 await this.refreshTokenStatus();
             }
         } catch {}
@@ -794,8 +820,9 @@ export class ImportPage {
             }
             
             // Start the import
-            const response = await fetch('/api/import', {
+            const response = await csrfManager.fetchWithCSRF('/api/import', {
                 method: 'POST',
+                credentials: 'include',
                 body: formData
             });
             const result = await response.json().catch(() => ({}));
@@ -835,7 +862,7 @@ export class ImportPage {
     handleCancelImport() {
         // Use status bar instead of confirm modal
         this.app.showWarning('Cancelling import...');
-        fetch('/api/import/cancel', { method: 'POST' })
+        csrfManager.fetchWithCSRF('/api/import/cancel', { method: 'POST', credentials: 'include' })
             .then(() => {
                 this.isUploading = false;
                 this.hideProgressSection();
@@ -1006,9 +1033,9 @@ export class ImportPage {
             }, tickMs);
         }
 
-        // Start a watchdog to detect stalls or missing completion events
+        // Start a watchdog to detect stalls or missing completion events; also poll REST if realtime is down
         if (this._watchdogInterval) clearInterval(this._watchdogInterval);
-        this._watchdogInterval = setInterval(() => {
+        this._watchdogInterval = setInterval(async () => {
             const now = Date.now();
             const sinceLast = now - (this._lastMessageAt || now);
 
@@ -1038,13 +1065,23 @@ export class ImportPage {
                 }
             }
 
-            // If we've had no messages for a long time, surface a warning
-            if (!this._completed && sinceLast > 30000) { // 30s without any messages
-                console.warn('[ImportPage] No real-time updates received for 30s. Import may be stalled.', { sinceLast, sessionId: this.sessionId });
-                // Only show once per stall period; reset marker
-                this._lastMessageAt = now; // prevent repeated warnings every tick
+            // If no messages for 5s, poll REST status once to keep UI moving
+            if (!this._completed && sinceLast > 5000) {
+                try {
+                    const resp = await fetch('/api/import/status');
+                    const payload = await resp.json();
+                    const d = payload && (payload.data || payload);
+                    const prog = d && d.progress;
+                    if (prog && Number.isFinite(prog.current) && Number.isFinite(prog.total)) {
+                        applyProgress({ processed: prog.current, total: prog.total, stats: d.statistics || {} });
+                    }
+                    if (d && (d.status === 'completed' || d.status === 'failed' || d.status === 'cancelled')) {
+                        this._completed = true;
+                        this.showResultsSection();
+                    }
+                } catch (_) {}
             }
-        }, 5000);
+        }, 3000);
     }
     
     updateProgress(percentage) {

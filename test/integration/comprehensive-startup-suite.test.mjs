@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, jest } from '@jest/globals';
 import process from 'process';
-import { setTimeout } from 'timers/promises';
+import { setTimeout as delay } from 'timers/promises';
 const globalObj = typeof global !== 'undefined' ? global : globalThis;
 globalObj.console = console;
 
@@ -31,7 +31,11 @@ const TEST_CONFIG = {
     healthCheckInterval: 2000
 };
 
-describe('🚀 Comprehensive Startup and System Tests', () => {
+// Skip entire suite when integration tests are disabled
+const shouldRunIntegration = process.env.SKIP_INTEGRATION_TESTS !== 'true';
+const describeOrSkip = shouldRunIntegration ? describe : describe.skip;
+
+describeOrSkip('🚀 Comprehensive Startup and System Tests', () => {
     let serverProcess;
     let serverPid;
     let baseURL;
@@ -49,7 +53,8 @@ describe('🚀 Comprehensive Startup and System Tests', () => {
             // Wait for graceful shutdown
             await new Promise(resolve => {
                 serverProcess.on('exit', resolve);
-                setTimeout(resolve, 10000); // Force cleanup after 10s
+                // Use global setTimeout to avoid conflict with timers/promises import
+                globalThis.setTimeout(resolve, 10000); // Force cleanup after 10s
             });
         }
     });
@@ -427,7 +432,7 @@ async function waitForServerReady(baseURL, timeout = TEST_CONFIG.timeout) {
             }
         } catch (error) {
             // Server not ready yet, continue waiting
-            await new Promise(resolve => setTimeout(resolve, TEST_CONFIG.healthCheckInterval));
+            await delay(TEST_CONFIG.healthCheckInterval);
         }
     }
     

@@ -1042,19 +1042,18 @@
         `;
         indicatorEl.className = 'status-indicator status-info';
         
-        // Attempt 1: server-sanitized settings (first source)
+        // Attempt 1: standardized settings endpoint (first source)
         let loaded = false;
         try {
-          const settingsResp = await fetch('/api/settings/public', { cache: 'no-cache' });
+          const settingsResp = await fetch('/api/settings', { cache: 'no-cache' });
           if (settingsResp.ok) {
-            const settings = await settingsResp.json();
-            // Server wraps payload as { success, message?, data: { data: {...} } }
-            const payload = (settings && settings.data && (settings.data.data || settings.data)) || {};
-            const fromSettings = payload.populations || payload.populationCache?.populations;
+            const settings = await settingsResp.json().catch(() => ({}));
+            const payload = settings && (settings.success ? (settings.data || {}) : settings);
+            const fromSettings = payload.populations || payload.populationCache?.populations || payload.data?.populations;
             if (Array.isArray(fromSettings) && fromSettings.length) {
               populations = fromSettings;
               loaded = true;
-              console.log('✅ Loaded populations from /api/settings/public');
+              console.log('✅ Loaded populations from /api/settings');
             }
           }
         } catch (e) { /* ignore */ }

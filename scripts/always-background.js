@@ -56,18 +56,20 @@ async function bustCache() {
         `src="$1?v=${timestamp}"`
       );
       
-      // Update import map cache busting
+      // Update import map cache busting for file targets only (not folder aliases ending with /)
       htmlContent = htmlContent.replace(
         /"([^"]*\.js)":\s*"([^"]*\.js)(\?v=[^"]*)?"/g,
         `"$1": "$2?v=${timestamp}"`
       );
+      // Ensure folder aliases keep trailing slash and have no ?v fragments
+      htmlContent = htmlContent.replace(
+        /"(@?\/[^"]*\/)":\s*"([^"]*\/?)(\?v=[^"]*)*"/g,
+        (m, key, addr) => `"${key}": "${addr.endsWith('/') ? addr : addr + '/'}"`
+      );
       
       // Update all timestamp-based cache busting patterns
-      // 1. Import map URLs (?v=v1234567890)
-      htmlContent = htmlContent.replace(
-        /(\?v=v)\d+/g,
-        `$1${timestamp}`
-      );
+      // 1. Import map URLs (?v=v1234567890) for files only
+      htmlContent = htmlContent.replace(/(\.js\?v=v)\d+/g, `$1${timestamp}`);
       
       // 2. External CDN URLs (?v=1234567890)
       htmlContent = htmlContent.replace(
@@ -129,6 +131,29 @@ async function startInBackground() {
   } else {
     // Perform cache busting
     await bustCache();
+  }
+  
+  // Validate settings configuration before starting
+  if (!args.includes('--skip-validation')) {
+    console.log(`${colors.blue}🔍 Validating settings configuration...${colors.reset}`);
+    try {
+      const { validateSettings } = await import('./validate-settings.js');
+      const validation = await validateSettings();
+      
+      if (!validation.isValid) {
+        console.log(`${colors.red}❌ Configuration validation failed!${colors.reset}`);
+        console.log(`${colors.yellow}💡 Run: npm run validate:settings --fix${colors.reset}`);
+        console.log(`${colors.yellow}💡 Or use: npm start --skip-validation${colors.reset}`);
+        process.exit(1);
+      }
+      
+      console.log(`${colors.green}✅ Settings validation passed${colors.reset}`);
+    } catch (error) {
+      console.warn(`${colors.yellow}⚠️ Settings validation failed: ${error.message}${colors.reset}`);
+      console.log(`${colors.yellow}   Continuing with server start...${colors.reset}`);
+    }
+  } else {
+    console.log(`${colors.yellow}⚠️ Settings validation skipped${colors.reset}`);
   }
   
   console.log(`${colors.blue}Starting server in background mode...${colors.reset}`);

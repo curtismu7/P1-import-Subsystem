@@ -75,25 +75,14 @@ export class PopulationLoader {
                 console.warn('⚠️ /api/populations request failed:', e.message);
             }
 
-            // Fallback 1: /api/settings/public (sanitized)
-            if (!Array.isArray(populations) || populations.length === 0) {
-                try {
-                    const resp = await fetch('/api/settings/public');
-                    if (resp.ok) {
-                        const data = await resp.json().catch(() => ({}));
-                        populations = (data && (data.populations || (data.data && data.data.populations))) || [];
-                        console.log('📦 Populations from /api/settings/public:', populations?.length || 0);
-                    }
-                } catch (_) { /* ignore */ }
-            }
-
-            // Fallback 2: /api/settings (may include cache)
+            // Fallback: /api/settings (may include cache)
             if (!Array.isArray(populations) || populations.length === 0) {
                 try {
                     const resp = await fetch('/api/settings');
                     if (resp.ok) {
                         const payload = await resp.json().catch(() => ({}));
-                        const settings = payload && ((payload.success && (payload.data && (payload.data.data || payload.data))) || payload);
+                        // Standardized API shape { success, data }
+                        const settings = payload && (payload.success ? (payload.data || {}) : payload);
                         populations = (settings && (settings.populationCache || settings.populations || (settings.data && settings.data.populations))) || [];
                         console.log('📦 Populations from /api/settings:', populations?.length || 0);
                     }

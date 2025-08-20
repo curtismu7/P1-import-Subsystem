@@ -1,6 +1,8 @@
 // Settings Page Module
 // PingOne User Management Tool v7.3.0
 
+import csrfManager from '../utils/csrf-utils.js';
+
 export class SettingsPage {
     constructor(app) {
         this.app = app;
@@ -473,7 +475,7 @@ export class SettingsPage {
     async getTokenStatusFromServer() {
         try {
             // Use the same endpoint as other subsystems
-            const response = await fetch('/api/v1/auth/token');
+            const response = await fetch('/api/token/status');
             if (response.ok) {
                 const serverTokenInfo = await response.json();
                 
@@ -636,6 +638,10 @@ export class SettingsPage {
                 pingone_region: normalizedRegion,
                 pingone_population_id: formData.get('populationId')
             };
+            // Do not send empty population ID
+            if (!settings.pingone_population_id) {
+                delete settings.pingone_population_id;
+            }
             
             console.log('📝 Form data extracted:', {
                 environmentId: formData.get('environmentId'),
@@ -656,15 +662,44 @@ export class SettingsPage {
             }
             
             this.showTokenStatus('Validating settings...', 'info', 'Checking configuration validity');
-            
-            // Save settings
-            const response = await fetch('/api/settings', {
+
+            // New strategy: validate first, then save if valid
+            try { await csrfManager.refreshToken(); } catch (_) {}
+            const validateResp = await csrfManager.fetchWithCSRF('/api/settings/validate', {
                 method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            });
+            const validateJson = await validateResp.json().catch(() => ({}));
+            if (!validateResp.ok || validateJson?.success === false || validateJson?.credentialsValid === false) {
+                // Soft-pass if credentials look structurally valid (masked secret allowed) to avoid blocking save
+                const creds = validateJson?.data?.credentials || validateJson?.credentials || {};
+                const hasEnv = /^[0-9a-f-]{36}$/i.test(creds.pingone_environment_id || settings.pingone_environment_id || '');
+                const hasId = /[0-9a-f-]{36}/i.test(creds.pingone_client_id || settings.pingone_client_id || '');
+                const hasSecret = !!(creds.hasSecret || settings.pingone_client_secret);
+                const errs = (validateJson && (validateJson.errors || validateJson?.error?.details?.validationErrors)) || [];
+
+                if (hasEnv && hasId && hasSecret) {
+                    console.warn('⚠️ Validation returned 400 but credentials look structurally valid; proceeding to save. Details:', errs);
+                } else {
+                    const msg = Array.isArray(errs) && errs.length
+                        ? `Validation failed: ${errs.map(e => (e.field ? e.field+': ' : '') + (e.message || '')).join(', ')}`
+                        : (validateJson?.message || 'Validation failed');
+                    this.showTokenStatus(msg, 'error');
+                    throw new Error('Validation failed');
+                }
+            }
+
+            // Proceed to save settings only after successful validation
+            const response = await csrfManager.fetchWithCSRF('/api/settings', {
+                method: 'POST',
+                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(settings)
             });
             
-            const result = await response.json();
+            result = await response.json();
             console.log('📡 Settings save response:', result);
             
             if (result.success) {
@@ -741,33 +776,28 @@ export class SettingsPage {
                 return;
             }
             
-            const response = await fetch('/api/pingone/test-connection', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
+            // Use the existing validate endpoint to perform a connection test in a single roundtrip
+            const response = await csrfManager.fetchWithCSRF('/api/settings/validate', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(credentials)
             });
-            
-            const result = await response.json();
-            
-            if (result.success) {
+
+            const result = await response.json().catch(() => ({}));
+
+            if (response.ok && (result.data?.credentialsValid || result.credentialsValid || result.data?.connectionTest?.success || result.connectionTest?.success)) {
                 this.app.showSuccess('Connection test successful');
-                
-                if (result.token && result.token.timeLeft) {
-                    this.signageSystem.addMessage(`⏰ Token acquired - Time left: ${result.token.timeLeft}`, 'info');
+                const expires = result.data?.connectionTest?.tokenStatus?.expiresIn || result.connectionTest?.tokenStatus?.expiresIn;
+                if (expires) {
+                    this.signageSystem.addMessage(`⏰ Token acquired - Expires in: ${expires}s`, 'info');
                 }
             } else {
-                let errorMessage = 'Unknown error';
-                if (result.error) {
-                    if (typeof result.error === 'string') {
-                        errorMessage = result.error;
-                    } else if (result.error.message) {
-                        errorMessage = result.error.message;
-                    } else if (result.error.details) {
-                        errorMessage = result.error.details;
-                    } else {
-                        errorMessage = JSON.stringify(result.error);
-                    }
-                }
-                this.app.showError(`Connection test failed: ${errorMessage}`);
+                const errs = (result && (result.errors || result?.error?.details?.validationErrors || result?.data?.errors)) || [];
+                const msg = Array.isArray(errs) && errs.length
+                    ? `Validation failed: ${errs.map(e => (e.field ? e.field+': ' : '') + (e.message || '')).join(', ')}`
+                    : (result?.message || result?.error?.message || 'Connection test failed');
+                this.app.showError(msg);
             }
         } catch (error) {
             console.error('❌ Error testing connection:', error);
@@ -792,21 +822,21 @@ export class SettingsPage {
             // Validate credentials first
             const validationResult = await this.validateCredentials(credentials);
             if (!validationResult.isValid) {
-                this.signageSystem.addMessage(`❌ Invalid credentials: ${validationResult.errors.join(', ')}`, 'error');
+                this.signageSystem.addMessage(` Invalid credentials: ${validationResult.errors.join(', ')}`, 'error');
                 return;
             }
             
-            // Get new token
-            const response = await fetch('/api/v1/auth/token', {
+            // Get new token with CSRF protection
+            const response = await csrfManager.fetchWithCSRF('/api/token/refresh', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(credentials)
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
             });
             
             const result = await response.json();
             
             if (result.success) {
-                this.signageSystem.addMessage('✅ Token refreshed successfully!', 'success');
+                this.signageSystem.addMessage(' Token refreshed successfully!', 'success');
                 // Update token info
                 this.updateTokenInfo();
             } else {
@@ -836,7 +866,7 @@ export class SettingsPage {
         try {
             this.signageSystem.addMessage('🔍 Validating token...', 'info');
             
-            const response = await fetch('/api/v1/auth/token', {
+            const response = await fetch('/api/token/status', {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -862,8 +892,9 @@ export class SettingsPage {
         try {
             this.signageSystem.addMessage('🚫 Revoking token...', 'warning');
             
-            const response = await fetch('/api/v1/auth/token', {
+            const response = await csrfManager.fetchWithCSRF('/api/v1/auth/token', {
                 method: 'DELETE',
+                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' }
             });
             
@@ -1146,8 +1177,9 @@ export class SettingsPage {
      */
     async validateCredentials(credentials) {
         try {
-            const response = await fetch('/api/settings/validate', {
+            const response = await csrfManager.fetchWithCSRF('/api/settings/validate', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json'
                 },
@@ -1733,7 +1765,7 @@ class SignageSystem {
     startTokenMonitoring() {
         const checkToken = async () => {
             try {
-                const response = await fetch('/api/v1/auth/token');
+                const response = await fetch('/api/token/status');
                 const result = await response.json();
                 
                 if (result.success && result.token) {

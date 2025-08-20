@@ -97,6 +97,8 @@ class PingOneApp {
             await this.checkInitialModals();
             
             console.log('✅ Application initialized successfully');
+            // Signal to realtime-client that app/CSRF are ready
+            try { window.APP_READY = true; } catch (_) {}
             this.updateServerStatus('Server Started');
             // Set default status bar with server started timestamp
             this.setDefaultStatusBar();
@@ -648,12 +650,13 @@ class PingOneApp {
             if (selected) select.value = selected;
         };
 
-        // Try public settings first (sanitized)
+        // Prefer standardized settings endpoint for populations cache
         try {
-            const resp = await fetch('/api/settings/public');
+            const resp = await fetch('/api/settings');
             if (resp.ok) {
-                const data = await resp.json().catch(() => ({}));
-                const pops = (data && (data.populations || (data.data && data.data.populations))) || [];
+                const payload = await resp.json().catch(() => ({}));
+                const data = payload && (payload.success ? (payload.data || {}) : payload);
+                const pops = (data && (data.populations || (data.data && data.data.populations) || (data.populationCache && data.populationCache.populations))) || [];
                 if (Array.isArray(pops) && pops.length) {
                     setOptions(pops);
                     return;
@@ -1350,11 +1353,19 @@ class PingOneApp {
                 }
             }
 
-            const resp = await fetch('/api/settings', {
+            // Use CSRF-aware client if available
+            const doPost = async () => fetch('/api/settings', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', ...(window.csrfManager?.token ? { 'X-CSRF-Token': window.csrfManager.token } : {}) },
                 body: JSON.stringify(payload)
             });
+            let resp = await doPost();
+            if (!resp.ok && (resp.status === 400 || resp.status === 403)) {
+                // Attempt CSRF refresh and one retry
+                try { if (window.csrfManager) { window.csrfManager.clearToken(); await window.csrfManager.refreshToken(); } } catch (_) {}
+                resp = await doPost();
+            }
 
             const result = await resp.json().catch(() => ({}));
             if (!resp.ok) {
@@ -1524,6 +1535,22 @@ class PingOneApp {
     showError(message) { this.showStatusMessage(message, 'error'); }
     showWarning(message) { this.showStatusMessage(message, 'warning'); }
     showInfo(message) { this.showStatusMessage(message, 'info'); }
+    // Optional floating toast
+    showToast(message, type = 'info', timeoutMs = 3000) {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            document.body.appendChild(container);
+        }
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+            try { container.removeChild(toast); } catch (_) {}
+        }, timeoutMs);
+    }
     
     // File state management
     setFileState(file) {
@@ -1582,9 +1609,11 @@ class PingOneApp {
                 }
             }
             
-            // Show the status bar
+            // Show the status bar with stronger color per type
             statusBar.style.display = 'flex';
             statusBar.className = `status-message-bar ${type}`;
+            // Additionally, show a floating toast for emphasis
+            this.showToast(message, type, 3000);
             
             // Auto-clear after 4 seconds and return to default system status
             setTimeout(() => {

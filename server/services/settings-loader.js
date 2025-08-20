@@ -10,6 +10,7 @@ const { toApiCode } = regionMapper;
 
 export async function loadSettings(logger = console) {
   const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
+  const appConfigPath = path.join(process.cwd(), 'data', 'app-config.json');
   let json;
   try {
     const raw = await fs.readFile(settingsPath, 'utf8');
@@ -24,7 +25,16 @@ export async function loadSettings(logger = console) {
   const environmentId = json.PINGONE_ENVIRONMENT_ID || json.environmentId || json['environment-id'] || json.pingone_environment_id;
   const clientId = json.PINGONE_CLIENT_ID || json.apiClientId || json['api-client-id'] || json.pingone_client_id;
   const rawSecret = json.PINGONE_CLIENT_SECRET || json.apiSecret || json['api-secret'] || json.pingone_client_secret;
-  const rawRegion = json.PINGONE_REGION || json.region || json.pingone_region || 'NA';
+  // Region now lives in app-config.json; keep fallbacks for backward compatibility
+  let rawRegion = 'NA';
+  try {
+    const appRaw = await fs.readFile(appConfigPath, 'utf8');
+    const appCfg = JSON.parse(appRaw || '{}');
+    rawRegion = appCfg.PINGONE_REGION || appCfg.pingone_region || rawRegion;
+  } catch (e) {
+    // app-config may not exist yet; fallback to settings.json keys
+    rawRegion = json.PINGONE_REGION || json.region || json.pingone_region || rawRegion;
+  }
   const region = toApiCode(rawRegion || 'NA');
 
   // Validate presence
@@ -32,7 +42,7 @@ export async function loadSettings(logger = console) {
   if (!environmentId) missing.push('environmentId');
   if (!clientId) missing.push('apiClientId');
   if (!rawSecret) missing.push('apiSecret');
-  if (!region) missing.push('region');
+  // Region defaults to 'NA' via mapper; do not treat as missing
   if (missing.length) {
     const msg = `settings-loader: Missing required fields in data/settings.json: ${missing.join(', ')}`;
     (logger || console).error(msg);

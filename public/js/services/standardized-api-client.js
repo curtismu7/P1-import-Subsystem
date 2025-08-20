@@ -10,6 +10,7 @@
  */
 
 import { appState, actions } from '../state/app-state.js';
+import csrfManager from '../utils/csrf-utils.js';
 
 /**
  * API Response wrapper for consistent handling
@@ -240,7 +241,8 @@ export class StandardizedAPIClient {
         const fetchOptions = {
           method: config.method,
           headers: config.headers,
-          signal: controller.signal
+          signal: controller.signal,
+          credentials: 'include'
         };
 
         // Add body for non-GET requests
@@ -259,7 +261,8 @@ export class StandardizedAPIClient {
         // Make request
         console.log(`API Request [${requestId}] ${config.method} ${url} (attempt ${attempt}/${config.retries})`);
         
-        const response = await fetch(url, fetchOptions);
+        // Route through CSRF manager to ensure token header + cookies are sent
+        const response = await csrfManager.fetchWithCSRF(url, fetchOptions);
         clearTimeout(timeoutId);
 
         // Parse response

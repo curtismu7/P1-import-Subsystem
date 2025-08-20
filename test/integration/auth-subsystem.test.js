@@ -14,12 +14,13 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-describe('Auth Subsystem Integration', () => {
+// Skip these tests in CI environments or when not running a local server
+const shouldSkip = process.env.CI === 'true' || process.env.SKIP_INTEGRATION_TESTS === 'true';
+const describeIf = shouldSkip ? describe.skip : describe;
+
+describeIf('Auth Subsystem Integration', () => {
   const baseUrl = 'http://localhost:4000';
   const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
-  
-  // Skip these tests in CI environments or when not running a local server
-  const shouldSkip = process.env.CI === 'true' || process.env.SKIP_INTEGRATION_TESTS === 'true';
   
   // Test credentials (these should be mocked in a real test)
   const testCredentials = {
@@ -32,9 +33,7 @@ describe('Auth Subsystem Integration', () => {
   // Backup and restore settings.json
   let originalSettings;
   
-  before(async function() {
-    if (shouldSkip) this.skip();
-    
+  beforeAll(async () => {
     try {
       // Backup original settings
       const settingsData = await fs.readFile(settingsPath, 'utf8');
@@ -44,9 +43,7 @@ describe('Auth Subsystem Integration', () => {
     }
   });
   
-  after(async function() {
-    if (shouldSkip) return;
-    
+  afterAll(async () => {
     try {
       // Restore original settings
       if (originalSettings) {
@@ -59,7 +56,6 @@ describe('Auth Subsystem Integration', () => {
   
   describe('Credential Consistency', () => {
     it('should validate credentials via API', async function() {
-      if (shouldSkip) this.skip();
       
       const response = await fetch(`${baseUrl}/api/v1/auth/validate-credentials`, {
         method: 'POST',
@@ -74,7 +70,6 @@ describe('Auth Subsystem Integration', () => {
     });
     
     it('should save credentials via API', async function() {
-      if (shouldSkip) this.skip();
       
       // This test would normally use mock credentials
       // For a real test, we'd need valid credentials
@@ -90,7 +85,6 @@ describe('Auth Subsystem Integration', () => {
     });
     
     it('should get credentials via API', async function() {
-      if (shouldSkip) this.skip();
       
       const response = await fetch(`${baseUrl}/api/v1/auth/credentials`);
       const data = await response.json();
@@ -109,7 +103,6 @@ describe('Auth Subsystem Integration', () => {
   
   describe('Token Management', () => {
     it('should get token via API', async function() {
-      if (shouldSkip) this.skip();
       
       const response = await fetch(`${baseUrl}/api/v1/auth/token`);
       const data = await response.json();
@@ -124,7 +117,6 @@ describe('Auth Subsystem Integration', () => {
     });
     
     it('should get token status via API', async function() {
-      if (shouldSkip) this.skip();
       
       const response = await fetch(`${baseUrl}/api/v1/auth/status`);
       const data = await response.json();
@@ -135,7 +127,6 @@ describe('Auth Subsystem Integration', () => {
     });
     
     it('should clear token via API', async function() {
-      if (shouldSkip) this.skip();
       
       const response = await fetch(`${baseUrl}/api/v1/auth/clear-token`, {
         method: 'POST'
@@ -149,7 +140,6 @@ describe('Auth Subsystem Integration', () => {
   
   describe('Subsystem Isolation', () => {
     it('should handle server startup with invalid credentials', async function() {
-      if (shouldSkip) this.skip();
       
       // This test would simulate server startup with invalid credentials
       // and verify that the server still starts and falls back to the settings page
@@ -166,7 +156,6 @@ describe('Auth Subsystem Integration', () => {
     });
     
     it('should handle API requests with invalid token', async function() {
-      if (shouldSkip) this.skip();
       
       // Clear token first
       await fetch(`${baseUrl}/api/v1/auth/clear-token`, {

@@ -31,6 +31,14 @@ export function validateBody(schema, options = {}) {
         message: detail.message,
         value: detail.context?.value
       }));
+      try {
+        // Log concise validation failure context to aid debugging
+        const endpoint = `${req.method} ${req.originalUrl}`;
+        const redactedBody = { ...req.body };
+        if (redactedBody.pingone_client_secret) redactedBody.pingone_client_secret = '[redacted]';
+        if (redactedBody.clientSecret) redactedBody.clientSecret = '[redacted]';
+        console.warn('⚠️ Validation failed:', { endpoint, validationErrors, body: redactedBody });
+      } catch (_) { /* ignore logging errors */ }
       
       return res.status(400).json(
         APIResponse.validationError(validationErrors)
@@ -150,14 +158,14 @@ export const schemas = {
     pingone_environment_id: Joi.string().uuid({ version: ['uuidv4', 'uuidv1'] }).optional(),
     pingone_client_id: Joi.string().uuid({ version: ['uuidv4', 'uuidv1'] }).optional(),
     pingone_client_secret: Joi.string().min(8).optional(),
-    pingone_population_id: Joi.string().optional(), // Population ID can be any string
+    pingone_population_id: Joi.string().allow('').optional(), // Allow empty/omitted population ID
     pingone_region: Joi.string().valid('NorthAmerica', 'Europe', 'AsiaPacific', 'Canada', 'NA', 'EU', 'AP', 'CA').optional(),
     
     // Legacy keys (for backward compatibility)
     environmentId: Joi.string().uuid({ version: ['uuidv4', 'uuidv1'] }).optional(),
     apiClientId: Joi.string().uuid({ version: ['uuidv4', 'uuidv1'] }).optional(),
     apiSecret: Joi.string().min(8).optional(),
-    populationId: Joi.string().optional(),
+    populationId: Joi.string().allow('').optional(),
     region: Joi.string().valid('NorthAmerica', 'Europe', 'AsiaPacific', 'Canada', 'NA', 'EU', 'AP', 'CA').optional(),
     
     // Additional legacy variations
