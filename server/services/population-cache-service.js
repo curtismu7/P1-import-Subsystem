@@ -14,6 +14,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fetch from 'node-fetch';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,7 +28,7 @@ const BACKGROUND_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes
 
 class PopulationCacheService {
     constructor() {
-        this.logger = null;
+        this.logger = console;
         this.tokenManager = null;
         this.backgroundRefreshTimer = null;
         this.isRefreshing = false;
@@ -41,7 +42,7 @@ class PopulationCacheService {
      */
     initialize(options = {}) {
         this.logger = options.logger || console;
-        this.tokenManager = options.tokenManager;
+        this.tokenManager = options.tokenManager || this.tokenManager;
         
         this.logger.info('🗃️ Population Cache Service initialized');
     }

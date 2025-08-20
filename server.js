@@ -110,7 +110,6 @@ import { APP_VERSION } from './src/version.js';
 // Import routes
 import { runStartupTokenTest } from './server/startup-token-test.js';
 import apiRouter from './routes/api/index.js';
-import settingsRouter from './routes/settings.js';
 import debugLogRouter from './routes/api/debug-log.js';
 import logsRouter from './routes/logs.js';
 import logsApiRouter from './routes/api/logs.js';
@@ -224,7 +223,35 @@ async function loadSettingsFromFile() {
         const environmentId = settings.environmentId || settings.pingone_environment_id || process.env.PINGONE_ENVIRONMENT_ID || '';
         const apiClientId = settings.apiClientId || settings.pingone_client_id || process.env.PINGONE_CLIENT_ID || '';
         const apiSecret = settings.apiSecret || settings.pingone_client_secret || process.env.PINGONE_CLIENT_SECRET || '';
-        let region = settings.region || settings.pingone_region || process.env.PINGONE_REGION || 'NA';
+        // Determine region with fallback to app-config.json
+        let regionSource = 'default';
+        let region = settings.region || settings.pingone_region;
+        if (region) {
+            regionSource = 'settings.json';
+        }
+        if (!region) {
+            // Try environment variable
+            if (process.env.PINGONE_REGION) {
+                region = process.env.PINGONE_REGION;
+                regionSource = '.env';
+            } else {
+                // Fallback to data/app-config.json
+                try {
+                    const appConfigPath = path.join(process.cwd(), 'data', 'app-config.json');
+                    const appConfigRaw = await fs.readFile(appConfigPath, 'utf8');
+                    const appConfig = JSON.parse(appConfigRaw);
+                    if (appConfig.pingone_region) {
+                        region = appConfig.pingone_region;
+                        regionSource = 'app-config.json';
+                    }
+                } catch (_) {
+                    // ignore and use default
+                }
+            }
+        }
+        if (!region) {
+            region = 'NA';
+        }
         if (region === 'NorthAmerica' || region === 'NA') region = 'NA';
         else if (region === 'Europe' || region === 'EU') region = 'EU';
         else if (region === 'AsiaPacific' || region === 'APAC') region = 'APAC';
@@ -233,7 +260,7 @@ async function loadSettingsFromFile() {
         // Mask secrets for logging
         const mask = (val) => val ? `${val.substring(0,4)}...${val.substring(val.length-4)}` : '[NOT_SET]';
         logger.info(`[🗝️ CREDENTIAL-MANAGER] [${new Date().toISOString()}] [server] INFO: Credential source: ${loadedFrom}`);
-        logger.info(`[🗝️ CREDENTIAL-MANAGER] [${new Date().toISOString()}] [server] INFO: ENV_ID: ${mask(environmentId)}, CLIENT_ID: ${mask(apiClientId)}, CLIENT_SECRET: ***MASKED***, REGION: ${region}`);
+        logger.info(`[🗝️ CREDENTIAL-MANAGER] [${new Date().toISOString()}] [server] INFO: ENV_ID: ${mask(environmentId)}, CLIENT_ID: ${mask(apiClientId)}, CLIENT_SECRET: ***MASKED***, REGION: ${region} (from ${regionSource})`);
 
         // Set env vars for downstream use
         process.env.PINGONE_ENVIRONMENT_ID = environmentId;
@@ -628,24 +655,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 
 // SECURE settings endpoint: expose a sanitized view of settings for Swagger only
 // Do NOT serve /data/settings.json publicly.
-app.get('/api/settings/public', async (req, res) => {
-    try {
-        const settingsPath = path.join(__dirname, 'data', 'settings.json');
-        const raw = await fs.readFile(settingsPath, 'utf-8').catch(() => '{}');
-        const json = JSON.parse(raw || '{}');
-        // Pick only safe fields (populations + default id)
-        const safe = {
-            populations: Array.isArray(json.populations) ? json.populations : [],
-            populationCache: json.populationCache && Array.isArray(json.populationCache.populations)
-                ? { populations: json.populationCache.populations } : undefined,
-            pingone_population_id: json.pingone_population_id || json.populationId || undefined
-        };
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        res.json({ success: true, data: safe });
-    } catch (e) {
-        res.status(200).json({ success: true, data: { populations: [] } });
-    }
-});
+// Removed deprecated public settings shim; use /api/settings instead
 
 // Serve SPA routes - all serve index.html for client-side routing
 app.get('/history', (req, res) => {
@@ -1061,8 +1071,8 @@ app.get('/api/health', async (req, res) => {
 // API routes with enhanced logging
 app.use('/api', apiRouter); // Main API router includes: logs, auth, export, import, history, pingone, version, settings
 app.use('/api/pingone', pingoneProxyRouter); // Additional pingone proxy routes
-app.use('/api/settings', settingsRouter); // Direct settings routes
-app.use('/api/v1/settings', settingsRouter); // Added to support /api/v1/settings
+// Note: settings routes are provided by routes/api/settings.js via apiRouter at /api/settings
+// The legacy direct mounts to routes/settings.js have been removed to prevent conflicts and HTML fallbacks
 app.use('/api/v1/auth', authSubsystemRouter); // Auth subsystem routes
 app.use('/api/test-runner', testRunnerRouter); // Test runner routes
 // NOTE: /api/auth, /api/logs, /api/import, /api/export are handled by the main apiRouter above
@@ -1246,6 +1256,13 @@ const startServer = async () => {
                     startTime,
                     serverUrl
                 });
+                // Print browser cache-bust helper command for convenience
+                try {
+                    const cacheBustPath = path.join(process.cwd(), 'browser-cache-bust.js');
+                    console.log('💡 Run the browser script to clear client-side caches:');
+                    console.log(`   open ${cacheBustPath}`);
+                    console.log('   Then copy/paste into your browser console and press Enter.');
+                } catch (_) { /* no-op */ }
                 
                 // 🗃️ INITIALIZE POPULATION CACHE SERVICE
                 try {

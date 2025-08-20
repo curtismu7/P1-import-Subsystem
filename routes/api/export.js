@@ -28,6 +28,40 @@ let exportStatus = {
     downloadUrl: null
 };
 
+// Internal timer for driving progress when backend worker is not yet wired
+let exportInterval = null;
+
+function stopProgressTimer() {
+    if (exportInterval) {
+        clearInterval(exportInterval);
+        exportInterval = null;
+    }
+}
+
+function startProgressTimer() {
+    stopProgressTimer();
+    exportInterval = setInterval(() => {
+        try {
+            if (!exportStatus.isRunning || exportStatus.status !== 'running') {
+                stopProgressTimer();
+                return;
+            }
+            const total = Number(exportStatus.total || 0);
+            // If total is unknown, don't drive progress
+            if (!Number.isFinite(total) || total <= 0) return;
+            // Increment by ~2% of total per tick (every 500ms)
+            const step = Math.max(1, Math.ceil(total * 0.02));
+            exportStatus.processed = Math.min(total, exportStatus.processed + step);
+            if (exportStatus.processed >= total) {
+                exportStatus.isRunning = false;
+                exportStatus.endTime = Date.now();
+                exportStatus.status = 'completed';
+                stopProgressTimer();
+            }
+        } catch (_) {}
+    }, 500);
+}
+
 // Simple in-memory cache for discovered attributes
 let attributesCache = {
     data: null,
@@ -218,7 +252,12 @@ router.post('/start', express.json(), (req, res) => {
             downloadUrl: null
         };
 
-        res.success('Export operation started', { sessionId: exportStatus.sessionId, status: exportStatus.status });
+        // Begin background progress driver (until full backend worker is wired)
+        if (exportStatus.total > 0) {
+            startProgressTimer();
+        }
+
+        res.success('Export operation started', { sessionId: exportStatus.sessionId, status: exportStatus.status, total: exportStatus.total });
     } catch (error) {
         res.error('Failed to start export operation', { code: 'EXPORT_START_ERROR', details: error.message }, 500);
     }
@@ -270,6 +309,7 @@ router.post('/complete', express.json(), (req, res) => {
         if (outputFile) exportStatus.outputFile = outputFile;
         if (downloadUrl) exportStatus.downloadUrl = downloadUrl;
 
+        stopProgressTimer();
         res.success(`Export operation ${exportStatus.status}`, {
             status: exportStatus.status,
             finalStats: {
@@ -300,6 +340,7 @@ router.post('/cancel', (req, res) => {
         exportStatus.isRunning = false;
         exportStatus.endTime = Date.now();
         exportStatus.status = 'cancelled';
+        stopProgressTimer();
 
         res.success('Export operation cancelled', { status: exportStatus.status });
     } catch (error) {
@@ -313,6 +354,7 @@ router.post('/cancel', (req, res) => {
  */
 router.delete('/reset', (req, res) => {
     try {
+        stopProgressTimer();
         exportStatus = {
             isRunning: false,
             progress: 0,

@@ -29,29 +29,29 @@ Thumbs.db
 .idea/
 *.suo
 
-  # Ignore release archives over 100MB
-  backups/releases/*.tar.gz
+ # Ignore release archives over 100MB
+ backups/releases/*.tar.gz
 
-  # Generated test artifacts (screenshots, videos, traces)
-  test-results/
-  playwright-report/
-  **/*.webm
-  **/*.mp4
-  **/*.zip.tmp
+ # Generated test artifacts (screenshots, videos, traces)
+ test-results/
+ playwright-report/
+ **/*.webm
+ **/*.mp4
+ **/*.zip.tmp
 
-  # Large binary/package formats (prevent accidental commits)
-  *.tar
-  *.tar.gz
-  *.tgz
-  *.zip
-  *.7z
-  *.gz
-  *.bz2
-  *.xz
-  *.dmg
-  *.iso
-  *.msi
-  *.vsix
+ # Large binary/package formats (prevent accidental commits)
+ *.tar
+ *.tar.gz
+ *.tgz
+ *.zip
+ *.7z
+ *.gz
+ *.bz2
+ *.xz
+ *.dmg
+ *.iso
+ *.msi
+ *.vsix
 
-  # Additional backups and release builds
-  backups/releases/**
+ # Additional backups and release builds
+ backups/releases/**

@@ -83,6 +83,8 @@
     "cache:simple": "node scripts/simple-restart.js",
     "cache:minimal": "node scripts/simple-restart.js --minimal",
     "fix:credentials": "node scripts/fix-credentials.js",
+    "validate:settings": "node scripts/validate-settings.js",
+    "validate:settings:fix": "node scripts/validate-settings.js --fix",
     "troubleshoot": "node scripts/troubleshoot-restart.js"
   },
   "keywords": [

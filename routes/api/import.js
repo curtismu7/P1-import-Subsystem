@@ -201,7 +201,15 @@ router.post('/cancel', (req, res) => {
         importStatus.endTime = Date.now();
         importStatus.status = 'cancelled';
 
-        res.success('Import operation cancelled', { status: importStatus.status });
+        // Emit a realtime cancellation message so the UI can stop polling immediately
+        try {
+            const realtimeManager = req.app.get('realtimeManager');
+            if (realtimeManager && importStatus.sessionId) {
+                realtimeManager.sendToSession(importStatus.sessionId, 'error', { message: 'Import cancelled by user' });
+            }
+        } catch (_) { /* no-op */ }
+
+        res.success('Import operation cancelled', { status: importStatus.status, sessionId: importStatus.sessionId });
     } catch (error) {
         res.error('Failed to cancel import operation', { code: 'IMPORT_CANCEL_ERROR', details: error.message }, 500);
     }

@@ -63,9 +63,31 @@ export class HomePage {
                         </div>
                         <div>
                             <div class="status-label">Environment</div>
-                            <div class="status-value" id="environment-status">Checking...</div>
+                            <div class="status-value" id="environment-status">b9817c16-9910-4415-b67e-4ac687da74d9</div>
                         </div>
-                        <div class="status-indicator" id="environment-indicator"></div>
+                        <div class="status-indicator valid" id="environment-indicator"></div>
+                    </div>
+                    
+                    <div class="status-card">
+                        <div class="status-icon">
+                            <i class="mdi mdi-map-marker" id="environment-name-icon"></i>
+                        </div>
+                        <div>
+                            <div class="status-label">Environment Name</div>
+                            <div class="status-value" id="environment-name-status">NorthAmerica</div>
+                        </div>
+                        <div class="status-indicator valid" id="environment-name-indicator"></div>
+                    </div>
+
+                    <div class="status-card">
+                        <div class="status-icon">
+                            <i class="mdi mdi-map" id="region-name-icon"></i>
+                        </div>
+                        <div>
+                            <div class="status-label">Region</div>
+                            <div class="status-value" id="region-name-status">Not configured</div>
+                        </div>
+                        <div class="status-indicator invalid" id="region-name-indicator"></div>
                     </div>
                 </div>
                 
@@ -393,6 +415,8 @@ export class HomePage {
         const environmentStatus = document.getElementById('environment-status');
         const environmentIndicator = document.getElementById('environment-indicator');
         const environmentIcon = document.getElementById('environment-icon');
+        const environmentNameStatus = document.getElementById('environment-name-status');
+        const environmentNameIndicator = document.getElementById('environment-name-indicator');
         
         // Update the Environment Status card
         if (environmentStatus) {
@@ -413,12 +437,49 @@ export class HomePage {
             const envId = this.app.settings.pingone_environment_id;
             environmentInfo.textContent = envId || 'Not configured';
         }
+
+        if (environmentNameStatus) {
+            const envName = this.app.settings.pingone_environment_name;
+            if (envName) {
+                environmentNameStatus.textContent = envName;
+                if (environmentNameIndicator) environmentNameIndicator.className = 'status-indicator valid';
+            } else {
+                // Fallback: fetch from server if not present in settings
+                environmentNameStatus.textContent = 'Resolving...';
+                if (environmentNameIndicator) environmentNameIndicator.className = 'status-indicator warning';
+                this.fetchAndSetEnvironmentName(environmentNameStatus, environmentNameIndicator)
+                    .catch(() => {
+                        environmentNameStatus.textContent = 'Not configured';
+                        if (environmentNameIndicator) environmentNameIndicator.className = 'status-indicator invalid';
+                    });
+            }
+        }
         
         if (regionInfo) {
             const rawRegion = this.app.settings.pingone_region;
             const code = this.getRegionCode(rawRegion);
             const name = this.getRegionFullName(rawRegion);
             regionInfo.textContent = (code && name) ? `${code} — ${name}` : (name || code || 'Not configured');
+        }
+
+        // Update the Region Status card
+        const regionNameStatus = document.getElementById('region-name-status');
+        const regionNameIndicator = document.getElementById('region-name-indicator');
+        if (regionNameStatus) {
+            const rawRegion = this.app.settings.pingone_region;
+            const code = this.getRegionCode(rawRegion);
+            const name = this.getRegionFullName(rawRegion);
+            if (code || name) {
+                regionNameStatus.textContent = name && code ? `${name} (${code})` : (name || code);
+                if (regionNameIndicator) regionNameIndicator.className = 'status-indicator valid';
+            } else {
+                regionNameStatus.textContent = 'Resolving...';
+                if (regionNameIndicator) regionNameIndicator.className = 'status-indicator warning';
+                this.fetchAndSetEnvironmentName(
+                    document.getElementById('environment-name-status'),
+                    document.getElementById('environment-name-indicator')
+                );
+            }
         }
     }
     
@@ -463,6 +524,47 @@ export class HomePage {
         const swaggerCard = document.getElementById('swagger-card');
         if (swaggerCard) {
             swaggerCard.style.display = this.app.settings.showSwaggerPage ? 'block' : 'none';
+        }
+    }
+
+    /**
+     * Fetch environment name from server and update UI and settings
+     */
+    async fetchAndSetEnvironmentName(environmentNameStatus, environmentNameIndicator) {
+        try {
+            const resp = await fetch('/api/environment/info');
+            const result = await resp.json();
+            const name = result?.name || result?.data?.name || result?.message?.name || '';
+            const region = result?.region || result?.data?.region || result?.message?.region || '';
+            if (resp.ok && (result.success === true || result.success === undefined) && name) {
+                environmentNameStatus.textContent = name;
+                if (environmentNameIndicator) environmentNameIndicator.className = 'status-indicator valid';
+                // Cache into app settings for later reads
+                this.app.settings.pingone_environment_name = name;
+                if (region) {
+                    this.app.settings.pingone_region = region;
+                    const regionNameStatus = document.getElementById('region-name-status');
+                    const regionNameIndicator = document.getElementById('region-name-indicator');
+                    if (regionNameStatus) {
+                        const code = this.getRegionCode(region);
+                        const fullname = this.getRegionFullName(region);
+                        regionNameStatus.textContent = fullname && code ? `${fullname} (${code})` : (fullname || code || 'Not configured');
+                        if (regionNameIndicator) regionNameIndicator.className = 'status-indicator valid';
+                    }
+                }
+            } else {
+                throw new Error(result.error || 'No name');
+            }
+        } catch (_) {
+            environmentNameStatus.textContent = 'Not configured';
+            if (environmentNameIndicator) environmentNameIndicator.className = 'status-indicator invalid';
+            // Also mark region card invalid if present
+            const regionNameStatus = document.getElementById('region-name-status');
+            const regionNameIndicator = document.getElementById('region-name-indicator');
+            if (regionNameStatus) {
+                regionNameStatus.textContent = 'Not configured';
+                if (regionNameIndicator) regionNameIndicator.className = 'status-indicator invalid';
+            }
         }
     }
     

@@ -14,7 +14,7 @@ jest.unstable_mockModule('../../src/client/subsystems/settings-subsystem.js', ()
 const { SettingsSubsystem } = await import('../../src/client/subsystems/settings-subsystem.js');
 
 // Mock the UIManager
-jest.unstable_mockModule('../../public/js/modules/ui-manager-fixed.js', () => ({
+jest.unstable_mockModule('../../src/client/components/ui-manager.js', () => ({
   UIManager: jest.fn().mockImplementation(() => ({
     showStatusBar: jest.fn(),
     showError: jest.fn(),

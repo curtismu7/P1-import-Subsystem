@@ -128,13 +128,14 @@ class SettingsClient {
     async _syncWithServer() {
         try {
             // Get settings from server
-            const response = await fetch('/api/v1/settings');
+            const response = await fetch('/api/settings');
             
             if (!response.ok) {
                 throw new Error(`HTTP error ${response.status}`);
             }
             
-            const serverSettings = await response.json();
+            const payload = await response.json();
+            const serverSettings = (payload && payload.success) ? (payload.data || {}) : (payload || {});
             
             // Merge with local settings
             const mergedSettings = {
@@ -223,7 +224,7 @@ class SettingsClient {
             // Sync with server if enabled
             if (syncWithServer) {
                 try {
-                    const response = await fetch('/api/v1/settings', {
+                    const response = await fetch('/api/settings', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'

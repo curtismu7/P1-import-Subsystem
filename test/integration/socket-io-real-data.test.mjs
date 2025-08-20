@@ -79,7 +79,11 @@ function generateLargeCSV(count) {
     return rows.join('\n');
 }
 
-describe('🔌 Socket.IO Real Data Integration Tests', () => {
+// Skip entire suite when integration tests are disabled
+const shouldRunIntegration = process.env.SKIP_INTEGRATION_TESTS !== 'true';
+const describeOrSkip = shouldRunIntegration ? describe : describe.skip;
+
+describeOrSkip('🔌 Socket.IO Real Data Integration Tests', () => {
     let socketClient;
     let testSessionId;
     let testDataFiles = [];

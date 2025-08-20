@@ -385,9 +385,6 @@ export class ExportPage {
                         <div id="export-summary" class="results-container" style="margin-bottom: 16px;"></div>
                         
                         <div class="export-actions">
-                            <button type="button" id="download-export" class="btn btn-success">
-                                <i class="mdi mdi-download"></i> Download Export File
-                            </button>
                             <button type="button" id="new-export" class="btn btn-outline-primary">
                                 <i class="mdi mdi-refresh"></i> Start New Export
                             </button>
@@ -831,9 +828,25 @@ export class ExportPage {
 
             // Start backend export session
             const outputFileName = this.generateFileName();
-            const startResp = await fetch('/api/export/start', {
+
+            // Ensure server-side token is fresh before starting
+            try {
+                await csrfManager.fetchWithCSRF('/api/token/refresh', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (_) {}
+
+            // Optionally include Authorization header if a worker token exists (best effort)
+            const authHeader = localStorage.getItem('pingone_worker_token')
+                ? { 'Authorization': `Bearer ${localStorage.getItem('pingone_worker_token')}` }
+                : {};
+
+            const startResp = await csrfManager.fetchWithCSRF('/api/export/start', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', ...authHeader },
                 body: JSON.stringify({
                     sessionId: `export_${Date.now()}`,
                     totalRecords: totalCount,
@@ -914,7 +927,10 @@ export class ExportPage {
         // Poll backend status periodically
         this.exportInterval = setInterval(async () => {
             try {
-                const resp = await fetch('/api/export/status', { headers: { 'Accept': 'application/json' } });
+                const resp = await fetch('/api/export/status', {
+                    credentials: 'include',
+                    headers: { 'Accept': 'application/json' }
+                });
                 const json = await resp.json();
                 if (!resp.ok || json.success === false) {
                     throw new Error(json.error || json.message || 'Failed to get export status');
@@ -929,6 +945,18 @@ export class ExportPage {
                     clearInterval(this.exportInterval);
                     this.exportInterval = null;
                     if (cancelBtn) cancelBtn.style.display = 'none';
+
+                    // Prepare downloadable blob now so the Download button works immediately
+                    try {
+                        const exportData = this.generateExportData();
+                        const fileName = this.generateFileName();
+                        const blob = new Blob([exportData.content], { type: this.getMimeType(this.exportOptions.format) });
+                        const size = blob.size;
+                        const createdAt = new Date();
+                        const modifiedAt = createdAt;
+                        this.lastExport = { blob, fileName, size, createdAt, modifiedAt, type: exportData.type };
+                    } catch (_) {}
+
                     // Slight delay for UX polish
                     setTimeout(() => this.showExportResults(), 300);
                 }
@@ -1102,10 +1130,7 @@ export class ExportPage {
                             </div>
                         </div>
                         <div style="display:flex; gap:8px;">
-                            <button type="button" id="download-export" class="btn btn-success" style="border-radius: 4px; padding: 8px 14px; display:inline-flex; align-items:center; gap:6px;">
-                                <i class="mdi mdi-download"></i> <span>Download</span>
-                            </button>
-                            <button type="button" id="remove-file" class="btn btn-danger btn-sm" style="border-radius: 4px; padding: 8px 12px; display:inline-flex; align-items:center; gap:6px;">
+                            <button type="button" id="remove-file" class="btn btn-danger btn-sm" style="border-radius: 4px; padding: 4px 8px; display:inline-flex; align-items:center; gap:4px;">
                                 <i class="mdi mdi-delete"></i> <span>Remove</span>
                             </button>
                         </div>
@@ -1594,7 +1619,11 @@ export class ExportPage {
 
         // Ask backend to cancel
         try {
-            const resp = await fetch('/api/export/cancel', { method: 'POST', headers: { 'Accept': 'application/json' } });
+            const resp = await csrfManager.fetchWithCSRF('/api/export/cancel', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Accept': 'application/json' }
+            });
             // Best-effort: don't block on cancel errors
             if (!resp.ok) {
                 const t = await resp.text();
@@ -1659,6 +1688,16 @@ export class ExportPage {
     onSettingsChange(settings) {
         if (settings) {
             this.loadPopulations();
+        }
+    }
+
+    // Add missing helper to ensure smooth scrolling works
+    scrollToSection(element) {
+        if (!element || typeof element.scrollIntoView !== 'function') return;
+        try {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (_) {
+            try { element.scrollIntoView(true); } catch (_) {}
         }
     }
 }

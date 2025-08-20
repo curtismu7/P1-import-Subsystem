@@ -481,14 +481,23 @@ realtimeClient.onSystem('session-associated', (data) => {
   console.debug('Server acknowledged session association', data);
 });
 
-// Auto-connect when module loads
+// Auto-connect when module loads, but wait for app readiness/CSRF if available
 if (typeof window !== 'undefined') {
-  // Connect after a short delay to allow other modules to initialize
-  setTimeout(() => {
-    realtimeClient.connect().catch(error => {
-      console.warn('Initial real-time connection failed:', error);
-    });
-  }, 1000);
+  const connectWhenReady = async (attempt = 0) => {
+    try {
+      if (window.csrfManager && !window.csrfManager.token) {
+        await window.csrfManager.getToken().catch(() => {});
+      }
+    } catch (_) {}
+    if (window.APP_READY || attempt >= 10) {
+      realtimeClient.connect().catch(error => {
+        console.warn('Initial real-time connection failed:', error);
+      });
+    } else {
+      setTimeout(() => connectWhenReady(attempt + 1), 500);
+    }
+  };
+  setTimeout(connectWhenReady, 1000);
 }
 
 export default realtimeClient;

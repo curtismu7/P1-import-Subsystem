@@ -16,6 +16,7 @@
  */
 
 import TokenManager from '../server/token-manager.js';
+import fetch, { Headers as FetchHeaders } from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
 import { importLogger, logSeparator } from '../server/winston-config.js';
@@ -95,6 +96,9 @@ class BaseApiClient {
                 });
             } catch (_) { /* no-op */ }
         };
+
+        // Bind helpers
+        this._sanitizeAuthHeader = this._sanitizeAuthHeader.bind(this);
     }
 
     /**
@@ -329,7 +333,7 @@ class BaseApiClient {
             
             while (retries <= this.config.retries) {
                 try {
-                    // Build sanitized headers for logging
+                    // Build sanitized headers and create a canonical Headers instance
                     const safeHeaders = { ...headers };
                     if (safeHeaders.Authorization) {
                         const val = String(safeHeaders.Authorization);
@@ -337,6 +341,11 @@ class BaseApiClient {
                             ? `Bearer ${val.slice(7, 19)}... (len=${val.length - 7})`
                             : `*** (len=${val.length})`;
                         safeHeaders.Authorization = masked;
+                    }
+
+                    const headersToSend = new FetchHeaders();
+                    for (const [k, v] of Object.entries(this._sanitizeAuthHeader(headers))) {
+                        if (v != null && v !== '') headersToSend.set(k, v);
                     }
 
                     // Prepare safe body preview if JSON
@@ -355,6 +364,9 @@ class BaseApiClient {
                         }
                     }
 
+                    // Ensure there is exactly ONE clean Authorization header
+                    headers = this._sanitizeAuthHeader(headers);
+
                     // Log outbound request with full details (sanitized)
                     this._writeImportLog('Outbound request (full)', {
                         method: (config.method || 'GET'),
@@ -365,7 +377,7 @@ class BaseApiClient {
 
                     response = await fetch(resolvedUrl, {
                         ...config,
-                        headers,
+                        headers: headersToSend,
                         signal
                     });
                     
@@ -383,13 +395,15 @@ class BaseApiClient {
                     }
                     // Additional safeguard: if unauthorized/forbidden due to malformed Authorization (e.g., 403), try once to refresh
                     if (response.status === 403 && retries < this.config.retries) {
-                        this.logger.warn('Received 403 Forbidden; refreshing token in case of malformed Authorization');
+                        // Some PingOne edges reject if any stray characters slip into Authorization.
+                        // Force-generate a fresh token and rebuild headers completely.
+                        this.logger.warn('Received 403 Forbidden; regenerating Authorization header and retrying');
                         this.tokenManager.clearToken();
                         const newToken = await this.tokenManager.getAccessToken();
-                        headers = {
+                        headers = this._sanitizeAuthHeader({
                             ...headers,
-                            'Authorization': `Bearer ${newToken}`
-                        };
+                            Authorization: `Bearer ${String(newToken).trim()}`
+                        });
                         retries++;
                         continue;
                     }
@@ -431,6 +445,48 @@ class BaseApiClient {
             clearTimeout(timeoutId);
             this.activeRequests.delete(requestId);
         }
+    }
+
+    /**
+     * Ensure exactly one clean Authorization header is present and correctly formatted.
+     * Removes any duplicate or lowercase variants and strips unexpected comma fragments.
+     * @param {Object} headers
+     * @returns {Object}
+     */
+    _sanitizeAuthHeader(headers) {
+        if (!headers) return headers;
+        const sanitized = { ...headers };
+
+        // Consolidate any case variants
+        const keys = Object.keys(sanitized);
+        const authKeys = keys.filter(k => k.toLowerCase() === 'authorization');
+
+        let bearer = '';
+        for (const k of authKeys) {
+            const valRaw = sanitized[k];
+            if (typeof valRaw === 'string') {
+                // If comma-separated values exist, pick the first that starts with 'Bearer '
+                const parts = valRaw.split(',').map(p => p.trim());
+                const firstBearer = parts.find(p => /^Bearer\s+/i.test(p));
+                if (firstBearer) bearer = firstBearer; else if (!bearer) bearer = parts[0] || '';
+            }
+            // Remove all occurrences; we'll re-add one canonical header
+            delete sanitized[k];
+        }
+
+        // Normalize final Authorization
+        if (bearer) {
+            // Ensure correct prefix and no extra parameters
+            const token = bearer.replace(/^Bearer\s+/i, '').trim();
+            sanitized['Authorization'] = `Bearer ${token}`;
+        }
+
+        // Never send Proxy-Authorization
+        for (const k of Object.keys(sanitized)) {
+            if (k.toLowerCase() === 'proxy-authorization') delete sanitized[k];
+        }
+
+        return sanitized;
     }
 
     /**

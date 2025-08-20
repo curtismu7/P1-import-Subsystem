@@ -242,6 +242,7 @@ class TokenService {
             'NA': 'auth.pingone.com',
             'EU': 'auth.pingone.eu',
             'APAC': 'auth.pingone.asia',
+            'AP': 'auth.pingone.asia',
             'US': 'auth.pingone.com',
             'NorthAmerica': 'auth.pingone.com',
             'Europe': 'auth.pingone.eu',

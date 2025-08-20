@@ -442,7 +442,7 @@ export class BulletproofImportSubsystem {
             this._bulletproofUpdateProgress(0, 100, `Import attempt ${attempt}...`);
             
             // Make import request
-            const response = await this.localClient.post('/api/v1/import', {
+            const response = await this.localClient.post('/api/import', {
                 sessionId: sessionId,
                 populationId: this.state.selectedPopulationId,
                 data: fileData.parsed,
