@@ -314,11 +314,16 @@ class BaseApiClient {
                 if (typeof token === 'string') {
                     token = token.trim().replace(/^"|"$/g, '');
                 }
-                headers = {
-                    ...headers,
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                };
+                {
+                    const tokenStr = String(token).replace(/^Bearer\s+/i, '').trim();
+                    headers = {
+                        ...headers,
+                        'Authorization': `Bearer ${tokenStr}`,
+                        'Accept': 'application/json'
+                    };
+                }
+                // Remember last token for fallback sanitization and log masked preview
+                this._lastAuthToken = token;
                 // Log safe preview of Authorization without exposing the token
                 try {
                     const preview = token ? `${String(token).slice(0, 12)}... (len=${String(token).length})` : 'null';
@@ -386,9 +391,10 @@ class BaseApiClient {
                         this.logger.warn('Token expired, retrying with new token');
                         this.tokenManager.clearToken();
                         const newToken = await this.tokenManager.getAccessToken();
+                        const tokenStr = String(newToken).replace(/^Bearer\s+/i, '').trim();
                         headers = {
                             ...headers,
-                            'Authorization': `Bearer ${newToken}`
+                            'Authorization': `Bearer ${tokenStr}`
                         };
                         retries++;
                         continue;
@@ -402,7 +408,7 @@ class BaseApiClient {
                         const newToken = await this.tokenManager.getAccessToken();
                         headers = this._sanitizeAuthHeader({
                             ...headers,
-                            Authorization: `Bearer ${String(newToken).trim()}`
+                            Authorization: `Bearer ${String(newToken).replace(/^Bearer\s+/i, '').trim()}`
                         });
                         retries++;
                         continue;
@@ -479,6 +485,9 @@ class BaseApiClient {
             // Ensure correct prefix and no extra parameters
             const token = bearer.replace(/^Bearer\s+/i, '').trim();
             sanitized['Authorization'] = `Bearer ${token}`;
+        } else if (this._lastAuthToken) {
+            // Fallback: if no Bearer fragment was present, force-add the last known good token
+            sanitized['Authorization'] = `Bearer ${String(this._lastAuthToken).trim()}`;
         }
 
         // Never send Proxy-Authorization

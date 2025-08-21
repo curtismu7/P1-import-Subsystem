@@ -325,8 +325,8 @@ class RestartAndCacheBust {
         console.log('🚀 Restarting server...');
         
         try {
-            // Start server in background
-            const serverProcess = spawn('node', ['--experimental-modules', '--experimental-json-modules', 'server/server-fixed.js'], {
+            // Start full server in background via npm start (as requested)
+            const serverProcess = spawn('npm', ['start', '--silent'], {
                 cwd: this.projectRoot,
                 stdio: 'pipe',
                 detached: true
@@ -449,7 +449,12 @@ console.log('✅ Browser cache bust completed!');
         await fs.writeFile(scriptPath, scriptContent, 'utf8');
         
         console.log('📱 Browser script generated: browser-cache-bust.js');
+        console.log(`📄 File path: ${scriptPath}`);
         console.log('💡 Copy and paste the contents into your browser console');
+        // Provide a compact one-liner for convenience
+        const oneLiner = "(function(){try{Object.keys(localStorage).forEach(k=>{if(/cache|settings|token/i.test(k))localStorage.removeItem(k)});sessionStorage.clear()}catch(e){}if('caches'in window){caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)))}var u=new URL(location.href);var t=Date.now();u.searchParams.set('cb',t);u.searchParams.set('v',t);location.href=u.toString();})();";
+        console.log('🧪 Quick console one-liner (copy/paste into browser devtools):');
+        console.log(oneLiner);
     }
 
     /**

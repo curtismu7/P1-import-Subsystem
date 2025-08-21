@@ -40,9 +40,6 @@ export class HomePage {
                             <div class="status-label">Token Status</div>
                             <div class="status-value" id="token-status">Checking...</div>
                         </div>
-                        <button id="token-refresh-btn" class="status-action-btn" title="Refresh token" aria-label="Refresh token">
-                            <i class="icon-sync" id="token-refresh-icon"></i>
-                        </button>
                         <div class="status-indicator" id="token-indicator"></div>
                     </div>
                     

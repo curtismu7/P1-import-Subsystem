@@ -981,6 +981,23 @@ export function createComponentLogger(component, options = {}) {
                 apiFormatter
             )
         }));
+
+        // Mirror component logs into server.log as well (JSON), so all transactions are centralized
+        logger.add(new winston.transports.File({
+            filename: path.join(__dirname, '../logs/server.log'),
+            level: 'info',
+            maxsize: 10 * 1024 * 1024,
+            maxFiles: 5,
+            tailable: true,
+            zippedArchive: true,
+            format: winston.format.combine(
+                winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss.SSS'
+                }),
+                winston.format.errors({ stack: true }),
+                winston.format.json()
+            )
+        }));
     }
     
     return logger;

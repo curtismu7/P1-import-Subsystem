@@ -92,11 +92,16 @@ export class RealtimeClient {
 
       // Create socket connection
       this.socket = io({
-        transports: ['websocket', 'polling'],
-        upgrade: true,
-        rememberUpgrade: true,
+        // Force long-polling to avoid websocket errors in constrained environments
+        transports: ['polling'],
+        upgrade: false,
+        rememberUpgrade: false,
         timeout: 20000,
         forceNew: options.forceNew || false,
+        // Ensure same-origin cookies (CSRF/session) are sent with polling requests
+        withCredentials: true,
+        // Explicit path to match server Socket.IO mount
+        path: '/socket.io',
         ...options
       });
 

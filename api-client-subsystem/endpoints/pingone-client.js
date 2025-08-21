@@ -6,6 +6,7 @@
  */
 
 import BaseApiClient from '../base-client.js';
+import { importLogger } from '../../server/winston-config.js';
 
 /**
  * PingOne API Client
@@ -213,11 +214,30 @@ class PingOneClient extends BaseApiClient {
         if (!this.currentEnvironmentId) {
             this.currentEnvironmentId = await this.tokenManager.getEnvironmentId();
         }
-        
-        const url = `/environments/${this.currentEnvironmentId}/populations/${populationId}/users`;
-        const response = await this.post(url, userData, options);
+        // Use environment-level endpoint and force population in payload per PingOne spec
+        const url = `/environments/${this.currentEnvironmentId}/users`;
+        const payload = { ...userData, population: { id: populationId } };
+        const response = await this.post(url, payload, options);
         
         if (!response.ok) {
+            // Optional one-shot verbose diagnostics (headers + body)
+            const verbose = options.debug === true || process.env.DEBUG_PINGONE_VERBOSE === '1';
+            if (verbose) {
+                try {
+                    const respHeaders = {};
+                    response.headers.forEach((value, key) => { respHeaders[key] = value; });
+                    // Log URL and headers (request was logged by BaseApiClient)
+                    this.logger.warn('[PingOne] Verbose error diagnostics for createUser', {
+                        url,
+                        populationId,
+                        status: response.status,
+                        statusText: response.statusText,
+                        responseHeaders: respHeaders
+                    });
+                    // Ensure it lands in import.log regardless of DEBUG flag
+                    try { importLogger.warn('[PingOne] Verbose error diagnostics for createUser', { url, populationId, status: response.status, statusText: response.statusText, responseHeaders: respHeaders }); } catch (_) {}
+                } catch (_) { /* ignore verbose logging errors */ }
+            }
             // Enrich error with status details and body to allow caller logic (e.g., skip duplicates)
             let bodyText = '';
             try {
@@ -231,6 +251,19 @@ class PingOneClient extends BaseApiClient {
                 }
             } catch (_) {
                 // ignore body parsing errors
+            }
+            if (verbose) {
+                try {
+                    // Log a capped body preview separately to avoid oversized logs
+                    const preview = bodyText && bodyText.length > 1000 ? bodyText.slice(0, 1000) + '…(truncated)' : bodyText;
+                    this.logger.warn('[PingOne] Verbose error body for createUser', {
+                        url,
+                        populationId,
+                        status: response.status,
+                        bodyPreview: preview
+                    });
+                    try { importLogger.warn('[PingOne] Verbose error body for createUser', { url, populationId, status: response.status, bodyPreview: preview }); } catch (_) {}
+                } catch (_) { /* ignore verbose logging errors */ }
             }
             const err = new Error(`Failed to create user: ${response.status} ${response.statusText}`);
             err.status = response.status;

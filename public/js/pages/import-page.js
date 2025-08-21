@@ -381,6 +381,8 @@ export class ImportPage {
         if (tokenRefreshBtn) {
             tokenRefreshBtn.addEventListener('click', async () => {
                 try {
+                    tokenRefreshBtn.disabled = true;
+                    tokenRefreshBtn.classList.remove('success');
                     this.app.showLoading('Refreshing token…');
                     await csrfManager.fetchWithCSRF('/api/token/refresh', { method: 'POST', credentials: 'include' }).then(r => r.json());
                 } catch (e) {
@@ -389,6 +391,13 @@ export class ImportPage {
                     this.app.hideLoading();
                 }
                 await this.refreshTokenStatus();
+                // Visual state: green if valid
+                if (this.tokenStatus?.isValid) {
+                    tokenRefreshBtn.classList.add('success');
+                } else {
+                    tokenRefreshBtn.classList.remove('success');
+                }
+                setTimeout(() => { tokenRefreshBtn.disabled = false; }, 600);
             });
         }
         
@@ -717,10 +726,15 @@ export class ImportPage {
             });
             
             const result = await response.json();
-            
+            // Support standardized { success, message, data } or direct shape
+            const payload = (result && typeof result === 'object' && 'data' in result)
+                ? (result.data || {})
+                : result;
+            const total = Number(payload?.total ?? 0);
+
             if (response.ok) {
-                this.app.showSuccess(`File validation successful! Found ${result.total} users.`);
-                this.displayValidationResults(result);
+                this.app.showSuccess(`File validation successful! Found ${total} records.`);
+                this.displayValidationResults(payload);
                 // Turn Validate File button green to indicate success
                 const validateBtn = document.getElementById('validate-file');
                 if (validateBtn) {
@@ -728,7 +742,7 @@ export class ImportPage {
                     validateBtn.classList.add('btn-success');
                 }
             } else {
-                throw new Error(result.error || 'Validation failed');
+                throw new Error(payload?.error || 'Validation failed');
             }
             
         } catch (error) {
@@ -837,6 +851,9 @@ export class ImportPage {
                 this.sessionId = respSessionId || this.sessionId;
                 // IMPORTANT: Register handlers BEFORE associating session to avoid missing
                 // immediate delivery of queued messages on association.
+                // Decide polling vs realtime by threshold from server config exposed via settings
+                const pollingThreshold = Number(this.app?.settings?.import_polling_threshold) || Number(this.app?.settings?.importPollingThreshold) || 400;
+                const usePollingOnly = respTotal <= pollingThreshold;
                 this.startProgressMonitoring(this.sessionId, respTotal);
                 if (this.sessionId) {
                     try {
@@ -1033,11 +1050,43 @@ export class ImportPage {
             }, tickMs);
         }
 
-        // Start a watchdog to detect stalls or missing completion events; also poll REST if realtime is down
+        // Start a watchdog to detect stalls or missing completion events; also poll REST continuously as a fallback
         if (this._watchdogInterval) clearInterval(this._watchdogInterval);
         this._watchdogInterval = setInterval(async () => {
             const now = Date.now();
             const sinceLast = now - (this._lastMessageAt || now);
+
+            // Always poll lightweight status to keep UI moving even if realtime is flaky
+            if (!this._completed) {
+                try {
+                    const resp = await fetch('/api/import/status', { credentials: 'include' });
+                    const payload = await resp.json().catch(() => ({}));
+                    const d = payload && (payload.data || payload);
+                    if (d) {
+                        const prog = d.progress || {};
+                        const total = Number(prog.total ?? this._lastProgress?.total ?? 0);
+                        const processed = Number(prog.current ?? this._lastProgress?.processed ?? 0);
+                        const statsSrc = d.statistics || {};
+                        const failed = Number(statsSrc.failed ?? statsSrc.errors ?? 0);
+                        const skipped = Number(statsSrc.skipped ?? 0);
+                        const created = Math.max(0, processed - failed - skipped);
+                        applyProgress({ processed, total, stats: { created, failed, skipped } });
+
+                        if (d.status === 'completed' || d.status === 'failed' || d.status === 'cancelled') {
+                            this._completed = true;
+                            this.completeImport({
+                                processed,
+                                total,
+                                stats: { created, failed, skipped },
+                                durationMs: (d.timing && d.timing.duration) || undefined,
+                                fileName: (d.currentFile || undefined)
+                            });
+                            if (this._watchdogInterval) { clearInterval(this._watchdogInterval); this._watchdogInterval = null; }
+                            return;
+                        }
+                    }
+                } catch (_) { /* ignore poll errors */ }
+            }
 
             // If we've processed all records but didn't get completion in time, finalize
             if (!this._completed && this._lastProgress && this._lastProgress.total > 0) {
@@ -1046,42 +1095,13 @@ export class ImportPage {
                     console.warn('[ImportPage] Progress indicates completion but no completion event received. Finalizing import (fallback).', { processed, total, sinceLast });
                     this._completed = true;
                     try {
-                        // Construct a completion-like payload from last progress
-                        const fallback = {
-                            processed,
-                            total,
-                            stats: this._lastProgress.stats || {},
-                            durationMs: undefined,
-                            fileName: undefined
-                        };
-                        this.completeImport(fallback);
+                        this.completeImport({ processed, total, stats: this._lastProgress.stats || {} });
                     } finally {
-                        // Cleanup watchdog after fallback completes
-                        if (this._watchdogInterval) {
-                            clearInterval(this._watchdogInterval);
-                            this._watchdogInterval = null;
-                        }
+                        if (this._watchdogInterval) { clearInterval(this._watchdogInterval); this._watchdogInterval = null; }
                     }
                 }
             }
-
-            // If no messages for 5s, poll REST status once to keep UI moving
-            if (!this._completed && sinceLast > 5000) {
-                try {
-                    const resp = await fetch('/api/import/status');
-                    const payload = await resp.json();
-                    const d = payload && (payload.data || payload);
-                    const prog = d && d.progress;
-                    if (prog && Number.isFinite(prog.current) && Number.isFinite(prog.total)) {
-                        applyProgress({ processed: prog.current, total: prog.total, stats: d.statistics || {} });
-                    }
-                    if (d && (d.status === 'completed' || d.status === 'failed' || d.status === 'cancelled')) {
-                        this._completed = true;
-                        this.showResultsSection();
-                    }
-                } catch (_) {}
-            }
-        }, 3000);
+        }, 2000);
     }
     
     updateProgress(percentage) {

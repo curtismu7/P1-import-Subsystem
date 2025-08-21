@@ -1,4 +1,6 @@
 {
   "pingone_region": "NA",
-  "rateLimit": 77
+  "rateLimit": 77,
+  "import_concurrency_threshold": 500,
+  "import_polling_threshold": 300
 }

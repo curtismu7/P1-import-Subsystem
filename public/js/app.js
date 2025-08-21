@@ -384,11 +384,19 @@ class PingOneApp {
                 if (this.tokenStatus.isRefreshing) return;
                 try {
                     headerRefreshBtn.disabled = true;
+                    headerRefreshBtn.classList.remove('success');
                     if (headerRefreshIcon) headerRefreshIcon.classList.add('spinning');
                     await this.attemptAutoRefresh('manual-header');
                 } finally {
                     if (headerRefreshIcon) headerRefreshIcon.classList.remove('spinning');
                     headerRefreshBtn.disabled = false;
+                }
+                // Recompute header token status and set button color
+                await this.updateHeaderTokenStatus();
+                if (this.headerToken?.isValid || this.tokenStatus?.isValid) {
+                    headerRefreshBtn.classList.add('success');
+                } else {
+                    headerRefreshBtn.classList.remove('success');
                 }
             });
         }
