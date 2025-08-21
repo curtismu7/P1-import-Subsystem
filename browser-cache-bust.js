@@ -1,4 +1,4 @@
-// Browser Cache Bust Script - Generated: 2025-08-20T14:22:58.497Z
+// Browser Cache Bust Script - Generated: 2025-08-21T00:04:27.237Z
 // Run this in your browser console to clear all client-side caches
 
 console.log('🧹 Starting browser cache bust...');

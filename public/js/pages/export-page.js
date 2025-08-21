@@ -666,7 +666,7 @@ export class ExportPage {
                             <div class="preview-sample">
                                 <h4>Sample Data (First 5 rows)</h4>
                                 <div class="sample-container">
-                                    <pre class="sample-data">${this.generateSampleData()}</pre>
+                                    <pre class="sample-data" style="color:#000;">${this.generateSampleData()}</pre>
                                 </div>
                             </div>
                         </div>
@@ -1130,14 +1130,14 @@ export class ExportPage {
                             </div>
                         </div>
                         <div style="display:flex; gap:8px;">
-                            <button type="button" id="remove-file" class="btn btn-danger btn-sm" style="border-radius: 4px; padding: 4px 8px; display:inline-flex; align-items:center; gap:4px;">
-                                <i class="mdi mdi-delete"></i> <span>Remove</span>
+                            <button type="button" id="remove-file" class="btn btn-danger" style="border-radius:4px; padding:8px 14px !important; display:inline-flex; align-items:center; gap:6px; line-height:1.2; font-size:13px;">
+                                <i class="mdi mdi-delete" style="font-size:14px; line-height:1;"></i> <span>Remove</span>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div class="result-details">
+                <div class="result-details" style="color:#b91c1c; font-weight:700;">
                     <h4>Export Details</h4>
                     <ul>
                         <li><strong>Target Population:</strong> ${this.selectedPopulation.name}</li>

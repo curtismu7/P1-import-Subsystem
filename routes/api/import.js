@@ -37,6 +37,49 @@ let importStatus = {
     status: 'idle' // idle, running, completed, failed, cancelled
 };
 
+// Read app-config.json helper (memoized with simple timeout)
+let _appConfigCache = { data: null, loadedAt: 0 };
+function readAppConfigSafe() {
+    try {
+        const now = Date.now();
+        if (_appConfigCache.data && (now - _appConfigCache.loadedAt) < 30_000) {
+            return _appConfigCache.data;
+        }
+        const configPath = path.join(process.cwd(), 'data', 'app-config.json');
+        if (fs.existsSync(configPath)) {
+            const raw = fs.readFileSync(configPath, 'utf8');
+            const json = JSON.parse(raw || '{}');
+            _appConfigCache = { data: json, loadedAt: now };
+            return json;
+        }
+    } catch (_) { /* ignore */ }
+    return {};
+}
+
+function getImportConcurrencyThreshold() {
+    const cfg = readAppConfigSafe();
+    const val = cfg?.import_concurrency_threshold ?? cfg?.importThreshold;
+    const n = Number(val);
+    return Number.isFinite(n) && n > 0 ? n : 400; // default
+}
+
+function getImportPollingThreshold() {
+    const cfg = readAppConfigSafe();
+    const val = cfg?.import_polling_threshold ?? cfg?.importPollingThreshold;
+    const n = Number(val);
+    return Number.isFinite(n) && n > 0 ? n : 400; // default aligns with concurrency unless overridden
+}
+
+function getImportRateLimitPerSecond() {
+    const cfg = readAppConfigSafe();
+    // Support multiple keys; prefer explicit rateLimit
+    const raw = cfg?.rateLimit ?? cfg?.import_rate_limit ?? cfg?.importRateLimit;
+    const n = Number(raw);
+    // Clamp to [1, 50] as per provider guidance
+    if (!Number.isFinite(n) || n <= 0) return 50;
+    return Math.min(50, Math.max(1, Math.floor(n)));
+}
+
 // Import logging routed through Winston importLogger
 const IMPORT_LOG_FILE = path.join(process.cwd(), 'logs', 'import.log');
 function ensureLogsDir() {
@@ -252,24 +295,29 @@ router.post('/', upload.single('file'), async (req, res) => {
             return res.error('No file uploaded', { code: 'NO_FILE_UPLOADED' }, 400);
         }
 
-        // Check if population ID was provided
-        if (!req.body.populationId) {
+        // Determine if this is a validation-only request
+        const isValidateOnly = String(req.body.validateOnly).toLowerCase() === 'true';
+
+        // Only require populationId if we're actually starting an import
+        if (!isValidateOnly && !req.body.populationId) {
             return res.error('Population ID is required', { code: 'POPULATION_ID_REQUIRED' }, 400);
         }
 
-        // Pre-flight: validate credentials/token before starting import
-        try {
-            const tm = new TokenManager(importLogger);
-            await tm.getAccessToken();
-        } catch (authErr) {
-            importLogger.error('❌ Import aborted: invalid credentials or token', {
-                error: authErr?.message,
-                separator: logSeparator('═', 80)
-            });
-            return res.error('Authentication failed: Please verify PingOne Client ID/Secret, Environment ID, and Region in Settings, then try again.', {
-                code: 'INVALID_CREDENTIALS',
-                details: authErr?.message
-            }, 401);
+        // Pre-flight: validate credentials/token only if we're starting an import (skip for validateOnly)
+        if (!isValidateOnly) {
+            try {
+                const tm = new TokenManager(importLogger);
+                await tm.getAccessToken();
+            } catch (authErr) {
+                importLogger.error('❌ Import aborted: invalid credentials or token', {
+                    error: authErr?.message,
+                    separator: logSeparator('═', 80)
+                });
+                return res.error('Authentication failed: Please verify PingOne Client ID/Secret, Environment ID, and Region in Settings, then try again.', {
+                    code: 'INVALID_CREDENTIALS',
+                    details: authErr?.message
+                }, 401);
+            }
         }
 
         // Get file details
@@ -281,6 +329,20 @@ router.post('/', upload.single('file'), async (req, res) => {
         const csvContent = fileBuffer.toString('utf8');
         const lines = csvContent.split('\n').filter(line => line.trim());
         const totalRecords = lines.length > 1 ? lines.length - 1 : 0; // Subtract header row
+
+        // Validation-only short-circuit: do not start import, just report findings
+        if (isValidateOnly) {
+            try {
+                const parser = new CSVParser({ logger: importLogger });
+                const { headers } = parser.parse(csvContent || '');
+                return res.success('File validation successful', {
+                    total: totalRecords,
+                    headers: headers || []
+                });
+            } catch (_) {
+                return res.success('File validation successful', { total: totalRecords });
+            }
+        }
         
         // Generate session ID
         const sessionId = `import_${Date.now()}`;
@@ -473,70 +535,99 @@ async function runRealImportWorker({ sessionId, populationId, csvContent, sendWe
     importLogger.info('[ImportWorker] Processing users', { sessionId, environmentId, populationId, totalRecords, separator: logSeparator('─', 60) });
     importLog('Processing users', { sessionId, environmentId, populationId, totalRecords });
 
-    for (const row of data) {
-        // Map CSV fields
+    // Concurrency and rate limiting
+    const MAX_REQUESTS_PER_SECOND = getImportRateLimitPerSecond(); // respect provider limit (clamped to 50)
+    const RATE_WINDOW_MS = 1000;
+    const threshold = getImportConcurrencyThreshold();
+    const CONCURRENCY = totalRecords > threshold ? 12 : 1;
+
+    const startTimes = [];
+    const nowMs = () => Date.now();
+    const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+    const awaitRateSlot = async () => {
+        while (true) {
+            const cutoff = nowMs() - RATE_WINDOW_MS;
+            while (startTimes.length && startTimes[0] < cutoff) startTimes.shift();
+            if (startTimes.length < MAX_REQUESTS_PER_SECOND) {
+                startTimes.push(nowMs());
+                return;
+            }
+            await sleep(10);
+        }
+    };
+
+    let nextIndex = 0;
+
+    const buildPayload = (row) => {
         const username = row.username || row.userName || row.userid || row.userId || '';
         const email = row.email || row.mail || '';
         const given = row.firstName || row.givenName || row.given || '';
         const family = row.lastName || row.familyName || row.family || '';
+        if (!email && !username) return null;
+        const payload = { username: username || email, email, name: { given, family } };
+        if (typeof row.enabled !== 'undefined') {
+            const enabledStr = String(row.enabled).trim().toLowerCase();
+            payload.enabled = !(enabledStr === 'false' || enabledStr === '0' || enabledStr === 'no');
+        }
+        return payload;
+    };
 
-        if (!email && !username) {
+    const processOne = async (row) => {
+        const userPayload = buildPayload(row);
+        if (!userPayload) {
             skipped++;
             importStatus.processed++;
             await emitProgress();
-            continue;
+            return;
         }
-
-        const userPayload = {
-            username: username || email,
-            email,
-            name: { given, family }
-        };
-        // Map optional 'enabled' column if provided in CSV
-        if (typeof row.enabled !== 'undefined') {
-            const enabledStr = String(row.enabled).trim().toLowerCase();
-            userPayload.enabled = !(enabledStr === 'false' || enabledStr === '0' || enabledStr === 'no');
-        }
-
+        await awaitRateSlot();
         try {
             console.debug('[ImportWorker] Creating user', { username: userPayload.username, email: userPayload.email });
             importLog('Creating user', { username: userPayload.username, email: userPayload.email });
-            // Log the API request that will be made (sanitized)
             try {
                 const baseUrl = client?.config?.baseUrl || 'https://api.pingone.com/v1';
                 const apiUrl = `${baseUrl}/environments/${environmentId}/populations/${populationId}/users`;
-                const payloadPreview = {
-                    username: userPayload.username,
-                    email: userPayload.email,
-                    name: userPayload.name,
-                    ...(typeof userPayload.enabled !== 'undefined' ? { enabled: userPayload.enabled } : {})
-                };
-                importLog('API request', { method: 'POST', url: apiUrl, environmentId, populationId, payload: payloadPreview });
-            } catch (_) { /* no-op */ }
-            const createdUser = await client.createUser(populationId, userPayload);
-            created++;
-            if (email) createdEmails.push(email);
-            // Minimal success log (avoid sensitive data)
+                const preview = { username: userPayload.username, email: userPayload.email, name: userPayload.name, ...(typeof userPayload.enabled !== 'undefined' ? { enabled: userPayload.enabled } : {}) };
+                importLog('API request', { method: 'POST', url: apiUrl, environmentId, populationId, payload: preview });
+            } catch (_) {}
+            // Enable verbose diagnostics for the first failing creation only
+            const debugOnce = (global.__importDebugOnce__ !== true);
+            let createdUser;
             try {
-                importLogger.info('[ImportWorker] User created', { id: createdUser?.id, username: createdUser?.username || userPayload.username, email: userPayload.email, separator: logSeparator('─', 60) });
+                createdUser = await client.createUser(populationId, userPayload, { debug: debugOnce });
+                if (debugOnce) global.__importDebugOnce__ = true;
+            } catch (err) {
+                // Re-throw so normal error handling path logs and counts it
+                if (debugOnce) global.__importDebugOnce__ = true;
+                throw err;
+            }
+            created++;
+            if (userPayload.email) createdEmails.push(userPayload.email);
+            try {
+                importLogger.info('[ImportWorker] User created', { id: createdUser?.id, username: createdUser?.username || userPayload.username, email: userPayload.email, populationId, separator: logSeparator('─', 60) });
                 importLog('User created', { id: createdUser?.id, username: createdUser?.username || userPayload.username, email: userPayload.email });
-            } catch (_) { /* no-op */ }
+            } catch (_) {}
         } catch (err) {
-            // Treat duplicates as skips, not errors
             const status = err?.status;
             const body = err?.body || '';
-            const isDuplicate = status === 409 || /duplicate|already exists/i.test(String(body));
+            const bodyStr = String(body);
+            const isUniquenessViolation = /UNIQUENESS_VIOLATION/i.test(bodyStr);
+            const isAlreadyExists = /duplicate|already exists/i.test(bodyStr);
+            const isDuplicate = status === 409 || isUniquenessViolation || isAlreadyExists;
             if (isDuplicate) {
                 skipped++;
-                // Optional: minimal log for visibility
-                const snippet = (String(body).slice(0, 180) || '').replace(/\s+/g, ' ');
-                console.info('Duplicate detected, skipping user', { status, snippet });
-                importLog('Duplicate detected, skipping user', { status, snippet, username: userPayload.username, email: userPayload.email });
+                const snippet = (bodyStr.slice(0, 180) || '').replace(/\s+/g, ' ');
+                const reason = isUniquenessViolation ? 'UNIQUENESS_VIOLATION' : (isAlreadyExists ? 'already_exists' : 'conflict');
+                console.info('Duplicate detected, skipping user', { status, reason, snippet });
+                importLog('Duplicate detected, skipping user', { status, reason, snippet, username: userPayload.username, email: userPayload.email });
             } else {
                 failed++;
                 importStatus.errors++;
-                const snippet = (String(body).slice(0, 180) || '').replace(/\s+/g, ' ');
+                const snippet = (bodyStr.slice(0, 500) || '').replace(/\s+/g, ' ');
                 console.warn('Create user failed', { status, message: err?.message, snippet });
+                try {
+                    importLogger.warn('Create user failed', { status, message: err?.message, snippet, username: userPayload.username, email: userPayload.email, populationId, sessionId });
+                } catch (_) {}
                 importLog('Create user failed', { status, message: err?.message, snippet, username: userPayload.username, email: userPayload.email });
                 if (status === 429) {
                     console.warn('[ImportWorker] Rate limited when creating user. Consider adjusting throughput or enabling backoff.');
@@ -547,6 +638,21 @@ async function runRealImportWorker({ sessionId, populationId, csvContent, sendWe
             importStatus.processed++;
             await emitProgress();
         }
+    };
+
+    if (CONCURRENCY === 1) {
+        for (const row of data) {
+            await processOne(row);
+        }
+    } else {
+        const workers = new Array(CONCURRENCY).fill(0).map(async () => {
+            while (true) {
+                const i = nextIndex++;
+                if (i >= data.length) break;
+                await processOne(data[i]);
+            }
+        });
+        await Promise.all(workers);
     }
 
     // Complete
