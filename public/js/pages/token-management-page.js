@@ -37,9 +37,6 @@ export class TokenManagementPage {
         });
 
         tokenPage.innerHTML = `
-            <!-- Monaco Editor for JSON editing -->
-            <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.min.js"></script>
-            
             <div class="page-header">
                 <h1>Token Management</h1>
                 <p>Monitor and manage PingOne authentication tokens</p>
@@ -233,8 +230,8 @@ export class TokenManagementPage {
         this.startTokenMonitoring();
         this.initializeTokenAnalytics();
         
-        // Initialize Monaco Editor for JSON editing
-        this.initializeMonacoEditor();
+        // Initialize enhanced text editing
+        this.initializeEnhancedEditing();
 
         // Safety: ensure no lingering interaction blockers after render
         setTimeout(() => {
@@ -737,86 +734,47 @@ export class TokenManagementPage {
     }
     
     /**
-     * Initialize Monaco Editor for JSON editing
+     * Initialize enhanced text editing (replaces Monaco Editor)
      */
-    async initializeMonacoEditor() {
+    initializeEnhancedEditing() {
         try {
-            // Check if Monaco Editor is already loaded
-            if (typeof monaco !== 'undefined') {
-                this.createMonacoEditor();
-                return;
+            console.log('🔄 Setting up enhanced text editing');
+            
+            // Make the pre elements more editable and styled
+            const headerPre = document.getElementById('jwt-header');
+            const payloadPre = document.getElementById('jwt-payload');
+            
+            if (headerPre) {
+                headerPre.style.border = '2px solid #3b82f6';
+                headerPre.style.backgroundColor = '#f8fafc';
+                headerPre.style.padding = '1rem';
+                headerPre.style.borderRadius = '6px';
+                headerPre.style.fontFamily = 'Monaco, Menlo, "Ubuntu Mono", monospace';
+                headerPre.style.fontSize = '0.875rem';
+                headerPre.style.lineHeight = '1.6';
+                headerPre.style.minHeight = '200px';
+                headerPre.style.overflow = 'auto';
             }
-
-            // Wait for Monaco Editor to be available
-            let attempts = 0;
-            const maxAttempts = 20; // Increased attempts
             
-            const checkMonaco = () => {
-                if (typeof monaco !== 'undefined') {
-                    console.log('✅ Monaco Editor detected, creating editor...');
-                    this.createMonacoEditor();
-                } else if (attempts < maxAttempts) {
-                    attempts++;
-                    console.log(`⏳ Waiting for Monaco Editor... (attempt ${attempts}/${maxAttempts})`);
-                    setTimeout(checkMonaco, 1000); // Increased delay to 1 second
-                } else {
-                    console.error('❌ Monaco Editor failed to load after multiple attempts');
-                    console.log('⚠️ Falling back to basic text editing');
-                    this.fallbackToBasicEditing();
-                }
-            };
+            if (payloadPre) {
+                payloadPre.style.border = '2px solid #3b82f6';
+                payloadPre.style.backgroundColor = '#f8fafc';
+                payloadPre.style.padding = '1rem';
+                payloadPre.style.borderRadius = '6px';
+                payloadPre.style.fontFamily = 'Monaco, Menlo, "Ubuntu Mono", monospace';
+                headerPre.style.fontSize = '0.875rem';
+                payloadPre.style.lineHeight = '1.6';
+                payloadPre.style.minHeight = '300px';
+                payloadPre.style.overflow = 'auto';
+            }
             
-            checkMonaco();
+            console.log('✅ Enhanced text editing enabled');
         } catch (error) {
-            console.error('❌ Failed to initialize Monaco Editor:', error);
-            this.fallbackToBasicEditing();
+            console.error('❌ Failed to initialize enhanced editing:', error);
         }
     }
 
-    /**
-     * Fallback to basic text editing if Monaco Editor fails
-     */
-    fallbackToBasicEditing() {
-        console.log('🔄 Setting up fallback text editing');
-        // Make the pre elements more editable
-        const headerPre = document.getElementById('jwt-header');
-        const payloadPre = document.getElementById('jwt-payload');
-        
-        if (headerPre) headerPre.style.border = '2px solid #3b82f6';
-        if (payloadPre) payloadPre.style.border = '2px solid #3b82f6';
-        
-        console.log('✅ Fallback editing enabled');
-    }
-
-    /**
-     * Create Monaco Editor instance
-     */
-    createMonacoEditor() {
-        try {
-            const container = document.getElementById('monaco-editor');
-            if (!container) {
-                console.error('❌ Monaco Editor container not found');
-                return;
-            }
-
-            this.monacoEditor = monaco.editor.create(container, {
-                value: '{}',
-                language: 'json',
-                theme: 'vs',
-                automaticLayout: true,
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                fontSize: 14,
-                lineNumbers: 'on',
-                roundedSelection: false,
-                wordWrap: 'on'
-            });
-            
-            console.log('✅ Monaco Editor created successfully');
-        } catch (error) {
-            console.error('❌ Failed to create Monaco Editor:', error);
-        }
-    }
+    /* Monaco Editor replaced with enhanced text editing */
     
     /* Editor event handlers now set up in setupEventListeners() */
     
@@ -824,34 +782,24 @@ export class TokenManagementPage {
      * Show the payload editor
      */
     showPayloadEditor() {
-        const editorContainer = document.getElementById('payload-editor-container');
         const payloadDisplay = document.getElementById('jwt-payload');
         const editButton = document.getElementById('edit-payload-btn');
         
-        if (editorContainer && payloadDisplay && editButton) {
+        if (payloadDisplay && editButton) {
             // Get current payload content
             const currentContent = payloadDisplay.textContent;
-            console.log('🔍 Payload content to load:', currentContent);
+            console.log('🔍 Payload content to edit:', currentContent);
             
-            // Show editor, hide display
-            editorContainer.style.display = 'block';
-            payloadDisplay.style.display = 'none';
+            // Make the payload editable
+            payloadDisplay.contentEditable = true;
+            payloadDisplay.focus();
+            
+            // Update button
             editButton.textContent = 'View JSON';
             editButton.className = 'edit-json-btn';
             editButton.style.background = '#6b7280';
             
-            // Set editor content - ensure Monaco Editor is ready
-            if (this.monacoEditor) {
-                console.log('✅ Monaco Editor ready, updating content');
-                this.updatePayloadEditorContent(currentContent);
-            } else {
-                console.log('⚠️ Monaco Editor not ready, initializing...');
-                this.initializeMonacoEditor().then(() => {
-                    if (this.monacoEditor) {
-                        this.updatePayloadEditorContent(currentContent);
-                    }
-                });
-            }
+            console.log('✅ Payload editor enabled');
         }
     }
     
@@ -859,16 +807,19 @@ export class TokenManagementPage {
      * Hide the payload editor
      */
     hidePayloadEditor() {
-        const editorContainer = document.getElementById('payload-editor-container');
         const payloadDisplay = document.getElementById('jwt-payload');
         const editButton = document.getElementById('edit-payload-btn');
         
-        if (editorContainer && payloadDisplay && editButton) {
-            // Hide editor, show display
-            editorContainer.style.display = 'none';
-            payloadDisplay.style.display = 'block';
+        if (payloadDisplay && editButton) {
+            // Make the payload non-editable
+            payloadDisplay.contentEditable = false;
+            
+            // Update button
             editButton.textContent = 'Edit JSON';
-            editButton.className = 'btn btn-sm btn-outline-primary';
+            editButton.className = 'edit-json-btn';
+            editButton.style.background = '#3b82f6';
+            
+            console.log('✅ Payload editor disabled');
         }
     }
     
@@ -876,19 +827,17 @@ export class TokenManagementPage {
      * Save payload changes
      */
     savePayloadChanges() {
-        if (!this.monacoEditor) return;
-        
         try {
-            const newContent = this.monacoEditor.getValue();
+            const payloadDisplay = document.getElementById('jwt-payload');
+            if (!payloadDisplay) return;
+            
+            const newContent = payloadDisplay.textContent;
             
             // Validate JSON
             const parsed = JSON.parse(newContent);
             
-            // Update the display
-            const payloadDisplay = document.getElementById('jwt-payload');
-            if (payloadDisplay) {
-                payloadDisplay.textContent = JSON.stringify(parsed, null, 2);
-            }
+            // Update the display with formatted JSON
+            payloadDisplay.textContent = JSON.stringify(parsed, null, 2);
             
             // Hide editor
             this.hidePayloadEditor();
@@ -913,27 +862,24 @@ export class TokenManagementPage {
      * Show header editor
      */
     showHeaderEditor() {
-        const headerContainer = document.getElementById('header-editor-container');
         const headerContent = document.getElementById('jwt-header');
+        const editButton = document.getElementById('edit-header-btn');
         
-        if (headerContainer && headerContent) {
-            // Get current header content before hiding it
+        if (headerContent && editButton) {
+            // Get current header content
             const currentContent = headerContent.textContent;
-            console.log('🔍 Header content to load:', currentContent);
+            console.log('🔍 Header content to edit:', currentContent);
             
-            // Show editor, hide display
-            headerContainer.style.display = 'block';
-            headerContent.style.display = 'none';
+            // Make the header editable
+            headerContent.contentEditable = true;
+            headerContent.focus();
             
-            // Initialize Monaco Editor for header if not already done
-            if (!this.headerMonacoEditor) {
-                console.log('⚠️ Header Monaco Editor not ready, initializing...');
-                this.initializeHeaderMonacoEditor();
-            } else {
-                // Update existing editor with current content
-                console.log('✅ Header Monaco Editor ready, updating content');
-                this.updateHeaderEditorContent(currentContent);
-            }
+            // Update button
+            editButton.textContent = 'View JSON';
+            editButton.className = 'edit-json-btn';
+            editButton.style.background = '#6b7280';
+            
+            console.log('✅ Header editor enabled');
         }
     }
 
@@ -941,110 +887,57 @@ export class TokenManagementPage {
      * Hide header editor
      */
     hideHeaderEditor() {
-        const headerContainer = document.getElementById('header-editor-container');
         const headerContent = document.getElementById('jwt-header');
+        const editButton = document.getElementById('edit-header-btn');
         
-        if (headerContainer && headerContent) {
-            headerContainer.style.display = 'none';
-            headerContent.style.display = 'block';
+        if (headerContent && editButton) {
+            // Make the header non-editable
+            headerContent.contentEditable = false;
+            
+            // Update button
+            editButton.textContent = 'Edit JSON';
+            editButton.className = 'edit-json-btn';
+            editButton.style.background = '#3b82f6';
+            
+            console.log('✅ Header editor disabled');
         }
     }
 
-    /**
-     * Initialize Monaco Editor for header
-     */
-    initializeHeaderMonacoEditor() {
-        try {
-            const container = document.getElementById('header-monaco-editor');
-            if (!container) {
-                console.error('❌ Header Monaco Editor container not found');
-                return;
-            }
+    /* Header Monaco Editor replaced with enhanced text editing */
 
-            // Check if Monaco Editor is available
-            if (typeof monaco === 'undefined') {
-                console.error('❌ Monaco Editor not available for header');
-                return;
-            }
-
-            // Get current header content
-            const headerContent = document.getElementById('jwt-header');
-            const currentValue = headerContent.textContent || '{}';
-
-            this.headerMonacoEditor = monaco.editor.create(container, {
-                value: currentValue,
-                language: 'json',
-                theme: 'vs',
-                automaticLayout: true,
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                fontSize: 14,
-                lineNumbers: 'on',
-                roundedSelection: false,
-                wordWrap: 'on'
-            });
-
-            console.log('✅ Header Monaco Editor created successfully');
-        } catch (error) {
-            console.error('❌ Failed to create Header Monaco Editor:', error);
-        }
-    }
-
-    /**
-     * Update header editor content
-     */
-    updateHeaderEditorContent(content) {
-        if (this.headerMonacoEditor) {
-            try {
-                // Try to format the JSON if it's valid
-                const parsed = JSON.parse(content);
-                this.headerMonacoEditor.setValue(JSON.stringify(parsed, null, 2));
-            } catch (e) {
-                // If not valid JSON, just set the raw content
-                this.headerMonacoEditor.setValue(content || '{}');
-            }
-        }
-    }
-
-    /**
-     * Update payload editor content
-     */
-    updatePayloadEditorContent(content) {
-        if (this.monacoEditor) {
-            try {
-                // Try to format the JSON if it's valid
-                const parsed = JSON.parse(content);
-                this.monacoEditor.setValue(JSON.stringify(parsed, null, 2));
-            } catch (e) {
-                // If not valid JSON, just set the raw content
-                this.monacoEditor.setValue(content || '{}');
-            }
-        }
-    }
+    /* updatePayloadEditorContent no longer needed with enhanced text editing */
 
     /**
      * Save header changes
      */
     saveHeaderChanges() {
-        if (!this.headerMonacoEditor) {
-            console.error('❌ Header Monaco Editor not initialized');
-            return;
-        }
-
         try {
-            const newValue = this.headerMonacoEditor.getValue();
-            const parsed = JSON.parse(newValue);
+            const headerDisplay = document.getElementById('jwt-header');
+            if (!headerDisplay) return;
             
-            // Update the display
-            document.getElementById('jwt-header').textContent = JSON.stringify(parsed, null, 2);
+            const newContent = headerDisplay.textContent;
+            
+            // Validate JSON
+            const parsed = JSON.parse(newContent);
+            
+            // Update the display with formatted JSON
+            headerDisplay.textContent = JSON.stringify(parsed, null, 2);
             
             // Hide the editor
             this.hideHeaderEditor();
             
+            // Show success message
+            if (this.app && this.app.showSuccess) {
+                this.app.showSuccess('Header updated successfully!');
+            }
+            
             console.log('✅ Header changes saved');
         } catch (error) {
+            // Show error message
+            if (this.app && this.app.showError) {
+                this.app.showError('Invalid JSON format. Please fix the syntax errors.');
+            }
             console.error('❌ Invalid JSON:', error);
-            alert('Invalid JSON format. Please fix the syntax errors.');
         }
     }
     
