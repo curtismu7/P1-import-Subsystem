@@ -843,6 +843,21 @@ export class SettingsPage {
                     this.signageSystem.addMessage(`⏰ Token expires in: ${result.data.expiresIn}s`, 'info');
                 }
                 
+                // Force refresh the main app's token status
+                if (this.app && typeof this.app.loadTokenStatus === 'function') {
+                    console.log('🔄 Forcing main app token status refresh...');
+                    await this.app.loadTokenStatus();
+                }
+                
+                // Force update the main app's token UI
+                if (this.app && typeof this.app.updateTokenUI === 'function') {
+                    console.log('🔄 Forcing main app token UI update...');
+                    this.app.updateTokenUI();
+                }
+                
+                // Small delay to ensure token service is updated
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
                 // Update token info display
                 this.updateTokenInfo();
                 
