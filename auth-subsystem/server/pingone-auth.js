@@ -466,6 +466,20 @@ class PingOneAuth {
             return false;
         }
     }
+
+    /**
+     * Get the region from credentials
+     * @returns {Promise<string|null>} Region or null if not available
+     */
+    async getRegion() {
+        try {
+            const credentials = await this.getCredentials();
+            return credentials ? credentials.region : null;
+        } catch (error) {
+            this.logger.error('Failed to get region:', error.message);
+            return null;
+        }
+    }
 }
 
 export default PingOneAuth;
