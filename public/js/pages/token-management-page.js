@@ -310,7 +310,10 @@ export class TokenManagementPage {
             // Display the token (or placeholder if it's a server-stored token)
             if (storedToken.token === '[Token stored on server]') {
                 tokenString.value = '';
-                tokenString.placeholder = 'Token is stored securely on the server';
+                tokenString.placeholder = 'Token is stored securely on the server - Use "Get Token" to retrieve';
+            } else if (storedToken.token === '[Expired token]') {
+                tokenString.value = '';
+                tokenString.placeholder = 'Token has expired - Use "Get Token" to get a new one';
             } else {
                 tokenString.value = storedToken.token;
             }
@@ -321,8 +324,8 @@ export class TokenManagementPage {
             const decodeTokenBtn = document.getElementById('decode-token-btn');
             
             if (getTokenBtn) getTokenBtn.style.display = 'none';
-            if (copyTokenBtn) copyTokenBtn.style.display = storedToken.token !== '[Token stored on server]' ? 'inline-block' : 'none';
-            if (decodeTokenBtn) decodeTokenBtn.style.display = storedToken.token !== '[Token stored on server]' ? 'inline-block' : 'none';
+            if (copyTokenBtn) copyTokenBtn.style.display = (storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]') ? 'inline-block' : 'none';
+            if (decodeTokenBtn) decodeTokenBtn.style.display = (storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]') ? 'inline-block' : 'none';
             
             // Check if token is valid
             const isTokenValid = this.isTokenValid(storedToken);
@@ -348,7 +351,7 @@ export class TokenManagementPage {
                 tokenScope.textContent = 'Default';
                 
                 // Auto-decode the token if it's not a placeholder
-                if (storedToken.token !== '[Token stored on server]') {
+                if (storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]') {
                     this.decodeJWT(storedToken.token);
                 }
             } else {
@@ -366,7 +369,7 @@ export class TokenManagementPage {
                 tokenScope.textContent = 'Default';
                 
                 // Auto-decode the expired token if it's not a placeholder
-                if (storedToken.token !== '[Token stored on server]') {
+                if (storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]') {
                     this.decodeJWT(storedToken.token);
                 }
             }
@@ -395,10 +398,10 @@ export class TokenManagementPage {
             const payloadElement = document.getElementById('jwt-payload');
             
             if (headerElement) {
-                headerElement.textContent = 'No token available';
+                headerElement.innerHTML = '<span style="color: #6a737d; font-style: italic;">No token available</span>';
             }
             if (payloadElement) {
-                payloadElement.textContent = 'Please get a valid token first using the "Get Token" button';
+                payloadElement.innerHTML = '<span style="color: #6a737d; font-style: italic;">Please get a valid token first using the "Get Token" button</span>';
             }
         }
     }
@@ -441,9 +444,27 @@ export class TokenManagementPage {
                     const tokenData = result.data.data;
                     
                     if (tokenData.hasToken && tokenData.isValid) {
+                        // Get the actual token from startup data
+                        let actualToken = null;
+                        try {
+                            const startupResponse = await fetch('/api/settings/startup-data', {
+                                method: 'GET',
+                                credentials: 'include',
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+                            if (startupResponse.ok) {
+                                const startupResult = await startupResponse.json();
+                                if (startupResult.success && startupResult.data?.startupData?.token?.token) {
+                                    actualToken = startupResult.data.startupData.token.token;
+                                }
+                            }
+                        } catch (error) {
+                            console.log('⚠️ Could not get actual token from startup data:', error.message);
+                        }
+                        
                         // Create token info from server response
                         const tokenInfo = {
-                            token: tokenData.accessToken || '[Token stored on server]',
+                            token: actualToken || '[Token stored on server]',
                             expiresAt: tokenData.expiresIn ? 
                                 new Date(Date.now() + (tokenData.expiresIn * 1000)) : null,
                             expiresIn: tokenData.expiresIn,
@@ -544,17 +565,17 @@ export class TokenManagementPage {
             console.log('📋 Header:', header);
             console.log('📋 Payload:', payload);
             
-            // Update the UI elements directly
+            // Update the UI elements with formatted JSON
             const headerElement = document.getElementById('jwt-header');
             const payloadElement = document.getElementById('jwt-payload');
             
             if (headerElement) {
-                headerElement.textContent = JSON.stringify(header, null, 2);
+                headerElement.innerHTML = this.formatJSON(header);
                 console.log('✅ Header updated in UI');
             }
             
             if (payloadElement) {
-                payloadElement.textContent = JSON.stringify(payload, null, 2);
+                payloadElement.innerHTML = this.formatJSON(payload);
                 console.log('✅ Payload updated in UI');
             }
             
@@ -569,14 +590,28 @@ export class TokenManagementPage {
             const payloadElement = document.getElementById('jwt-payload');
             
             if (headerElement) {
-                headerElement.textContent = `Error: ${error.message}`;
+                headerElement.innerHTML = `<span style="color: #d73a49; font-weight: bold;">Error: ${error.message}</span>`;
             }
             if (payloadElement) {
-                payloadElement.textContent = `Error: ${error.message}`;
+                payloadElement.innerHTML = `<span style="color: #d73a49; font-weight: bold;">Error: ${error.message}</span>`;
             }
             
             throw error; // Re-throw the error so calling code can handle it
         }
+    }
+    
+    /**
+     * Format JSON with syntax highlighting
+     */
+    formatJSON(obj) {
+        const jsonString = JSON.stringify(obj, null, 2);
+        return jsonString
+            .replace(/(".*?":)/g, '<span style="color: #007acc; font-weight: bold;">$1</span>')
+            .replace(/(".*?")/g, '<span style="color: #a31515;">$1</span>')
+            .replace(/(true|false|null)/g, '<span style="color: #0000ff;">$1</span>')
+            .replace(/(\d+)/g, '<span style="color: #098658;">$1</span>')
+            .replace(/\n/g, '<br>')
+            .replace(/ /g, '&nbsp;');
     }
     
     /**
@@ -599,8 +634,8 @@ export class TokenManagementPage {
         
         if (!token) {
             console.log('🔍 No token available to decode');
-            jwtHeader.textContent = 'No token available to decode';
-            jwtPayload.textContent = 'Please enter a JWT token to decode';
+            jwtHeader.innerHTML = '<span style="color: #6a737d; font-style: italic;">No token available to decode</span>';
+            jwtPayload.innerHTML = '<span style="color: #6a737d; font-style: italic;">Please enter a JWT token to decode</span>';
             
             if (this.app && this.app.showError) {
                 this.app.showError('Please enter a JWT token to decode');
