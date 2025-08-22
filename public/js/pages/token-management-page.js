@@ -87,6 +87,7 @@ export class TokenManagementPage {
                         <div class="raw-token-display">
                             <div class="token-string-container">
                                 <label for="token-string">Raw Token:</label>
+                                <div id="token-display" class="token-display" style="display: none;"></div>
                                 <textarea id="token-string" class="token-string" placeholder="Paste your JWT token here or get a token using the 'Get Token' button"></textarea>
                                 <div class="token-actions">
                                     <button id="get-token-btn" class="btn btn-danger">
@@ -297,6 +298,31 @@ export class TokenManagementPage {
         });
     }
 
+    /**
+     * Apply JWT token color coding (Green until first period, Blue until second period, Red after)
+     */
+    applyTokenColorCoding(tokenString) {
+        if (!tokenString || typeof tokenString !== 'string') return null;
+        
+        const periods = tokenString.split('.');
+        if (periods.length !== 3) return null; // Not a valid JWT format
+        
+        const header = periods[0];
+        const payload = periods[1];
+        const signature = periods[2];
+        
+        // Create colored spans for each part
+        const coloredToken = `
+            <span style="color: #10b981;">${header}</span>
+            <span style="color: #10b981;">.</span>
+            <span style="color: #3b82f6;">${payload}</span>
+            <span style="color: #3b82f6;">.</span>
+            <span style="color: #ef4444;">${signature}</span>
+        `;
+        
+        return coloredToken;
+    }
+
     async updateTokenDisplay() {
         // Guard: if page is not visible, skip any DOM work or logs
         const pageEl = document.getElementById('token-management-page');
@@ -336,14 +362,39 @@ export class TokenManagementPage {
             console.log('✅ Found stored token, updating display');
             
             // Display the token (or placeholder if it's a server-stored token)
+            const tokenDisplay = document.getElementById('token-display');
+            
             if (storedToken.token === '[Token stored on server]') {
                 tokenString.value = '';
                 tokenString.placeholder = 'Token is stored securely on the server - Use "Get Token" to retrieve';
+                if (tokenDisplay) {
+                    tokenDisplay.style.display = 'none';
+                    tokenString.style.display = 'block';
+                }
             } else if (storedToken.token === '[Expired token]') {
                 tokenString.value = '';
                 tokenString.placeholder = 'Token has expired - Use "Get Token" to get a new one';
+                if (tokenDisplay) {
+                    tokenDisplay.style.display = 'none';
+                    tokenString.style.display = 'block';
+                }
             } else {
-                tokenString.value = storedToken.token;
+                // Show colored token in display div
+                if (tokenDisplay) {
+                    const coloredToken = this.applyTokenColorCoding(storedToken.token);
+                    if (coloredToken) {
+                        tokenDisplay.innerHTML = coloredToken;
+                        tokenDisplay.style.display = 'block';
+                        tokenString.style.display = 'none';
+                    } else {
+                        // Fallback to textarea if color coding fails
+                        tokenString.value = storedToken.token;
+                        tokenDisplay.style.display = 'none';
+                        tokenString.style.display = 'block';
+                    }
+                } else {
+                    tokenString.value = storedToken.token;
+                }
             }
             
             // Show/hide buttons based on token availability
