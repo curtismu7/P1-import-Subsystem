@@ -98,9 +98,9 @@ export class SettingsPage {
                         <p>Manage your PingOne access tokens and authentication</p>
                         
                         <div class="token-actions">
-                                    <button type="button" id="refresh-token" class="btn btn-danger btn-sm" title="Check current token validity and time remaining">
-            <i class="mdi mdi-check-circle"></i> Check Token
-        </button>
+                            <button type="button" id="refresh-token" class="btn btn-danger btn-sm" title="Check current token validity and time remaining">
+                                <i class="mdi mdi-check-circle"></i> Check Token
+                            </button>
                             <button type="button" id="validate-token" class="btn btn-danger btn-sm" title="Check if current token is valid">
                                 <i class="mdi mdi-check-circle"></i> Validate Token
                             </button>
@@ -114,6 +114,16 @@ export class SettingsPage {
                                 <i class="mdi mdi-delete"></i> Clear Token
                             </button>
                         </div>
+                        
+                        <!-- Status Messages Display -->
+                        <div class="status-messages" id="status-messages" style="margin-top: 15px; padding: 10px; border-radius: 6px; background-color: #f8f9fa; border: 1px solid #dee2e6; min-height: 60px;">
+                            <div class="status-message" id="current-status" style="text-align: center; color: #6c757d; font-style: italic;">
+                                Click any button above to see status messages here
+                            </div>
+                        </div>
+                        
+                        <!-- Scrolling Signage Container for SignageSystem -->
+                        <div id="scrolling-signage" class="scrolling-signage" style="display: none;"></div>
                         
                         <div class="token-status-display" id="token-status-display" style="display: none;">
                             <div class="token-details">
@@ -1869,10 +1879,46 @@ class SignageSystem {
         this.renderMessages();
         this.updateTimeAgo();
         
+        // Also show message in the visible status area
+        this.showStatusMessage(text, type);
+        
         // Auto-show window for urgent messages
         if (type === 'error' || type === 'warning') {
             this.show();
             this.addUrgentClass();
+        }
+    }
+    
+    /**
+     * Show status message in the visible status area
+     */
+    showStatusMessage(text, type = 'info') {
+        const statusElement = document.getElementById('current-status');
+        if (statusElement) {
+            // Get appropriate icon and color for the message type
+            const icon = this.getIconForType(type);
+            const colors = {
+                info: '#17a2b8',
+                success: '#28a745',
+                warning: '#ffc107',
+                error: '#dc3545'
+            };
+            
+            const color = colors[type] || colors.info;
+            
+            statusElement.innerHTML = `
+                <i class="${icon}" style="color: ${color}; margin-right: 8px;"></i>
+                <span style="color: ${color}; font-weight: 500;">${this.escapeHtml(text)}</span>
+            `;
+            
+            // Auto-clear after 5 seconds for non-error messages
+            if (type !== 'error') {
+                setTimeout(() => {
+                    if (statusElement.innerHTML.includes(text)) {
+                        statusElement.innerHTML = '<span style="text-align: center; color: #6c757d; font-style: italic;">Click any button above to see status messages here</span>';
+                    }
+                }, 5000);
+            }
         }
     }
     
