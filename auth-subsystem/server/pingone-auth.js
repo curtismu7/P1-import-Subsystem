@@ -60,20 +60,20 @@ class PingOneAuth {
             const settings = await this.credentialEncryptor.readAndDecryptSettings();
             
             if (settings) {
-                clientId = clientId || settings.apiClientId;
-                environmentId = environmentId || settings.environmentId;
-                region = region || settings.region || 'NorthAmerica';
+                clientId = clientId || settings.pingone_client_id;
+                environmentId = environmentId || settings.pingone_environment_id;
+                region = region || settings.pingone_region || 'NorthAmerica';
 
                 // Get decrypted API secret
-                if (!clientSecret && settings.apiSecret) {
-                    clientSecret = settings.apiSecret;
+                if (!clientSecret && settings.pingone_client_secret) {
+                    clientSecret = settings.pingone_client_secret;
                 }
             }
         }
 
         // Final check: all required credentials must be present
         if (!clientId || !clientSecret || !environmentId) {
-            this.logger.error('Missing PingOne credentials: clientId, clientSecret, or environmentId');
+            this.logger.error('Missing PingOne credentials: pingone_client_id, pingone_client_secret, or pingone_environment_id');
             return null;
         }
 
@@ -135,10 +135,10 @@ class PingOneAuth {
             let credentials;
             if (customSettings) {
                 credentials = {
-                    clientId: customSettings.apiClientId,
-                    clientSecret: customSettings.apiSecret,
-                    environmentId: customSettings.environmentId,
-                    region: customSettings.region || 'NorthAmerica'
+                    clientId: customSettings.pingone_client_id,
+                    clientSecret: customSettings.pingone_client_secret,
+                    environmentId: customSettings.pingone_environment_id,
+                    region: customSettings.pingone_region || 'NorthAmerica'
                 };
             } else {
                 credentials = await this.getCredentials();
@@ -394,7 +394,7 @@ class PingOneAuth {
      */
     async validateCredentials(credentials) {
         try {
-            if (!credentials || !credentials.apiClientId || !credentials.apiSecret || !credentials.environmentId) {
+            if (!credentials || !credentials.pingone_client_id || !credentials.pingone_client_secret || !credentials.pingone_environment_id) {
                 return { 
                     success: false, 
                     message: 'Missing required credentials' 
@@ -402,10 +402,10 @@ class PingOneAuth {
             }
 
             const customSettings = {
-                apiClientId: credentials.apiClientId,
-                apiSecret: credentials.apiSecret,
-                environmentId: credentials.environmentId,
-                region: credentials.region || 'NorthAmerica'
+                pingone_client_id: credentials.pingone_client_id,
+                pingone_client_secret: credentials.pingone_client_secret,
+                pingone_environment_id: credentials.pingone_environment_id,
+                pingone_region: credentials.pingone_region || 'NorthAmerica'
             };
 
             // Clear existing token to force a new request
@@ -433,7 +433,7 @@ class PingOneAuth {
      */
     async saveCredentials(credentials) {
         try {
-            if (!credentials || !credentials.apiClientId || !credentials.apiSecret || !credentials.environmentId) {
+            if (!credentials || !credentials.pingone_client_id || !credentials.pingone_client_secret || !credentials.pingone_environment_id) {
                 this.logger.error('Cannot save incomplete credentials');
                 return false;
             }
@@ -444,10 +444,10 @@ class PingOneAuth {
             // Update with new credentials
             const updatedSettings = {
                 ...existingSettings,
-                apiClientId: credentials.apiClientId,
-                apiSecret: credentials.apiSecret,
-                environmentId: credentials.environmentId,
-                region: credentials.region || existingSettings.region || 'NorthAmerica'
+                pingone_client_id: credentials.pingone_client_id,
+                pingone_client_secret: credentials.pingone_client_secret,
+                pingone_environment_id: credentials.pingone_environment_id,
+                pingone_region: credentials.pingone_region || existingSettings.pingone_region || 'NorthAmerica'
             };
             
             // Save updated settings
