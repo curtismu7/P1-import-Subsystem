@@ -211,13 +211,18 @@ class PingOneApp {
             this.settings = { ...this.settings, ...localCreds };
         }
         
-        // Load cached startup data from app-config.json if available
+        // Load cached startup data from API endpoint if available
         try {
-            const configResponse = await fetch('/data/app-config.json');
+            const configResponse = await fetch('/api/settings/startup-data', {
+                method: 'GET',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            });
             if (configResponse.ok) {
-                const config = await configResponse.json();
-                if (config.startupData) {
-                    console.log('🚀 Loading cached startup data from app-config.json...');
+                const result = await configResponse.json();
+                if (result.success && result.data?.startupData) {
+                    const config = result.data;
+                    console.log('🚀 Loading cached startup data from API...');
                     
                     // Merge populations data if available
                     if (config.startupData.populations?.success && config.startupData.populations.populations) {

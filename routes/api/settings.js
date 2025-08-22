@@ -510,6 +510,33 @@ router.get('/credentials', asyncHandler(async (req, res) => {
 }));
 
 /**
+ * Get startup data from app-config.json
+ * GET /api/settings/startup-data
+ * This endpoint provides secure access to startup data (token and populations)
+ */
+router.get('/startup-data', asyncHandler(async (req, res) => {
+    try {
+        // Read app-config.json safely
+        const config = await readJsonSafe(APP_CONFIG_FILE, {});
+        
+        // Return only the startup data, not the entire config
+        const startupData = config.startupData || {};
+        
+        res.success('Startup data retrieved successfully', {
+            startupData,
+            lastUpdated: config.lastUpdated
+        });
+        
+    } catch (error) {
+        console.error('❌ Error reading startup data:', error);
+        res.error('Failed to read startup data', {
+            code: 'STARTUP_DATA_READ_ERROR',
+            message: error.message
+        }, 500);
+    }
+}));
+
+/**
  * Update startup data in app-config.json
  * POST /api/settings/update-startup-data
  * This endpoint updates the startup data with new token information
