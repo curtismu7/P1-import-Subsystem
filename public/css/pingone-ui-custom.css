@@ -1705,16 +1705,17 @@ select.form-control:not([multiple]) {
   line-height: 1.4;
   background-color: var(--ping-background-light);
   word-wrap: break-word;
-  white-space: nowrap;
+  white-space: pre-wrap;
   overflow-x: auto;
   overflow-y: auto;
   margin-bottom: 1rem;
 }
 
-/* Ensure JWT token parts don't have unwanted spacing */
+/* Ensure JWT token parts wrap properly while maintaining colors */
 .token-display span {
-  white-space: nowrap;
+  white-space: normal;
   display: inline;
+  word-break: break-all;
 }
 
 .jwt-details {
