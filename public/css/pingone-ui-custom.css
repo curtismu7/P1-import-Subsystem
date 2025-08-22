@@ -1,4 +1,4 @@
-/* Cache Bust: v1755898000000 - JWT Content Styling & Monaco Editor Fixes */
+/* Cache Bust: v1755898200000 - Token Details Layout & Status Indicator Enhancement */
 /*
  * PingOne User Management - Custom UI Styles
  * Following Ping Identity Design System
@@ -1589,50 +1589,63 @@ select.form-control:not([multiple]) {
 }
 
 .status-indicator i {
-  font-size: 2rem;
+  font-size: 2.5rem;
 }
 
 /* Token status indicator colors */
 .status-indicator i.fa-check-circle {
-  color: var(--ping-success);
+  color: var(--ping-success, #10b981);
 }
 
 .status-indicator i.fa-times-circle {
-  color: var(--ping-error);
+  color: var(--ping-error, #ef4444);
 }
 
 .status-indicator i.fa-question-circle {
-  color: var(--ping-gray-500);
+  color: var(--ping-gray-500, #9ca3af);
 }
 
-/* color the dot based on status */
-.status-indicator i.fa-circle { color: #9ca3af; }
-.status-indicator.status-valid i.fa-circle { color: var(--ping-success, #10b981); }
-.status-indicator.status-invalid i.fa-circle { color: var(--ping-error, #ef4444); }
-.status-indicator.status-unknown i.fa-circle { color: #9ca3af; }
+/* Enhanced status indicator styling */
+.status-indicator.status-valid i.fa-check-circle {
+  color: var(--ping-success, #10b981);
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.status-indicator.status-invalid i.fa-times-circle {
+  color: var(--ping-error, #ef4444);
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+.status-indicator.status-unknown i.fa-question-circle {
+  color: var(--ping-gray-500, #9ca3af);
+  text-shadow: 0 0 10px rgba(156, 163, 175, 0.3);
+}
 
 .token-details {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
-  padding: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+  padding: 3rem;
   border: 3px solid #ff8c00;
   border-radius: 12px;
   background-color: rgba(255, 140, 0, 0.05);
-  margin: 1.5rem 0;
-  min-height: 300px;
+  margin: 2rem 0;
+  min-height: 400px;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .detail-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
+  padding: 1.5rem;
   background-color: var(--ping-background-light);
   border-radius: 8px;
   border-left: 4px solid var(--ping-primary);
-  margin-bottom: 0.5rem;
-  min-height: 60px;
+  margin-bottom: 1rem;
+  min-height: 80px;
 }
 
 .detail-row strong {
