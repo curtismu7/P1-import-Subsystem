@@ -1,4 +1,4 @@
-/* Cache Bust: v1755897500000 - Token Status Centering & Icon Updates */
+/* Cache Bust: v1755897600000 - Token Info White Text & Readability */
 /*
  * PingOne User Management - Custom UI Styles
  * Following Ping Identity Design System
@@ -589,25 +589,26 @@ select {
   animation: spin360 1s linear infinite !important;
 }
 
-/* Header token info styling - make it prominent and Apple-like */
+/* Header token info styling - make it prominent and Apple-like with white text */
 .token-info {
   display: flex !important;
   align-items: center !important;
   gap: 0.75rem !important;
-  background: rgba(255, 255, 255, 0.95) !important;
+  background: rgba(0, 0, 0, 0.8) !important;
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
   border-radius: 20px !important;
   padding: 0.5rem 1rem !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
 }
 
 .token-text {
   font-weight: 700 !important;
   font-size: 0.9rem !important;
-  color: var(--ping-gray-900) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
   text-rendering: optimizeLegibility !important;
@@ -616,10 +617,11 @@ select {
 .token-time {
   font-weight: 600 !important;
   font-size: 0.8rem !important;
-  color: var(--ping-gray-600) !important;
-  background: var(--ping-gray-100) !important;
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.2) !important;
   padding: 0.25rem 0.5rem !important;
   border-radius: 12px !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
   text-rendering: optimizeLegibility !important;
