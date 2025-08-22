@@ -1,4 +1,4 @@
-/* Cache Bust: v1755897200000 - Prism.js JSON Syntax Highlighting Integration */
+/* Cache Bust: v1755897300000 - Token Status Layout & Centering */
 /*
  * PingOne User Management - Custom UI Styles
  * Following Ping Identity Design System
@@ -1565,6 +1565,22 @@ select.form-control:not([multiple]) {
   padding: 6px 10px;
   border-radius: 16px;
   background: rgba(0,0,0,0.04);
+  position: relative;
+}
+
+/* Center the status text and position indicator to the right */
+#token-status-text {
+  text-align: center;
+  flex: 1;
+  margin-right: 2.5rem; /* Make space for the indicator on the right */
+}
+
+.status-indicator i.fa-circle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem; /* Make it 1px larger than the text */
 }
 
 /* color the dot based on status */
