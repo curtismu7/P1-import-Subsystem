@@ -779,23 +779,17 @@ export class TokenManagementPage {
             // Get current payload content
             const currentContent = payloadDisplay.textContent;
             
-            // Set editor content
-            if (this.monacoEditor && currentContent !== 'No token data') {
-                try {
-                    // Try to format the JSON if it's valid
-                    const parsed = JSON.parse(currentContent);
-                    this.monacoEditor.setValue(JSON.stringify(parsed, null, 2));
-                } catch (e) {
-                    // If not valid JSON, just set the raw content
-                    this.monacoEditor.setValue(currentContent);
-                }
-            }
-            
             // Show editor, hide display
             editorContainer.style.display = 'block';
             payloadDisplay.style.display = 'none';
             editButton.textContent = 'View JSON';
-            editButton.className = 'btn btn-sm btn-outline-secondary';
+            editButton.className = 'edit-json-btn';
+            editButton.style.background = '#6b7280';
+            
+            // Set editor content
+            if (this.monacoEditor) {
+                this.updatePayloadEditorContent(currentContent);
+            }
         }
     }
     
@@ -861,12 +855,19 @@ export class TokenManagementPage {
         const headerContent = document.getElementById('jwt-header');
         
         if (headerContainer && headerContent) {
+            // Get current header content before hiding it
+            const currentContent = headerContent.textContent;
+            
+            // Show editor, hide display
             headerContainer.style.display = 'block';
             headerContent.style.display = 'none';
             
             // Initialize Monaco Editor for header if not already done
             if (!this.headerMonacoEditor) {
                 this.initializeHeaderMonacoEditor();
+            } else {
+                // Update existing editor with current content
+                this.updateHeaderEditorContent(currentContent);
             }
         }
     }
@@ -910,6 +911,38 @@ export class TokenManagementPage {
     }
 
     /**
+     * Update header editor content
+     */
+    updateHeaderEditorContent(content) {
+        if (this.headerMonacoEditor) {
+            try {
+                // Try to format the JSON if it's valid
+                const parsed = JSON.parse(content);
+                this.headerMonacoEditor.setValue(JSON.stringify(parsed, null, 2));
+            } catch (e) {
+                // If not valid JSON, just set the raw content
+                this.headerMonacoEditor.setValue(content || '{}');
+            }
+        }
+    }
+
+    /**
+     * Update payload editor content
+     */
+    updatePayloadEditorContent(content) {
+        if (this.monacoEditor) {
+            try {
+                // Try to format the JSON if it's valid
+                const parsed = JSON.parse(content);
+                this.monacoEditor.setValue(JSON.stringify(parsed, null, 2));
+            } catch (e) {
+                // If not valid JSON, just set the raw content
+                this.monacoEditor.setValue(content || '{}');
+            }
+        }
+    }
+
+    /**
      * Save header changes
      */
     saveHeaderChanges() {
@@ -936,24 +969,39 @@ export class TokenManagementPage {
     }
     
     /**
-     * Decode current token from textarea
+     * Decode current token from textarea or display
      */
     decodeCurrentToken() {
         console.log('🔍 decodeCurrentToken called');
         const tokenString = document.getElementById('token-string');
+        const tokenDisplay = document.getElementById('token-display');
         const jwtHeader = document.getElementById('jwt-header');
         const jwtPayload = document.getElementById('jwt-payload');
         
         console.log('🔍 tokenString element:', tokenString);
+        console.log('🔍 tokenDisplay element:', tokenDisplay);
         
-        if (!tokenString || !jwtHeader || !jwtPayload) {
-            console.error('❌ Required elements not found for JWT decoding');
+        if (!jwtHeader || !jwtPayload) {
+            console.error('❌ Required JWT display elements not found');
             return;
         }
         
-        const token = tokenString.value.trim();
+        // Try to get token from display first, then fallback to textarea
+        let token = '';
+        if (tokenDisplay && tokenDisplay.style.display !== 'none') {
+            // Get token from the colored display
+            const tokenText = tokenDisplay.textContent || tokenDisplay.innerText;
+            if (tokenText && tokenText !== 'No token data') {
+                token = tokenText.trim();
+            }
+        }
         
-        if (!token) {
+        // Fallback to textarea if no token in display
+        if (!token && tokenString) {
+            token = tokenString.value.trim();
+        }
+        
+        if (!token || token === 'No token data') {
             console.log('🔍 No token available to decode');
             jwtHeader.textContent = 'No token available to decode';
             jwtPayload.textContent = 'Please enter a JWT token to decode';
