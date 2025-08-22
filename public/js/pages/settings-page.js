@@ -98,8 +98,8 @@ export class SettingsPage {
                         <p>Manage your PingOne access tokens and authentication</p>
                         
                         <div class="token-actions">
-                            <button type="button" id="refresh-token" class="btn btn-danger btn-sm" title="Check current token validity and time remaining">
-                                <i class="mdi mdi-check-circle"></i> Check Token
+                            <button type="button" id="refresh-token" class="btn btn-danger btn-sm" title="Get a brand new token and update all UI time displays">
+                                <i class="mdi mdi-refresh"></i> Get New Token
                             </button>
                             <button type="button" id="validate-token" class="btn btn-danger btn-sm" title="Check if current token is valid">
                                 <i class="mdi mdi-check-circle"></i> Validate Token
@@ -296,7 +296,7 @@ export class SettingsPage {
         
         // Token action buttons
         document.getElementById('refresh-token')?.addEventListener('click', async () => {
-            await this.handleValidateToken();
+            await this.handleGetToken();
         });
 
         document.getElementById('validate-token')?.addEventListener('click', async () => {
@@ -873,6 +873,9 @@ export class SettingsPage {
                 
                 // Update token info display
                 this.updateTokenInfo();
+                
+                // Update button colors based on new token status
+                this.updateRefreshTokenButtonColor();
                 
                 // Also update the startup data in app-config.json
                 await this.updateStartupData();
