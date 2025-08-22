@@ -337,14 +337,8 @@ export class TokenManagementPage {
         const payload = periods[1];
         const signature = periods[2];
         
-        // Create colored spans for each part
-        const coloredToken = `
-            <span style="color: #10b981;">${header}</span>
-            <span style="color: #10b981;">.</span>
-            <span style="color: #3b82f6;">${payload}</span>
-            <span style="color: #3b82f6;">.</span>
-            <span style="color: #ef4444;">${signature}</span>
-        `;
+        // Create colored spans for each part - no extra spaces or line breaks
+        const coloredToken = `<span style="color: #10b981;">${header}</span><span style="color: #10b981;">.</span><span style="color: #3b82f6;">${payload}</span><span style="color: #3b82f6;">.</span><span style="color: #ef4444;">${signature}</span>`;
         
         return coloredToken;
     }
