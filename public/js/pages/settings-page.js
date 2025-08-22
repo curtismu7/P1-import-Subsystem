@@ -368,7 +368,7 @@ export class SettingsPage {
             'settings-environment-id': settings.pingone_environment_id || '',
             'settings-client-id': settings.pingone_client_id || '',
             'settings-region': this._normalizeRegion(settings.pingone_region) || 'NA',
-            'settings-population-id': settings.pingone_population_id || ''
+            'settings-population': settings.pingone_population_id || ''
         };
         
         console.log('🔧 Form fields to populate:', fields);
@@ -1285,21 +1285,25 @@ export class SettingsPage {
                 });
             }
             
-            // Try to load populations from app-config.json first (fastest)
-            console.log('🏘️ Attempting to load populations from app-config.json...');
+            // Try to load populations from API endpoint first (fastest)
+            console.log('🏘️ Attempting to load populations from API cache...');
             try {
-                const configResponse = await fetch('/data/app-config.json');
+                const configResponse = await fetch('/api/settings/startup-data', {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
                 if (configResponse.ok) {
-                    const config = await configResponse.json();
-                    if (config.startupData?.populations?.success && config.startupData.populations.populations) {
-                        const cachedPopulations = config.startupData.populations.populations;
-                        console.log('🏘️ Loaded populations from app-config.json cache:', cachedPopulations.length);
+                    const result = await configResponse.json();
+                    if (result.success && result.data?.startupData?.populations?.success && result.data.startupData.populations.populations) {
+                        const cachedPopulations = result.data.startupData.populations.populations;
+                        console.log('🏘️ Loaded populations from API cache:', cachedPopulations.length);
                         this.populateDropdown(cachedPopulations);
                         return;
                     }
                 }
             } catch (configError) {
-                console.log('🏘️ Could not load from app-config.json, falling back to API:', configError.message);
+                console.log('🏘️ Could not load from API cache, falling back to API:', configError.message);
             }
             
             // Fallback: Try to fetch populations from API
@@ -1682,7 +1686,7 @@ export class SettingsPage {
             'settings-client-id', 
             'settings-client-secret',
             'settings-region',
-            'settings-population-id'
+            'settings-population'
         ];
         
         fields.forEach(fieldId => {
