@@ -113,28 +113,22 @@ export class TokenManagementPage {
                                         Header
                                         <button id="edit-header-btn" class="edit-json-btn">Edit JSON</button>
                                     </h4>
-                                    <div id="header-editor-container" style="display: none;">
-                                        <div id="header-monaco-editor" style="height: 250px; border: 1px solid #e5e7eb; border-radius: 4px;"></div>
-                                        <div class="editor-actions" style="margin-top: 10px; text-align: right;">
-                                            <button id="save-header-btn" class="edit-json-btn" style="background: #059669;">Save Changes</button>
-                                            <button id="cancel-header-edit-btn" class="edit-json-btn" style="background: #6b7280; margin-left: 8px;">Cancel</button>
-                                        </div>
-                                    </div>
                                     <pre id="jwt-header" class="jwt-content" contenteditable="true">No token data</pre>
+                                    <div id="header-editor-actions" class="editor-actions" style="display: none; margin-top: 10px; text-align: right;">
+                                        <button id="save-header-btn" class="edit-json-btn" style="background: #059669;">Save Changes</button>
+                                        <button id="cancel-header-edit-btn" class="edit-json-btn" style="background: #6b7280; margin-left: 8px;">Cancel</button>
+                                    </div>
                                 </div>
                                 <div class="jwt-section">
                                     <h4>
                                         Payload
                                         <button id="edit-payload-btn" class="edit-json-btn">Edit JSON</button>
                                     </h4>
-                                    <div id="payload-editor-container" style="display: none;">
-                                        <div id="monaco-editor" style="height: 300px; border: 1px solid #e5e7eb; border-radius: 4px;"></div>
-                                        <div class="editor-actions" style="margin-top: 10px; text-align: right;">
-                                            <button id="save-payload-btn" class="edit-json-btn" style="background: #059669;">Save Changes</button>
-                                            <button id="cancel-edit-btn" class="edit-json-btn" style="background: #6b7280; margin-left: 8px;">Cancel</button>
-                                        </div>
-                                    </div>
                                     <pre id="jwt-payload" class="jwt-content" contenteditable="true">No token data</pre>
+                                    <div id="payload-editor-actions" class="editor-actions" style="display: none; margin-top: 10px; text-align: right;">
+                                        <button id="save-payload-btn" class="edit-json-btn" style="background: #059669;">Save Changes</button>
+                                        <button id="cancel-edit-btn" class="edit-json-btn" style="background: #6b7280; margin-left: 8px;">Cancel</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -784,8 +778,9 @@ export class TokenManagementPage {
     showPayloadEditor() {
         const payloadDisplay = document.getElementById('jwt-payload');
         const editButton = document.getElementById('edit-payload-btn');
+        const actionButtons = document.getElementById('payload-editor-actions');
         
-        if (payloadDisplay && editButton) {
+        if (payloadDisplay && editButton && actionButtons) {
             // Get current payload content
             const currentContent = payloadDisplay.textContent;
             console.log('🔍 Payload content to edit:', currentContent);
@@ -793,6 +788,9 @@ export class TokenManagementPage {
             // Make the payload editable
             payloadDisplay.contentEditable = true;
             payloadDisplay.focus();
+            
+            // Show action buttons
+            actionButtons.style.display = 'block';
             
             // Update button
             editButton.textContent = 'View JSON';
@@ -809,10 +807,14 @@ export class TokenManagementPage {
     hidePayloadEditor() {
         const payloadDisplay = document.getElementById('jwt-payload');
         const editButton = document.getElementById('edit-payload-btn');
+        const actionButtons = document.getElementById('payload-editor-actions');
         
-        if (payloadDisplay && editButton) {
+        if (payloadDisplay && editButton && actionButtons) {
             // Make the payload non-editable
             payloadDisplay.contentEditable = false;
+            
+            // Hide action buttons
+            actionButtons.style.display = 'none';
             
             // Update button
             editButton.textContent = 'Edit JSON';
@@ -864,8 +866,9 @@ export class TokenManagementPage {
     showHeaderEditor() {
         const headerContent = document.getElementById('jwt-header');
         const editButton = document.getElementById('edit-header-btn');
+        const actionButtons = document.getElementById('header-editor-actions');
         
-        if (headerContent && editButton) {
+        if (headerContent && editButton && actionButtons) {
             // Get current header content
             const currentContent = headerContent.textContent;
             console.log('🔍 Header content to edit:', currentContent);
@@ -873,6 +876,9 @@ export class TokenManagementPage {
             // Make the header editable
             headerContent.contentEditable = true;
             headerContent.focus();
+            
+            // Show action buttons
+            actionButtons.style.display = 'block';
             
             // Update button
             editButton.textContent = 'View JSON';
@@ -889,10 +895,14 @@ export class TokenManagementPage {
     hideHeaderEditor() {
         const headerContent = document.getElementById('jwt-header');
         const editButton = document.getElementById('edit-header-btn');
+        const actionButtons = document.getElementById('header-editor-actions');
         
-        if (headerContent && editButton) {
+        if (headerContent && editButton && actionButtons) {
             // Make the header non-editable
             headerContent.contentEditable = false;
+            
+            // Hide action buttons
+            actionButtons.style.display = 'none';
             
             // Update button
             editButton.textContent = 'Edit JSON';
