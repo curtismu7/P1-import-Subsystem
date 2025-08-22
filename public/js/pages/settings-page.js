@@ -1084,7 +1084,24 @@ export class SettingsPage {
                 });
             }
             
-            // Try to fetch populations from API
+            // Try to load populations from app-config.json first (fastest)
+            console.log('🏘️ Attempting to load populations from app-config.json...');
+            try {
+                const configResponse = await fetch('/data/app-config.json');
+                if (configResponse.ok) {
+                    const config = await configResponse.json();
+                    if (config.startupData?.populations?.success && config.startupData.populations.populations) {
+                        const cachedPopulations = config.startupData.populations.populations;
+                        console.log('🏘️ Loaded populations from app-config.json cache:', cachedPopulations.length);
+                        this.populateDropdown(cachedPopulations);
+                        return;
+                    }
+                }
+            } catch (configError) {
+                console.log('🏘️ Could not load from app-config.json, falling back to API:', configError.message);
+            }
+            
+            // Fallback: Try to fetch populations from API
             console.log('🏘️ Attempting to fetch populations from API...');
             const response = await fetch('/api/populations');
             console.log('🏘️ API response status:', response.status);
