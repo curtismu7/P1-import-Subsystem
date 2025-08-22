@@ -54,7 +54,7 @@ export class TokenManagementPage {
                             <div class="status-container">
                                 <span id="token-status-text">Checking...</span>
                                 <div class="status-indicator" id="token-status-indicator">
-                                    <i class="fas fa-circle"></i>
+                                    <i class="fas fa-question-circle"></i>
                                 </div>
                             </div>
                             
@@ -347,6 +347,7 @@ export class TokenManagementPage {
             
             if (isTokenValid) {
                 statusIndicator.className = 'status-indicator status-valid';
+                statusIndicator.innerHTML = '<i class="fas fa-check-circle"></i>';
                 statusText.textContent = 'Valid';
                 tokenType.textContent = 'Bearer';
                 
@@ -371,6 +372,7 @@ export class TokenManagementPage {
                 }
             } else {
                 statusIndicator.className = 'status-indicator status-invalid';
+                statusIndicator.innerHTML = '<i class="fas fa-times-circle"></i>';
                 statusText.textContent = 'Expired';
                 tokenType.textContent = 'Bearer';
                 
@@ -391,6 +393,7 @@ export class TokenManagementPage {
         } else {
             console.log('❌ No stored token found');
             statusIndicator.className = 'status-indicator status-invalid';
+            statusIndicator.innerHTML = '<i class="fas fa-times-circle"></i>';
             statusText.textContent = 'No Token';
             tokenType.textContent = '-';
             tokenExpires.textContent = '-';

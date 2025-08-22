@@ -1,4 +1,4 @@
-/* Cache Bust: v1755897400000 - Monaco Editor JSON Integration */
+/* Cache Bust: v1755897500000 - Token Status Centering & Icon Updates */
 /*
  * PingOne User Management - Custom UI Styles
  * Following Ping Identity Design System
@@ -1565,27 +1565,42 @@ select.form-control:not([multiple]) {
   justify-content: center;
   position: relative;
   width: 100%;
-  padding: 6px 10px;
-  border-radius: 16px;
+  padding: 12px 20px;
+  border-radius: 20px;
   background: rgba(0,0,0,0.04);
+  margin-bottom: 1rem;
 }
 
 #token-status-text {
   text-align: center;
-  font-size: 1.1rem;
-  font-weight: 500;
+  font-size: 1.5rem;
+  font-weight: 600;
   flex: 1;
+  margin-right: 0;
 }
 
 .status-indicator {
   position: absolute;
-  right: 10px;
+  right: 20px;
   top: 50%;
   transform: translateY(-50%);
 }
 
-.status-indicator i.fa-circle {
-  font-size: 1.2rem; /* Make it 1px larger than the text */
+.status-indicator i {
+  font-size: 2rem;
+}
+
+/* Token status indicator colors */
+.status-indicator i.fa-check-circle {
+  color: var(--ping-success);
+}
+
+.status-indicator i.fa-times-circle {
+  color: var(--ping-error);
+}
+
+.status-indicator i.fa-question-circle {
+  color: var(--ping-gray-500);
 }
 
 /* color the dot based on status */
