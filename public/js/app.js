@@ -344,6 +344,57 @@ class PingOneApp {
     }
 
     /**
+     * Refresh token using CSRF-protected request
+     */
+    async refreshTokenWithCSRF() {
+        try {
+            console.log('🔄 Refreshing token with CSRF protection...');
+            
+            // Ensure we have a CSRF token
+            if (!window.csrfManager?.token) {
+                await window.csrfManager.refreshToken();
+            }
+            
+            // Use CSRF-protected fetch
+            const response = await window.csrfManager.fetchWithCSRF('/api/token/refresh', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const result = await response.json();
+            console.log('🔁 CSRF-protected refresh response:', response.status, result);
+            
+            if (response.ok && result.success) {
+                // Parse the response data
+                const tokenData = result.data?.data || result.data || result.message || {};
+                
+                // Apply the new token status
+                this.applyTokenStatusFromServer(tokenData);
+                
+                // Update the UI
+                this.updateTokenUI();
+                
+                if (this.tokenStatus.isValid) {
+                    this.showSuccess('Token refreshed successfully');
+                    console.log('✅ Token refreshed successfully with CSRF protection');
+                }
+                
+                return true;
+            } else {
+                console.error('❌ Token refresh failed:', result);
+                this.showError(`Token refresh failed: ${result.error || 'Unknown error'}`);
+                return false;
+            }
+            
+        } catch (error) {
+            console.error('❌ Error in refreshTokenWithCSRF:', error);
+            this.showError(`Token refresh error: ${error.message}`);
+            return false;
+        }
+    }
+    
+    /**
      * Apply standardized token status object from server (status or refresh endpoints)
      * Expected shape: { hasToken, isValid, expiresIn }
      */
@@ -417,7 +468,10 @@ class PingOneApp {
                     headerRefreshBtn.disabled = true;
                     headerRefreshBtn.classList.remove('success');
                     if (headerRefreshIcon) headerRefreshIcon.classList.add('spinning');
-                    await this.attemptAutoRefresh('manual-header');
+                    
+                    // Use CSRF-protected token refresh instead of attemptAutoRefresh
+                    await this.refreshTokenWithCSRF();
+                    
                 } finally {
                     if (headerRefreshIcon) headerRefreshIcon.classList.remove('spinning');
                     headerRefreshBtn.disabled = false;
