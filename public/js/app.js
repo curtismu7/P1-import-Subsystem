@@ -210,6 +210,37 @@ class PingOneApp {
         if (localCreds) {
             this.settings = { ...this.settings, ...localCreds };
         }
+        
+        // Load cached startup data from app-config.json if available
+        try {
+            const configResponse = await fetch('/data/app-config.json');
+            if (configResponse.ok) {
+                const config = await configResponse.json();
+                if (config.startupData) {
+                    console.log('🚀 Loading cached startup data from app-config.json...');
+                    
+                    // Merge populations data if available
+                    if (config.startupData.populations?.success && config.startupData.populations.populations) {
+                        this.settings.populationCache = {
+                            populations: config.startupData.populations.populations,
+                            cachedAt: config.startupData.populations.fetchedAt,
+                            region: config.startupData.populations.region
+                        };
+                        console.log(`🏘️ Loaded ${config.startupData.populations.populations.length} cached populations`);
+                    }
+                    
+                    // Merge token data if available
+                    if (config.startupData.token?.success) {
+                        this.settings.startupToken = config.startupData.token;
+                        console.log('🔑 Loaded cached token data');
+                    }
+                    
+                    console.log('✅ Cached startup data loaded successfully');
+                }
+            }
+        } catch (configError) {
+            console.log('⚠️ Could not load cached startup data:', configError.message);
+        }
     }
     
     async loadTokenStatus() {
