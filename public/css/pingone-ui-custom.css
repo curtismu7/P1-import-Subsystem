@@ -1,4 +1,4 @@
-/* Cache Bust: v1755897100000 - JWT Layout & Height Improvements */
+/* Cache Bust: v1755897200000 - Prism.js JSON Syntax Highlighting Integration */
 /*
  * PingOne User Management - Custom UI Styles
  * Following Ping Identity Design System
@@ -1664,7 +1664,7 @@ select.form-control:not([multiple]) {
   border-color: var(--ping-primary);
 }
 
-/* JSON Syntax Highlighting */
+/* JSON Syntax Highlighting - Now handled by Prism.js */
 .json-key {
   color: #007acc;
   font-weight: bold;
@@ -1682,6 +1682,40 @@ select.form-control:not([multiple]) {
 .json-number {
   color: #098658;
   font-weight: bold;
+}
+
+/* Prism.js Integration */
+.jwt-content.language-json {
+  background-color: #2d2d2d !important;
+  color: #f8f8f2 !important;
+  border: 1px solid #444;
+}
+
+.jwt-content.language-json.error {
+  background-color: #2d2d2d !important;
+  color: #ff6b6b !important;
+  border: 1px solid #ff6b6b;
+}
+
+/* Override Prism.js theme for better integration */
+.jwt-content .token.property {
+  color: #66d9ef !important;
+}
+
+.jwt-content .token.string {
+  color: #a6e22e !important;
+}
+
+.jwt-content .token.number {
+  color: #ae81ff !important;
+}
+
+.jwt-content .token.boolean {
+  color: #f92672 !important;
+}
+
+.jwt-content .token.null {
+  color: #f92672 !important;
 }
 
 /* Enhanced JWT Section Styling */

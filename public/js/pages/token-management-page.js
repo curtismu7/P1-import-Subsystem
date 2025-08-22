@@ -37,6 +37,11 @@ export class TokenManagementPage {
         });
 
         tokenPage.innerHTML = `
+            <!-- Prism.js for JSON syntax highlighting -->
+            <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+            
             <div class="page-header">
                 <h1>Token Management</h1>
                 <p>Monitor and manage PingOne authentication tokens</p>
@@ -107,11 +112,11 @@ export class TokenManagementPage {
                             <div class="jwt-details">
                                 <div class="jwt-section">
                                     <h4>Header</h4>
-                                    <pre id="jwt-header" class="jwt-content">No token data</pre>
+                                    <pre id="jwt-header" class="jwt-content language-json">No token data</pre>
                                 </div>
                                 <div class="jwt-section">
                                     <h4>Payload</h4>
-                                    <pre id="jwt-payload" class="jwt-content">No token data</pre>
+                                    <pre id="jwt-payload" class="jwt-content language-json">No token data</pre>
                                 </div>
                             </div>
                         </div>
@@ -398,10 +403,10 @@ export class TokenManagementPage {
             const payloadElement = document.getElementById('jwt-payload');
             
             if (headerElement) {
-                headerElement.innerHTML = '<span style="color: #6a737d; font-style: italic;">No token available</span>';
+                headerElement.textContent = 'No token available';
             }
             if (payloadElement) {
-                payloadElement.innerHTML = '<span style="color: #6a737d; font-style: italic;">Please get a valid token first using the "Get Token" button</span>';
+                payloadElement.textContent = 'Please get a valid token first using the "Get Token" button';
             }
         }
     }
@@ -570,13 +575,22 @@ export class TokenManagementPage {
             const payloadElement = document.getElementById('jwt-payload');
             
             if (headerElement) {
-                headerElement.innerHTML = this.formatJSON(header);
+                headerElement.textContent = this.formatJSON(header);
                 console.log('✅ Header updated in UI');
             }
             
             if (payloadElement) {
-                payloadElement.innerHTML = this.formatJSON(payload);
+                payloadElement.textContent = this.formatJSON(payload);
                 console.log('✅ Payload updated in UI');
+            }
+            
+            // Apply Prism.js syntax highlighting
+            if (window.Prism) {
+                setTimeout(() => {
+                    if (headerElement) window.Prism.highlightElement(headerElement);
+                    if (payloadElement) window.Prism.highlightElement(payloadElement);
+                    console.log('✅ Prism.js syntax highlighting applied');
+                }, 100);
             }
             
             // Return the decoded data
@@ -590,10 +604,12 @@ export class TokenManagementPage {
             const payloadElement = document.getElementById('jwt-payload');
             
             if (headerElement) {
-                headerElement.innerHTML = `<span style="color: #d73a49; font-weight: bold;">Error: ${error.message}</span>`;
+                headerElement.textContent = `Error: ${error.message}`;
+                headerElement.className = 'jwt-content language-json error';
             }
             if (payloadElement) {
-                payloadElement.innerHTML = `<span style="color: #d73a49; font-weight: bold;">Error: ${error.message}</span>`;
+                payloadElement.textContent = `Error: ${error.message}`;
+                payloadElement.className = 'jwt-content language-json error';
             }
             
             throw error; // Re-throw the error so calling code can handle it
@@ -601,69 +617,11 @@ export class TokenManagementPage {
     }
     
     /**
-     * Format JSON with syntax highlighting
+     * Format JSON with Prism.js syntax highlighting
      */
     formatJSON(obj) {
         const jsonString = JSON.stringify(obj, null, 2);
-        let formatted = '';
-        let indentLevel = 0;
-        
-        for (let i = 0; i < jsonString.length; i++) {
-            const char = jsonString[i];
-            const nextChar = jsonString[i + 1];
-            
-            if (char === '{' || char === '[') {
-                formatted += char + '<br>';
-                indentLevel++;
-                formatted += '&nbsp;'.repeat(indentLevel * 2);
-            } else if (char === '}' || char === ']') {
-                indentLevel = Math.max(0, indentLevel - 1);
-                formatted += '<br>' + '&nbsp;'.repeat(indentLevel * 2) + char;
-            } else if (char === ',') {
-                formatted += char + '<br>' + '&nbsp;'.repeat(indentLevel * 2);
-            } else if (char === ':') {
-                formatted += char + ' ';
-            } else if (char === '"') {
-                // Find the end of the string
-                let j = i + 1;
-                let inString = true;
-                let stringContent = '';
-                
-                while (j < jsonString.length && inString) {
-                    if (jsonString[j] === '"' && jsonString[j - 1] !== '\\') {
-                        inString = false;
-                    } else {
-                        stringContent += jsonString[j];
-                    }
-                    j++;
-                }
-                
-                // Check if this is a key (ends with :)
-                const isKey = jsonString[j] === ':';
-                
-                if (isKey) {
-                    formatted += '<span class="json-key">"' + stringContent + '":</span>';
-                } else {
-                    // Check if it's a number, boolean, or null
-                    if (stringContent === 'true' || stringContent === 'false' || stringContent === 'null') {
-                        formatted += '<span class="json-boolean">"' + stringContent + '"</span>';
-                    } else if (/^\d+$/.test(stringContent)) {
-                        formatted += '<span class="json-number">"' + stringContent + '"</span>';
-                    } else {
-                        formatted += '<span class="json-string">"' + stringContent + '"</span>';
-                    }
-                }
-                
-                i = j - 1; // Skip the processed string
-            } else if (char === ' ' && nextChar === ' ') {
-                // Skip extra spaces
-                continue;
-            } else {
-                formatted += char;
-            }
-        }
-        
-        return formatted;
+        return jsonString;
     }
     
     /**
@@ -686,8 +644,8 @@ export class TokenManagementPage {
         
         if (!token) {
             console.log('🔍 No token available to decode');
-            jwtHeader.innerHTML = '<span style="color: #6a737d; font-style: italic;">No token available to decode</span>';
-            jwtPayload.innerHTML = '<span style="color: #6a737d; font-style: italic;">Please enter a JWT token to decode</span>';
+            jwtHeader.textContent = 'No token available to decode';
+            jwtPayload.textContent = 'Please enter a JWT token to decode';
             
             if (this.app && this.app.showError) {
                 this.app.showError('Please enter a JWT token to decode');
