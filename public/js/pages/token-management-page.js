@@ -635,28 +635,43 @@ export class TokenManagementPage {
             console.log('🔍 Attempting to decode JWT token...');
             console.log('🔍 Token length:', token.length);
             console.log('🔍 Token first 50 chars:', token.substring(0, 50));
+            console.log('🔍 Token last 50 chars:', token.substring(Math.max(0, token.length - 50)));
             
-            const parts = token.split('.');
+            // Clean the token
+            const cleanToken = token.trim();
+            const parts = cleanToken.split('.');
             console.log('🔍 JWT parts count:', parts.length);
             
             if (parts.length !== 3) {
-                throw new Error('Invalid JWT format - expected 3 parts separated by dots');
+                throw new Error(`Invalid JWT format - expected 3 parts separated by dots, got ${parts.length}`);
             }
+            
+            // Log each part for debugging
+            console.log('🔍 Part 0 (header) length:', parts[0].length);
+            console.log('🔍 Part 1 (payload) length:', parts[1].length);
+            console.log('🔍 Part 2 (signature) length:', parts[2].length);
             
             // Handle base64 decoding with proper padding and URL-safe characters
             const decodeBase64 = (str) => {
                 try {
+                    // Clean the string and handle different formats
+                    let cleanStr = str.trim();
+                    
                     // Replace URL-safe characters with standard base64
-                    str = str.replace(/-/g, '+').replace(/_/g, '/');
+                    cleanStr = cleanStr.replace(/-/g, '+').replace(/_/g, '/');
                     
                     // Add padding if needed
-                    while (str.length % 4) {
-                        str += '=';
+                    while (cleanStr.length % 4) {
+                        cleanStr += '=';
                     }
                     
-                    return atob(str);
+                    // Try to decode
+                    const decoded = atob(cleanStr);
+                    return decoded;
                 } catch (e) {
-                    throw new Error('Invalid base64 encoding');
+                    console.error('❌ Base64 decode error for string:', str.substring(0, 20) + '...');
+                    console.error('❌ Error details:', e);
+                    throw new Error(`Invalid base64 encoding: ${e.message}`);
                 }
             };
             
@@ -732,36 +747,62 @@ export class TokenManagementPage {
      */
     async initializeMonacoEditor() {
         try {
-            // Configure Monaco Editor loader
-            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+            // Check if Monaco Editor is already loaded
+            if (typeof monaco !== 'undefined') {
+                this.createMonacoEditor();
+                return;
+            }
+
+            // Wait for Monaco Editor to be available
+            let attempts = 0;
+            const maxAttempts = 10;
             
-            // Load Monaco Editor
-            require(['vs/editor/editor.main'], () => {
-                console.log('✅ Monaco Editor loaded successfully');
-                
-                // Create the editor instance
-                this.monacoEditor = monaco.editor.create(document.getElementById('monaco-editor'), {
-                    value: '{}',
-                    language: 'json',
-                    theme: 'vs-dark',
-                    automaticLayout: true,
-                    minimap: { enabled: false },
-                    scrollBeyondLastLine: false,
-                    fontSize: 13,
-                    lineNumbers: 'on',
-                    roundedSelection: false,
-                    scrollbar: {
-                        vertical: 'visible',
-                        horizontal: 'visible'
-                    },
-                    folding: true,
-                    wordWrap: 'on'
-                });
-                
-                console.log('✅ Monaco Editor initialized');
-            });
+            const checkMonaco = () => {
+                if (typeof monaco !== 'undefined') {
+                    console.log('✅ Monaco Editor detected, creating editor...');
+                    this.createMonacoEditor();
+                } else if (attempts < maxAttempts) {
+                    attempts++;
+                    console.log(`⏳ Waiting for Monaco Editor... (attempt ${attempts}/${maxAttempts})`);
+                    setTimeout(checkMonaco, 500);
+                } else {
+                    console.error('❌ Monaco Editor failed to load after multiple attempts');
+                }
+            };
+            
+            checkMonaco();
         } catch (error) {
             console.error('❌ Failed to initialize Monaco Editor:', error);
+        }
+    }
+
+    /**
+     * Create Monaco Editor instance
+     */
+    createMonacoEditor() {
+        try {
+            const container = document.getElementById('monaco-editor');
+            if (!container) {
+                console.error('❌ Monaco Editor container not found');
+                return;
+            }
+
+            this.monacoEditor = monaco.editor.create(container, {
+                value: '{}',
+                language: 'json',
+                theme: 'vs',
+                automaticLayout: true,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                fontSize: 14,
+                lineNumbers: 'on',
+                roundedSelection: false,
+                wordWrap: 'on'
+            });
+            
+            console.log('✅ Monaco Editor created successfully');
+        } catch (error) {
+            console.error('❌ Failed to create Monaco Editor:', error);
         }
     }
     
@@ -889,25 +930,40 @@ export class TokenManagementPage {
      * Initialize Monaco Editor for header
      */
     initializeHeaderMonacoEditor() {
-        const container = document.getElementById('header-monaco-editor');
-        if (!container) return;
+        try {
+            const container = document.getElementById('header-monaco-editor');
+            if (!container) {
+                console.error('❌ Header Monaco Editor container not found');
+                return;
+            }
 
-        // Get current header content
-        const headerContent = document.getElementById('jwt-header');
-        const currentValue = headerContent.textContent || '{}';
+            // Check if Monaco Editor is available
+            if (typeof monaco === 'undefined') {
+                console.error('❌ Monaco Editor not available for header');
+                return;
+            }
 
-        this.headerMonacoEditor = monaco.editor.create(container, {
-            value: currentValue,
-            language: 'json',
-            theme: 'vs',
-            automaticLayout: true,
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            fontSize: 14,
-            lineNumbers: 'on',
-            roundedSelection: false,
-            wordWrap: 'on'
-        });
+            // Get current header content
+            const headerContent = document.getElementById('jwt-header');
+            const currentValue = headerContent.textContent || '{}';
+
+            this.headerMonacoEditor = monaco.editor.create(container, {
+                value: currentValue,
+                language: 'json',
+                theme: 'vs',
+                automaticLayout: true,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                fontSize: 14,
+                lineNumbers: 'on',
+                roundedSelection: false,
+                wordWrap: 'on'
+            });
+
+            console.log('✅ Header Monaco Editor created successfully');
+        } catch (error) {
+            console.error('❌ Failed to create Header Monaco Editor:', error);
+        }
     }
 
     /**
