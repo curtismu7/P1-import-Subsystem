@@ -919,7 +919,7 @@ export class SettingsPage {
         try {
             this.signageSystem.addMessage('🚫 Revoking token...', 'warning');
             
-            const response = await csrfManager.fetchWithCSRF('/api/v1/auth/token', {
+            const response = await csrfManager.fetchWithCSRF('/api/token/revoke', {
                 method: 'DELETE',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' }

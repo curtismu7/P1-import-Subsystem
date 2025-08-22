@@ -279,4 +279,25 @@ router.get('/debug', async (req, res) => {
   }
 });
 
+// DELETE /api/token/revoke - Revoke the current access token
+router.delete('/revoke', async (req, res) => {
+  try {
+    // Clear the current token from the token service
+    tokenService.clearToken();
+    
+    return res.json({
+      success: true,
+      message: 'Token revoked successfully',
+      data: { revoked: true }
+    });
+  } catch (error) {
+    logger.error('Token revoke failed', { error: error.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to revoke token',
+      details: error.message 
+    });
+  }
+});
+
 export default router;
