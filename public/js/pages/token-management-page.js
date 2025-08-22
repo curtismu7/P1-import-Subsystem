@@ -819,6 +819,7 @@ export class TokenManagementPage {
         if (editorContainer && payloadDisplay && editButton) {
             // Get current payload content
             const currentContent = payloadDisplay.textContent;
+            console.log('🔍 Payload content to load:', currentContent);
             
             // Show editor, hide display
             editorContainer.style.display = 'block';
@@ -827,9 +828,17 @@ export class TokenManagementPage {
             editButton.className = 'edit-json-btn';
             editButton.style.background = '#6b7280';
             
-            // Set editor content
+            // Set editor content - ensure Monaco Editor is ready
             if (this.monacoEditor) {
+                console.log('✅ Monaco Editor ready, updating content');
                 this.updatePayloadEditorContent(currentContent);
+            } else {
+                console.log('⚠️ Monaco Editor not ready, initializing...');
+                this.initializeMonacoEditor().then(() => {
+                    if (this.monacoEditor) {
+                        this.updatePayloadEditorContent(currentContent);
+                    }
+                });
             }
         }
     }
@@ -898,6 +907,7 @@ export class TokenManagementPage {
         if (headerContainer && headerContent) {
             // Get current header content before hiding it
             const currentContent = headerContent.textContent;
+            console.log('🔍 Header content to load:', currentContent);
             
             // Show editor, hide display
             headerContainer.style.display = 'block';
@@ -905,9 +915,11 @@ export class TokenManagementPage {
             
             // Initialize Monaco Editor for header if not already done
             if (!this.headerMonacoEditor) {
+                console.log('⚠️ Header Monaco Editor not ready, initializing...');
                 this.initializeHeaderMonacoEditor();
             } else {
                 // Update existing editor with current content
+                console.log('✅ Header Monaco Editor ready, updating content');
                 this.updateHeaderEditorContent(currentContent);
             }
         }
