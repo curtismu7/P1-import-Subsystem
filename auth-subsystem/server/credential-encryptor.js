@@ -141,12 +141,22 @@ class CredentialEncryptor {
             const data = await fs.readFile(settingsPath, 'utf8');
             const settings = JSON.parse(data);
             
+            // Map new PingOne field names to legacy field names for backward compatibility
+            const mappedSettings = {
+                ...settings,
+                // Legacy field names that the auth subsystem expects
+                apiClientId: settings.pingone_client_id || settings.apiClientId,
+                apiSecret: settings.pingone_client_secret || settings.apiSecret,
+                environmentId: settings.pingone_environment_id || settings.environmentId,
+                region: settings.pingone_region || settings.region || 'NorthAmerica'
+            };
+            
             // Decrypt apiSecret if it's encrypted
-            if (settings.apiSecret && this.isEncrypted(settings.apiSecret)) {
-                settings.apiSecret = await this.decrypt(settings.apiSecret);
+            if (mappedSettings.apiSecret && this.isEncrypted(mappedSettings.apiSecret)) {
+                mappedSettings.apiSecret = await this.decrypt(mappedSettings.apiSecret);
             }
             
-            return settings;
+            return mappedSettings;
         } catch (error) {
             this.logger.error('Failed to read and decrypt settings:', error.message);
             return null;
@@ -161,6 +171,20 @@ class CredentialEncryptor {
     async encryptAndSaveSettings(settings) {
         try {
             const settingsToSave = { ...settings };
+            
+            // Map legacy field names to new PingOne field names for saving
+            if (settingsToSave.apiSecret && !settingsToSave.pingone_client_secret) {
+                settingsToSave.pingone_client_secret = settingsToSave.apiSecret;
+            }
+            if (settingsToSave.apiClientId && !settingsToSave.pingone_client_id) {
+                settingsToSave.pingone_client_id = settingsToSave.apiClientId;
+            }
+            if (settingsToSave.environmentId && !settingsToSave.pingone_environment_id) {
+                settingsToSave.pingone_environment_id = settingsToSave.environmentId;
+            }
+            if (settingsToSave.region && !settingsToSave.pingone_region) {
+                settingsToSave.pingone_region = settingsToSave.region;
+            }
             
             // Encrypt apiSecret if it's not already encrypted
             if (settingsToSave.apiSecret && !this.isEncrypted(settingsToSave.apiSecret)) {
