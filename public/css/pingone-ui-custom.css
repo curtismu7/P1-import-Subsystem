@@ -1,4 +1,4 @@
-/* Cache Bust: v1755897700000 - Token Details Orange Box & Textarea Height */
+/* Cache Bust: v1755897800000 - JWT Token Color Coding */
 /*
  * PingOne User Management - Custom UI Styles
  * Following Ping Identity Design System
@@ -1677,6 +1677,24 @@ select.form-control:not([multiple]) {
   resize: vertical;
   word-wrap: break-word;
   white-space: pre-wrap;
+}
+
+/* Token display for colored JWT parts */
+.token-display {
+  width: 100%;
+  min-height: 250px;
+  max-height: 600px;
+  padding: 1.5rem;
+  border: 1px solid var(--ping-border);
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  background-color: var(--ping-background-light);
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  margin-bottom: 1rem;
 }
 
 .jwt-details {
