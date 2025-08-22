@@ -509,4 +509,47 @@ router.get('/credentials', asyncHandler(async (req, res) => {
     }
 }));
 
+/**
+ * Update startup data in app-config.json
+ * POST /api/settings/update-startup-data
+ * This endpoint updates the startup data with new token information
+ */
+router.post('/update-startup-data', asyncHandler(async (req, res) => {
+    try {
+        const { token, populations } = req.body;
+        
+        // Read existing app-config.json
+        const existingConfig = await readJsonSafe(APP_CONFIG_FILE, {});
+        
+        // Update startup data
+        const updatedConfig = {
+            ...existingConfig,
+            lastUpdated: new Date().toISOString(),
+            startupData: {
+                ...existingConfig.startupData,
+                ...(token && { token }),
+                ...(populations && { populations }),
+                updatedAt: new Date().toISOString()
+            }
+        };
+        
+        // Write updated config
+        await writeJson(APP_CONFIG_FILE, updatedConfig);
+        
+        console.log('✅ Startup data updated successfully in app-config.json');
+        
+        res.success('Startup data updated successfully', {
+            updated: true,
+            timestamp: updatedConfig.lastUpdated
+        });
+        
+    } catch (error) {
+        console.error('❌ Error updating startup data:', error);
+        res.error('Failed to update startup data', {
+            code: 'STARTUP_DATA_UPDATE_ERROR',
+            message: error.message
+        }, 500);
+    }
+}));
+
 export default router;

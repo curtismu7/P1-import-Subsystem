@@ -84,7 +84,7 @@ export class SettingsPage {
                                     <i class="mdi mdi-content-save"></i> Save Settings
                                 </button>
                                 <button type="button" id="test-connection" class="btn btn-danger">
-                                    <i class="mdi mdi-test-tube"></i> Test Connection
+                                    <i class="mdi mdi-key"></i> Get Token
                                 </button>
                             </div>
                         </form>
@@ -272,10 +272,10 @@ export class SettingsPage {
             console.error('❌ Save Settings button NOT found!');
         }
         
-        // Test connection
+        // Get Token (formerly Test Connection)
         const testConnection = document.getElementById('test-connection');
         if (testConnection) {
-            testConnection.addEventListener('click', this.handleTestConnection.bind(this));
+            testConnection.addEventListener('click', this.handleGetToken.bind(this));
         }
 
         // Default region to North America if empty
@@ -791,11 +791,11 @@ export class SettingsPage {
         }
     }
     
-    async handleTestConnection() {
-        console.log('🔌 Testing connection...');
+    async handleGetToken() {
+        console.log('🔑 Getting new token...');
         
         try {
-            this.app.showInfo('Testing connection...');
+            this.app.showInfo('Getting new token...');
             
             const credentials = this.getFormCredentials();
             if (!credentials) {
@@ -803,32 +803,94 @@ export class SettingsPage {
                 return;
             }
             
-            // Use the existing validate endpoint to perform a connection test in a single roundtrip
-            const response = await csrfManager.fetchWithCSRF('/api/settings/validate', {
+            // Validate credentials first
+            const validationResult = await this.validateCredentials(credentials);
+            if (!validationResult.isValid) {
+                this.signageSystem.addMessage(`❌ Invalid credentials: ${validationResult.errors.join(', ')}`, 'error');
+                return;
+            }
+            
+            // Get a brand new token using the token refresh endpoint
+            const response = await csrfManager.fetchWithCSRF('/api/token/refresh', {
                 method: 'POST',
                 credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(credentials)
+                headers: { 'Content-Type': 'application/json' }
             });
-
-            const result = await response.json().catch(() => ({}));
-
-            if (response.ok && (result.data?.credentialsValid || result.credentialsValid || result.data?.connectionTest?.success || result.connectionTest?.success)) {
-                this.app.showSuccess('Connection test successful');
-                const expires = result.data?.connectionTest?.tokenStatus?.expiresIn || result.connectionTest?.tokenStatus?.expiresIn;
-                if (expires) {
-                    this.signageSystem.addMessage(`⏰ Token acquired - Expires in: ${expires}s`, 'info');
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.app.showSuccess('✅ New token acquired successfully!');
+                this.signageSystem.addMessage('🔑 New token acquired successfully!', 'success');
+                
+                // Show token details if available
+                if (result.data?.expiresIn) {
+                    this.signageSystem.addMessage(`⏰ Token expires in: ${result.data.expiresIn}s`, 'info');
                 }
+                
+                // Update token info display
+                this.updateTokenInfo();
+                
+                // Also update the startup data in app-config.json
+                await this.updateStartupData();
+                
             } else {
-                const errs = (result && (result.errors || result?.error?.details?.validationErrors || result?.data?.errors)) || [];
-                const msg = Array.isArray(errs) && errs.length
-                    ? `Validation failed: ${errs.map(e => (e.field ? e.field+': ' : '') + (e.message || '')).join(', ')}`
-                    : (result?.message || result?.error?.message || 'Connection test failed');
-                this.app.showError(msg);
+                let errorMessage = 'Unknown error';
+                if (result.error) {
+                    if (typeof result.error === 'string') {
+                        errorMessage = result.error;
+                    } else if (result.error.message) {
+                        errorMessage = result.error.message;
+                    } else if (result.error.details) {
+                        errorMessage = result.error.details;
+                    } else {
+                        errorMessage = JSON.stringify(result.error);
+                    }
+                }
+                this.app.showError(`Failed to get new token: ${errorMessage}`);
+                this.signageSystem.addMessage(`❌ Failed to get new token: ${errorMessage}`, 'error');
             }
         } catch (error) {
-            console.error('❌ Error testing connection:', error);
-            this.app.showError(`Error testing connection: ${error.message}`);
+            console.error('❌ Error getting new token:', error);
+            this.app.showError(`Error getting new token: ${error.message}`);
+            this.signageSystem.addMessage(`❌ Error getting new token: ${error.message}`, 'error');
+        }
+    }
+    
+    /**
+     * Update startup data in app-config.json with new token information
+     */
+    async updateStartupData() {
+        try {
+            console.log('💾 Updating startup data with new token...');
+            
+            // Get current token status
+            const tokenResponse = await fetch('/api/token/status');
+            if (tokenResponse.ok) {
+                const tokenData = await tokenResponse.json();
+                
+                // Update app-config.json with new token data
+                const updateResponse = await fetch('/api/settings/update-startup-data', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: {
+                            success: true,
+                            data: tokenData.data || tokenData.message,
+                            updatedAt: new Date().toISOString()
+                        }
+                    })
+                });
+                
+                if (updateResponse.ok) {
+                    console.log('✅ Startup data updated successfully');
+                } else {
+                    console.warn('⚠️ Could not update startup data:', updateResponse.status);
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ Error updating startup data:', error.message);
         }
     }
     
