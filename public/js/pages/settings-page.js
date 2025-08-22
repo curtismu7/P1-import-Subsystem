@@ -263,10 +263,13 @@ export class SettingsPage {
         // Save Settings button
         const saveSettings = document.getElementById('save-settings');
         if (saveSettings) {
-            console.log(' Save Settings button found and event listener attached');
-            saveSettings.addEventListener('click', this.handleSaveSettings.bind(this));
+            console.log('✅ Save Settings button found and event listener attached');
+            saveSettings.addEventListener('click', (e) => {
+                console.log('🖱️ Save Settings button clicked!');
+                this.handleSaveSettings();
+            });
         } else {
-            console.error(' Save Settings button NOT found!');
+            console.error('❌ Save Settings button NOT found!');
         }
         
         // Test connection
@@ -328,8 +331,27 @@ export class SettingsPage {
     }
     
     async populateForm() {
-        const settings = this.app.settings;
+        let settings = this.app?.settings;
         console.log('🔧 Populating form with settings:', settings);
+        
+        // If app settings are not available, try to load them directly
+        if (!settings || Object.keys(settings).length === 0) {
+            console.log('⚠️ App settings not available, loading settings directly...');
+            try {
+                const response = await fetch('/api/settings');
+                const result = await response.json();
+                if (result.success && result.data) {
+                    settings = result.data;
+                    console.log('✅ Settings loaded directly:', settings);
+                } else {
+                    console.warn('⚠️ Could not load settings directly:', result);
+                    settings = {};
+                }
+            } catch (error) {
+                console.warn('⚠️ Error loading settings directly:', error.message);
+                settings = {};
+            }
+        }
         
         // Populate PingOne configuration
         const fields = {
@@ -343,7 +365,12 @@ export class SettingsPage {
         
         Object.entries(fields).forEach(([id, value]) => {
             const element = document.getElementById(id);
-            if (element) element.value = value;
+            if (element) {
+                element.value = value;
+                console.log(`✅ Set ${id} = "${value}"`);
+            } else {
+                console.error(`❌ Element with id "${id}" not found!`);
+            }
         });
         
         // Get client secret from credentials endpoint with settings.json backup
