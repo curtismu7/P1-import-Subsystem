@@ -38,7 +38,7 @@ export class TokenManagementPage {
 
         tokenPage.innerHTML = `
             <!-- Monaco Editor for JSON editing -->
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.min.js"></script>
             
             <div class="page-header">
                 <h1>Token Management</h1>
@@ -532,7 +532,7 @@ export class TokenManagementPage {
             console.log('🔍 Loading current token from server...');
             
             // Get current token status from server using CSRF protection
-            const response = await fetch('/api/token/status', {
+            const response = await window.csrfManager.fetchWithCSRF('/api/token/status', {
                 method: 'GET',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' }
@@ -549,7 +549,7 @@ export class TokenManagementPage {
                         // Get the actual token from startup data
                         let actualToken = null;
                         try {
-                            const startupResponse = await fetch('/api/settings/startup-data', {
+                            const startupResponse = await window.csrfManager.fetchWithCSRF('/api/settings/startup-data', {
                                 method: 'GET',
                                 credentials: 'include',
                                 headers: { 'Content-Type': 'application/json' }
@@ -749,7 +749,7 @@ export class TokenManagementPage {
 
             // Wait for Monaco Editor to be available
             let attempts = 0;
-            const maxAttempts = 10;
+            const maxAttempts = 20; // Increased attempts
             
             const checkMonaco = () => {
                 if (typeof monaco !== 'undefined') {
@@ -758,16 +758,34 @@ export class TokenManagementPage {
                 } else if (attempts < maxAttempts) {
                     attempts++;
                     console.log(`⏳ Waiting for Monaco Editor... (attempt ${attempts}/${maxAttempts})`);
-                    setTimeout(checkMonaco, 500);
+                    setTimeout(checkMonaco, 1000); // Increased delay to 1 second
                 } else {
                     console.error('❌ Monaco Editor failed to load after multiple attempts');
+                    console.log('⚠️ Falling back to basic text editing');
+                    this.fallbackToBasicEditing();
                 }
             };
             
             checkMonaco();
         } catch (error) {
             console.error('❌ Failed to initialize Monaco Editor:', error);
+            this.fallbackToBasicEditing();
         }
+    }
+
+    /**
+     * Fallback to basic text editing if Monaco Editor fails
+     */
+    fallbackToBasicEditing() {
+        console.log('🔄 Setting up fallback text editing');
+        // Make the pre elements more editable
+        const headerPre = document.getElementById('jwt-header');
+        const payloadPre = document.getElementById('jwt-payload');
+        
+        if (headerPre) headerPre.style.border = '2px solid #3b82f6';
+        if (payloadPre) payloadPre.style.border = '2px solid #3b82f6';
+        
+        console.log('✅ Fallback editing enabled');
     }
 
     /**
@@ -1180,7 +1198,7 @@ export class TokenManagementPage {
             refreshBtn.disabled = true;
 
             // Use CSRF-protected token refresh endpoint
-            const response = await fetch('/api/token/refresh', {
+            const response = await window.csrfManager.fetchWithCSRF('/api/token/refresh', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' }
@@ -1237,7 +1255,7 @@ export class TokenManagementPage {
             validateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating...';
             validateBtn.disabled = true;
 
-            const response = await fetch('/api/token/status', {
+            const response = await window.csrfManager.fetchWithCSRF('/api/token/status', {
                 method: 'GET',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' }
