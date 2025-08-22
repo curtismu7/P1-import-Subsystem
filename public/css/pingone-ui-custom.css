@@ -1556,30 +1556,35 @@ select.form-control:not([multiple]) {
   justify-content: center;
 }
 
-.status-indicator {
-  display: inline-flex;
+/* Old status-indicator styles removed - now handled by status-container */
+
+/* Center the status text and position indicator to the right */
+.status-container {
+  display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 500;
+  justify-content: center;
+  position: relative;
+  width: 100%;
   padding: 6px 10px;
   border-radius: 16px;
   background: rgba(0,0,0,0.04);
-  position: relative;
 }
 
-/* Center the status text and position indicator to the right */
 #token-status-text {
   text-align: center;
+  font-size: 1.1rem;
+  font-weight: 500;
   flex: 1;
-  margin-right: 2.5rem; /* Make space for the indicator on the right */
 }
 
-.status-indicator i.fa-circle {
+.status-indicator {
   position: absolute;
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
+}
+
+.status-indicator i.fa-circle {
   font-size: 1.2rem; /* Make it 1px larger than the text */
 }
 

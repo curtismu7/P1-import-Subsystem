@@ -53,9 +53,11 @@ export class TokenManagementPage {
                     <h2 class="section-title">Token Status</h2>
                     <div class="token-box">
                         <div class="token-status-display">
-                            <div class="status-indicator" id="token-status-indicator">
-                                <i class="fas fa-circle"></i>
+                            <div class="status-container">
                                 <span id="token-status-text">Checking...</span>
+                                <div class="status-indicator" id="token-status-indicator">
+                                    <i class="fas fa-circle"></i>
+                                </div>
                             </div>
                             
                             <div class="token-details">
