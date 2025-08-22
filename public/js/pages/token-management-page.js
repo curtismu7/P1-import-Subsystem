@@ -606,10 +606,10 @@ export class TokenManagementPage {
     formatJSON(obj) {
         const jsonString = JSON.stringify(obj, null, 2);
         return jsonString
-            .replace(/(".*?":)/g, '<span style="color: #007acc; font-weight: bold;">$1</span>')
-            .replace(/(".*?")/g, '<span style="color: #a31515;">$1</span>')
-            .replace(/(true|false|null)/g, '<span style="color: #0000ff;">$1</span>')
-            .replace(/(\d+)/g, '<span style="color: #098658;">$1</span>')
+            .replace(/(".*?":)/g, '<span class="json-key">$1</span>')
+            .replace(/(".*?")/g, '<span class="json-string">$1</span>')
+            .replace(/(true|false|null)/g, '<span class="json-boolean">$1</span>')
+            .replace(/(\d+)/g, '<span class="json-number">$1</span>')
             .replace(/\n/g, '<br>')
             .replace(/ /g, '&nbsp;');
     }
