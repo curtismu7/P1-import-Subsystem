@@ -15483,7 +15483,7 @@ a:hover, a:focus {
     flex: 1;
     margin-left: var(--sidebar-width);
     padding: 20px;
-    padding-top: 180px; /* Increased top padding to account for all fixed headers */
+    padding-top: 160px; /* Increased top padding to account for all fixed headers */
     min-height: 100vh;
     background-color: var(--ping-gray-lightest);
     transition: margin-left 0.3s ease;
@@ -16011,7 +16011,7 @@ label {
     
     .main-content {
         margin-left: var(--sidebar-width-collapsed);
-        padding-top: 180px; /* Maintain consistent top padding on mobile */
+        padding-top: 160px; /* Maintain consistent top padding on mobile */
     }
     
     .main-content.full-width {
@@ -16091,7 +16091,7 @@ label {
     
     .main-content {
         margin-left: 0;
-        padding-top: 180px; /* Maintain consistent top padding on small screens */
+        padding-top: 160px; /* Maintain consistent top padding on small screens */
     }
     
     .token-status-indicator {

@@ -16,10 +16,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css?v=1755734666376">
     
           <!-- Custom PingOne UI CSS -->
-      <link rel="stylesheet" href="/css/pingone-ui-custom.css?v=1755734666376">
+      <link rel="stylesheet" href="/css/pingone-ui-custom.css?v=1755867635001">
+      
+      <!-- PingOne Theme CSS (for CSS variables) -->
+      <link rel="stylesheet" href="/css/themes.css?v=1755867635001">
       
       <!-- Main CSS with cache busting -->
-      <link rel="stylesheet" href="/css/main.css?v=1755734666376">
+      <link rel="stylesheet" href="/css/main.css?v=1755867635001">
     
     <!-- Import Maps Configuration -->
     <script type="importmap">
@@ -47,7 +50,20 @@
 <body>
     <!-- Browser frame removed -->
 
-    <!-- Status Message Area -->
+    <!-- Message Header - For notifications, alerts, success/error messages -->
+    <div class="message-header" id="message-header">
+        <div class="message-content">
+            <div class="message-text" id="message-text">
+                <i class="icon-bell" id="message-icon"></i>
+                <span id="message-display">System ready</span>
+            </div>
+            <button class="message-close" id="message-close" title="Close message">
+                <i class="icon-close"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Status Message Bar - For system info (token status, UI version, date/time) -->
     <div class="status-message-bar" id="status-message-bar">
         <div class="status-message-content">
             <div class="status-message" id="status-message">
@@ -78,6 +94,10 @@
                 </div>
             </div>
             <div class="status-right">
+                <span class="ui-version-info" title="UI Version - Cache Busted">
+                    <i class="icon-code" style="margin-right: 4px;"></i>
+                    UI: v1755867635001
+                </span>
             </div>
         </div>
     </div>
@@ -440,8 +460,8 @@
     </div>
 
     <!-- Main Application Script -->
-    <script src="/socket.io/socket.io.js?v=1755734666376"></script>
-    <script type="module" src="/js/app.js?v=1755734666376"></script>
+    <script src="/socket.io/socket.io.js?v=1755867635001"></script>
+    <script type="module" src="/js/app.js?v=1755867635001"></script>
     
     <!-- Error Handling -->
     <script>

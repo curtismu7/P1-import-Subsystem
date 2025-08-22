@@ -1,4 +1,4 @@
-/* Cache Bust: v1755620848265 */
+/* Cache Bust: v1755867635001 - Message Header & Status Bar Layout */
 /*
  * PingOne User Management - Custom UI Styles
  * Following Ping Identity Design System
@@ -964,10 +964,95 @@ select {
   gap: var(--spacing-xs);
 }
 
-/* Status Message Bar */
-.status-message-bar {
+/* Message Header - For notifications, alerts, success/error messages */
+.message-header {
   position: fixed !important;
   top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  background: var(--ping-blue-primary, #007bff) !important;
+  color: white !important;
+  padding: 8px 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  z-index: 3001 !important;
+  height: 40px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  margin: 0 !important;
+  border: none !important;
+  transform: translateY(-100%) !important;
+  transition: transform 0.3s ease-in-out !important;
+}
+
+.message-header .message-content {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  max-width: 800px !important;
+}
+
+.message-header .message-text {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex: 1 !important;
+  justify-content: center !important;
+}
+
+.message-header .message-close {
+  background: none !important;
+  border: none !important;
+  color: white !important;
+  cursor: pointer !important;
+  padding: 4px !important;
+  border-radius: 4px !important;
+  transition: background-color 0.2s ease !important;
+  opacity: 0.8 !important;
+}
+
+.message-header .message-close:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  opacity: 1 !important;
+}
+
+/* Message Header Variants */
+.message-header.success {
+  background: var(--ping-success, #28a745) !important;
+}
+
+.message-header.error {
+  background: var(--ping-error, #dc3545) !important;
+}
+
+.message-header.warning {
+  background: var(--ping-warning, #ffc107) !important;
+  color: var(--ping-gray-900, #212529) !important;
+}
+
+.message-header.info {
+  background: var(--ping-blue-primary, #007bff) !important;
+}
+
+/* Show notification when visible */
+.message-header.visible,
+.message-header.show {
+  transform: translateY(0) !important;
+}
+
+.status-message-bar.visible,
+.status-message-bar.show {
+  transform: translateY(0) !important;
+}
+
+/* Status Message Bar - For system info (token status, UI version, date/time) */
+.status-message-bar {
+  position: fixed !important;
+  top: 40px !important;
   left: 0 !important;
   right: 0 !important;
   background: var(--ping-success) !important;
@@ -980,9 +1065,11 @@ select {
   font-weight: 500 !important;
   z-index: 3000 !important;
   height: 40px !important;
-  box-shadow: none !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
   margin: 0 !important;
   border: none !important;
+  transform: translateY(-100%) !important;
+  transition: transform 0.3s ease-in-out !important;
 }
 
 /* Layout: place token buttons next to each other, larger sizing */
@@ -1288,14 +1375,14 @@ select.form-control:not([multiple]) {
 /* Top Status Bar */
 .top-status-bar {
   position: fixed;
-  top: 35px;
+  top: 80px;
   left: 0;
   right: 0;
   height: var(--status-bar-height);
   background: var(--nav-bg);
   color: white;
   z-index: 999;
-  box-shadow: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin-top: 0;
 }
 
@@ -1312,6 +1399,24 @@ select.form-control:not([multiple]) {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+}
+
+.ui-version-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  opacity: 0.8;
+  color: var(--ping-gray-300, #dee2e6);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.ui-version-info:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .status-center {
