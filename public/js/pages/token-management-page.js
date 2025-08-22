@@ -37,10 +37,8 @@ export class TokenManagementPage {
         });
 
         tokenPage.innerHTML = `
-            <!-- Prism.js for JSON syntax highlighting -->
-            <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+            <!-- Monaco Editor for JSON editing -->
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
             
             <div class="page-header">
                 <h1>Token Management</h1>
@@ -114,11 +112,18 @@ export class TokenManagementPage {
                             <div class="jwt-details">
                                 <div class="jwt-section">
                                     <h4>Header</h4>
-                                    <pre id="jwt-header" class="jwt-content language-json">No token data</pre>
+                                    <pre id="jwt-header" class="jwt-content">No token data</pre>
                                 </div>
                                 <div class="jwt-section">
-                                    <h4>Payload</h4>
-                                    <pre id="jwt-payload" class="jwt-content language-json">No token data</pre>
+                                    <h4>Payload <button id="edit-payload-btn" class="btn btn-sm btn-outline-primary" style="margin-left: 10px;">Edit JSON</button></h4>
+                                    <div id="payload-editor-container" style="display: none;">
+                                        <div id="monaco-editor" style="height: 300px; border: 1px solid #ccc; border-radius: 4px;"></div>
+                                        <div class="editor-actions" style="margin-top: 10px; text-align: right;">
+                                            <button id="save-payload-btn" class="btn btn-success btn-sm">Save Changes</button>
+                                            <button id="cancel-edit-btn" class="btn btn-secondary btn-sm" style="margin-left: 5px;">Cancel</button>
+                                        </div>
+                                    </div>
+                                    <pre id="jwt-payload" class="jwt-content" style="display: block;">No token data</pre>
                                 </div>
                             </div>
                         </div>
@@ -213,6 +218,9 @@ export class TokenManagementPage {
         this.loadTokenHistory();
         this.startTokenMonitoring();
         this.initializeTokenAnalytics();
+        
+        // Initialize Monaco Editor for JSON editing
+        this.initializeMonacoEditor();
 
         // Safety: ensure no lingering interaction blockers after render
         setTimeout(() => {
@@ -619,11 +627,158 @@ export class TokenManagementPage {
     }
     
     /**
-     * Format JSON with Prism.js syntax highlighting
+     * Format JSON for display
      */
     formatJSON(obj) {
         const jsonString = JSON.stringify(obj, null, 2);
         return jsonString;
+    }
+    
+    /**
+     * Initialize Monaco Editor for JSON editing
+     */
+    async initializeMonacoEditor() {
+        try {
+            // Configure Monaco Editor loader
+            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+            
+            // Load Monaco Editor
+            require(['vs/editor/editor.main'], () => {
+                console.log('✅ Monaco Editor loaded successfully');
+                
+                // Create the editor instance
+                this.monacoEditor = monaco.editor.create(document.getElementById('monaco-editor'), {
+                    value: '{}',
+                    language: 'json',
+                    theme: 'vs-dark',
+                    automaticLayout: true,
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    fontSize: 13,
+                    lineNumbers: 'on',
+                    roundedSelection: false,
+                    scrollbar: {
+                        vertical: 'visible',
+                        horizontal: 'visible'
+                    },
+                    folding: true,
+                    wordWrap: 'on'
+                });
+                
+                // Set up editor event handlers
+                this.setupEditorEventHandlers();
+                
+                console.log('✅ Monaco Editor initialized');
+            });
+        } catch (error) {
+            console.error('❌ Failed to initialize Monaco Editor:', error);
+        }
+    }
+    
+    /**
+     * Set up editor event handlers
+     */
+    setupEditorEventHandlers() {
+        // Edit button - shows the editor
+        document.getElementById('edit-payload-btn')?.addEventListener('click', () => {
+            this.showPayloadEditor();
+        });
+        
+        // Save button - saves changes
+        document.getElementById('save-payload-btn')?.addEventListener('click', () => {
+            this.savePayloadChanges();
+        });
+        
+        // Cancel button - hides the editor
+        document.getElementById('cancel-edit-btn')?.addEventListener('click', () => {
+            this.hidePayloadEditor();
+        });
+    }
+    
+    /**
+     * Show the payload editor
+     */
+    showPayloadEditor() {
+        const editorContainer = document.getElementById('payload-editor-container');
+        const payloadDisplay = document.getElementById('jwt-payload');
+        const editButton = document.getElementById('edit-payload-btn');
+        
+        if (editorContainer && payloadDisplay && editButton) {
+            // Get current payload content
+            const currentContent = payloadDisplay.textContent;
+            
+            // Set editor content
+            if (this.monacoEditor && currentContent !== 'No token data') {
+                try {
+                    // Try to format the JSON if it's valid
+                    const parsed = JSON.parse(currentContent);
+                    this.monacoEditor.setValue(JSON.stringify(parsed, null, 2));
+                } catch (e) {
+                    // If not valid JSON, just set the raw content
+                    this.monacoEditor.setValue(currentContent);
+                }
+            }
+            
+            // Show editor, hide display
+            editorContainer.style.display = 'block';
+            payloadDisplay.style.display = 'none';
+            editButton.textContent = 'View JSON';
+            editButton.className = 'btn btn-sm btn-outline-secondary';
+        }
+    }
+    
+    /**
+     * Hide the payload editor
+     */
+    hidePayloadEditor() {
+        const editorContainer = document.getElementById('payload-editor-container');
+        const payloadDisplay = document.getElementById('jwt-payload');
+        const editButton = document.getElementById('edit-payload-btn');
+        
+        if (editorContainer && payloadDisplay && editButton) {
+            // Hide editor, show display
+            editorContainer.style.display = 'none';
+            payloadDisplay.style.display = 'block';
+            editButton.textContent = 'Edit JSON';
+            editButton.className = 'btn btn-sm btn-outline-primary';
+        }
+    }
+    
+    /**
+     * Save payload changes
+     */
+    savePayloadChanges() {
+        if (!this.monacoEditor) return;
+        
+        try {
+            const newContent = this.monacoEditor.getValue();
+            
+            // Validate JSON
+            const parsed = JSON.parse(newContent);
+            
+            // Update the display
+            const payloadDisplay = document.getElementById('jwt-payload');
+            if (payloadDisplay) {
+                payloadDisplay.textContent = JSON.stringify(parsed, null, 2);
+            }
+            
+            // Hide editor
+            this.hidePayloadEditor();
+            
+            // Show success message
+            if (this.app && this.app.showSuccess) {
+                this.app.showSuccess('Payload updated successfully!');
+            }
+            
+            console.log('✅ Payload changes saved');
+            
+        } catch (error) {
+            // Show error message
+            if (this.app && this.app.showError) {
+                this.app.showError('Invalid JSON format. Please fix the syntax errors.');
+            }
+            console.error('❌ Invalid JSON:', error);
+        }
     }
     
     /**

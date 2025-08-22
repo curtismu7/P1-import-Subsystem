@@ -1,4 +1,4 @@
-/* Cache Bust: v1755897300000 - Token Status Layout & Centering */
+/* Cache Bust: v1755897400000 - Monaco Editor JSON Integration */
 /*
  * PingOne User Management - Custom UI Styles
  * Following Ping Identity Design System
@@ -1685,7 +1685,7 @@ select.form-control:not([multiple]) {
   border-color: var(--ping-primary);
 }
 
-/* JSON Syntax Highlighting - Now handled by Prism.js */
+/* JSON Syntax Highlighting - Now handled by Monaco Editor */
 .json-key {
   color: #007acc;
   font-weight: bold;
@@ -1705,38 +1705,42 @@ select.form-control:not([multiple]) {
   font-weight: bold;
 }
 
-/* Prism.js Integration */
-.jwt-content.language-json {
-  background-color: #2d2d2d !important;
-  color: #f8f8f2 !important;
-  border: 1px solid #444;
+/* Monaco Editor Integration */
+#payload-editor-container {
+  margin-top: 1rem;
 }
 
-.jwt-content.language-json.error {
-  background-color: #2d2d2d !important;
-  color: #ff6b6b !important;
-  border: 1px solid #ff6b6b;
+#monaco-editor {
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-/* Override Prism.js theme for better integration */
-.jwt-content .token.property {
-  color: #66d9ef !important;
+.editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
-.jwt-content .token.string {
-  color: #a6e22e !important;
+.editor-actions .btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
 }
 
-.jwt-content .token.number {
-  color: #ae81ff !important;
-}
-
-.jwt-content .token.boolean {
-  color: #f92672 !important;
-}
-
-.jwt-content .token.null {
-  color: #f92672 !important;
+/* JWT Content Display */
+.jwt-content {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1.5rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  max-height: 400px;
+  min-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 /* Enhanced JWT Section Styling */
