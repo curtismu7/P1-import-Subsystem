@@ -1,4 +1,4 @@
-/* Cache Bust: v1755897600000 - Token Info White Text & Readability */
+/* Cache Bust: v1755897700000 - Token Details Orange Box & Textarea Height */
 /*
  * PingOne User Management - Custom UI Styles
  * Following Ping Identity Design System
@@ -1613,18 +1613,26 @@ select.form-control:not([multiple]) {
 
 .token-details {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  padding: 2rem;
+  border: 3px solid #ff8c00;
+  border-radius: 12px;
+  background-color: rgba(255, 140, 0, 0.05);
+  margin: 1.5rem 0;
+  min-height: 300px;
 }
 
 .detail-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem;
+  padding: 1rem;
   background-color: var(--ping-background-light);
-  border-radius: 4px;
-  border-left: 3px solid var(--ping-primary);
+  border-radius: 8px;
+  border-left: 4px solid var(--ping-primary);
+  margin-bottom: 0.5rem;
+  min-height: 60px;
 }
 
 .detail-row strong {
@@ -1657,11 +1665,11 @@ select.form-control:not([multiple]) {
 
 .token-string {
   width: 100%;
-  min-height: 150px;
-  max-height: 400px;
-  padding: 1.25rem;
+  min-height: 250px;
+  max-height: 600px;
+  padding: 1.5rem;
   border: 1px solid var(--ping-border);
-  border-radius: 4px;
+  border-radius: 8px;
   font-family: 'Courier New', monospace;
   font-size: 0.9rem;
   line-height: 1.4;
