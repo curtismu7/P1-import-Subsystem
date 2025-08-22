@@ -658,10 +658,20 @@ export class SettingsPage {
             
             const formData = new FormData(form);
             const normalizedRegion = this._normalizeRegion(formData.get('region'));
+            
+            // Get the real client secret if the field is masked
+            let clientSecret = formData.get('clientSecret');
+            const clientSecretElement = document.getElementById('settings-client-secret');
+            if (clientSecretElement && clientSecretElement.dataset.isMasked === 'true' && clientSecretElement.dataset.actualValue) {
+                // Use the actual value instead of the masked value
+                clientSecret = clientSecretElement.dataset.actualValue;
+                console.log('🔐 Using actual client secret value instead of masked value');
+            }
+            
             const settings = {
                 pingone_environment_id: formData.get('environmentId'),
                 pingone_client_id: formData.get('clientId'),
-                pingone_client_secret: formData.get('clientSecret'),
+                pingone_client_secret: clientSecret,
                 pingone_region: normalizedRegion,
                 pingone_population_id: formData.get('populationId')
             };
@@ -678,7 +688,12 @@ export class SettingsPage {
                 populationId: formData.get('populationId')
             });
             
-            console.log('🔧 Settings object to send:', settings);
+            console.log('🔧 Settings object to send:', {
+                ...settings,
+                pingone_client_secret: settings.pingone_client_secret ? 
+                    `${settings.pingone_client_secret.substring(0, 4)}...${settings.pingone_client_secret.substring(settings.pingone_client_secret.length - 4)}` : 
+                    'empty'
+            });
             
             // Validate required fields
             const requiredFields = ['pingone_environment_id', 'pingone_client_id', 'pingone_client_secret', 'pingone_region'];
