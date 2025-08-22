@@ -366,14 +366,14 @@ export class TokenManagementPage {
                 
                 // Show expiration time
                 if (storedToken.expiresAt) {
-                    tokenExpires.textContent = new Date(storedToken.expiresAt).toLocaleString();
+                    tokenExpires.textContent = ' ' + new Date(storedToken.expiresAt).toLocaleString();
                     tokenRemaining.textContent = this.formatTimeRemaining(Math.floor((new Date(storedToken.expiresAt) - new Date()) / 1000));
                 } else if (storedToken.expiresIn) {
                     const expiresAt = new Date(Date.now() + (storedToken.expiresIn * 1000));
-                    tokenExpires.textContent = expiresAt.toLocaleString();
+                    tokenExpires.textContent = ' ' + expiresAt.toLocaleString();
                     tokenRemaining.textContent = this.formatTimeRemaining(storedToken.expiresIn);
                 } else {
-                    tokenExpires.textContent = 'Unknown';
+                    tokenExpires.textContent = ' Unknown';
                     tokenRemaining.textContent = 'Unknown';
                 }
                 
@@ -390,9 +390,9 @@ export class TokenManagementPage {
                 tokenType.textContent = 'Bearer';
                 
                 if (storedToken.expiresAt) {
-                    tokenExpires.textContent = new Date(storedToken.expiresAt).toLocaleString();
+                    tokenExpires.textContent = ' ' + new Date(storedToken.expiresAt).toLocaleString();
                 } else {
-                    tokenExpires.textContent = 'Unknown';
+                    tokenExpires.textContent = ' Unknown';
                 }
                 
                 tokenRemaining.textContent = 'Expired';
