@@ -1,4 +1,4 @@
-/* Cache Bust: v1755897000000 - Enhanced JWT Display & JSON Formatting */
+/* Cache Bust: v1755897100000 - JWT Layout & Height Improvements */
 /*
  * PingOne User Management - Custom UI Styles
  * Following Ping Identity Design System
@@ -1634,8 +1634,8 @@ select.form-control:not([multiple]) {
 }
 
 .jwt-details {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 2rem;
   margin-top: 1rem;
 }
@@ -1650,8 +1650,8 @@ select.form-control:not([multiple]) {
   font-family: 'Courier New', monospace;
   font-size: 0.85rem;
   line-height: 1.6;
-  max-height: 300px;
-  min-height: 200px;
+  max-height: 400px;
+  min-height: 300px;
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-all;
@@ -1692,6 +1692,7 @@ select.form-control:not([multiple]) {
   padding: 1.5rem;
   box-shadow: var(--shadow-sm);
   transition: all 0.3s ease;
+  width: 100%;
 }
 
 .jwt-section:hover {
