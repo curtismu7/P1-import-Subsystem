@@ -282,6 +282,19 @@ export class TokenManagementPage {
         document.getElementById('reset-analytics-btn')?.addEventListener('click', () => {
             this.resetAnalytics();
         });
+        
+        // Monaco Editor buttons
+        document.getElementById('edit-payload-btn')?.addEventListener('click', () => {
+            this.showPayloadEditor();
+        });
+        
+        document.getElementById('save-payload-btn')?.addEventListener('click', () => {
+            this.savePayloadChanges();
+        });
+        
+        document.getElementById('cancel-edit-btn')?.addEventListener('click', () => {
+            this.hidePayloadEditor();
+        });
     }
 
     async updateTokenDisplay() {
@@ -668,9 +681,6 @@ export class TokenManagementPage {
                     wordWrap: 'on'
                 });
                 
-                // Set up editor event handlers
-                this.setupEditorEventHandlers();
-                
                 console.log('✅ Monaco Editor initialized');
             });
         } catch (error) {
@@ -678,25 +688,7 @@ export class TokenManagementPage {
         }
     }
     
-    /**
-     * Set up editor event handlers
-     */
-    setupEditorEventHandlers() {
-        // Edit button - shows the editor
-        document.getElementById('edit-payload-btn')?.addEventListener('click', () => {
-            this.showPayloadEditor();
-        });
-        
-        // Save button - saves changes
-        document.getElementById('save-payload-btn')?.addEventListener('click', () => {
-            this.savePayloadChanges();
-        });
-        
-        // Cancel button - hides the editor
-        document.getElementById('cancel-edit-btn')?.addEventListener('click', () => {
-            this.hidePayloadEditor();
-        });
-    }
+    /* Editor event handlers now set up in setupEventListeners() */
     
     /**
      * Show the payload editor
