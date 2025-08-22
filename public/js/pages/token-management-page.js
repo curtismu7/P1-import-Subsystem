@@ -112,19 +112,32 @@ export class TokenManagementPage {
                         <div class="decoded-token-display">
                             <div class="jwt-details">
                                 <div class="jwt-section">
-                                    <h4>Header</h4>
-                                    <pre id="jwt-header" class="jwt-content">No token data</pre>
-                                </div>
-                                <div class="jwt-section">
-                                    <h4>Payload <button id="edit-payload-btn" class="btn btn-sm btn-outline-primary" style="margin-left: 10px;">Edit JSON</button></h4>
-                                    <div id="payload-editor-container" style="display: none;">
-                                        <div id="monaco-editor" style="height: 300px; border: 1px solid #ccc; border-radius: 4px;"></div>
+                                    <h4>
+                                        Header
+                                        <button id="edit-header-btn" class="edit-json-btn">Edit JSON</button>
+                                    </h4>
+                                    <div id="header-editor-container" style="display: none;">
+                                        <div id="header-monaco-editor" style="height: 250px; border: 1px solid #e5e7eb; border-radius: 4px;"></div>
                                         <div class="editor-actions" style="margin-top: 10px; text-align: right;">
-                                            <button id="save-payload-btn" class="btn btn-success btn-sm">Save Changes</button>
-                                            <button id="cancel-edit-btn" class="btn btn-secondary btn-sm" style="margin-left: 5px;">Cancel</button>
+                                            <button id="save-header-btn" class="edit-json-btn" style="background: #059669;">Save Changes</button>
+                                            <button id="cancel-header-edit-btn" class="edit-json-btn" style="background: #6b7280; margin-left: 8px;">Cancel</button>
                                         </div>
                                     </div>
-                                    <pre id="jwt-payload" class="jwt-content" style="display: block;">No token data</pre>
+                                    <pre id="jwt-header" class="jwt-content" contenteditable="true">No token data</pre>
+                                </div>
+                                <div class="jwt-section">
+                                    <h4>
+                                        Payload
+                                        <button id="edit-payload-btn" class="edit-json-btn">Edit JSON</button>
+                                    </h4>
+                                    <div id="payload-editor-container" style="display: none;">
+                                        <div id="monaco-editor" style="height: 300px; border: 1px solid #e5e7eb; border-radius: 4px;"></div>
+                                        <div class="editor-actions" style="margin-top: 10px; text-align: right;">
+                                            <button id="save-payload-btn" class="edit-json-btn" style="background: #059669;">Save Changes</button>
+                                            <button id="cancel-edit-btn" class="edit-json-btn" style="background: #6b7280; margin-left: 8px;">Cancel</button>
+                                        </div>
+                                    </div>
+                                    <pre id="jwt-payload" class="jwt-content" contenteditable="true">No token data</pre>
                                 </div>
                             </div>
                         </div>
@@ -295,6 +308,19 @@ export class TokenManagementPage {
         
         document.getElementById('cancel-edit-btn')?.addEventListener('click', () => {
             this.hidePayloadEditor();
+        });
+
+        // Header Editor buttons
+        document.getElementById('edit-header-btn')?.addEventListener('click', () => {
+            this.showHeaderEditor();
+        });
+        
+        document.getElementById('save-header-btn')?.addEventListener('click', () => {
+            this.saveHeaderChanges();
+        });
+        
+        document.getElementById('cancel-header-edit-btn')?.addEventListener('click', () => {
+            this.hideHeaderEditor();
         });
     }
 
@@ -824,6 +850,88 @@ export class TokenManagementPage {
                 this.app.showError('Invalid JSON format. Please fix the syntax errors.');
             }
             console.error('❌ Invalid JSON:', error);
+        }
+    }
+
+    /**
+     * Show header editor
+     */
+    showHeaderEditor() {
+        const headerContainer = document.getElementById('header-editor-container');
+        const headerContent = document.getElementById('jwt-header');
+        
+        if (headerContainer && headerContent) {
+            headerContainer.style.display = 'block';
+            headerContent.style.display = 'none';
+            
+            // Initialize Monaco Editor for header if not already done
+            if (!this.headerMonacoEditor) {
+                this.initializeHeaderMonacoEditor();
+            }
+        }
+    }
+
+    /**
+     * Hide header editor
+     */
+    hideHeaderEditor() {
+        const headerContainer = document.getElementById('header-editor-container');
+        const headerContent = document.getElementById('jwt-header');
+        
+        if (headerContainer && headerContent) {
+            headerContainer.style.display = 'none';
+            headerContent.style.display = 'block';
+        }
+    }
+
+    /**
+     * Initialize Monaco Editor for header
+     */
+    initializeHeaderMonacoEditor() {
+        const container = document.getElementById('header-monaco-editor');
+        if (!container) return;
+
+        // Get current header content
+        const headerContent = document.getElementById('jwt-header');
+        const currentValue = headerContent.textContent || '{}';
+
+        this.headerMonacoEditor = monaco.editor.create(container, {
+            value: currentValue,
+            language: 'json',
+            theme: 'vs',
+            automaticLayout: true,
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            fontSize: 14,
+            lineNumbers: 'on',
+            roundedSelection: false,
+            wordWrap: 'on'
+        });
+    }
+
+    /**
+     * Save header changes
+     */
+    saveHeaderChanges() {
+        if (!this.headerMonacoEditor) {
+            console.error('❌ Header Monaco Editor not initialized');
+            return;
+        }
+
+        try {
+            const newValue = this.headerMonacoEditor.getValue();
+            const parsed = JSON.parse(newValue);
+            
+            // Update the display
+            document.getElementById('jwt-header').textContent = JSON.stringify(parsed, null, 2);
+            
+            // Hide the editor
+            this.hideHeaderEditor();
+            
+            console.log('✅ Header changes saved');
+        } catch (error) {
+            console.error('❌ Invalid JSON:', error);
+            alert('Invalid JSON format. Please fix the syntax errors.');
         }
     }
     
