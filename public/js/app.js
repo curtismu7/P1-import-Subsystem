@@ -392,7 +392,7 @@ class PingOneApp {
                     headerRefreshBtn.disabled = false;
                 }
                 // Recompute header token status and set button color
-                await this.updateHeaderTokenStatus();
+                await this.updateTokenUI();
                 if (this.headerToken?.isValid || this.tokenStatus?.isValid) {
                     headerRefreshBtn.classList.add('success');
                 } else {
