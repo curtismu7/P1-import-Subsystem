@@ -98,9 +98,9 @@ export class SettingsPage {
                         <p>Manage your PingOne access tokens and authentication</p>
                         
                         <div class="token-actions">
-                            <button type="button" id="refresh-token" class="btn btn-danger btn-sm" title="Get a new token using current credentials">
-                                <i class="mdi mdi-refresh"></i> Refresh Token
-                            </button>
+                                    <button type="button" id="refresh-token" class="btn btn-danger btn-sm" title="Check current token validity and time remaining">
+            <i class="mdi mdi-check-circle"></i> Check Token
+        </button>
                             <button type="button" id="validate-token" class="btn btn-danger btn-sm" title="Check if current token is valid">
                                 <i class="mdi mdi-check-circle"></i> Validate Token
                             </button>
@@ -286,7 +286,7 @@ export class SettingsPage {
         
         // Token action buttons
         document.getElementById('refresh-token')?.addEventListener('click', async () => {
-            await this.handleRefreshToken();
+            await this.handleValidateToken();
         });
 
         document.getElementById('validate-token')?.addEventListener('click', async () => {
@@ -490,6 +490,9 @@ export class SettingsPage {
             
             // Update button states based on token status
             this.updateTokenButtonStates(tokenStatus.isValid);
+            
+            // Update refresh token button color
+            this.updateRefreshTokenButtonColor();
             
             console.log('🔧 Token info updated - Valid:', tokenStatus.isValid, 'Time Left:', tokenStatus.timeLeft);
         }).catch(error => {
@@ -888,6 +891,52 @@ export class SettingsPage {
     }
     
     /**
+     * Update the refresh token button color based on token status
+     */
+    updateRefreshTokenButtonColor() {
+        try {
+            const refreshBtn = document.getElementById('refresh-token');
+            if (!refreshBtn) return;
+            
+            // Get current token status
+            this.getTokenStatusFromServer().then(tokenStatus => {
+                if (tokenStatus.isValid && tokenStatus.timeLeft) {
+                    const timeLeftMinutes = Math.floor(tokenStatus.timeLeft / 60);
+                    
+                    // Remove existing color classes
+                    refreshBtn.classList.remove('btn-success', 'btn-warning', 'btn-danger');
+                    
+                    if (timeLeftMinutes < 10) {
+                        // Red when under 10 minutes
+                        refreshBtn.classList.add('btn-danger');
+                        refreshBtn.style.backgroundColor = '#dc3545';
+                        refreshBtn.style.borderColor = '#dc3545';
+                        refreshBtn.style.color = 'white';
+                    } else if (timeLeftMinutes < 30) {
+                        // Warning color when under 30 minutes
+                        refreshBtn.classList.add('btn-warning');
+                        refreshBtn.style.backgroundColor = '#ffc107';
+                        refreshBtn.style.borderColor = '#ffc107';
+                        refreshBtn.style.color = 'black';
+                    } else {
+                        // Green when token is fresh (over 30 minutes)
+                        refreshBtn.classList.add('btn-success');
+                        refreshBtn.style.backgroundColor = '#28a745';
+                        refreshBtn.style.borderColor = '#28a745';
+                        refreshBtn.style.color = 'white';
+                    }
+                    
+                    console.log(`🎨 Refresh token button color updated: ${timeLeftMinutes} minutes remaining`);
+                }
+            }).catch(error => {
+                console.warn('⚠️ Could not update refresh token button color:', error);
+            });
+        } catch (error) {
+            console.warn('⚠️ Error updating refresh token button color:', error);
+        }
+    }
+
+    /**
      * Update startup data in app-config.json with new token information
      */
     async updateStartupData() {
@@ -955,9 +1004,29 @@ export class SettingsPage {
             const result = await response.json();
             
             if (result.success) {
-                this.signageSystem.addMessage(' Token refreshed successfully!', 'success');
-                // Update token info
+                this.signageSystem.addMessage('✅ Token refreshed successfully!', 'success');
+                
+                // Force refresh the main app's token status
+                if (this.app && typeof this.app.loadTokenStatus === 'function') {
+                    console.log('🔄 Forcing main app token status refresh...');
+                    await this.app.loadTokenStatus();
+                }
+                
+                // Force update the main app's token UI
+                if (this.app && typeof this.app.updateTokenUI === 'function') {
+                    console.log('🔄 Forcing main app token UI update...');
+                    this.app.updateTokenUI();
+                }
+                
+                // Small delay to ensure token service is updated
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Update token info display
                 this.updateTokenInfo();
+                
+                // Update button colors based on new token status
+                this.updateRefreshTokenButtonColor();
+                
             } else {
                 let errorMessage = 'Unknown error';
                 if (result.error) {
@@ -992,12 +1061,32 @@ export class SettingsPage {
             
             const result = await response.json();
             
-            if (result.success && result.token && result.token.isValid) {
-                const timeLeft = result.token.timeLeft || 'Unknown';
-                this.signageSystem.addMessage('✅ Token is valid!', 'success');
-                this.signageSystem.addMessage(`⏰ Time remaining: ${timeLeft}`, 'info');
+            console.log('🔍 Token validation response:', result);
+            
+            if (result.success && result.data?.data) {
+                const tokenData = result.data.data;
+                
+                if (tokenData.isValid) {
+                    const expiresIn = tokenData.expiresIn || 0;
+                    const timeLeftMinutes = Math.floor(expiresIn / 60);
+                    const timeLeftSeconds = expiresIn % 60;
+                    
+                    this.signageSystem.addMessage('✅ Token is valid!', 'success');
+                    
+                    if (timeLeftMinutes > 0) {
+                        this.signageSystem.addMessage(`⏰ Time remaining: ${timeLeftMinutes}m ${timeLeftSeconds}s`, 'info');
+                    } else {
+                        this.signageSystem.addMessage(`⏰ Time remaining: ${expiresIn}s`, 'info');
+                    }
+                    
+                    // Update button colors based on token status
+                    this.updateRefreshTokenButtonColor();
+                    
+                } else {
+                    this.signageSystem.addMessage('❌ Token is invalid or expired', 'error');
+                }
             } else {
-                this.signageSystem.addMessage('❌ Token is invalid or expired', 'error');
+                this.signageSystem.addMessage('❌ Could not validate token status', 'error');
             }
         } catch (error) {
             console.error('❌ Error validating token:', error);
