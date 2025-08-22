@@ -71,11 +71,12 @@ function standardizeResponse(req, res, next) {
       standardizedResponse = data;
     } else {
       // Need to standardize
-      if (res.statusCode >= 400) {
-        // Error response
+      const currentStatus = res.statusCode;
+      if (currentStatus >= 400) {
+        // Error response - preserve the original status code
         const message = data?.error?.message || data?.message || data?.error || 'An error occurred';
         const details = data?.error || (typeof data === 'string' ? null : data);
-        standardizedResponse = createErrorResponse(message, details, res.statusCode, req.id);
+        standardizedResponse = createErrorResponse(message, details, currentStatus, req.id);
       } else {
         // Success response
         let message = 'Operation completed successfully';
