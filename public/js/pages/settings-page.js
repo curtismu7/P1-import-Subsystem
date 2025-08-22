@@ -84,7 +84,7 @@ export class SettingsPage {
                                     <i class="mdi mdi-content-save"></i> Save Settings
                                 </button>
                                 <button type="button" id="test-connection" class="btn btn-danger">
-                                    <i class="mdi mdi-key"></i> Get Token
+                                    <i class="mdi mdi-key"></i> Get New Token
                                 </button>
                             </div>
                         </form>
@@ -820,10 +820,10 @@ export class SettingsPage {
     }
     
     async handleGetToken() {
-        console.log('🔑 Getting new token...');
+        console.log('🔑 Creating new token...');
         
         try {
-            this.app.showInfo('Getting new token...');
+            this.app.showInfo('Creating new token...');
             
             const credentials = this.getFormCredentials();
             if (!credentials) {
@@ -848,12 +848,19 @@ export class SettingsPage {
             const result = await response.json();
             
             if (result.success) {
-                this.app.showSuccess('✅ New token acquired successfully!');
-                this.signageSystem.addMessage('🔑 New token acquired successfully!', 'success');
+                this.app.showSuccess('✅ Created new token successfully!');
+                this.signageSystem.addMessage('🔑 Created new token successfully!', 'success');
                 
                 // Show token details if available
                 if (result.data?.expiresIn) {
-                    this.signageSystem.addMessage(`⏰ Token expires in: ${result.data.expiresIn}s`, 'info');
+                    const timeLeftMinutes = Math.floor(result.data.expiresIn / 60);
+                    const timeLeftSeconds = result.data.expiresIn % 60;
+                    
+                    if (timeLeftMinutes > 0) {
+                        this.signageSystem.addMessage(`⏰ Token expires in: ${timeLeftMinutes}m ${timeLeftSeconds}s`, 'info');
+                    } else {
+                        this.signageSystem.addMessage(`⏰ Token expires in: ${result.data.expiresIn}s`, 'info');
+                    }
                 }
                 
                 // Force refresh the main app's token status
