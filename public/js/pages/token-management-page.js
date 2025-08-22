@@ -605,13 +605,65 @@ export class TokenManagementPage {
      */
     formatJSON(obj) {
         const jsonString = JSON.stringify(obj, null, 2);
-        return jsonString
-            .replace(/(".*?":)/g, '<span class="json-key">$1</span>')
-            .replace(/(".*?")/g, '<span class="json-string">$1</span>')
-            .replace(/(true|false|null)/g, '<span class="json-boolean">$1</span>')
-            .replace(/(\d+)/g, '<span class="json-number">$1</span>')
-            .replace(/\n/g, '<br>')
-            .replace(/ /g, '&nbsp;');
+        let formatted = '';
+        let indentLevel = 0;
+        
+        for (let i = 0; i < jsonString.length; i++) {
+            const char = jsonString[i];
+            const nextChar = jsonString[i + 1];
+            
+            if (char === '{' || char === '[') {
+                formatted += char + '<br>';
+                indentLevel++;
+                formatted += '&nbsp;'.repeat(indentLevel * 2);
+            } else if (char === '}' || char === ']') {
+                indentLevel = Math.max(0, indentLevel - 1);
+                formatted += '<br>' + '&nbsp;'.repeat(indentLevel * 2) + char;
+            } else if (char === ',') {
+                formatted += char + '<br>' + '&nbsp;'.repeat(indentLevel * 2);
+            } else if (char === ':') {
+                formatted += char + ' ';
+            } else if (char === '"') {
+                // Find the end of the string
+                let j = i + 1;
+                let inString = true;
+                let stringContent = '';
+                
+                while (j < jsonString.length && inString) {
+                    if (jsonString[j] === '"' && jsonString[j - 1] !== '\\') {
+                        inString = false;
+                    } else {
+                        stringContent += jsonString[j];
+                    }
+                    j++;
+                }
+                
+                // Check if this is a key (ends with :)
+                const isKey = jsonString[j] === ':';
+                
+                if (isKey) {
+                    formatted += '<span class="json-key">"' + stringContent + '":</span>';
+                } else {
+                    // Check if it's a number, boolean, or null
+                    if (stringContent === 'true' || stringContent === 'false' || stringContent === 'null') {
+                        formatted += '<span class="json-boolean">"' + stringContent + '"</span>';
+                    } else if (/^\d+$/.test(stringContent)) {
+                        formatted += '<span class="json-number">"' + stringContent + '"</span>';
+                    } else {
+                        formatted += '<span class="json-string">"' + stringContent + '"</span>';
+                    }
+                }
+                
+                i = j - 1; // Skip the processed string
+            } else if (char === ' ' && nextChar === ' ') {
+                // Skip extra spaces
+                continue;
+            } else {
+                formatted += char;
+            }
+        }
+        
+        return formatted;
     }
     
     /**
