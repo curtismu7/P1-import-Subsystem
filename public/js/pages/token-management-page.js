@@ -307,8 +307,13 @@ export class TokenManagementPage {
         if (storedToken && storedToken.token) {
             console.log('✅ Found stored token, updating display');
             
-            // Display the token
-            tokenString.value = storedToken.token;
+            // Display the token (or placeholder if it's a server-stored token)
+            if (storedToken.token === '[Token stored on server]') {
+                tokenString.value = '';
+                tokenString.placeholder = 'Token is stored securely on the server';
+            } else {
+                tokenString.value = storedToken.token;
+            }
             
             // Show/hide buttons based on token availability
             const getTokenBtn = document.getElementById('get-token-btn');
@@ -316,8 +321,8 @@ export class TokenManagementPage {
             const decodeTokenBtn = document.getElementById('decode-token-btn');
             
             if (getTokenBtn) getTokenBtn.style.display = 'none';
-            if (copyTokenBtn) copyTokenBtn.style.display = 'inline-block';
-            if (decodeTokenBtn) decodeTokenBtn.style.display = 'inline-block';
+            if (copyTokenBtn) copyTokenBtn.style.display = storedToken.token !== '[Token stored on server]' ? 'inline-block' : 'none';
+            if (decodeTokenBtn) decodeTokenBtn.style.display = storedToken.token !== '[Token stored on server]' ? 'inline-block' : 'none';
             
             // Check if token is valid
             const isTokenValid = this.isTokenValid(storedToken);
@@ -326,34 +331,44 @@ export class TokenManagementPage {
                 statusIndicator.className = 'status-indicator status-valid';
                 statusText.textContent = 'Valid';
                 tokenType.textContent = 'Bearer';
-                tokenExpires.textContent = storedToken.expiresAt ? 
-                    new Date(storedToken.expiresAt).toLocaleString() : 'Unknown';
-                tokenRemaining.textContent = storedToken.expiresAt ? 
-                    this.formatTimeRemaining(Math.floor((new Date(storedToken.expiresAt) - new Date()) / 1000)) : 'Unknown';
+                
+                // Show expiration time
+                if (storedToken.expiresAt) {
+                    tokenExpires.textContent = new Date(storedToken.expiresAt).toLocaleString();
+                    tokenRemaining.textContent = this.formatTimeRemaining(Math.floor((new Date(storedToken.expiresAt) - new Date()) / 1000));
+                } else if (storedToken.expiresIn) {
+                    const expiresAt = new Date(Date.now() + (storedToken.expiresIn * 1000));
+                    tokenExpires.textContent = expiresAt.toLocaleString();
+                    tokenRemaining.textContent = this.formatTimeRemaining(storedToken.expiresIn);
+                } else {
+                    tokenExpires.textContent = 'Unknown';
+                    tokenRemaining.textContent = 'Unknown';
+                }
+                
                 tokenScope.textContent = 'Default';
                 
-                // Auto-decode the token
-                this.decodeJWT(storedToken.token);
+                // Auto-decode the token if it's not a placeholder
+                if (storedToken.token !== '[Token stored on server]') {
+                    this.decodeJWT(storedToken.token);
+                }
             } else {
                 statusIndicator.className = 'status-indicator status-invalid';
                 statusText.textContent = 'Expired';
                 tokenType.textContent = 'Bearer';
-                tokenExpires.textContent = storedToken.expiresAt ? 
-                    new Date(storedToken.expiresAt).toLocaleString() : 'Unknown';
+                
+                if (storedToken.expiresAt) {
+                    tokenExpires.textContent = new Date(storedToken.expiresAt).toLocaleString();
+                } else {
+                    tokenExpires.textContent = 'Unknown';
+                }
+                
                 tokenRemaining.textContent = 'Expired';
                 tokenScope.textContent = 'Default';
                 
-                // Show/hide buttons based on token availability (expired token still exists)
-                const getTokenBtn = document.getElementById('get-token-btn');
-                const copyTokenBtn = document.getElementById('copy-token-btn');
-                const decodeTokenBtn = document.getElementById('decode-token-btn');
-                
-                if (getTokenBtn) getTokenBtn.style.display = 'none';
-                if (copyTokenBtn) copyTokenBtn.style.display = 'inline-block';
-                if (decodeTokenBtn) decodeTokenBtn.style.display = 'inline-block';
-                
-                // Auto-decode the expired token (for read-only display)
-                this.decodeJWT(storedToken.token);
+                // Auto-decode the expired token if it's not a placeholder
+                if (storedToken.token !== '[Token stored on server]') {
+                    this.decodeJWT(storedToken.token);
+                }
             }
         } else {
             console.log('❌ No stored token found');
@@ -409,94 +424,59 @@ export class TokenManagementPage {
      */
     async loadStoredToken() {
         try {
-            console.log('🔍 Loading stored token from localStorage...');
+            console.log('🔍 Loading current token from server...');
             
-            // Try pingone_token_cache first (preferred format)
-            let stored = localStorage.getItem('pingone_token_cache');
-            console.log('🔍 Raw stored data from cache:', stored ? 'Found' : 'Not found');
+            // Get current token status from server using CSRF protection
+            const response = await fetch('/api/token/status', {
+                method: 'GET',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            });
             
-            if (stored) {
-                const tokenInfo = JSON.parse(stored);
-                console.log('🔍 Parsed token info from cache:', tokenInfo);
-                console.log('🔍 Token has token property:', !!tokenInfo.token);
-                console.log('🔍 Token length:', tokenInfo.token ? tokenInfo.token.length : 0);
-                return tokenInfo;
-            }
-            
-            // Try pingone_token as fallback
-            stored = localStorage.getItem('pingone_token');
-            console.log('🔍 Raw stored data from token:', stored ? 'Found' : 'Not found');
-            
-            if (stored) {
-                const tokenData = JSON.parse(stored);
-                console.log('🔍 Parsed token data:', tokenData);
+            if (response.ok) {
+                const result = await response.json();
+                console.log('🔍 Server token status response:', result);
                 
-                // Convert to cache format
-                const tokenInfo = {
-                    token: tokenData.access_token,
-                    expiresAt: Date.now() + (tokenData.expires_in * 1000)
-                };
-                console.log('🔍 Converted to cache format:', tokenInfo);
-                return tokenInfo;
-            }
-            
-            // Try pingone_worker_token as another fallback
-            stored = localStorage.getItem('pingone_worker_token');
-            console.log('🔍 Raw stored data from worker token:', stored ? 'Found' : 'Not found');
-            
-            if (stored) {
-                const tokenInfo = {
-                    token: stored,
-                    expiresAt: null // No expiry info for worker token
-                };
-                console.log('🔍 Converted worker token to cache format:', tokenInfo);
-                return tokenInfo;
-            }
-            
-            // Try accessToken as final fallback
-            stored = localStorage.getItem('accessToken');
-            console.log('🔍 Raw stored data from accessToken:', stored ? 'Found' : 'Not found');
-            
-            if (stored) {
-                const tokenInfo = {
-                    token: stored,
-                    expiresAt: null // No expiry info for accessToken
-                };
-                console.log('🔍 Converted accessToken to cache format:', tokenInfo);
-                return tokenInfo;
-            }
-            
-            // If no token in localStorage, try to get from server
-            console.log('🔍 No token found in localStorage, checking server...');
-            try {
-                const response = await fetch('/api/token/status');
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log('🔍 Server token status:', result);
+                if (result.success && result.data?.data) {
+                    const tokenData = result.data.data;
                     
-                    if (result.success && result.data && result.data.hasToken) {
-                        // Get the actual token from localStorage since server only returns status
-                        const cachedToken = localStorage.getItem('pingone_token_cache');
-                        if (cachedToken) {
-                            const parsed = JSON.parse(cachedToken);
-                            const tokenInfo = {
-                                token: parsed.token,
-                                expiresAt: parsed.expiresAt || null
-                            };
-                            console.log('🔍 Got token from cache via server status:', tokenInfo);
-                            return tokenInfo;
-                        }
+                    if (tokenData.hasToken && tokenData.isValid) {
+                        // Create token info from server response
+                        const tokenInfo = {
+                            token: tokenData.accessToken || '[Token stored on server]',
+                            expiresAt: tokenData.expiresIn ? 
+                                new Date(Date.now() + (tokenData.expiresIn * 1000)) : null,
+                            expiresIn: tokenData.expiresIn,
+                            environmentId: tokenData.environmentId,
+                            region: tokenData.region,
+                            lastUpdated: tokenData.lastUpdated
+                        };
+                        
+                        console.log('✅ Token loaded from server:', tokenInfo);
+                        return tokenInfo;
+                    } else {
+                        console.log('⚠️ Token exists but is invalid or expired');
+                        return {
+                            token: '[Expired token]',
+                            expiresAt: null,
+                            expiresIn: 0,
+                            isValid: false
+                        };
                     }
+                } else {
+                    console.log('❌ No valid token data in server response');
                 }
-            } catch (error) {
-                console.log('🔍 Server token check failed:', error.message);
+            } else {
+                console.log('❌ Failed to get token status from server:', response.status);
             }
             
-            console.log('🔍 No token found anywhere');
+            console.log('🔍 No valid token found on server');
+            return null;
+            
         } catch (error) {
-            console.error('❌ Failed to load stored token', error);
+            console.error('❌ Failed to load token from server', error);
+            return null;
         }
-        return null;
     }
     
     /**
@@ -733,58 +713,34 @@ export class TokenManagementPage {
             refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
             refreshBtn.disabled = true;
 
-            const response = await fetch('/api/pingone/token', {
-                method: 'POST'
+            // Use CSRF-protected token refresh endpoint
+            const response = await fetch('/api/token/refresh', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
             });
 
             if (response.ok) {
                 const result = await response.json();
+                console.log('🔁 Token refresh response:', result);
                 
                 if (result.success) {
-                    // Token data is in result.message based on API response structure
-                    const tokenData = result.message;
+                    console.log('✅ Token refreshed successfully');
+                    this.addToTokenHistory('Token refreshed successfully', 'success');
                     
-                    if (tokenData && tokenData.access_token) {
-                        // Store the token in localStorage
-                        localStorage.setItem('pingone_token', JSON.stringify(tokenData));
-                        
-                        // Also store in cache format for compatibility
-                        const cacheData = {
-                            token: tokenData.access_token,
-                            expiresAt: Date.now() + (tokenData.expires_in * 1000)
-                        };
-                        localStorage.setItem('pingone_token_cache', JSON.stringify(cacheData));
-                        
-                        console.log('✅ Token stored successfully');
-                        this.addToTokenHistory('Token refreshed and stored successfully', 'success');
-                        
-                        // Track successful token refresh
-                        if (this.tokenAnalytics) {
-                            this.tokenAnalytics.trackTokenRefresh(true);
-                        }
-                        
-                        // Update app token status
-                        if (this.app.updateTokenStatus) {
-                            this.app.updateTokenStatus(tokenData);
-                        }
-                        
-                        // Also trigger stored token check for additional validation
-                        if (this.app.checkStoredToken) {
-                            await this.app.checkStoredToken();
-                        }
-                        
-                        // Refresh populations on all pages that have population lists
-                        this.refreshPopulationsOnAllPages();
-                        
-                        this.updateTokenDisplay();
-                        if (this.app && this.app.showSuccess) {
-                            this.app.showSuccess('Token refreshed successfully! Populations are being updated...');
-                        }
-                    } else {
-                        throw new Error('Invalid token data received from server');
+                    // Track successful token refresh
+                    if (this.tokenAnalytics) {
+                        this.tokenAnalytics.trackTokenRefresh(true);
+                    }
+                    
+                    // Update the token display with new data
+                    await this.updateTokenDisplay();
+                    
+                    if (this.app && this.app.showSuccess) {
+                        this.app.showSuccess('Token refreshed successfully!');
                     }
                 } else {
-                    throw new Error(result.message || 'Token refresh failed');
+                    throw new Error(result.error || 'Token refresh failed');
                 }
             } else {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -815,7 +771,11 @@ export class TokenManagementPage {
             validateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating...';
             validateBtn.disabled = true;
 
-            const response = await fetch('/api/token/status');
+            const response = await fetch('/api/token/status', {
+                method: 'GET',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            });
             
             if (response.ok) {
                 const result = await response.json();
