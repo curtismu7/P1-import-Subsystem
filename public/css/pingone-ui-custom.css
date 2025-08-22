@@ -1,4 +1,4 @@
-/* Cache Bust: v1755867635001 - Message Header & Status Bar Layout */
+/* Cache Bust: v1755897000000 - Enhanced JWT Display & JSON Formatting */
 /*
  * PingOne User Management - Custom UI Styles
  * Following Ping Identity Design System
@@ -1636,27 +1636,79 @@ select.form-control:not([multiple]) {
 .jwt-details {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
+  gap: 2rem;
+  margin-top: 1rem;
 }
 
-.jwt-section h4 {
-  margin-bottom: 0.75rem;
-  color: var(--ping-text-secondary);
-  font-weight: 600;
-  font-size: 1rem;
-}
+/* JWT section h4 styling moved to enhanced section above */
 
 .jwt-content {
   background-color: var(--ping-background-light);
   border: 1px solid var(--ping-border);
-  border-radius: 4px;
-  padding: 1rem;
+  border-radius: 8px;
+  padding: 1.5rem;
   font-family: 'Courier New', monospace;
-  font-size: 0.8rem;
-  max-height: 200px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  max-height: 300px;
+  min-height: 200px;
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-all;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+}
+
+.jwt-content:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--ping-primary);
+}
+
+/* JSON Syntax Highlighting */
+.json-key {
+  color: #007acc;
+  font-weight: bold;
+}
+
+.json-string {
+  color: #a31515;
+}
+
+.json-boolean {
+  color: #0000ff;
+  font-weight: bold;
+}
+
+.json-number {
+  color: #098658;
+  font-weight: bold;
+}
+
+/* Enhanced JWT Section Styling */
+.jwt-section {
+  background: linear-gradient(135deg, var(--ping-background-light) 0%, #ffffff 100%);
+  border: 1px solid var(--ping-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+}
+
+.jwt-section:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--ping-primary);
+  transform: translateY(-2px);
+}
+
+.jwt-section h4 {
+  margin-bottom: 1rem;
+  color: var(--ping-primary);
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--ping-primary);
+  padding-bottom: 0.5rem;
 }
 
 /* Token Actions */
