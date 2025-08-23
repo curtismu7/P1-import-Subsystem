@@ -1052,6 +1052,13 @@ export class TokenManagementPage {
         try {
             console.log('🔍 Get Token button clicked');
             
+            // Update button to show loading state
+            const getTokenBtn = document.getElementById('get-token-btn');
+            if (getTokenBtn) {
+                getTokenBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting Token...';
+                getTokenBtn.disabled = true;
+            }
+            
             // Check if we already have a token
             const storedToken = await this.loadStoredToken();
             
@@ -1082,8 +1089,23 @@ export class TokenManagementPage {
                 }
                 await this.refreshToken();
             }
+            
+            // Update button back to normal state
+            if (getTokenBtn) {
+                getTokenBtn.innerHTML = '<i class="fas fa-key"></i> Get Token';
+                getTokenBtn.disabled = false;
+            }
+            
         } catch (error) {
             console.error('❌ Failed to get token:', error);
+            
+            // Reset button on error
+            const getTokenBtn = document.getElementById('get-token-btn');
+            if (getTokenBtn) {
+                getTokenBtn.innerHTML = '<i class="fas fa-key"></i> Get Token';
+                getTokenBtn.disabled = false;
+            }
+            
             if (this.app && this.app.showError) {
                 this.app.showError('Failed to get token. Please try again.');
             }
@@ -1120,12 +1142,14 @@ export class TokenManagementPage {
                         this.tokenAnalytics.trackTokenRefresh(true);
                     }
                     
-                    // Update the token display with new data
-                    await this.updateTokenDisplay();
-                    
-                    if (this.app && this.app.showSuccess) {
-                        this.app.showSuccess('Token refreshed successfully!');
-                    }
+                                // Update the token display with new data
+            console.log('🔄 Updating token display after refresh...');
+            await this.updateTokenDisplay();
+            console.log('✅ Token display updated');
+            
+            if (this.app && this.app.showSuccess) {
+                this.app.showSuccess('Token refreshed successfully!');
+            }
                 } else {
                     throw new Error(result.error || 'Token refresh failed');
                 }
