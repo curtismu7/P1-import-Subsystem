@@ -1030,37 +1030,88 @@ export class DeletePage {
      * Delete a user identified from a CSV file
      */
     async deleteUserFromFile(userId) {
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // In a real implementation, you would:
-        // 1. Look up the user in PingOne by username/email
-        // 2. Delete the user using their actual PingOne ID
-        
-        // Simulate random success/failure for demo
-        if (Math.random() < 0.1) {
-            throw new Error('User lookup or deletion failed');
+        try {
+            // Extract user data from the file-based user ID
+            const userData = this.getUserDataFromFileId(userId);
+            if (!userData) {
+                throw new Error('User data not found');
+            }
+
+            // Call the real delete API with CSRF token
+            const response = await window.csrfManager.fetchWithCSRF('/api/delete-users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    type: 'file',
+                    users: [userData],
+                    skipNotFound: true
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.message || 'Delete operation failed');
+            }
+
+            return result;
+        } catch (error) {
+            throw new Error(`File user deletion failed: ${error.message}`);
         }
-        
-        return { success: true };
     }
     
     /**
      * Delete a user from a population by their PingOne ID
      */
     async deleteUserFromPopulation(userId) {
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // In a real implementation, you would call the PingOne API
-        // to delete the user by their ID
-        
-        // Simulate random success/failure for demo
-        if (Math.random() < 0.1) {
-            throw new Error('User deletion failed');
+        try {
+            // Call the real delete API for population-based deletion with CSRF token
+            const response = await window.csrfManager.fetchWithCSRF('/api/delete-users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    type: 'population',
+                    populationId: this.selectedPopulation,
+                    userIds: [userId],
+                    skipNotFound: true
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.message || 'Delete operation failed');
+            }
+
+            return result;
+        } catch (error) {
+            throw new Error(`Population user deletion failed: ${error.message}`);
         }
-        
-        return { success: true };
+    }
+
+    /**
+     * Get user data from file-based user ID
+     */
+    getUserDataFromFileId(userId) {
+        // Extract user data from the file-based user ID
+        // This should match the format used when creating file-based users
+        const userIndex = userId.replace('file-user-', '');
+        if (this.allUsers && this.allUsers[userIndex]) {
+            return this.allUsers[userIndex];
+        }
+        return null;
     }
 
     updateDeleteProgress(processed, total, status) {
