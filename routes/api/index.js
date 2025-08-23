@@ -2932,6 +2932,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
 
         // Get token manager from app
         const tokenManager = req.app.get('tokenManager');
+        debugLog.info("📝 TokenManager check", { hasTokenManager: !!tokenManager });
         if (!tokenManager) {
             return res.status(500).json({
                 success: false,
@@ -2940,7 +2941,9 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
         }
 
         // Get access token
+        debugLog.info("🔑 Attempting to get access token...");
         const token = await tokenManager.getAccessToken();
+        debugLog.info("🔑 Access token result", { hasToken: !!token, tokenLength: token?.length });
         if (!token) {
             return res.status(401).json({
                 success: false,
@@ -2949,7 +2952,9 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
         }
 
         // Get environment ID and API base URL from token manager
+        debugLog.info("🌍 Attempting to get environment ID...");
         const environmentId = await tokenManager.getEnvironmentId();
+        debugLog.info("🌍 Environment ID result", { environmentId });
         if (!environmentId) {
             return res.status(400).json({
                 success: false,
@@ -2958,7 +2963,9 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
         }
 
         // Get API base URL from token manager
+        debugLog.info("🔗 Attempting to get API base URL...");
         const apiBaseUrl = tokenManager.getApiBaseUrl();
+        debugLog.info("🔗 API base URL result", { apiBaseUrl });
 
         // Parse CSV file if provided, or get all users from population
         let usersToDelete = [];
@@ -3514,6 +3521,33 @@ router.get('/module-info', (req, res) => {
         description: 'User import/export tool for PingOne',
         timestamp: new Date().toISOString()
     });
+});
+
+// --- CSRF TOKEN ENDPOINT ---
+router.get('/csrf-token', (req, res) => {
+    try {
+        // Generate a new CSRF token
+        const csrfToken = req.csrfToken ? req.csrfToken() : null;
+        
+        if (!csrfToken) {
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to generate CSRF token'
+            });
+        }
+
+        res.json({
+            success: true,
+            csrfToken: csrfToken,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        debugLog.error('Failed to generate CSRF token:', error);
+        res.status(500).json({
+            success: false,
+            error: 'CSRF token generation failed'
+        });
+    }
 });
 
 export default router;
