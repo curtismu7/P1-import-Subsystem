@@ -186,6 +186,80 @@ export class TokenManagementPage {
                     </div>
                 </section>
 
+                <!-- Progress Section -->
+                <section class="token-section" id="progress-section" style="display: none;">
+                    <h2 class="section-title">Operation Progress</h2>
+                    <div class="token-box">
+                        <p>Processing your request...</p>
+                        
+                        <div class="progress-container">
+                            <div id="progress-text-left" class="progress-text">0%</div>
+                            <div class="progress-bar">
+                                <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
+                            </div>
+                            <svg id="beer-mug-svg-token" class="beer-mug" width="56" height="56" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
+                                <defs>
+                                    <clipPath id="beer-clip-token">
+                                        <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z" />
+                                    </clipPath>
+                                </defs>
+                                <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z"
+                                      fill="none" stroke="#1f2937" stroke-width="1.5"/>
+                                <path d="M27 12 h2 a3 3 0 0 1 3 3 v6 a3 3 0 0 1-3 3 h-2" fill="none" stroke="#1f2937" stroke-width="1.5"/>
+                                <rect id="beer-fill-token" x="9" y="26" width="16" height="0" fill="#f59e0b" clip-path="url(#beer-clip-token)"/>
+                                <rect id="beer-foam-token" x="9" y="26" width="16" height="0.001" fill="#ffffff" opacity="0.95" clip-path="url(#beer-clip-token)"/>
+                            </svg>
+                            <div id="progress-percentage" class="progress-text">0%</div>
+                        </div>
+                        
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">Status:</span>
+                                <span id="operation-status" class="value">Initializing...</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Progress:</span>
+                                <span id="operation-progress" class="value">0%</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Time Elapsed:</span>
+                                <span id="time-elapsed" class="value">0s</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Estimated Time:</span>
+                                <span id="estimated-time" class="value">Calculating...</span>
+                            </div>
+                        </div>
+                        
+                        <div class="export-actions">
+                            <button type="button" id="cancel-operation" class="btn btn-danger">
+                                <i class="fas fa-times"></i> Cancel Operation
+                            </button>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Results Section -->
+                <section class="token-section" id="results-section" style="display: none;">
+                    <h2 class="section-title">Operation Results</h2>
+                    <div class="token-box">
+                        <p>Summary of the operation</p>
+                        
+                        <div id="results-summary" class="results-container">
+                            <!-- Results will be populated here -->
+                        </div>
+                        
+                        <div class="export-actions">
+                            <button type="button" id="download-log-btn" class="btn btn-danger">
+                                <i class="fas fa-download"></i> Download Log
+                            </button>
+                            <button type="button" id="new-operation-btn" class="btn btn-outline-primary">
+                                <i class="fas fa-refresh"></i> New Operation
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Token Analytics Section -->
                 <section class="token-section">
                     <h2 class="section-title">Token Analytics</h2>
@@ -313,8 +387,58 @@ export class TokenManagementPage {
         document.getElementById('cancel-header-edit-btn')?.addEventListener('click', () => {
             this.hideHeaderEditor();
         });
+        
+        // Progress and Results section buttons
+        document.getElementById('cancel-operation')?.addEventListener('click', () => {
+            this.cancelOperation();
+        });
+        
+        document.getElementById('download-log-btn')?.addEventListener('click', () => {
+            this.downloadLog();
+        });
+        
+        document.getElementById('new-operation-btn')?.addEventListener('click', () => {
+            this.newOperation();
+        });
+        }
+    
+    /**
+     * Cancel current operation
+     */
+    cancelOperation() {
+        console.log('🛑 Operation cancelled by user');
+        this.hideProgressSection();
+        this.hideResultsSection();
+        
+        if (this.app && this.app.showInfo) {
+            this.app.showInfo('Operation cancelled');
+        }
     }
-
+    
+    /**
+     * Download operation log
+     */
+    downloadLog() {
+        console.log('📥 Downloading operation log...');
+        // TODO: Implement log download functionality
+        if (this.app && this.app.showInfo) {
+            this.app.showInfo('Log download feature coming soon');
+        }
+    }
+    
+    /**
+     * Start new operation
+     */
+    newOperation() {
+        console.log('🔄 Starting new operation...');
+        this.hideProgressSection();
+        this.hideResultsSection();
+        
+        if (this.app && this.app.showInfo) {
+            this.app.showInfo('Ready for new operation');
+        }
+    }
+    
     /**
      * Apply JWT token color coding (Green until first period, Blue until second period, Red after)
      */
@@ -412,6 +536,13 @@ export class TokenManagementPage {
             const getTokenBtn = document.getElementById('get-token-btn');
             const copyTokenBtn = document.getElementById('copy-token-btn');
             const decodeTokenBtn = document.getElementById('decode-token-btn');
+            
+            console.log('🔍 Token availability check:', {
+                token: storedToken.token,
+                isServerToken: storedToken.token === '[Token stored on server]',
+                isExpiredToken: storedToken.token === '[Expired token]',
+                shouldShowButtons: storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]'
+            });
             
             if (getTokenBtn) getTokenBtn.style.display = 'none';
             if (copyTokenBtn) copyTokenBtn.style.display = (storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]') ? 'inline-block' : 'none';
@@ -769,6 +900,100 @@ export class TokenManagementPage {
     }
 
     /* Monaco Editor replaced with enhanced text editing */
+    
+    /* Progress and Status Section Management */
+    
+    /**
+     * Show the progress section
+     */
+    showProgressSection() {
+        const progressSection = document.getElementById('progress-section');
+        if (progressSection) {
+            progressSection.style.display = 'block';
+            
+            // Scroll smoothly to the progress section
+            setTimeout(() => {
+                progressSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+    }
+    
+    /**
+     * Hide the progress section
+     */
+    hideProgressSection() {
+        const progressSection = document.getElementById('progress-section');
+        if (progressSection) {
+            progressSection.style.display = 'none';
+        }
+    }
+    
+    /**
+     * Show the results section
+     */
+    showResultsSection() {
+        const resultsSection = document.getElementById('results-section');
+        if (resultsSection) {
+            resultsSection.style.display = 'block';
+            
+            // Scroll smoothly to the results section
+            setTimeout(() => {
+                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+    }
+    
+    /**
+     * Hide the results section
+     */
+    hideResultsSection() {
+        const resultsSection = document.getElementById('results-section');
+        if (resultsSection) {
+            resultsSection.style.display = 'none';
+        }
+    }
+    
+    /**
+     * Update progress bar and information
+     */
+    updateProgress(percentage, status, timeElapsed = null, estimatedTime = null) {
+        const progressFill = document.getElementById('progress-fill');
+        const progressTextLeft = document.getElementById('progress-text-left');
+        const progressPercentage = document.getElementById('progress-percentage');
+        const operationStatus = document.getElementById('operation-status');
+        const operationProgress = document.getElementById('operation-progress');
+        const timeElapsedEl = document.getElementById('time-elapsed');
+        const estimatedTimeEl = document.getElementById('estimated-time');
+        
+        if (progressFill) progressFill.style.width = `${percentage}%`;
+        if (progressTextLeft) progressTextLeft.textContent = `${percentage}%`;
+        if (progressPercentage) progressPercentage.textContent = `${percentage}%`;
+        if (operationStatus) operationStatus.textContent = status;
+        if (operationProgress) operationProgress.textContent = `${percentage}%`;
+        if (timeElapsedEl && timeElapsed) timeElapsedEl.textContent = timeElapsed;
+        if (estimatedTimeEl && estimatedTime) estimatedTimeEl.textContent = estimatedTime;
+        
+        // Update beer mug fill
+        this.updateBeerMugFill(percentage);
+    }
+    
+    /**
+     * Update beer mug fill animation
+     */
+    updateBeerMugFill(percentage) {
+        const beerFill = document.getElementById('beer-fill-token');
+        const beerFoam = document.getElementById('beer-foam-token');
+        
+        if (beerFill) {
+            const fillHeight = (percentage / 100) * 16; // 16 is the height of the mug
+            beerFill.setAttribute('height', Math.max(0, fillHeight));
+        }
+        
+        if (beerFoam) {
+            const foamHeight = Math.max(0.001, (percentage / 100) * 2); // 2px foam
+            beerFoam.setAttribute('height', foamHeight);
+        }
+    }
     
     /* Editor event handlers now set up in setupEventListeners() */
     
