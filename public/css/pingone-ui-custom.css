@@ -1456,6 +1456,25 @@ select.form-control:not([multiple]) {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+  cursor: grab;
+  user-select: none;
+  transition: all 0.2s ease;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.token-info:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.token-info:active {
+  cursor: grabbing;
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 .token-indicator, .status-indicator {
@@ -2836,8 +2855,8 @@ select.form-control:not([multiple]) {
 /* Main Application Layout */
 .app-container {
   display: flex;
-  margin-top: calc(35px + var(--status-bar-height));
-  min-height: calc(100vh - 35px - var(--status-bar-height) - var(--footer-height));
+  margin-top: calc(var(--status-bar-height));
+  min-height: calc(100vh - var(--status-bar-height) - var(--footer-height));
 }
 
 /* Left Navigation */
@@ -2849,7 +2868,7 @@ select.form-control:not([multiple]) {
   flex-direction: column;
   position: fixed;
   left: 0;
-  top: calc(var(--header-height) + var(--status-bar-height));
+  top: calc(var(--status-bar-height));
   bottom: var(--footer-height);
   overflow-y: auto;
   transition: width var(--transition-normal);
@@ -3269,6 +3288,19 @@ select.form-control:not([multiple]) {
 #export-progress .beer-mug {
   flex: 0 0 auto;
   margin-left: 8px;
+}
+
+/* Smooth beer mug fill animations */
+#export-progress .beer-mug rect {
+  transition: height 0.3s ease-out, y 0.3s ease-out;
+}
+
+#export-progress .beer-mug #beer-fill {
+  transition: height 0.3s ease-out, y 0.3s ease-out;
+}
+
+#export-progress .beer-mug #beer-foam {
+  transition: y 0.3s ease-out, height 0.3s ease-out;
 }
 
 /* Taller, animated bar and fun "beer mug" theme for Export */
@@ -4544,8 +4576,8 @@ select {
 /* Main Application Layout */
 .app-container {
   display: flex;
-  margin-top: calc(35px + var(--status-bar-height));
-  min-height: calc(100vh - 35px - var(--status-bar-height) - var(--footer-height));
+  margin-top: calc(var(--status-bar-height));
+  min-height: calc(100vh - var(--status-bar-height) - var(--footer-height));
 }
 
 /* Left Navigation */
@@ -6006,8 +6038,8 @@ select {
 /* Main Application Layout */
 .app-container {
   display: flex;
-  margin-top: calc(35px + var(--status-bar-height));
-  min-height: calc(100vh - 35px - var(--status-bar-height) - var(--footer-height));
+  margin-top: calc(var(--status-bar-height));
+  min-height: calc(100vh - var(--status-bar-height) - var(--footer-height));
 }
 
 /* Left Navigation */
@@ -7470,8 +7502,8 @@ select {
 /* Main Application Layout */
 .app-container {
   display: flex;
-  margin-top: calc(35px + var(--status-bar-height));
-  min-height: calc(100vh - 35px - var(--status-bar-height) - var(--footer-height));
+  margin-top: calc(var(--status-bar-height));
+  min-height: calc(100vh - var(--status-bar-height) - var(--footer-height));
 }
 
 /* Left Navigation */
@@ -8933,8 +8965,8 @@ select {
 /* Main Application Layout */
 .app-container {
   display: flex;
-  margin-top: calc(35px + var(--status-bar-height));
-  min-height: calc(100vh - 35px - var(--status-bar-height) - var(--footer-height));
+  margin-top: calc(var(--status-bar-height));
+  min-height: calc(100vh - var(--status-bar-height) - var(--footer-height));
 }
 
 /* Left Navigation */
@@ -11783,4 +11815,194 @@ select.field-error:focus {
     margin-top: 0.75rem !important;
     color: var(--ping-gray-600) !important;
     font-style: italic !important;
+}
+
+/* ===== UI ALIGNMENT & HEIGHT FIXES ===== */
+
+/* Fix app container alignment - remove top margin to align with status bar */
+.app-container {
+  margin-top: 0 !important;
+}
+
+/* Fix left navigation positioning - align with top */
+.left-nav {
+  top: calc(var(--status-bar-height)) !important;
+}
+
+/* Fix main content area - ensure proper spacing and height */
+.main-content {
+  margin-top: 0 !important;
+  padding-top: var(--spacing-lg) !important;
+  min-height: calc(100vh - var(--status-bar-height) - var(--footer-height)) !important;
+}
+
+/* Fix page header alignment and height */
+.page-header {
+  margin-top: 0 !important;
+  margin-bottom: var(--spacing-2xl) !important;
+  padding: var(--spacing-xl) !important;
+  background: var(--ping-blue-primary) !important;
+  color: white !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-md) !important;
+  min-height: 80px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Fix page title styling for better visibility */
+.page-title {
+  font-size: var(--font-size-3xl) !important;
+  font-weight: 700 !important;
+  color: white !important;
+  margin: 0 !important;
+  text-align: center !important;
+}
+
+/* Fix dashboard header alignment and height */
+.dashboard-header {
+  margin-top: 0 !important;
+  margin-bottom: var(--spacing-2xl) !important;
+  padding: var(--spacing-xl) !important;
+  background: var(--ping-blue-primary) !important;
+  color: white !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-md) !important;
+  min-height: 80px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Fix dashboard title styling */
+.dashboard-title {
+  font-size: var(--font-size-3xl) !important;
+  font-weight: 700 !important;
+  color: white !important;
+  margin: 0 !important;
+  text-align: center !important;
+}
+
+/* Fix home container spacing and height */
+.home-container {
+  margin-top: 0 !important;
+  padding-top: var(--spacing-lg) !important;
+}
+
+/* Fix status overview grid height and spacing */
+.status-overview {
+  min-height: 120px !important;
+  margin-bottom: var(--spacing-2xl) !important;
+}
+
+/* Fix status cards height and alignment */
+.status-card {
+  min-height: 100px !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: var(--spacing-lg) !important;
+}
+
+/* Fix navigation header height and text sizing */
+.nav-header {
+  min-height: 120px !important;
+  padding: var(--spacing-lg) !important;
+}
+
+.nav-title {
+  font-size: var(--font-size-base) !important;
+  line-height: 1.2 !important;
+  max-width: 100% !important;
+  word-wrap: break-word !important;
+}
+
+/* Fix navigation menu height */
+.nav-menu {
+  min-height: 200px !important;
+}
+
+/* Fix navigation items height */
+.nav-item {
+  min-height: 48px !important;
+}
+
+.nav-link {
+  min-height: 48px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Ensure proper spacing between sections */
+.home-section {
+  min-height: 120px !important;
+  margin-bottom: var(--spacing-xl) !important;
+}
+
+/* Fix action cards height */
+.action-card {
+  min-height: 200px !important;
+}
+
+/* Fix section headers height */
+.section-header {
+  min-height: 60px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.section-header h2 {
+  margin: 0 !important;
+  padding: var(--spacing-md) 0 !important;
+}
+
+/* Fix home page specific layout */
+.home-page {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Fix dashboard header content layout */
+.header-content {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+}
+
+.header-left {
+  flex: 1 !important;
+  text-align: left !important;
+}
+
+.header-right {
+  flex-shrink: 0 !important;
+}
+
+/* Fix dashboard subtitle positioning */
+.dashboard-subtitle {
+  margin: var(--spacing-sm) 0 0 0 !important;
+  font-size: var(--font-size-lg) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-weight: 400 !important;
+}
+
+/* Fix new import button styling */
+.new-import-btn {
+  background: var(--ping-orange) !important;
+  color: white !important;
+  border: none !important;
+  padding: var(--spacing-md) var(--spacing-lg) !important;
+  border-radius: var(--radius-md) !important;
+  font-weight: 600 !important;
+  transition: all var(--transition-normal) !important;
+}
+
+.new-import-btn:hover {
+  background: var(--ping-orange-dark) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-lg) !important;
 }
