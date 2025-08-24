@@ -8,14 +8,14 @@
  */
 
 // Application version - SINGLE SOURCE OF TRUTH
-export const APP_VERSION = '7.4.7.0';
+export const APP_VERSION = '7.6.0.0';
 
 // Helper functions for version formatting
 /**
  *
  */
 export function getFormattedVersion() {
-  return 'v7.4.7.0';
+  return 'v7.6.0.0';
 }
 
 /**
