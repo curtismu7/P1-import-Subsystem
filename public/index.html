@@ -9,20 +9,20 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     
     <!-- Ping Identity Official CSS -->
-    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css?v=1755914222223">
-    <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css?v=1755914222223">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css?v=1756032943738">
+    <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css?v=1756032943738">
     
     <!-- Material Design Icons Fallback -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css?v=1755914222223">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css?v=1756032943738">
     
           <!-- Custom PingOne UI CSS -->
-      <link rel="stylesheet" href="/css/pingone-ui-custom.css?v=1755914222223">
+      <link rel="stylesheet" href="/css/pingone-ui-custom.css?v=1756032943738">
       
       <!-- PingOne Theme CSS (for CSS variables) -->
-      <link rel="stylesheet" href="/css/themes.css?v=1755914222223">
+      <link rel="stylesheet" href="/css/themes.css?v=1756032943738">
       
       <!-- Main CSS with cache busting -->
-      <link rel="stylesheet" href="/css/main.css?v=1755914222223">
+      <link rel="stylesheet" href="/css/main.css?v=1756032943738">
     
     <!-- Import Maps Configuration -->
     <script type="importmap">
@@ -77,7 +77,7 @@
     <div class="top-status-bar" id="top-status-bar">
         <div class="status-content">
             <div class="status-left">
-                <span class="token-info" id="token-info">
+                <span class="token-info" id="token-info" title="Drag to move • Double-click to reset position">
                     <span class="token-indicator" id="token-indicator"></span>
                     <span class="token-text" id="token-text">Token: Checking...</span>
                     <span class="token-time" id="token-time"></span>
@@ -179,6 +179,79 @@
                 </li>
                 <li class="nav-divider"></li>
             </ul>
+            
+            <!-- Status Information Box -->
+            <div class="nav-status-box">
+                <div class="status-item">
+                    <i class="icon-key status-icon"></i>
+                    <span class="status-label">Token Status:</span>
+                    <span class="status-value" id="nav-token-status">Checking...</span>
+                </div>
+                
+                <div class="status-separator"></div>
+                
+                <div class="status-item">
+                    <i class="icon-clock status-icon"></i>
+                    <span class="status-label">Token Time:</span>
+                    <span class="status-value" id="nav-token-time">--:--:--</span>
+                </div>
+                
+                <div class="status-separator"></div>
+                
+                <div class="status-item">
+                    <i class="icon-check-circle status-icon status-success"></i>
+                    <span class="status-label">Server Status:</span>
+                    <span class="status-value status-success" id="nav-server-status">Online</span>
+                </div>
+                
+                <div class="status-separator"></div>
+                
+                <div class="status-item">
+                    <i class="icon-activity status-icon"></i>
+                    <span class="status-label">Server Health:</span>
+                    <span class="status-value" id="nav-server-health">Checking...</span>
+                </div>
+                
+                <div class="status-separator"></div>
+                
+                <div class="status-item">
+                    <i class="icon-trending-up status-icon"></i>
+                    <span class="status-label">Memory Usage:</span>
+                    <span class="status-value" id="nav-memory-usage">--</span>
+                </div>
+                
+                <div class="status-separator"></div>
+                
+                <div class="status-item">
+                    <i class="icon-clock status-icon"></i>
+                    <span class="status-label">Uptime:</span>
+                    <span class="status-value" id="nav-uptime">--</span>
+                </div>
+                
+                <div class="status-separator"></div>
+                
+                <div class="status-item">
+                    <i class="icon-calendar status-icon"></i>
+                    <span class="status-label">Server Start:</span>
+                    <span class="status-value" id="nav-server-start">--/--/---- --:--:--</span>
+                </div>
+                
+                <div class="status-separator"></div>
+                
+                <div class="status-item">
+                    <i class="icon-tag status-icon"></i>
+                    <span class="status-label">Version:</span>
+                    <span class="status-value" id="nav-version">v...</span>
+                </div>
+                
+                <div class="status-separator"></div>
+                
+                <div class="status-item">
+                    <i class="icon-code status-icon"></i>
+                    <span class="status-label">UI Version:</span>
+                    <span class="status-value" id="nav-ui-version">Loading...</span>
+                </div>
+            </div>
         </nav>
 
         <!-- Main Content Area -->
@@ -460,8 +533,8 @@
     </div>
 
     <!-- Main Application Script -->
-    <script src="/socket.io/socket.io.js?v=1755914222223"></script>
-    <script type="module" src="/js/app.js?v=1755914222223"></script>
+    <script src="/socket.io/socket.io.js?v=1756032943738"></script>
+    <script type="module" src="/js/app.js?v=1756032943738"></script>
     
     <!-- Error Handling -->
     <script>
