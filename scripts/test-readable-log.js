@@ -18,33 +18,33 @@ const readableLogPath = path.join(logsDir, 'readable.log');
  */
 async function testReadableLog() {
   console.log('Testing readable.log creation and writing...');
-  
+
   // Create logger
   const logger = createWinstonLogger({
     service: 'test-readable-log',
     env: 'development',
     enableFileLogging: true
   });
-  
+
   // Write test messages
   console.log('Writing test messages to logs...');
   logger.info('Test info message for readable.log');
   logger.warn('Test warning message for readable.log');
   logger.error('Test error message for readable.log');
   logger.debug('Test debug message for readable.log');
-  
+
   // Wait for file operations to complete
   await new Promise(resolve => setTimeout(resolve, 1000));
-  
+
   // Check if readable.log exists
   const exists = fs.existsSync(readableLogPath);
   console.log(`readable.log exists: ${exists ? 'YES ✅' : 'NO ❌'}`);
-  
+
   if (exists) {
     // Check file size
     const stats = fs.statSync(readableLogPath);
     console.log(`readable.log size: ${stats.size} bytes`);
-    
+
     // Read last few lines
     const content = fs.readFileSync(readableLogPath, 'utf8');
     const lines = content.split('\n').slice(-20).join('\n');
@@ -52,7 +52,7 @@ async function testReadableLog() {
     console.log('----------------------------------------');
     console.log(lines);
     console.log('----------------------------------------');
-    
+
     return true;
   } else {
     console.error('❌ readable.log was not created!');

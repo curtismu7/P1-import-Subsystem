@@ -25,16 +25,16 @@ class MockElementRegistry {
   constructor() {
     this.elements = new Map();
   }
-  
+
   register(id, element) {
     this.elements.set(id, element);
     return element;
   }
-  
+
   get(id) {
     return this.elements.get(id);
   }
-  
+
   remove(id) {
     this.elements.delete(id);
   }
@@ -81,11 +81,11 @@ const mockDependencies = {
 describe('UIManager (Comprehensive)', () => {
   let uiManager;
   let mockLogger;
-  
+
   beforeEach(() => {
     // Reset all mocks
     jest.clearAllMocks();
-    
+
     // Set up the document body with some test elements
     document.body.innerHTML = `
       <div id="app">
@@ -94,7 +94,7 @@ describe('UIManager (Comprehensive)', () => {
         <div id="notification-area"></div>
       </div>
     `;
-    
+
     // Create a fresh logger for each test
     mockLogger = {
       info: jest.fn(),
@@ -102,42 +102,42 @@ describe('UIManager (Comprehensive)', () => {
       warn: jest.fn(),
       debug: jest.fn()
     };
-    
+
     // Create a new UIManager instance with mocks
     uiManager = new UIManager({
       ...mockDependencies,
       logManager: { getLogger: () => mockLogger }
     });
   });
-  
+
   afterEach(() => {
     // Clean up any event listeners or timers
     jest.clearAllTimers();
   });
-  
+
   describe('Initialization', () => {
     it('should initialize with default options', () => {
       expect(uiManager).toBeDefined();
       expect(uiManager.instanceId).toBe('test-instance');
     });
-    
+
     it('should initialize with custom options', () => {
       const customManager = new UIManager({
         ...mockDependencies,
         instanceId: 'custom-instance',
         debug: true
       });
-      
+
       expect(customManager.instanceId).toBe('custom-instance');
       expect(customManager.debug).toBe(true);
     });
   });
-  
+
   describe('Status Management', () => {
     it('should show status messages', () => {
       const testMessage = 'Test status message';
       uiManager.showStatus(testMessage);
-      
+
       // Check if the status message was logged
       expect(mockLogger.info).toHaveBeenCalledWith(
         'Status update',
@@ -148,11 +148,11 @@ describe('UIManager (Comprehensive)', () => {
         })
       );
     });
-    
+
     it('should show error status messages', () => {
       const errorMessage = 'Test error message';
       uiManager.showStatus(errorMessage, 'error');
-      
+
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Status update',
         expect.objectContaining({
@@ -164,14 +164,14 @@ describe('UIManager (Comprehensive)', () => {
       );
     });
   });
-  
+
   describe('Progress Tracking', () => {
     it('should update progress', () => {
       const progress = 50;
       const message = 'Halfway there';
-      
+
       uiManager.updateProgress(progress, message);
-      
+
       expect(mockLogger.debug).toHaveBeenCalledWith(
         'Progress update',
         expect.objectContaining({
@@ -183,14 +183,14 @@ describe('UIManager (Comprehensive)', () => {
       );
     });
   });
-  
+
   describe('Error Handling', () => {
     it('should handle errors with error objects', () => {
       const error = new Error('Test error');
       const context = { operation: 'test' };
-      
+
       uiManager.showError('Operation failed', { error, ...context });
-      
+
       expect(mockDependencies.errorManager.handleError).toHaveBeenCalledWith(
         error,
         {
@@ -200,24 +200,24 @@ describe('UIManager (Comprehensive)', () => {
         }
       );
     });
-    
+
     it('should create an error object from string messages', () => {
       const errorMessage = 'Test error message';
-      
+
       uiManager.showError(errorMessage);
-      
+
       // The first argument to handleError should be an Error object
       const errorArg = mockDependencies.errorManager.handleError.mock.calls[0][0];
       expect(errorArg).toBeInstanceOf(Error);
       expect(errorArg.message).toBe(errorMessage);
     });
   });
-  
+
   describe('Notifications', () => {
     it('should show info notifications', () => {
       const message = 'Test info notification';
       uiManager.showNotification(message);
-      
+
       expect(mockLogger.info).toHaveBeenCalledWith(
         'Notification',
         expect.objectContaining({
@@ -228,11 +228,11 @@ describe('UIManager (Comprehensive)', () => {
         })
       );
     });
-    
+
     it('should show error notifications', () => {
       const message = 'Test error notification';
       uiManager.showNotification(message, 'error');
-      
+
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Notification',
         expect.objectContaining({

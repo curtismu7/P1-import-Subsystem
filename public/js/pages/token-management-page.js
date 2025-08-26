@@ -1,6 +1,6 @@
 /**
  * Token Management Page Module
- * 
+ *
  * Handles the Token Management page functionality including:
  * - Token status monitoring
  * - Manual token refresh
@@ -9,34 +9,34 @@
  */
 
 export class TokenManagementPage {
-    constructor(app) {
-        this.app = app;
-        this.tokenHistory = [];
-        this.refreshInterval = null;
-        this.tokenAnalytics = null;
+  constructor(app) {
+    this.app = app;
+    this.tokenHistory = [];
+    this.refreshInterval = null;
+    this.tokenAnalytics = null;
+  }
+
+  async load() {
+    console.log('📄 Loading Token Management page...');
+
+    const tokenPage = document.getElementById('token-management-page');
+    if (!tokenPage) {
+      console.error('❌ Token management page div not found');
+      return;
     }
 
-    async load() {
-        console.log('📄 Loading Token Management page...');
-        
-        const tokenPage = document.getElementById('token-management-page');
-        if (!tokenPage) {
-            console.error('❌ Token management page div not found');
-            return;
-        }
-        
-        // Debug: Check what tokens are available in localStorage
-        console.log('🔍 Checking localStorage for tokens...');
-        const keys = ['pingone_token_cache', 'pingone_token', 'pingone_worker_token', 'accessToken'];
-        keys.forEach(key => {
-            const value = localStorage.getItem(key);
-            console.log(`🔍 ${key}:`, value ? 'Found' : 'Not found');
-            if (value) {
-                console.log(`🔍 ${key} value:`, value.substring(0, 100) + '...');
-            }
-        });
+    // Debug: Check what tokens are available in localStorage
+    console.log('🔍 Checking localStorage for tokens...');
+    const keys = ['pingone_token_cache', 'pingone_token', 'pingone_worker_token', 'accessToken'];
+    keys.forEach(key => {
+      const value = localStorage.getItem(key);
+      console.log(`🔍 ${key}:`, value ? 'Found' : 'Not found');
+      if (value) {
+        console.log(`🔍 ${key} value:`, value.substring(0, 100) + '...');
+      }
+    });
 
-        tokenPage.innerHTML = `
+    tokenPage.innerHTML = `
             <div class="page-header">
                 <h1>Token Management</h1>
                 <p>Monitor and manage PingOne authentication tokens</p>
@@ -81,23 +81,13 @@ export class TokenManagementPage {
                 <section class="token-section">
                     <h2 class="section-title">Raw Token</h2>
                     <div class="token-box">
-                        <div class="raw-token-display">
-                            <div class="token-string-container">
-                                <label for="token-string">Raw Token:</label>
-                                <div id="token-display" class="token-display" style="display: none;"></div>
-                                <textarea id="token-string" class="token-string" placeholder="Paste your JWT token here or get a token using the 'Get Token' button"></textarea>
-                                <div class="token-actions">
-                                    <button id="get-token-btn" class="btn btn-danger">
-                                        <i class="fas fa-key"></i> Get Token
-                                    </button>
-                                    <button id="copy-token-btn" class="btn btn-danger">
-                                        <i class="fas fa-copy"></i> Copy Token
-                                    </button>
-                                    <button id="decode-token-btn" class="btn btn-danger">
-                                        <i class="fas fa-code"></i> Decode JWT
-                                    </button>
-                                </div>
-                            </div>
+                        <label for="token-string">Raw Token:</label>
+                        <div id="token-display" class="token-raw" style="display:none;"></div>
+                        <textarea id="token-string" class="token-raw" placeholder="Paste your JWT token here or get a token using the 'Get Token' button"></textarea>
+                        <div class="token-actions-row">
+                            <button id="get-token-btn" class="btn btn-outline-secondary btn-sm"><i class="fas fa-key"></i> Get Token</button>
+                            <button id="copy-token-btn" class="btn btn-outline-secondary btn-sm"><i class="fas fa-copy"></i> Copy Token</button>
+                            <button id="decode-token-btn" class="btn btn-outline-secondary btn-sm"><i class="fas fa-code"></i> Decode JWT</button>
                         </div>
                     </div>
                 </section>
@@ -171,8 +161,8 @@ export class TokenManagementPage {
                     </div>
                 </section>
 
-                <!-- Token History Section -->
-                <section class="token-section">
+                <!-- Token History Section (hidden when empty) -->
+                <section class="token-section" id="token-history-section" style="display:none;">
                     <div class="section-header">
                         <h2 class="section-title">Token History</h2>
                         <button id="clear-history-btn" class="btn btn-outline-secondary btn-sm">
@@ -180,9 +170,7 @@ export class TokenManagementPage {
                         </button>
                     </div>
                     <div class="token-box">
-                        <div id="token-history-list" class="token-history">
-                            <p class="text-muted">No token history available</p>
-                        </div>
+                        <div id="token-history-list" class="token-history"></div>
                     </div>
                 </section>
 
@@ -197,17 +185,19 @@ export class TokenManagementPage {
                             <div class="progress-bar">
                                 <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
                             </div>
-                            <svg id="beer-mug-svg-token" class="beer-mug" width="56" height="56" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
+                            <svg id="coffee-cup-svg-token" class="coffee-cup" width="56" height="56" viewBox="0 0 36 36" aria-label="Coffee cup progress icon" focusable="false">
                                 <defs>
-                                    <clipPath id="beer-clip-token">
-                                        <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z" />
+                                    <clipPath id="coffee-clip-token">
+                                        <path d="M9 10 h16 a2 2 0 0 1 2 2 v14 a4 4 0 0 1-4 4 h-12 a4 4 0 0 1-4-4 v-14 a2 2 0 0 1 2-2 z" />
                                     </clipPath>
                                 </defs>
-                                <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z"
-                                      fill="none" stroke="#1f2937" stroke-width="1.5"/>
-                                <path d="M27 12 h2 a3 3 0 0 1 3 3 v6 a3 3 0 0 1-3 3 h-2" fill="none" stroke="#1f2937" stroke-width="1.5"/>
-                                <rect id="beer-fill-token" x="9" y="26" width="16" height="0" fill="#f59e0b" clip-path="url(#beer-clip-token)"/>
-                                <rect id="beer-foam-token" x="9" y="26" width="16" height="0.001" fill="#ffffff" opacity="0.95" clip-path="url(#beer-clip-token)"/>
+                                <path d="M9 10 h16 a2 2 0 0 1 2 2 v14 a4 4 0 0 1-4 4 h-12 a4 4 0 0 1-4-4 v-14 a2 2 0 0 1 2-2 z" fill="none" stroke="#1f2937" stroke-width="1.5"/>
+                                <path d="M25 13 h2.5 a3 3 0 0 1 3 3 v4 a3 3 0 0 1-3 3 h-2.5" fill="none" stroke="#1f2937" stroke-width="1.5"/>
+                                <rect id="coffee-fill-token" x="9" y="26" width="16" height="0" fill="#6b4f1d" clip-path="url(#coffee-clip-token)"/>
+                                <g id="coffee-steam-token" opacity="0">
+                                    <path d="M14 8 c0 -2 2 -2 2 -4" stroke="#9ca3af" stroke-width="1" fill="none" stroke-linecap="round"/>
+                                    <path d="M18 8 c0 -2 2 -2 2 -4" stroke="#9ca3af" stroke-width="1" fill="none" stroke-linecap="round"/>
+                                </g>
                             </svg>
                             <div id="progress-percentage" class="progress-text">0%</div>
                         </div>
@@ -292,1201 +282,1218 @@ export class TokenManagementPage {
             </div>
         `;
 
-        this.setupEventListeners();
-        await this.updateTokenDisplay();
-        this.loadTokenHistory();
-        this.startTokenMonitoring();
-        this.initializeTokenAnalytics();
-        
-        // Initialize enhanced text editing
-        this.initializeEnhancedEditing();
+    this.setupEventListeners();
+    await this.updateTokenDisplay();
+    this.loadTokenHistory();
+    this.startTokenMonitoring();
+    this.initializeTokenAnalytics();
 
-        // Safety: ensure no lingering interaction blockers after render
-        setTimeout(() => {
+    // Initialize enhanced text editing
+    this.initializeEnhancedEditing();
+
+    // Safety: ensure no lingering interaction blockers after render
+    setTimeout(() => {
+      try {
+        if (this.app && typeof this.app.isModalVisible === 'function' && !this.app.isModalVisible()) {
+          if (typeof this.app.ensureInteractionIntegrity === 'function') {
+            this.app.ensureInteractionIntegrity();
+          } else {
+            // Fallback: explicitly re-enable interactions
+            if (typeof this.app.setScreenInteraction === 'function') {
+              this.app.setScreenInteraction(true);
+            }
+            try { document.body.style.overflow = ''; } catch (_) {}
+          }
+        }
+      } catch (_) {}
+    }, 0);
+  }
+
+  setupEventListeners() {
+    // Token actions
+    document.getElementById('refresh-token-btn')?.addEventListener('click', () => {
+      this.refreshToken();
+    });
+
+    document.getElementById('validate-token-btn')?.addEventListener('click', () => {
+      this.validateToken();
+    });
+
+    document.getElementById('test-connection-btn')?.addEventListener('click', () => {
+      this.testConnection();
+    });
+
+    document.getElementById('revoke-token-btn')?.addEventListener('click', () => {
+      this.revokeToken();
+    });
+
+    document.getElementById('clear-token-btn')?.addEventListener('click', () => {
+      this.clearToken();
+    });
+
+    document.getElementById('clear-history-btn')?.addEventListener('click', () => {
+      this.clearTokenHistory();
+    });
+
+    // Listen for global token history updates (settings saved, token refreshed)
+    window.addEventListener('token-history:updated', () => {
+      this.loadTokenHistory();
+    });
+
+    // New token action buttons
+    document.getElementById('copy-token-btn')?.addEventListener('click', () => {
+      this.copyToken();
+    });
+
+    document.getElementById('decode-token-btn')?.addEventListener('click', () => {
+      this.decodeCurrentToken();
+    });
+
+    document.getElementById('get-token-btn')?.addEventListener('click', () => {
+      this.getToken();
+    });
+
+    document.getElementById('reset-analytics-btn')?.addEventListener('click', () => {
+      this.resetAnalytics();
+    });
+
+    // Monaco Editor buttons
+    document.getElementById('edit-payload-btn')?.addEventListener('click', () => {
+      this.showPayloadEditor();
+    });
+
+    document.getElementById('save-payload-btn')?.addEventListener('click', () => {
+      this.savePayloadChanges();
+    });
+
+    document.getElementById('cancel-edit-btn')?.addEventListener('click', () => {
+      this.hidePayloadEditor();
+    });
+
+    // Header Editor buttons
+    document.getElementById('edit-header-btn')?.addEventListener('click', () => {
+      this.showHeaderEditor();
+    });
+
+    document.getElementById('save-header-btn')?.addEventListener('click', () => {
+      this.saveHeaderChanges();
+    });
+
+    document.getElementById('cancel-header-edit-btn')?.addEventListener('click', () => {
+      this.hideHeaderEditor();
+    });
+
+    // Progress and Results section buttons
+    document.getElementById('cancel-operation')?.addEventListener('click', () => {
+      this.cancelOperation();
+    });
+
+    document.getElementById('download-log-btn')?.addEventListener('click', () => {
+      this.downloadLog();
+    });
+
+    document.getElementById('new-operation-btn')?.addEventListener('click', () => {
+      this.newOperation();
+    });
+  }
+
+  /**
+   * Cancel current operation
+   */
+  cancelOperation() {
+    console.log('🛑 Operation cancelled by user');
+    this.hideProgressSection();
+    this.hideResultsSection();
+
+    if (this.app && this.app.showInfo) {
+      this.app.showInfo('Operation cancelled');
+    }
+  }
+
+  /**
+   * Download operation log
+   */
+  downloadLog() {
+    console.log('📥 Downloading operation log...');
+    // TODO: Implement log download functionality
+    if (this.app && this.app.showInfo) {
+      this.app.showInfo('Log download feature coming soon');
+    }
+  }
+
+  /**
+   * Start new operation
+   */
+  newOperation() {
+    console.log('🔄 Starting new operation...');
+    this.hideProgressSection();
+    this.hideResultsSection();
+
+    if (this.app && this.app.showInfo) {
+      this.app.showInfo('Ready for new operation');
+    }
+  }
+
+  /**
+   * Apply JWT token color coding (Green until first period, Blue until second period, Red after)
+   */
+  applyTokenColorCoding(tokenString) {
+    if (!tokenString || typeof tokenString !== 'string') {return null;}
+
+    const periods = tokenString.split('.');
+    if (periods.length !== 3) {return null;} // Not a valid JWT format
+
+    const header = periods[0];
+    const payload = periods[1];
+    const signature = periods[2];
+
+    // Create colored spans for each part - no extra spaces or line breaks
+    const coloredToken = `<span style="color: #10b981;">${header}</span><span style="color: #10b981;">.</span><span style="color: #3b82f6;">${payload}</span><span style="color: #3b82f6;">.</span><span style="color: #ef4444;">${signature}</span>`;
+
+    return coloredToken;
+  }
+
+  async updateTokenDisplay() {
+    // Guard: if page is not visible, skip any DOM work or logs
+    const pageEl = document.getElementById('token-management-page');
+    if (!pageEl || pageEl.style.display === 'none') {
+      return;
+    }
+    console.log('🔄 Updating token display...');
+
+    // Load token from localStorage and server
+    const storedToken = await this.loadStoredToken();
+    console.log('🔄 Stored token:', storedToken ? 'Found' : 'Not found');
+
+    const tokenString = document.getElementById('token-string');
+    const statusIndicator = document.getElementById('token-status-indicator');
+    const statusText = document.getElementById('token-status-text');
+    const tokenType = document.getElementById('token-type');
+    const tokenExpires = document.getElementById('token-expires');
+    const tokenRemaining = document.getElementById('token-remaining');
+    const tokenScope = document.getElementById('token-scope');
+
+    console.log('🔄 DOM elements found:');
+    console.log('  - tokenString:', !!tokenString);
+    console.log('  - statusIndicator:', !!statusIndicator);
+    console.log('  - statusText:', !!statusText);
+    console.log('  - tokenType:', !!tokenType);
+    console.log('  - tokenExpires:', !!tokenExpires);
+    console.log('  - tokenRemaining:', !!tokenRemaining);
+    console.log('  - tokenScope:', !!tokenScope);
+
+    // Check if DOM elements exist (page might not be loaded yet)
+    if (!statusIndicator || !statusText || !tokenType || !tokenExpires || !tokenRemaining || !tokenScope || !tokenString) {
+      console.log('⚠️ DOM elements not found, skipping update');
+      return; // Page not loaded yet, skip update
+    }
+
+    if (storedToken && storedToken.token) {
+      console.log('✅ Found stored token, updating display');
+
+      // Display the token (or placeholder if it's a server-stored token)
+      const tokenDisplay = document.getElementById('token-display');
+
+      if (storedToken.token === '[Token stored on server]') {
+        tokenString.value = '';
+        tokenString.placeholder = 'Token is stored securely on the server - Use "Get Token" to retrieve';
+        if (tokenDisplay) {
+          tokenDisplay.style.display = 'none';
+          tokenString.style.display = 'block';
+        }
+      } else if (storedToken.token === '[Expired token]') {
+        tokenString.value = '';
+        tokenString.placeholder = 'Token has expired - Use "Get Token" to get a new one';
+        if (tokenDisplay) {
+          tokenDisplay.style.display = 'none';
+          tokenString.style.display = 'block';
+        }
+      } else {
+        // Show colored token in display div
+        if (tokenDisplay) {
+          const coloredToken = this.applyTokenColorCoding(storedToken.token);
+          if (coloredToken) {
+            tokenDisplay.innerHTML = coloredToken;
+            tokenDisplay.style.display = 'block';
+            tokenString.style.display = 'none';
+          } else {
+            // Fallback to textarea if color coding fails
+            tokenString.value = storedToken.token;
+            tokenDisplay.style.display = 'none';
+            tokenString.style.display = 'block';
+          }
+        } else {
+          tokenString.value = storedToken.token;
+        }
+      }
+
+      // Show/hide buttons based on token availability
+      const getTokenBtn = document.getElementById('get-token-btn');
+      const copyTokenBtn = document.getElementById('copy-token-btn');
+      const decodeTokenBtn = document.getElementById('decode-token-btn');
+
+      console.log('🔍 Token availability check:', {
+        token: storedToken.token,
+        isServerToken: storedToken.token === '[Token stored on server]',
+        isExpiredToken: storedToken.token === '[Expired token]',
+        shouldShowButtons: storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]'
+      });
+
+      if (getTokenBtn) {getTokenBtn.style.display = 'none';}
+      if (copyTokenBtn) {copyTokenBtn.style.display = (storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]') ? 'inline-block' : 'none';}
+      if (decodeTokenBtn) {decodeTokenBtn.style.display = (storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]') ? 'inline-block' : 'none';}
+
+      // Check if token is valid
+      const isTokenValid = this.isTokenValid(storedToken);
+
+      if (isTokenValid) {
+        statusIndicator.className = 'status-indicator status-valid';
+        statusIndicator.innerHTML = '<i class="fas fa-check-circle"></i>';
+        statusText.textContent = 'Valid';
+        tokenType.textContent = 'Bearer';
+
+        // Show expiration time
+        if (storedToken.expiresAt) {
+          tokenExpires.textContent = ' ' + new Date(storedToken.expiresAt).toLocaleString();
+          tokenRemaining.textContent = this.formatTimeRemaining(Math.floor((new Date(storedToken.expiresAt) - new Date()) / 1000));
+        } else if (storedToken.expiresIn) {
+          const expiresAt = new Date(Date.now() + (storedToken.expiresIn * 1000));
+          tokenExpires.textContent = ' ' + expiresAt.toLocaleString();
+          tokenRemaining.textContent = this.formatTimeRemaining(storedToken.expiresIn);
+        } else {
+          tokenExpires.textContent = ' Unknown';
+          tokenRemaining.textContent = 'Unknown';
+        }
+
+        tokenScope.textContent = 'Default';
+
+        // Auto-decode the token if it's not a placeholder
+        if (storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]') {
+          this.decodeJWT(storedToken.token);
+        }
+      } else {
+        statusIndicator.className = 'status-indicator status-invalid';
+        statusIndicator.innerHTML = '<i class="fas fa-times-circle"></i>';
+        statusText.textContent = 'Expired';
+        tokenType.textContent = 'Bearer';
+
+        if (storedToken.expiresAt) {
+          tokenExpires.textContent = ' ' + new Date(storedToken.expiresAt).toLocaleString();
+        } else {
+          tokenExpires.textContent = ' Unknown';
+        }
+
+        tokenRemaining.textContent = 'Expired';
+        tokenScope.textContent = 'Default';
+
+        // Auto-decode the expired token if it's not a placeholder
+        if (storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]') {
+          this.decodeJWT(storedToken.token);
+        }
+      }
+    } else {
+      console.log('❌ No stored token found');
+      statusIndicator.className = 'status-indicator status-invalid';
+      statusIndicator.innerHTML = '<i class="fas fa-times-circle"></i>';
+      statusText.textContent = 'No Token';
+      tokenType.textContent = '-';
+      tokenExpires.textContent = '-';
+      tokenRemaining.textContent = '-';
+      tokenScope.textContent = '-';
+      tokenString.value = '';
+      tokenString.placeholder = 'No token available - Get a token first';
+
+      // Show/hide buttons based on token availability
+      const getTokenBtn = document.getElementById('get-token-btn');
+      const copyTokenBtn = document.getElementById('copy-token-btn');
+      const decodeTokenBtn = document.getElementById('decode-token-btn');
+
+      if (getTokenBtn) {getTokenBtn.style.display = 'inline-block';}
+      if (copyTokenBtn) {copyTokenBtn.style.display = 'none';}
+      if (decodeTokenBtn) {decodeTokenBtn.style.display = 'none';}
+
+      // Clear decoded sections with helpful message
+      const headerElement = document.getElementById('jwt-header');
+      const payloadElement = document.getElementById('jwt-payload');
+
+      if (headerElement) {
+        headerElement.textContent = 'No token available';
+      }
+      if (payloadElement) {
+        payloadElement.textContent = 'Please get a valid token first using the "Get Token" button';
+      }
+    }
+  }
+
+  formatTimeRemaining(seconds) {
+    if (seconds <= 0) {return 'Expired';}
+
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${secs}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
+  }
+
+  /**
+   * Load token from localStorage
+   */
+  async loadStoredToken() {
+    try {
+      console.log('🔍 Loading current token from server...');
+
+      // Get current token status from server using CSRF protection
+      const response = await window.csrfManager.fetchWithCSRF('/api/token/status', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('🔍 Server token status response:', result);
+
+        if (result.success && result.data?.data) {
+          const tokenData = result.data.data;
+
+          if (tokenData.hasToken && tokenData.isValid) {
+            // Get the actual token from startup data
+            let actualToken = null;
             try {
-                if (this.app && typeof this.app.isModalVisible === 'function' && !this.app.isModalVisible()) {
-                    if (typeof this.app.ensureInteractionIntegrity === 'function') {
-                        this.app.ensureInteractionIntegrity();
-                    } else {
-                        // Fallback: explicitly re-enable interactions
-                        if (typeof this.app.setScreenInteraction === 'function') {
-                            this.app.setScreenInteraction(true);
-                        }
-                        try { document.body.style.overflow = ''; } catch (_) {}
-                    }
-                }
-            } catch (_) {}
-        }, 0);
-    }
-
-    setupEventListeners() {
-        // Token actions
-        document.getElementById('refresh-token-btn')?.addEventListener('click', () => {
-            this.refreshToken();
-        });
-
-        document.getElementById('validate-token-btn')?.addEventListener('click', () => {
-            this.validateToken();
-        });
-
-        document.getElementById('test-connection-btn')?.addEventListener('click', () => {
-            this.testConnection();
-        });
-
-        document.getElementById('revoke-token-btn')?.addEventListener('click', () => {
-            this.revokeToken();
-        });
-
-        document.getElementById('clear-token-btn')?.addEventListener('click', () => {
-            this.clearToken();
-        });
-
-        document.getElementById('clear-history-btn')?.addEventListener('click', () => {
-            this.clearTokenHistory();
-        });
-        
-        // New token action buttons
-        document.getElementById('copy-token-btn')?.addEventListener('click', () => {
-            this.copyToken();
-        });
-        
-        document.getElementById('decode-token-btn')?.addEventListener('click', () => {
-            this.decodeCurrentToken();
-        });
-        
-        document.getElementById('get-token-btn')?.addEventListener('click', () => {
-            this.getToken();
-        });
-        
-        document.getElementById('reset-analytics-btn')?.addEventListener('click', () => {
-            this.resetAnalytics();
-        });
-        
-        // Monaco Editor buttons
-        document.getElementById('edit-payload-btn')?.addEventListener('click', () => {
-            this.showPayloadEditor();
-        });
-        
-        document.getElementById('save-payload-btn')?.addEventListener('click', () => {
-            this.savePayloadChanges();
-        });
-        
-        document.getElementById('cancel-edit-btn')?.addEventListener('click', () => {
-            this.hidePayloadEditor();
-        });
-
-        // Header Editor buttons
-        document.getElementById('edit-header-btn')?.addEventListener('click', () => {
-            this.showHeaderEditor();
-        });
-        
-        document.getElementById('save-header-btn')?.addEventListener('click', () => {
-            this.saveHeaderChanges();
-        });
-        
-        document.getElementById('cancel-header-edit-btn')?.addEventListener('click', () => {
-            this.hideHeaderEditor();
-        });
-        
-        // Progress and Results section buttons
-        document.getElementById('cancel-operation')?.addEventListener('click', () => {
-            this.cancelOperation();
-        });
-        
-        document.getElementById('download-log-btn')?.addEventListener('click', () => {
-            this.downloadLog();
-        });
-        
-        document.getElementById('new-operation-btn')?.addEventListener('click', () => {
-            this.newOperation();
-        });
-        }
-    
-    /**
-     * Cancel current operation
-     */
-    cancelOperation() {
-        console.log('🛑 Operation cancelled by user');
-        this.hideProgressSection();
-        this.hideResultsSection();
-        
-        if (this.app && this.app.showInfo) {
-            this.app.showInfo('Operation cancelled');
-        }
-    }
-    
-    /**
-     * Download operation log
-     */
-    downloadLog() {
-        console.log('📥 Downloading operation log...');
-        // TODO: Implement log download functionality
-        if (this.app && this.app.showInfo) {
-            this.app.showInfo('Log download feature coming soon');
-        }
-    }
-    
-    /**
-     * Start new operation
-     */
-    newOperation() {
-        console.log('🔄 Starting new operation...');
-        this.hideProgressSection();
-        this.hideResultsSection();
-        
-        if (this.app && this.app.showInfo) {
-            this.app.showInfo('Ready for new operation');
-        }
-    }
-    
-    /**
-     * Apply JWT token color coding (Green until first period, Blue until second period, Red after)
-     */
-    applyTokenColorCoding(tokenString) {
-        if (!tokenString || typeof tokenString !== 'string') return null;
-        
-        const periods = tokenString.split('.');
-        if (periods.length !== 3) return null; // Not a valid JWT format
-        
-        const header = periods[0];
-        const payload = periods[1];
-        const signature = periods[2];
-        
-        // Create colored spans for each part - no extra spaces or line breaks
-        const coloredToken = `<span style="color: #10b981;">${header}</span><span style="color: #10b981;">.</span><span style="color: #3b82f6;">${payload}</span><span style="color: #3b82f6;">.</span><span style="color: #ef4444;">${signature}</span>`;
-        
-        return coloredToken;
-    }
-
-    async updateTokenDisplay() {
-        // Guard: if page is not visible, skip any DOM work or logs
-        const pageEl = document.getElementById('token-management-page');
-        if (!pageEl || pageEl.style.display === 'none') {
-            return;
-        }
-        console.log('🔄 Updating token display...');
-        
-        // Load token from localStorage and server
-        const storedToken = await this.loadStoredToken();
-        console.log('🔄 Stored token:', storedToken ? 'Found' : 'Not found');
-        
-        const tokenString = document.getElementById('token-string');
-        const statusIndicator = document.getElementById('token-status-indicator');
-        const statusText = document.getElementById('token-status-text');
-        const tokenType = document.getElementById('token-type');
-        const tokenExpires = document.getElementById('token-expires');
-        const tokenRemaining = document.getElementById('token-remaining');
-        const tokenScope = document.getElementById('token-scope');
-
-        console.log('🔄 DOM elements found:');
-        console.log('  - tokenString:', !!tokenString);
-        console.log('  - statusIndicator:', !!statusIndicator);
-        console.log('  - statusText:', !!statusText);
-        console.log('  - tokenType:', !!tokenType);
-        console.log('  - tokenExpires:', !!tokenExpires);
-        console.log('  - tokenRemaining:', !!tokenRemaining);
-        console.log('  - tokenScope:', !!tokenScope);
-
-        // Check if DOM elements exist (page might not be loaded yet)
-        if (!statusIndicator || !statusText || !tokenType || !tokenExpires || !tokenRemaining || !tokenScope || !tokenString) {
-            console.log('⚠️ DOM elements not found, skipping update');
-            return; // Page not loaded yet, skip update
-        }
-
-        if (storedToken && storedToken.token) {
-            console.log('✅ Found stored token, updating display');
-            
-            // Display the token (or placeholder if it's a server-stored token)
-            const tokenDisplay = document.getElementById('token-display');
-            
-            if (storedToken.token === '[Token stored on server]') {
-                tokenString.value = '';
-                tokenString.placeholder = 'Token is stored securely on the server - Use "Get Token" to retrieve';
-                if (tokenDisplay) {
-                    tokenDisplay.style.display = 'none';
-                    tokenString.style.display = 'block';
-                }
-            } else if (storedToken.token === '[Expired token]') {
-                tokenString.value = '';
-                tokenString.placeholder = 'Token has expired - Use "Get Token" to get a new one';
-                if (tokenDisplay) {
-                    tokenDisplay.style.display = 'none';
-                    tokenString.style.display = 'block';
-                }
-            } else {
-                // Show colored token in display div
-                if (tokenDisplay) {
-                    const coloredToken = this.applyTokenColorCoding(storedToken.token);
-                    if (coloredToken) {
-                        tokenDisplay.innerHTML = coloredToken;
-                        tokenDisplay.style.display = 'block';
-                        tokenString.style.display = 'none';
-                    } else {
-                        // Fallback to textarea if color coding fails
-                        tokenString.value = storedToken.token;
-                        tokenDisplay.style.display = 'none';
-                        tokenString.style.display = 'block';
-                    }
-                } else {
-                    tokenString.value = storedToken.token;
-                }
-            }
-            
-            // Show/hide buttons based on token availability
-            const getTokenBtn = document.getElementById('get-token-btn');
-            const copyTokenBtn = document.getElementById('copy-token-btn');
-            const decodeTokenBtn = document.getElementById('decode-token-btn');
-            
-            console.log('🔍 Token availability check:', {
-                token: storedToken.token,
-                isServerToken: storedToken.token === '[Token stored on server]',
-                isExpiredToken: storedToken.token === '[Expired token]',
-                shouldShowButtons: storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]'
-            });
-            
-            if (getTokenBtn) getTokenBtn.style.display = 'none';
-            if (copyTokenBtn) copyTokenBtn.style.display = (storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]') ? 'inline-block' : 'none';
-            if (decodeTokenBtn) decodeTokenBtn.style.display = (storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]') ? 'inline-block' : 'none';
-            
-            // Check if token is valid
-            const isTokenValid = this.isTokenValid(storedToken);
-            
-            if (isTokenValid) {
-                statusIndicator.className = 'status-indicator status-valid';
-                statusIndicator.innerHTML = '<i class="fas fa-check-circle"></i>';
-                statusText.textContent = 'Valid';
-                tokenType.textContent = 'Bearer';
-                
-                // Show expiration time
-                if (storedToken.expiresAt) {
-                    tokenExpires.textContent = ' ' + new Date(storedToken.expiresAt).toLocaleString();
-                    tokenRemaining.textContent = this.formatTimeRemaining(Math.floor((new Date(storedToken.expiresAt) - new Date()) / 1000));
-                } else if (storedToken.expiresIn) {
-                    const expiresAt = new Date(Date.now() + (storedToken.expiresIn * 1000));
-                    tokenExpires.textContent = ' ' + expiresAt.toLocaleString();
-                    tokenRemaining.textContent = this.formatTimeRemaining(storedToken.expiresIn);
-                } else {
-                    tokenExpires.textContent = ' Unknown';
-                    tokenRemaining.textContent = 'Unknown';
-                }
-                
-                tokenScope.textContent = 'Default';
-                
-                // Auto-decode the token if it's not a placeholder
-                if (storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]') {
-                    this.decodeJWT(storedToken.token);
-                }
-            } else {
-                statusIndicator.className = 'status-indicator status-invalid';
-                statusIndicator.innerHTML = '<i class="fas fa-times-circle"></i>';
-                statusText.textContent = 'Expired';
-                tokenType.textContent = 'Bearer';
-                
-                if (storedToken.expiresAt) {
-                    tokenExpires.textContent = ' ' + new Date(storedToken.expiresAt).toLocaleString();
-                } else {
-                    tokenExpires.textContent = ' Unknown';
-                }
-                
-                tokenRemaining.textContent = 'Expired';
-                tokenScope.textContent = 'Default';
-                
-                // Auto-decode the expired token if it's not a placeholder
-                if (storedToken.token !== '[Token stored on server]' && storedToken.token !== '[Expired token]') {
-                    this.decodeJWT(storedToken.token);
-                }
-            }
-        } else {
-            console.log('❌ No stored token found');
-            statusIndicator.className = 'status-indicator status-invalid';
-            statusIndicator.innerHTML = '<i class="fas fa-times-circle"></i>';
-            statusText.textContent = 'No Token';
-            tokenType.textContent = '-';
-            tokenExpires.textContent = '-';
-            tokenRemaining.textContent = '-';
-            tokenScope.textContent = '-';
-            tokenString.value = '';
-            tokenString.placeholder = 'No token available - Get a token first';
-            
-            // Show/hide buttons based on token availability
-            const getTokenBtn = document.getElementById('get-token-btn');
-            const copyTokenBtn = document.getElementById('copy-token-btn');
-            const decodeTokenBtn = document.getElementById('decode-token-btn');
-            
-            if (getTokenBtn) getTokenBtn.style.display = 'inline-block';
-            if (copyTokenBtn) copyTokenBtn.style.display = 'none';
-            if (decodeTokenBtn) decodeTokenBtn.style.display = 'none';
-            
-            // Clear decoded sections with helpful message
-            const headerElement = document.getElementById('jwt-header');
-            const payloadElement = document.getElementById('jwt-payload');
-            
-            if (headerElement) {
-                headerElement.textContent = 'No token available';
-            }
-            if (payloadElement) {
-                payloadElement.textContent = 'Please get a valid token first using the "Get Token" button';
-            }
-        }
-    }
-
-    formatTimeRemaining(seconds) {
-        if (seconds <= 0) return 'Expired';
-        
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-        
-        if (hours > 0) {
-            return `${hours}h ${minutes}m ${secs}s`;
-        } else if (minutes > 0) {
-            return `${minutes}m ${secs}s`;
-        } else {
-            return `${secs}s`;
-        }
-    }
-    
-    /**
-     * Load token from localStorage
-     */
-    async loadStoredToken() {
-        try {
-            console.log('🔍 Loading current token from server...');
-            
-            // Get current token status from server using CSRF protection
-            const response = await window.csrfManager.fetchWithCSRF('/api/token/status', {
+              const startupResponse = await window.csrfManager.fetchWithCSRF('/api/settings/startup-data', {
                 method: 'GET',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (response.ok) {
-                const result = await response.json();
-                console.log('🔍 Server token status response:', result);
-                
-                if (result.success && result.data?.data) {
-                    const tokenData = result.data.data;
-                    
-                    if (tokenData.hasToken && tokenData.isValid) {
-                        // Get the actual token from startup data
-                        let actualToken = null;
-                        try {
-                            const startupResponse = await window.csrfManager.fetchWithCSRF('/api/settings/startup-data', {
-                                method: 'GET',
-                                credentials: 'include',
-                                headers: { 'Content-Type': 'application/json' }
-                            });
-                            if (startupResponse.ok) {
-                                const startupResult = await startupResponse.json();
-                                if (startupResult.success && startupResult.data?.startupData?.token?.token) {
-                                    actualToken = startupResult.data.startupData.token.token;
-                                }
-                            }
-                        } catch (error) {
-                            console.log('⚠️ Could not get actual token from startup data:', error.message);
-                        }
-                        
-                        // Create token info from server response
-                        const tokenInfo = {
-                            token: actualToken || '[Token stored on server]',
-                            expiresAt: tokenData.expiresIn ? 
-                                new Date(Date.now() + (tokenData.expiresIn * 1000)) : null,
-                            expiresIn: tokenData.expiresIn,
-                            environmentId: tokenData.environmentId,
-                            region: tokenData.region,
-                            lastUpdated: tokenData.lastUpdated
-                        };
-                        
-                        console.log('✅ Token loaded from server:', tokenInfo);
-                        return tokenInfo;
-                    } else {
-                        console.log('⚠️ Token exists but is invalid or expired');
-                        return {
-                            token: '[Expired token]',
-                            expiresAt: null,
-                            expiresIn: 0,
-                            isValid: false
-                        };
-                    }
-                } else {
-                    console.log('❌ No valid token data in server response');
+              });
+              if (startupResponse.ok) {
+                const startupResult = await startupResponse.json();
+                if (startupResult.success && startupResult.data?.startupData?.token?.token) {
+                  actualToken = startupResult.data.startupData.token.token;
                 }
-            } else {
-                console.log('❌ Failed to get token status from server:', response.status);
-            }
-            
-            console.log('🔍 No valid token found on server');
-            return null;
-            
-        } catch (error) {
-            console.error('❌ Failed to load token from server', error);
-            return null;
-        }
-    }
-    
-    /**
-     * Check if a token is valid (not expired)
-     */
-    isTokenValid(tokenInfo) {
-        if (!tokenInfo || !tokenInfo.token) {
-            return false;
-        }
-        
-        // Check if token has expiration
-        if (tokenInfo.expiresAt) {
-            const now = new Date();
-            const expiresAt = new Date(tokenInfo.expiresAt);
-            return expiresAt > now;
-        }
-        
-        // If no expiration info, assume valid for now
-        return true;
-    }
-    
-    /**
-     * Decode JWT token
-     */
-    decodeJWT(token) {
-        try {
-            console.log('🔍 Attempting to decode JWT token...');
-            console.log('🔍 Token length:', token.length);
-            console.log('🔍 Token first 50 chars:', token.substring(0, 50));
-            console.log('🔍 Token last 50 chars:', token.substring(Math.max(0, token.length - 50)));
-            
-            // Clean the token
-            const cleanToken = token.trim();
-            const parts = cleanToken.split('.');
-            console.log('🔍 JWT parts count:', parts.length);
-            
-            if (parts.length !== 3) {
-                throw new Error(`Invalid JWT format - expected 3 parts separated by dots, got ${parts.length}`);
-            }
-            
-            // Log each part for debugging
-            console.log('🔍 Part 0 (header) length:', parts[0].length);
-            console.log('🔍 Part 1 (payload) length:', parts[1].length);
-            console.log('🔍 Part 2 (signature) length:', parts[2].length);
-            
-            // Handle base64 decoding with proper padding and URL-safe characters
-            const decodeBase64 = (str) => {
-                try {
-                    // Clean the string and handle different formats
-                    let cleanStr = str.trim();
-                    
-                    // Replace URL-safe characters with standard base64
-                    cleanStr = cleanStr.replace(/-/g, '+').replace(/_/g, '/');
-                    
-                    // Add padding if needed
-                    while (cleanStr.length % 4) {
-                        cleanStr += '=';
-                    }
-                    
-                    // Try to decode
-                    const decoded = atob(cleanStr);
-                    return decoded;
-                } catch (e) {
-                    console.error('❌ Base64 decode error for string:', str.substring(0, 20) + '...');
-                    console.error('❌ Error details:', e);
-                    throw new Error(`Invalid base64 encoding: ${e.message}`);
-                }
-            };
-            
-            const headerStr = decodeBase64(parts[0]);
-            const payloadStr = decodeBase64(parts[1]);
-            
-            console.log('📋 Decoded header string:', headerStr);
-            console.log('📋 Decoded payload string:', payloadStr);
-            
-            const header = JSON.parse(headerStr);
-            const payload = JSON.parse(payloadStr);
-            
-            console.log('✅ JWT decoded successfully');
-            console.log('📋 Header:', header);
-            console.log('📋 Payload:', payload);
-            
-            // Update the UI elements with formatted JSON
-            const headerElement = document.getElementById('jwt-header');
-            const payloadElement = document.getElementById('jwt-payload');
-            
-            if (headerElement) {
-                headerElement.textContent = this.formatJSON(header);
-                console.log('✅ Header updated in UI');
-            }
-            
-            if (payloadElement) {
-                payloadElement.textContent = this.formatJSON(payload);
-                console.log('✅ Payload updated in UI');
-            }
-            
-            // Apply Prism.js syntax highlighting
-            if (window.Prism) {
-                setTimeout(() => {
-                    if (headerElement) window.Prism.highlightElement(headerElement);
-                    if (payloadElement) window.Prism.highlightElement(payloadElement);
-                    console.log('✅ Prism.js syntax highlighting applied');
-                }, 100);
-            }
-            
-            // Return the decoded data
-            return { header, payload };
-            
-        } catch (error) {
-            console.error('❌ Failed to decode JWT', error);
-            
-            // Update UI with error message
-            const headerElement = document.getElementById('jwt-header');
-            const payloadElement = document.getElementById('jwt-payload');
-            
-            if (headerElement) {
-                headerElement.textContent = `Error: ${error.message}`;
-                headerElement.className = 'jwt-content language-json error';
-            }
-            if (payloadElement) {
-                payloadElement.textContent = `Error: ${error.message}`;
-                payloadElement.className = 'jwt-content language-json error';
-            }
-            
-            throw error; // Re-throw the error so calling code can handle it
-        }
-    }
-    
-    /**
-     * Format JSON for display
-     */
-    formatJSON(obj) {
-        const jsonString = JSON.stringify(obj, null, 2);
-        return jsonString;
-    }
-    
-    /**
-     * Initialize enhanced text editing (replaces Monaco Editor)
-     */
-    initializeEnhancedEditing() {
-        try {
-            console.log('🔄 Setting up enhanced text editing');
-            
-            // Make the pre elements more editable and styled
-            const headerPre = document.getElementById('jwt-header');
-            const payloadPre = document.getElementById('jwt-payload');
-            
-            if (headerPre) {
-                headerPre.style.border = '2px solid #3b82f6';
-                headerPre.style.backgroundColor = '#f8fafc';
-                headerPre.style.padding = '1rem';
-                headerPre.style.borderRadius = '6px';
-                headerPre.style.fontFamily = 'Monaco, Menlo, "Ubuntu Mono", monospace';
-                headerPre.style.fontSize = '0.875rem';
-                headerPre.style.lineHeight = '1.6';
-                headerPre.style.minHeight = '200px';
-                headerPre.style.overflow = 'auto';
-            }
-            
-            if (payloadPre) {
-                payloadPre.style.border = '2px solid #3b82f6';
-                payloadPre.style.backgroundColor = '#f8fafc';
-                payloadPre.style.padding = '1rem';
-                payloadPre.style.borderRadius = '6px';
-                payloadPre.style.fontFamily = 'Monaco, Menlo, "Ubuntu Mono", monospace';
-                headerPre.style.fontSize = '0.875rem';
-                payloadPre.style.lineHeight = '1.6';
-                payloadPre.style.minHeight = '300px';
-                payloadPre.style.overflow = 'auto';
-            }
-            
-            console.log('✅ Enhanced text editing enabled');
-        } catch (error) {
-            console.error('❌ Failed to initialize enhanced editing:', error);
-        }
-    }
-
-    /* Monaco Editor replaced with enhanced text editing */
-    
-    /* Progress and Status Section Management */
-    
-    /**
-     * Show the progress section
-     */
-    showProgressSection() {
-        const progressSection = document.getElementById('progress-section');
-        if (progressSection) {
-            progressSection.style.display = 'block';
-            
-            // Scroll smoothly to the progress section
-            setTimeout(() => {
-                progressSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
-        }
-    }
-    
-    /**
-     * Hide the progress section
-     */
-    hideProgressSection() {
-        const progressSection = document.getElementById('progress-section');
-        if (progressSection) {
-            progressSection.style.display = 'none';
-        }
-    }
-    
-    /**
-     * Show the results section
-     */
-    showResultsSection() {
-        const resultsSection = document.getElementById('results-section');
-        if (resultsSection) {
-            resultsSection.style.display = 'block';
-            
-            // Scroll smoothly to the results section
-            setTimeout(() => {
-                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
-        }
-    }
-    
-    /**
-     * Hide the results section
-     */
-    hideResultsSection() {
-        const resultsSection = document.getElementById('results-section');
-        if (resultsSection) {
-            resultsSection.style.display = 'none';
-        }
-    }
-    
-    /**
-     * Update progress bar and information
-     */
-    updateProgress(percentage, status, timeElapsed = null, estimatedTime = null) {
-        const progressFill = document.getElementById('progress-fill');
-        const progressTextLeft = document.getElementById('progress-text-left');
-        const progressPercentage = document.getElementById('progress-percentage');
-        const operationStatus = document.getElementById('operation-status');
-        const operationProgress = document.getElementById('operation-progress');
-        const timeElapsedEl = document.getElementById('time-elapsed');
-        const estimatedTimeEl = document.getElementById('estimated-time');
-        
-        if (progressFill) progressFill.style.width = `${percentage}%`;
-        if (progressTextLeft) progressTextLeft.textContent = `${percentage}%`;
-        if (progressPercentage) progressPercentage.textContent = `${percentage}%`;
-        if (operationStatus) operationStatus.textContent = status;
-        if (operationProgress) operationProgress.textContent = `${percentage}%`;
-        if (timeElapsedEl && timeElapsed) timeElapsedEl.textContent = timeElapsed;
-        if (estimatedTimeEl && estimatedTime) estimatedTimeEl.textContent = estimatedTime;
-        
-        // Update beer mug fill
-        this.updateBeerMugFill(percentage);
-    }
-    
-    /**
-     * Update beer mug fill animation
-     */
-    updateBeerMugFill(percentage) {
-        const beerFill = document.getElementById('beer-fill-token');
-        const beerFoam = document.getElementById('beer-foam-token');
-        
-        if (beerFill) {
-            const fillHeight = (percentage / 100) * 16; // 16 is the height of the mug
-            beerFill.setAttribute('height', Math.max(0, fillHeight));
-        }
-        
-        if (beerFoam) {
-            const foamHeight = Math.max(0.001, (percentage / 100) * 2); // 2px foam
-            beerFoam.setAttribute('height', foamHeight);
-        }
-    }
-    
-    /* Editor event handlers now set up in setupEventListeners() */
-    
-    /**
-     * Show the payload editor
-     */
-    showPayloadEditor() {
-        const payloadDisplay = document.getElementById('jwt-payload');
-        const editButton = document.getElementById('edit-payload-btn');
-        const actionButtons = document.getElementById('payload-editor-actions');
-        
-        if (payloadDisplay && editButton && actionButtons) {
-            // Get current payload content
-            const currentContent = payloadDisplay.textContent;
-            console.log('🔍 Payload content to edit:', currentContent);
-            
-            // Make the payload editable
-            payloadDisplay.contentEditable = true;
-            payloadDisplay.focus();
-            
-            // Show action buttons
-            actionButtons.style.display = 'block';
-            
-            // Update button
-            editButton.textContent = 'View JSON';
-            editButton.className = 'edit-json-btn';
-            editButton.style.background = '#6b7280';
-            
-            console.log('✅ Payload editor enabled');
-        }
-    }
-    
-    /**
-     * Hide the payload editor
-     */
-    hidePayloadEditor() {
-        const payloadDisplay = document.getElementById('jwt-payload');
-        const editButton = document.getElementById('edit-payload-btn');
-        const actionButtons = document.getElementById('payload-editor-actions');
-        
-        if (payloadDisplay && editButton && actionButtons) {
-            // Make the payload non-editable
-            payloadDisplay.contentEditable = false;
-            
-            // Hide action buttons
-            actionButtons.style.display = 'none';
-            
-            // Update button
-            editButton.textContent = 'Edit JSON';
-            editButton.className = 'edit-json-btn';
-            editButton.style.background = '#3b82f6';
-            
-            console.log('✅ Payload editor disabled');
-        }
-    }
-    
-    /**
-     * Save payload changes
-     */
-    savePayloadChanges() {
-        try {
-            const payloadDisplay = document.getElementById('jwt-payload');
-            if (!payloadDisplay) return;
-            
-            const newContent = payloadDisplay.textContent;
-            
-            // Validate JSON
-            const parsed = JSON.parse(newContent);
-            
-            // Update the display with formatted JSON
-            payloadDisplay.textContent = JSON.stringify(parsed, null, 2);
-            
-            // Hide editor
-            this.hidePayloadEditor();
-            
-            // Show success message
-            if (this.app && this.app.showSuccess) {
-                this.app.showSuccess('Payload updated successfully!');
-            }
-            
-            console.log('✅ Payload changes saved');
-            
-        } catch (error) {
-            // Show error message
-            if (this.app && this.app.showError) {
-                this.app.showError('Invalid JSON format. Please fix the syntax errors.');
-            }
-            console.error('❌ Invalid JSON:', error);
-        }
-    }
-
-    /**
-     * Show header editor
-     */
-    showHeaderEditor() {
-        const headerContent = document.getElementById('jwt-header');
-        const editButton = document.getElementById('edit-header-btn');
-        const actionButtons = document.getElementById('header-editor-actions');
-        
-        if (headerContent && editButton && actionButtons) {
-            // Get current header content
-            const currentContent = headerContent.textContent;
-            console.log('🔍 Header content to edit:', currentContent);
-            
-            // Make the header editable
-            headerContent.contentEditable = true;
-            headerContent.focus();
-            
-            // Show action buttons
-            actionButtons.style.display = 'block';
-            
-            // Update button
-            editButton.textContent = 'View JSON';
-            editButton.className = 'edit-json-btn';
-            editButton.style.background = '#6b7280';
-            
-            console.log('✅ Header editor enabled');
-        }
-    }
-
-    /**
-     * Hide header editor
-     */
-    hideHeaderEditor() {
-        const headerContent = document.getElementById('jwt-header');
-        const editButton = document.getElementById('edit-header-btn');
-        const actionButtons = document.getElementById('header-editor-actions');
-        
-        if (headerContent && editButton && actionButtons) {
-            // Make the header non-editable
-            headerContent.contentEditable = false;
-            
-            // Hide action buttons
-            actionButtons.style.display = 'none';
-            
-            // Update button
-            editButton.textContent = 'Edit JSON';
-            editButton.className = 'edit-json-btn';
-            editButton.style.background = '#3b82f6';
-            
-            console.log('✅ Header editor disabled');
-        }
-    }
-
-    /* Header Monaco Editor replaced with enhanced text editing */
-
-    /* updatePayloadEditorContent no longer needed with enhanced text editing */
-
-    /**
-     * Save header changes
-     */
-    saveHeaderChanges() {
-        try {
-            const headerDisplay = document.getElementById('jwt-header');
-            if (!headerDisplay) return;
-            
-            const newContent = headerDisplay.textContent;
-            
-            // Validate JSON
-            const parsed = JSON.parse(newContent);
-            
-            // Update the display with formatted JSON
-            headerDisplay.textContent = JSON.stringify(parsed, null, 2);
-            
-            // Hide the editor
-            this.hideHeaderEditor();
-            
-            // Show success message
-            if (this.app && this.app.showSuccess) {
-                this.app.showSuccess('Header updated successfully!');
-            }
-            
-            console.log('✅ Header changes saved');
-        } catch (error) {
-            // Show error message
-            if (this.app && this.app.showError) {
-                this.app.showError('Invalid JSON format. Please fix the syntax errors.');
-            }
-            console.error('❌ Invalid JSON:', error);
-        }
-    }
-    
-    /**
-     * Decode current token from textarea or display
-     */
-    decodeCurrentToken() {
-        console.log('🔍 decodeCurrentToken called');
-        const tokenString = document.getElementById('token-string');
-        const tokenDisplay = document.getElementById('token-display');
-        const jwtHeader = document.getElementById('jwt-header');
-        const jwtPayload = document.getElementById('jwt-payload');
-        
-        console.log('🔍 tokenString element:', tokenString);
-        console.log('🔍 tokenDisplay element:', tokenDisplay);
-        
-        if (!jwtHeader || !jwtPayload) {
-            console.error('❌ Required JWT display elements not found');
-            return;
-        }
-        
-        // Try to get token from display first, then fallback to textarea
-        let token = '';
-        if (tokenDisplay && tokenDisplay.style.display !== 'none') {
-            // Get token from the colored display
-            const tokenText = tokenDisplay.textContent || tokenDisplay.innerText;
-            if (tokenText && tokenText !== 'No token data') {
-                token = tokenText.trim();
-            }
-        }
-        
-        // Fallback to textarea if no token in display
-        if (!token && tokenString) {
-            token = tokenString.value.trim();
-        }
-        
-        if (!token || token === 'No token data') {
-            console.log('🔍 No token available to decode');
-            jwtHeader.textContent = 'No token available to decode';
-            jwtPayload.textContent = 'Please enter a JWT token to decode';
-            
-            if (this.app && this.app.showError) {
-                this.app.showError('Please enter a JWT token to decode');
-            }
-            return;
-        }
-        
-        try {
-            console.log('🔍 Calling decodeJWT with token');
-            const decoded = this.decodeJWT(token);
-            
-            if (decoded) {
-                // UI is already updated by decodeJWT method
-                if (this.app && this.app.showSuccess) {
-                    this.app.showSuccess('JWT token decoded successfully');
-                }
-            } else {
-                throw new Error('Failed to decode JWT token');
-            }
-        } catch (error) {
-            console.error('❌ Error decoding JWT:', error);
-            
-            // UI is already updated by decodeJWT method with error message
-            
-            if (this.app && this.app.showError) {
-                this.app.showError('Failed to decode JWT token', error.message);
-            }
-        }
-    }
-    
-    /**
-     * Copy token to clipboard
-     */
-    async copyToken() {
-        const tokenString = document.getElementById('token-string');
-        const token = tokenString?.value?.trim();
-        
-        if (token) {
-            try {
-                await navigator.clipboard.writeText(token);
-                console.log('✅ Token copied to clipboard');
-                if (this.app && this.app.showSuccess) {
-                    this.app.showSuccess('Token copied to clipboard!');
-                }
+              }
             } catch (error) {
-                console.error('❌ Failed to copy token', error);
-                if (this.app && this.app.showError) {
-                    this.app.showError('Failed to copy token to clipboard');
-                }
+              console.log('⚠️ Could not get actual token from startup data:', error.message);
             }
+
+            // Create token info from server response
+            const tokenInfo = {
+              token: actualToken || '[Token stored on server]',
+              expiresAt: tokenData.expiresIn ?
+                new Date(Date.now() + (tokenData.expiresIn * 1000)) : null,
+              expiresIn: tokenData.expiresIn,
+              environmentId: tokenData.environmentId,
+              region: tokenData.region,
+              lastUpdated: tokenData.lastUpdated
+            };
+
+            console.log('✅ Token loaded from server:', tokenInfo);
+            return tokenInfo;
+          } else {
+            console.log('⚠️ Token exists but is invalid or expired');
+            return {
+              token: '[Expired token]',
+              expiresAt: null,
+              expiresIn: 0,
+              isValid: false
+            };
+          }
         } else {
-            if (this.app && this.app.showError) {
-                this.app.showError('No token available to copy');
-            }
+          console.log('❌ No valid token data in server response');
         }
+      } else {
+        console.log('❌ Failed to get token status from server:', response.status);
+      }
+
+      console.log('🔍 No valid token found on server');
+      return null;
+
+    } catch (error) {
+      console.error('❌ Failed to load token from server', error);
+      return null;
     }
-    
-    /**
-     * Get a new token
-     */
-    async getToken() {
-        try {
-            console.log('🔍 Get Token button clicked');
-            
-            // Update button to show loading state
-            const getTokenBtn = document.getElementById('get-token-btn');
-            if (getTokenBtn) {
-                getTokenBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting Token...';
-                getTokenBtn.disabled = true;
-            }
-            
-            // Check if we already have a token
-            const storedToken = await this.loadStoredToken();
-            
-            if (storedToken && storedToken.token) {
-                // We have a token, check if it's valid
-                const isTokenValid = this.isTokenValid(storedToken);
-                
-                if (isTokenValid) {
-                    // Token is valid, refresh it to get a fresh 60 minutes
-                    console.log('🔄 Token exists and is valid, refreshing for fresh 60 minutes...');
-                    if (this.app && this.app.showInfo) {
-                        this.app.showInfo('Refreshing existing token for fresh 60 minutes...');
-                    }
-                    await this.refreshToken();
-                } else {
-                    // Token is expired or invalid, get a new one
-                    console.log('🔄 Token exists but is expired/invalid, getting new token...');
-                    if (this.app && this.app.showInfo) {
-                        this.app.showInfo('Token is expired, getting new token...');
-                    }
-                    await this.refreshToken();
-                }
-            } else {
-                // No token exists, get a new one
-                console.log('🔄 No token exists, getting new token...');
-                if (this.app && this.app.showInfo) {
-                    this.app.showInfo('Getting new token...');
-                }
-                await this.refreshToken();
-            }
-            
-            // Update button back to normal state
-            if (getTokenBtn) {
-                getTokenBtn.innerHTML = '<i class="fas fa-key"></i> Get Token';
-                getTokenBtn.disabled = false;
-            }
-            
-        } catch (error) {
-            console.error('❌ Failed to get token:', error);
-            
-            // Reset button on error
-            const getTokenBtn = document.getElementById('get-token-btn');
-            if (getTokenBtn) {
-                getTokenBtn.innerHTML = '<i class="fas fa-key"></i> Get Token';
-                getTokenBtn.disabled = false;
-            }
-            
-            if (this.app && this.app.showError) {
-                this.app.showError('Failed to get token. Please try again.');
-            }
-        }
-    }
-    
+  }
 
-
-    async refreshToken() {
-        const refreshBtn = document.getElementById('refresh-token-btn');
-        const originalText = refreshBtn.innerHTML;
-        
-        try {
-            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
-            refreshBtn.disabled = true;
-
-            // Use CSRF-protected token refresh endpoint
-            const response = await window.csrfManager.fetchWithCSRF('/api/token/refresh', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                console.log('🔁 Token refresh response:', result);
-                
-                if (result.success) {
-                    console.log('✅ Token refreshed successfully');
-                    this.addToTokenHistory('Token refreshed successfully', 'success');
-                    
-                    // Track successful token refresh
-                    if (this.tokenAnalytics) {
-                        this.tokenAnalytics.trackTokenRefresh(true);
-                    }
-                    
-                                // Update the token display with new data
-            console.log('🔄 Updating token display after refresh...');
-            await this.updateTokenDisplay();
-            console.log('✅ Token display updated');
-            
-            if (this.app && this.app.showSuccess) {
-                this.app.showSuccess('Token refreshed successfully!');
-            }
-                } else {
-                    throw new Error(result.error || 'Token refresh failed');
-                }
-            } else {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-        } catch (error) {
-            console.error('❌ Error refreshing token:', error);
-            this.addToTokenHistory(`Token refresh failed: ${error.message}`, 'error');
-            
-            // Track failed token refresh
-            if (this.tokenAnalytics) {
-                this.tokenAnalytics.trackTokenRefresh(false);
-            }
-            
-            if (this.app && this.app.showError) {
-                this.app.showError('Failed to refresh token. Please check your settings.');
-            }
-        } finally {
-            refreshBtn.innerHTML = originalText;
-            refreshBtn.disabled = false;
-        }
+  /**
+   * Check if a token is valid (not expired)
+   */
+  isTokenValid(tokenInfo) {
+    if (!tokenInfo || !tokenInfo.token) {
+      return false;
     }
 
-    async validateToken() {
-        const validateBtn = document.getElementById('validate-token-btn');
-        const originalText = validateBtn.innerHTML;
-        
-        try {
-            validateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating...';
-            validateBtn.disabled = true;
-
-            const response = await window.csrfManager.fetchWithCSRF('/api/token/status', {
-                method: 'GET',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (response.ok) {
-                const result = await response.json();
-                
-                // Track successful token validation
-                if (this.tokenAnalytics) {
-                    this.tokenAnalytics.trackTokenRequest(true);
-                }
-                
-                this.addToTokenHistory('Token validation successful', 'success');
-                if (this.app && this.app.showSuccess) {
-                    this.app.showSuccess('Token is valid and active');
-                }
-            } else {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-        } catch (error) {
-            console.error('❌ Error validating token:', error);
-            this.addToTokenHistory(`Token validation failed: ${error.message}`, 'error');
-            
-            // Track failed token validation
-            if (this.tokenAnalytics) {
-                this.tokenAnalytics.trackTokenRequest(false);
-            }
-            
-            if (this.app && this.app.showError) {
-                this.app.showError('Token validation failed. Token may be expired or invalid.');
-            }
-        } finally {
-            validateBtn.innerHTML = originalText;
-            validateBtn.disabled = false;
-        }
+    // Check if token has expiration
+    if (tokenInfo.expiresAt) {
+      const now = new Date();
+      const expiresAt = new Date(tokenInfo.expiresAt);
+      return expiresAt > now;
     }
 
-    async testConnection() {
-        const testBtn = document.getElementById('test-connection-btn');
-        const originalText = testBtn.innerHTML;
-        const testSection = document.getElementById('connection-test-section');
-        const testResults = document.getElementById('connection-test-results');
-        
-        try {
-            testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
-            testBtn.disabled = true;
-            
-            testSection.style.display = 'block';
-            testResults.innerHTML = '<div class="text-center"><div class="spinner-border"></div><p>Running connection tests...</p></div>';
+    // If no expiration info, assume valid for now
+    return true;
+  }
 
-            const response = await fetch('/api/pingone/test-connection');
-            
-            if (response.ok) {
-                const results = await response.json();
-                this.displayConnectionTestResults(results);
-                this.addToTokenHistory('Connection test completed', 'info');
-            } else {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-        } catch (error) {
-            console.error('❌ Error testing connection:', error);
-            testResults.innerHTML = `
+  /**
+   * Decode JWT token
+   */
+  decodeJWT(token) {
+    try {
+      console.log('🔍 Attempting to decode JWT token...');
+      console.log('🔍 Token length:', token.length);
+      console.log('🔍 Token first 50 chars:', token.substring(0, 50));
+      console.log('🔍 Token last 50 chars:', token.substring(Math.max(0, token.length - 50)));
+
+      // Clean the token
+      const cleanToken = token.trim();
+      const parts = cleanToken.split('.');
+      console.log('🔍 JWT parts count:', parts.length);
+
+      if (parts.length !== 3) {
+        throw new Error(`Invalid JWT format - expected 3 parts separated by dots, got ${parts.length}`);
+      }
+
+      // Log each part for debugging
+      console.log('🔍 Part 0 (header) length:', parts[0].length);
+      console.log('🔍 Part 1 (payload) length:', parts[1].length);
+      console.log('🔍 Part 2 (signature) length:', parts[2].length);
+
+      // Handle base64 decoding with proper padding and URL-safe characters
+      const decodeBase64 = (str) => {
+        try {
+          // Clean the string and handle different formats
+          let cleanStr = str.trim();
+
+          // Replace URL-safe characters with standard base64
+          cleanStr = cleanStr.replace(/-/g, '+').replace(/_/g, '/');
+
+          // Add padding if needed
+          while (cleanStr.length % 4) {
+            cleanStr += '=';
+          }
+
+          // Try to decode
+          const decoded = atob(cleanStr);
+          return decoded;
+        } catch (e) {
+          console.error('❌ Base64 decode error for string:', str.substring(0, 20) + '...');
+          console.error('❌ Error details:', e);
+          throw new Error(`Invalid base64 encoding: ${e.message}`);
+        }
+      };
+
+      const headerStr = decodeBase64(parts[0]);
+      const payloadStr = decodeBase64(parts[1]);
+
+      console.log('📋 Decoded header string:', headerStr);
+      console.log('📋 Decoded payload string:', payloadStr);
+
+      const header = JSON.parse(headerStr);
+      const payload = JSON.parse(payloadStr);
+
+      console.log('✅ JWT decoded successfully');
+      console.log('📋 Header:', header);
+      console.log('📋 Payload:', payload);
+
+      // Update the UI elements with formatted JSON
+      const headerElement = document.getElementById('jwt-header');
+      const payloadElement = document.getElementById('jwt-payload');
+
+      if (headerElement) {
+        headerElement.textContent = this.formatJSON(header);
+        console.log('✅ Header updated in UI');
+      }
+
+      if (payloadElement) {
+        payloadElement.textContent = this.formatJSON(payload);
+        console.log('✅ Payload updated in UI');
+      }
+
+      // Apply Prism.js syntax highlighting
+      if (window.Prism) {
+        setTimeout(() => {
+          if (headerElement) {window.Prism.highlightElement(headerElement);}
+          if (payloadElement) {window.Prism.highlightElement(payloadElement);}
+          console.log('✅ Prism.js syntax highlighting applied');
+        }, 100);
+      }
+
+      // Return the decoded data
+      return { header, payload };
+
+    } catch (error) {
+      console.error('❌ Failed to decode JWT', error);
+
+      // Update UI with error message
+      const headerElement = document.getElementById('jwt-header');
+      const payloadElement = document.getElementById('jwt-payload');
+
+      if (headerElement) {
+        headerElement.textContent = `Error: ${error.message}`;
+        headerElement.className = 'jwt-content language-json error';
+      }
+      if (payloadElement) {
+        payloadElement.textContent = `Error: ${error.message}`;
+        payloadElement.className = 'jwt-content language-json error';
+      }
+
+      throw error; // Re-throw the error so calling code can handle it
+    }
+  }
+
+  /**
+   * Format JSON for display
+   */
+  formatJSON(obj) {
+    const jsonString = JSON.stringify(obj, null, 2);
+    return jsonString;
+  }
+
+  /**
+   * Initialize enhanced text editing (replaces Monaco Editor)
+   */
+  initializeEnhancedEditing() {
+    try {
+      console.log('🔄 Setting up enhanced text editing');
+
+      // Make the pre elements more editable and styled
+      const headerPre = document.getElementById('jwt-header');
+      const payloadPre = document.getElementById('jwt-payload');
+
+      if (headerPre) {
+        headerPre.style.border = '2px solid #3b82f6';
+        headerPre.style.backgroundColor = '#f8fafc';
+        headerPre.style.padding = '1rem';
+        headerPre.style.borderRadius = '6px';
+        headerPre.style.fontFamily = 'Monaco, Menlo, "Ubuntu Mono", monospace';
+        headerPre.style.fontSize = '0.875rem';
+        headerPre.style.lineHeight = '1.6';
+        headerPre.style.minHeight = '200px';
+        headerPre.style.overflow = 'auto';
+      }
+
+      if (payloadPre) {
+        payloadPre.style.border = '2px solid #3b82f6';
+        payloadPre.style.backgroundColor = '#f8fafc';
+        payloadPre.style.padding = '1rem';
+        payloadPre.style.borderRadius = '6px';
+        payloadPre.style.fontFamily = 'Monaco, Menlo, "Ubuntu Mono", monospace';
+        headerPre.style.fontSize = '0.875rem';
+        payloadPre.style.lineHeight = '1.6';
+        payloadPre.style.minHeight = '300px';
+        payloadPre.style.overflow = 'auto';
+      }
+
+      console.log('✅ Enhanced text editing enabled');
+    } catch (error) {
+      console.error('❌ Failed to initialize enhanced editing:', error);
+    }
+  }
+
+  /* Monaco Editor replaced with enhanced text editing */
+
+  /* Progress and Status Section Management */
+
+  /**
+   * Show the progress section
+   */
+  showProgressSection() {
+    const progressSection = document.getElementById('progress-section');
+    if (progressSection) {
+      progressSection.style.display = 'block';
+
+      // Scroll smoothly to the progress section
+      setTimeout(() => {
+        progressSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }
+
+  /**
+   * Hide the progress section
+   */
+  hideProgressSection() {
+    const progressSection = document.getElementById('progress-section');
+    if (progressSection) {
+      progressSection.style.display = 'none';
+    }
+  }
+
+  /**
+   * Show the results section
+   */
+  showResultsSection() {
+    const resultsSection = document.getElementById('results-section');
+    if (resultsSection) {
+      resultsSection.style.display = 'block';
+
+      // Scroll smoothly to the results section
+      setTimeout(() => {
+        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }
+
+  /**
+   * Hide the results section
+   */
+  hideResultsSection() {
+    const resultsSection = document.getElementById('results-section');
+    if (resultsSection) {
+      resultsSection.style.display = 'none';
+    }
+  }
+
+  /**
+   * Update progress bar and information
+   */
+  updateProgress(percentage, status, timeElapsed = null, estimatedTime = null) {
+    const progressFill = document.getElementById('progress-fill');
+    const progressTextLeft = document.getElementById('progress-text-left');
+    const progressPercentage = document.getElementById('progress-percentage');
+    const operationStatus = document.getElementById('operation-status');
+    const operationProgress = document.getElementById('operation-progress');
+    const timeElapsedEl = document.getElementById('time-elapsed');
+    const estimatedTimeEl = document.getElementById('estimated-time');
+
+    if (progressFill) {progressFill.style.width = `${percentage}%`;}
+    if (progressTextLeft) {progressTextLeft.textContent = `${percentage}%`;}
+    if (progressPercentage) {progressPercentage.textContent = `${percentage}%`;}
+    if (operationStatus) {operationStatus.textContent = status;}
+    if (operationProgress) {operationProgress.textContent = `${percentage}%`;}
+    if (timeElapsedEl && timeElapsed) {timeElapsedEl.textContent = timeElapsed;}
+    if (estimatedTimeEl && estimatedTime) {estimatedTimeEl.textContent = estimatedTime;}
+
+    // Update coffee cup fill
+    this.updateCoffeeCupFill(percentage);
+  }
+
+  /**
+   * Update coffee cup fill animation
+   */
+  updateCoffeeCupFill(percentage) {
+    const cupFill = document.getElementById('coffee-fill-token');
+    const steam = document.getElementById('coffee-steam-token');
+    if (cupFill) {
+      const maxHeight = 16;
+      const height = Math.max(0, Math.min(maxHeight, (percentage / 100) * maxHeight));
+      const y = 26 - height;
+      cupFill.setAttribute('y', String(y));
+      cupFill.setAttribute('height', String(height));
+    }
+    if (steam) { steam.style.opacity = percentage >= 70 ? '1' : '0'; }
+  }
+
+  /* Editor event handlers now set up in setupEventListeners() */
+
+  /**
+   * Show the payload editor
+   */
+  showPayloadEditor() {
+    const payloadDisplay = document.getElementById('jwt-payload');
+    const editButton = document.getElementById('edit-payload-btn');
+    const actionButtons = document.getElementById('payload-editor-actions');
+
+    if (payloadDisplay && editButton && actionButtons) {
+      // Get current payload content
+      const currentContent = payloadDisplay.textContent;
+      console.log('🔍 Payload content to edit:', currentContent);
+
+      // Make the payload editable
+      payloadDisplay.contentEditable = true;
+      payloadDisplay.focus();
+
+      // Show action buttons
+      actionButtons.style.display = 'block';
+
+      // Update button
+      editButton.textContent = 'View JSON';
+      editButton.className = 'edit-json-btn';
+      editButton.style.background = '#6b7280';
+
+      console.log('✅ Payload editor enabled');
+    }
+  }
+
+  /**
+   * Hide the payload editor
+   */
+  hidePayloadEditor() {
+    const payloadDisplay = document.getElementById('jwt-payload');
+    const editButton = document.getElementById('edit-payload-btn');
+    const actionButtons = document.getElementById('payload-editor-actions');
+
+    if (payloadDisplay && editButton && actionButtons) {
+      // Make the payload non-editable
+      payloadDisplay.contentEditable = false;
+
+      // Hide action buttons
+      actionButtons.style.display = 'none';
+
+      // Update button
+      editButton.textContent = 'Edit JSON';
+      editButton.className = 'edit-json-btn';
+      editButton.style.background = '#3b82f6';
+
+      console.log('✅ Payload editor disabled');
+    }
+  }
+
+  /**
+   * Save payload changes
+   */
+  savePayloadChanges() {
+    try {
+      const payloadDisplay = document.getElementById('jwt-payload');
+      if (!payloadDisplay) {return;}
+
+      const newContent = payloadDisplay.textContent;
+
+      // Validate JSON
+      const parsed = JSON.parse(newContent);
+
+      // Update the display with formatted JSON
+      payloadDisplay.textContent = JSON.stringify(parsed, null, 2);
+
+      // Hide editor
+      this.hidePayloadEditor();
+
+      // Show success message
+      if (this.app && this.app.showSuccess) {
+        this.app.showSuccess('Payload updated successfully!');
+      }
+
+      console.log('✅ Payload changes saved');
+
+    } catch (error) {
+      // Show error message
+      if (this.app && this.app.showError) {
+        this.app.showError('Invalid JSON format. Please fix the syntax errors.');
+      }
+      console.error('❌ Invalid JSON:', error);
+    }
+  }
+
+  /**
+   * Show header editor
+   */
+  showHeaderEditor() {
+    const headerContent = document.getElementById('jwt-header');
+    const editButton = document.getElementById('edit-header-btn');
+    const actionButtons = document.getElementById('header-editor-actions');
+
+    if (headerContent && editButton && actionButtons) {
+      // Get current header content
+      const currentContent = headerContent.textContent;
+      console.log('🔍 Header content to edit:', currentContent);
+
+      // Make the header editable
+      headerContent.contentEditable = true;
+      headerContent.focus();
+
+      // Show action buttons
+      actionButtons.style.display = 'block';
+
+      // Update button
+      editButton.textContent = 'View JSON';
+      editButton.className = 'edit-json-btn';
+      editButton.style.background = '#6b7280';
+
+      console.log('✅ Header editor enabled');
+    }
+  }
+
+  /**
+   * Hide header editor
+   */
+  hideHeaderEditor() {
+    const headerContent = document.getElementById('jwt-header');
+    const editButton = document.getElementById('edit-header-btn');
+    const actionButtons = document.getElementById('header-editor-actions');
+
+    if (headerContent && editButton && actionButtons) {
+      // Make the header non-editable
+      headerContent.contentEditable = false;
+
+      // Hide action buttons
+      actionButtons.style.display = 'none';
+
+      // Update button
+      editButton.textContent = 'Edit JSON';
+      editButton.className = 'edit-json-btn';
+      editButton.style.background = '#3b82f6';
+
+      console.log('✅ Header editor disabled');
+    }
+  }
+
+  /* Header Monaco Editor replaced with enhanced text editing */
+
+  /* updatePayloadEditorContent no longer needed with enhanced text editing */
+
+  /**
+   * Save header changes
+   */
+  saveHeaderChanges() {
+    try {
+      const headerDisplay = document.getElementById('jwt-header');
+      if (!headerDisplay) {return;}
+
+      const newContent = headerDisplay.textContent;
+
+      // Validate JSON
+      const parsed = JSON.parse(newContent);
+
+      // Update the display with formatted JSON
+      headerDisplay.textContent = JSON.stringify(parsed, null, 2);
+
+      // Hide the editor
+      this.hideHeaderEditor();
+
+      // Show success message
+      if (this.app && this.app.showSuccess) {
+        this.app.showSuccess('Header updated successfully!');
+      }
+
+      console.log('✅ Header changes saved');
+    } catch (error) {
+      // Show error message
+      if (this.app && this.app.showError) {
+        this.app.showError('Invalid JSON format. Please fix the syntax errors.');
+      }
+      console.error('❌ Invalid JSON:', error);
+    }
+  }
+
+  /**
+   * Decode current token from textarea or display
+   */
+  decodeCurrentToken() {
+    console.log('🔍 decodeCurrentToken called');
+    const tokenString = document.getElementById('token-string');
+    const tokenDisplay = document.getElementById('token-display');
+    const jwtHeader = document.getElementById('jwt-header');
+    const jwtPayload = document.getElementById('jwt-payload');
+
+    console.log('🔍 tokenString element:', tokenString);
+    console.log('🔍 tokenDisplay element:', tokenDisplay);
+
+    if (!jwtHeader || !jwtPayload) {
+      console.error('❌ Required JWT display elements not found');
+      return;
+    }
+
+    // Try to get token from display first, then fallback to textarea
+    let token = '';
+    if (tokenDisplay && tokenDisplay.style.display !== 'none') {
+      // Get token from the colored display
+      const tokenText = tokenDisplay.textContent || tokenDisplay.innerText;
+      if (tokenText && tokenText !== 'No token data') {
+        token = tokenText.trim();
+      }
+    }
+
+    // Fallback to textarea if no token in display
+    if (!token && tokenString) {
+      token = tokenString.value.trim();
+    }
+
+    if (!token || token === 'No token data') {
+      console.log('🔍 No token available to decode');
+      jwtHeader.textContent = 'No token available to decode';
+      jwtPayload.textContent = 'Please enter a JWT token to decode';
+
+      if (this.app && this.app.showError) {
+        this.app.showError('Please enter a JWT token to decode');
+      }
+      return;
+    }
+
+    try {
+      console.log('🔍 Calling decodeJWT with token');
+      const decoded = this.decodeJWT(token);
+
+      if (decoded) {
+        // UI is already updated by decodeJWT method
+        if (this.app && this.app.showSuccess) {
+          this.app.showSuccess('JWT token decoded successfully');
+        }
+      } else {
+        throw new Error('Failed to decode JWT token');
+      }
+    } catch (error) {
+      console.error('❌ Error decoding JWT:', error);
+
+      // UI is already updated by decodeJWT method with error message
+
+      if (this.app && this.app.showError) {
+        this.app.showError('Failed to decode JWT token', error.message);
+      }
+    }
+  }
+
+  /**
+   * Copy token to clipboard
+   */
+  async copyToken() {
+    const tokenString = document.getElementById('token-string');
+    const tokenDisplay = document.getElementById('token-display');
+    let token = '';
+
+    // Prefer the formatted display if visible
+    if (tokenDisplay && tokenDisplay.style.display !== 'none') {
+      const tokenText = tokenDisplay.textContent || tokenDisplay.innerText;
+      if (tokenText && tokenText !== 'No token data') {
+        token = tokenText.trim();
+      }
+    }
+
+    // Fallback to textarea value
+    if (!token && tokenString) {
+      token = tokenString.value?.trim();
+    }
+
+    if (token) {
+      try {
+        await navigator.clipboard.writeText(token);
+        console.log('✅ Token copied to clipboard');
+        if (this.app && this.app.showSuccess) {
+          this.app.showSuccess('Token copied to clipboard!');
+        }
+      } catch (error) {
+        console.error('❌ Failed to copy token', error);
+        if (this.app && this.app.showError) {
+          this.app.showError('Failed to copy token to clipboard');
+        }
+      }
+    } else {
+      if (this.app && this.app.showError) {
+        this.app.showError('No token available to copy');
+      }
+    }
+  }
+
+  /**
+   * Get a new token
+   */
+  async getToken() {
+    try {
+      console.log('🔍 Get Token button clicked');
+
+      // Update button to show loading state
+      const getTokenBtn = document.getElementById('get-token-btn');
+      if (getTokenBtn) {
+        getTokenBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting Token...';
+        getTokenBtn.disabled = true;
+      }
+
+      // Check if we already have a token
+      const storedToken = await this.loadStoredToken();
+
+      if (storedToken && storedToken.token) {
+        // We have a token, check if it's valid
+        const isTokenValid = this.isTokenValid(storedToken);
+
+        if (isTokenValid) {
+          // Token is valid, refresh it to get a fresh 60 minutes
+          console.log('🔄 Token exists and is valid, refreshing for fresh 60 minutes...');
+          if (this.app && this.app.showInfo) {
+            this.app.showInfo('Refreshing existing token for fresh 60 minutes...');
+          }
+          await this.refreshToken();
+        } else {
+          // Token is expired or invalid, get a new one
+          console.log('🔄 Token exists but is expired/invalid, getting new token...');
+          if (this.app && this.app.showInfo) {
+            this.app.showInfo('Token is expired, getting new token...');
+          }
+          await this.refreshToken();
+        }
+      } else {
+        // No token exists, get a new one
+        console.log('🔄 No token exists, getting new token...');
+        if (this.app && this.app.showInfo) {
+          this.app.showInfo('Getting new token...');
+        }
+        await this.refreshToken();
+      }
+
+      // Update button back to normal state
+      if (getTokenBtn) {
+        getTokenBtn.innerHTML = '<i class="fas fa-key"></i> Get Token';
+        getTokenBtn.disabled = false;
+      }
+
+    } catch (error) {
+      console.error('❌ Failed to get token:', error);
+
+      // Reset button on error
+      const getTokenBtn = document.getElementById('get-token-btn');
+      if (getTokenBtn) {
+        getTokenBtn.innerHTML = '<i class="fas fa-key"></i> Get Token';
+        getTokenBtn.disabled = false;
+      }
+
+      if (this.app && this.app.showError) {
+        this.app.showError('Failed to get token. Please try again.');
+      }
+    }
+  }
+
+
+
+  async refreshToken() {
+    const refreshBtn = document.getElementById('refresh-token-btn');
+    const originalText = refreshBtn.innerHTML;
+
+    try {
+      refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+      refreshBtn.disabled = true;
+
+      // Use CSRF-protected token refresh endpoint
+      const response = await window.csrfManager.fetchWithCSRF('/api/token/refresh', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('🔁 Token refresh response:', result);
+
+        if (result.success) {
+          console.log('✅ Token refreshed successfully');
+          this.addToTokenHistory('Token refreshed successfully', 'success');
+
+          // Track successful token refresh
+          if (this.tokenAnalytics) {
+            this.tokenAnalytics.trackTokenRefresh(true);
+          }
+
+          // Update the token display with new data
+          console.log('🔄 Updating token display after refresh...');
+          await this.updateTokenDisplay();
+          console.log('✅ Token display updated');
+
+          if (this.app && this.app.showSuccess) {
+            this.app.showSuccess('Token refreshed successfully!');
+          }
+        } else {
+          throw new Error(result.error || 'Token refresh failed');
+        }
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing token:', error);
+      this.addToTokenHistory(`Token refresh failed: ${error.message}`, 'error');
+
+      // Track failed token refresh
+      if (this.tokenAnalytics) {
+        this.tokenAnalytics.trackTokenRefresh(false);
+      }
+
+      if (this.app && this.app.showError) {
+        this.app.showError('Failed to refresh token. Please check your settings.');
+      }
+    } finally {
+      refreshBtn.innerHTML = originalText;
+      refreshBtn.disabled = false;
+    }
+  }
+
+  async validateToken() {
+    const validateBtn = document.getElementById('validate-token-btn');
+    const originalText = validateBtn.innerHTML;
+
+    try {
+      validateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating...';
+      validateBtn.disabled = true;
+
+      const response = await window.csrfManager.fetchWithCSRF('/api/token/status', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+
+        // Track successful token validation
+        if (this.tokenAnalytics) {
+          this.tokenAnalytics.trackTokenRequest(true);
+        }
+
+        this.addToTokenHistory('Token validation successful', 'success');
+        if (this.app && this.app.showSuccess) {
+          this.app.showSuccess('Token is valid and active');
+        }
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('❌ Error validating token:', error);
+      this.addToTokenHistory(`Token validation failed: ${error.message}`, 'error');
+
+      // Track failed token validation
+      if (this.tokenAnalytics) {
+        this.tokenAnalytics.trackTokenRequest(false);
+      }
+
+      if (this.app && this.app.showError) {
+        this.app.showError('Token validation failed. Token may be expired or invalid.');
+      }
+    } finally {
+      validateBtn.innerHTML = originalText;
+      validateBtn.disabled = false;
+    }
+  }
+
+  async testConnection() {
+    const testBtn = document.getElementById('test-connection-btn');
+    const originalText = testBtn.innerHTML;
+    const testSection = document.getElementById('connection-test-section');
+    const testResults = document.getElementById('connection-test-results');
+
+    try {
+      testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+      testBtn.disabled = true;
+
+      testSection.style.display = 'block';
+      testResults.innerHTML = '<div class="text-center"><div class="spinner-border"></div><p>Running connection tests...</p></div>';
+
+      const response = await fetch('/api/pingone/test-connection');
+
+      if (response.ok) {
+        const results = await response.json();
+        this.displayConnectionTestResults(results);
+        this.addToTokenHistory('Connection test completed', 'info');
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('❌ Error testing connection:', error);
+      testResults.innerHTML = `
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle"></i>
                     <strong>Connection Test Failed:</strong> ${error.message}
                 </div>
             `;
-            this.addToTokenHistory(`Connection test failed: ${error.message}`, 'error');
-        } finally {
-            testBtn.innerHTML = originalText;
-            testBtn.disabled = false;
-        }
+      this.addToTokenHistory(`Connection test failed: ${error.message}`, 'error');
+    } finally {
+      testBtn.innerHTML = originalText;
+      testBtn.disabled = false;
     }
+  }
 
-    displayConnectionTestResults(results) {
-        const testResults = document.getElementById('connection-test-results');
-        
-        const testsHtml = results.tests.map(test => `
+  displayConnectionTestResults(results) {
+    const testResults = document.getElementById('connection-test-results');
+
+    const testsHtml = results.tests.map(test => `
             <div class="test-result ${test.status}">
                 <div class="test-header">
                     <i class="fas ${test.status === 'passed' ? 'fa-check-circle' : 'fa-times-circle'}"></i>
@@ -1497,7 +1504,7 @@ export class TokenManagementPage {
             </div>
         `).join('');
 
-        testResults.innerHTML = `
+    testResults.innerHTML = `
             <div class="connection-test-summary">
                 <h4>Test Results Summary</h4>
                 <p><strong>Total Tests:</strong> ${results.total}</p>
@@ -1509,273 +1516,276 @@ export class TokenManagementPage {
                 ${testsHtml}
             </div>
         `;
+  }
+
+  async revokeToken() {
+    // Use in-page confirmation instead of browser modal
+    const revokeBtn = document.getElementById('revoke-token-btn');
+    const originalText = revokeBtn.innerHTML;
+
+    // Show confirmation status
+    if (this.app && this.app.showInfo) {
+      this.app.showInfo('Preparing to revoke token...');
     }
 
-    async revokeToken() {
-        // Use in-page confirmation instead of browser modal
-        const revokeBtn = document.getElementById('revoke-token-btn');
-        const originalText = revokeBtn.innerHTML;
-        
-        // Show confirmation status
-        if (this.app && this.app.showInfo) {
-            this.app.showInfo('Preparing to revoke token...');
-        }
-        
-        // Proceed without browser modal; use green status bar only
-        if (this.app && this.app.showInfo) {
-            this.app.showInfo('Revoking token...');
-        }
-        
-        try {
-            revokeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Revoking...';
-            revokeBtn.disabled = true;
-
-            // For now, just clear the local token since PingOne doesn't have a client-side revoke endpoint
-            // In a real implementation, this would call PingOne's revoke endpoint
-            console.log('🔄 Clearing local token (revoke endpoint not implemented)');
-            
-            // Clear local token
-            localStorage.removeItem('pingone_token');
-            localStorage.removeItem('pingone_token_cache');
-            
-            // Update app token status
-            if (this.app.checkStoredToken) {
-                await this.app.checkStoredToken();
-            }
-            
-            this.updateTokenDisplay();
-            this.addToTokenHistory('Local token cleared (revoke simulated)', 'warning');
-            if (this.app && this.app.showSuccess) {
-                this.app.showSuccess('Token revoked locally');
-            }
-        } catch (error) {
-            console.error('❌ Error clearing token:', error);
-            this.addToTokenHistory(`Token clearing failed: ${error.message}`, 'error');
-            if (this.app && this.app.showError) {
-                this.app.showError('Failed to clear token. Please try again.');
-            }
-        } finally {
-            revokeBtn.innerHTML = originalText;
-            revokeBtn.disabled = false;
-        }
+    // Proceed without browser modal; use green status bar only
+    if (this.app && this.app.showInfo) {
+      this.app.showInfo('Revoking token...');
     }
 
-    clearToken() {
-        // No browser modal; use green status bar only
-        if (this.app && this.app.showInfo) {
-            this.app.showInfo('Clearing local token...');
-        }
-        
-        // Clear local token
-        localStorage.removeItem('pingone_token');
-        localStorage.removeItem('pingone_token_cache');
-        
-        // Update app token status
-        if (this.app.checkStoredToken) {
-            this.app.checkStoredToken();
-        }
-        
-        this.updateTokenDisplay();
-        this.addToTokenHistory('Local token cleared', 'info');
-        if (this.app && this.app.showSuccess) {
-            this.app.showSuccess('Local token cleared successfully');
-        }
+    try {
+      revokeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Revoking...';
+      revokeBtn.disabled = true;
+
+      // For now, just clear the local token since PingOne doesn't have a client-side revoke endpoint
+      // In a real implementation, this would call PingOne's revoke endpoint
+      console.log('🔄 Clearing local token (revoke endpoint not implemented)');
+
+      // Clear local token
+      localStorage.removeItem('pingone_token');
+      localStorage.removeItem('pingone_token_cache');
+
+      // Update app token status
+      if (this.app.checkStoredToken) {
+        await this.app.checkStoredToken();
+      }
+
+      this.updateTokenDisplay();
+      this.addToTokenHistory('Local token cleared (revoke simulated)', 'warning');
+      if (this.app && this.app.showSuccess) {
+        this.app.showSuccess('Token revoked locally');
+      }
+    } catch (error) {
+      console.error('❌ Error clearing token:', error);
+      this.addToTokenHistory(`Token clearing failed: ${error.message}`, 'error');
+      if (this.app && this.app.showError) {
+        this.app.showError('Failed to clear token. Please try again.');
+      }
+    } finally {
+      revokeBtn.innerHTML = originalText;
+      revokeBtn.disabled = false;
     }
-    
+  }
 
-    loadTokenHistory() {
-        const storedHistory = localStorage.getItem('token_history');
-        if (storedHistory) {
-            this.tokenHistory = JSON.parse(storedHistory);
-        }
-        this.displayTokenHistory();
-    }
-
-    addToTokenHistory(message, type = 'info') {
-        const historyEntry = {
-            id: Date.now(),
-            timestamp: new Date().toISOString(),
-            message,
-            type
-        };
-
-        this.tokenHistory.unshift(historyEntry);
-        
-        // Keep only last 50 entries
-        if (this.tokenHistory.length > 50) {
-            this.tokenHistory = this.tokenHistory.slice(0, 50);
-        }
-
-        // Save to localStorage
-        localStorage.setItem('token_history', JSON.stringify(this.tokenHistory));
-        
-        this.displayTokenHistory();
+  clearToken() {
+    // No browser modal; use green status bar only
+    if (this.app && this.app.showInfo) {
+      this.app.showInfo('Clearing local token...');
     }
 
-    displayTokenHistory() {
-        const historyList = document.getElementById('token-history-list');
-        
-        if (this.tokenHistory.length === 0) {
-            historyList.innerHTML = '<p class="text-muted">No token history available</p>';
-            return;
-        }
+    // Clear local token
+    localStorage.removeItem('pingone_token');
+    localStorage.removeItem('pingone_token_cache');
 
-        historyList.innerHTML = this.tokenHistory.map(entry => `
+    // Update app token status
+    if (this.app.checkStoredToken) {
+      this.app.checkStoredToken();
+    }
+
+    this.updateTokenDisplay();
+    this.addToTokenHistory('Local token cleared', 'info');
+    if (this.app && this.app.showSuccess) {
+      this.app.showSuccess('Local token cleared successfully');
+    }
+  }
+
+
+  loadTokenHistory() {
+    const storedHistory = localStorage.getItem('token_history');
+    if (storedHistory) {
+      this.tokenHistory = JSON.parse(storedHistory);
+    }
+    this.displayTokenHistory();
+  }
+
+  addToTokenHistory(message, type = 'info') {
+    const historyEntry = {
+      id: Date.now(),
+      timestamp: new Date().toISOString(),
+      message,
+      type
+    };
+
+    this.tokenHistory.unshift(historyEntry);
+
+    // Keep only last 50 entries
+    if (this.tokenHistory.length > 50) {
+      this.tokenHistory = this.tokenHistory.slice(0, 50);
+    }
+
+    // Save to localStorage
+    localStorage.setItem('token_history', JSON.stringify(this.tokenHistory));
+
+    this.displayTokenHistory();
+  }
+
+  displayTokenHistory() {
+    const historyList = document.getElementById('token-history-list');
+    const section = document.getElementById('token-history-section');
+
+    if (this.tokenHistory.length === 0) {
+      if (historyList) historyList.innerHTML = '';
+      if (section) section.style.display = 'none';
+      return;
+    }
+
+    if (section) section.style.display = '';
+    historyList.innerHTML = this.tokenHistory.map(entry => `
             <div class="history-entry history-${entry.type}">
                 <div class="history-timestamp">${new Date(entry.timestamp).toLocaleString()}</div>
                 <div class="history-message">${entry.message}</div>
             </div>
         `).join('');
+  }
+
+  clearTokenHistory() {
+    if (this.app && this.app.showInfo) {
+      this.app.showInfo('Clearing token history...');
     }
 
-    clearTokenHistory() {
-        if (this.app && this.app.showInfo) {
-            this.app.showInfo('Clearing token history...');
-        }
+    this.tokenHistory = [];
+    localStorage.removeItem('token_history');
+    this.displayTokenHistory();
+    if (this.app && this.app.showSuccess) {
+      this.app.showSuccess('Token history cleared successfully');
+    }
+  }
 
-        this.tokenHistory = [];
-        localStorage.removeItem('token_history');
-        this.displayTokenHistory();
-        if (this.app && this.app.showSuccess) {
-            this.app.showSuccess('Token history cleared successfully');
-        }
+  startTokenMonitoring() {
+    // Update token display every 30 seconds
+    // Guard: only run when the Token Management page is visible
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
     }
+    this.refreshInterval = setInterval(async () => {
+      const pageEl = document.getElementById('token-management-page');
+      if (!pageEl || pageEl.style.display === 'none') {
+        // Page not visible; skip work to avoid noisy logs
+        return;
+      }
+      await this.updateTokenDisplay();
+    }, 30000);
+  }
 
-    startTokenMonitoring() {
-        // Update token display every 30 seconds
-        // Guard: only run when the Token Management page is visible
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-        }
-        this.refreshInterval = setInterval(async () => {
-            const pageEl = document.getElementById('token-management-page');
-            if (!pageEl || pageEl.style.display === 'none') {
-                // Page not visible; skip work to avoid noisy logs
-                return;
-            }
-            await this.updateTokenDisplay();
-        }, 30000);
+  // Stop periodic monitoring when navigating away
+  stopTokenMonitoring() {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
     }
-    
-    // Stop periodic monitoring when navigating away
-    stopTokenMonitoring() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-            this.refreshInterval = null;
-        }
-    }
-    
-    // Lifecycle hooks used by app.js if available
-    onHide() {
-        this.stopTokenMonitoring();
-    }
-    
-    onShow() {
-        if (!this.refreshInterval) {
-            this.startTokenMonitoring();
-        }
-    }
-    
-    /**
-     * Initialize token analytics subsystem
-     */
-    initializeTokenAnalytics() {
-        try {
-            // Import the TokenAnalyticsSubsystem dynamically
-            import('../../src/client/subsystems/token-analytics-subsystem.js')
-                .then(module => {
-                    const { TokenAnalyticsSubsystem } = module;
-                    
-                    // Get event bus from app if available
-                    const eventBus = this.app?.eventBus || this.app?.getEventBus?.();
-                    
-                    // Initialize analytics subsystem
-                    this.tokenAnalytics = new TokenAnalyticsSubsystem(eventBus, console);
-                    
-                    // Update UI with current analytics data
-                    this.tokenAnalytics.updateUI();
-                    
-                    console.log('✅ Token Analytics initialized successfully');
-                })
-                .catch(error => {
-                    console.warn('⚠️ Failed to initialize Token Analytics:', error);
-                });
-        } catch (error) {
-            console.warn('⚠️ Token Analytics initialization error:', error);
-        }
-    }
-    
-    /**
-     * Reset token analytics data
-     */
-    resetAnalytics() {
-        if (this.app && this.app.showInfo) {
-            this.app.showInfo('Resetting token analytics...');
-        }
-        
-        if (this.tokenAnalytics) {
-            this.tokenAnalytics.resetAnalytics();
-            console.log('✅ Token analytics data reset successfully');
-            
-            if (this.app && this.app.showSuccess) {
-                this.app.showSuccess('Token analytics data reset successfully');
-            }
-        } else {
-            console.warn('⚠️ Token analytics not initialized');
-            if (this.app && this.app.showError) {
-                this.app.showError('Token analytics not available');
-            }
-        }
-    }
+  }
 
-    // Refresh populations on all pages that have population dropdowns
-    refreshPopulationsOnAllPages() {
-        console.log('🔄 Refreshing populations on all pages after token refresh...');
-        
-        // List of pages that have population loading functionality
-        const pagesWithPopulations = ['export', 'import', 'delete', 'modify'];
-        
-        pagesWithPopulations.forEach(pageName => {
-            const page = this.app.pages[pageName];
-            if (page && typeof page.loadPopulations === 'function') {
-                console.log(`🔄 Refreshing populations on ${pageName} page...`);
-                try {
-                    page.loadPopulations();
-                } catch (error) {
-                    console.error(`❌ Error refreshing populations on ${pageName} page:`, error);
-                }
-            }
+  // Lifecycle hooks used by app.js if available
+  onHide() {
+    this.stopTokenMonitoring();
+  }
+
+  onShow() {
+    if (!this.refreshInterval) {
+      this.startTokenMonitoring();
+    }
+  }
+
+  /**
+   * Initialize token analytics subsystem
+   */
+  initializeTokenAnalytics() {
+    try {
+      // Import the TokenAnalyticsSubsystem dynamically
+      import('../../src/client/subsystems/token-analytics-subsystem.js')
+        .then(module => {
+          const { TokenAnalyticsSubsystem } = module;
+
+          // Get event bus from app if available
+          const eventBus = this.app?.eventBus || this.app?.getEventBus?.();
+
+          // Initialize analytics subsystem
+          this.tokenAnalytics = new TokenAnalyticsSubsystem(eventBus, console);
+
+          // Update UI with current analytics data
+          this.tokenAnalytics.updateUI();
+
+          console.log('✅ Token Analytics initialized successfully');
+        })
+        .catch(error => {
+          console.warn('⚠️ Failed to initialize Token Analytics:', error);
         });
-        
-        // Also update the home page status if it has a population status indicator
-        const homePage = this.app.pages['home'];
-        if (homePage && typeof homePage.updateStatus === 'function') {
-            console.log('🔄 Updating home page status...');
-            try {
-                homePage.updateStatus();
-            } catch (error) {
-                console.error('❌ Error updating home page status:', error);
-            }
+    } catch (error) {
+      console.warn('⚠️ Token Analytics initialization error:', error);
+    }
+  }
+
+  /**
+   * Reset token analytics data
+   */
+  resetAnalytics() {
+    if (this.app && this.app.showInfo) {
+      this.app.showInfo('Resetting token analytics...');
+    }
+
+    if (this.tokenAnalytics) {
+      this.tokenAnalytics.resetAnalytics();
+      console.log('✅ Token analytics data reset successfully');
+
+      if (this.app && this.app.showSuccess) {
+        this.app.showSuccess('Token analytics data reset successfully');
+      }
+    } else {
+      console.warn('⚠️ Token analytics not initialized');
+      if (this.app && this.app.showError) {
+        this.app.showError('Token analytics not available');
+      }
+    }
+  }
+
+  // Refresh populations on all pages that have population dropdowns
+  refreshPopulationsOnAllPages() {
+    console.log('🔄 Refreshing populations on all pages after token refresh...');
+
+    // List of pages that have population loading functionality
+    const pagesWithPopulations = ['export', 'import', 'delete', 'modify'];
+
+    pagesWithPopulations.forEach(pageName => {
+      const page = this.app.pages[pageName];
+      if (page && typeof page.loadPopulations === 'function') {
+        console.log(`🔄 Refreshing populations on ${pageName} page...`);
+        try {
+          page.loadPopulations();
+        } catch (error) {
+          console.error(`❌ Error refreshing populations on ${pageName} page:`, error);
         }
-        
-        console.log('✅ Population refresh completed on all pages');
+      }
+    });
+
+    // Also update the home page status if it has a population status indicator
+    const homePage = this.app.pages['home'];
+    if (homePage && typeof homePage.updateStatus === 'function') {
+      console.log('🔄 Updating home page status...');
+      try {
+        homePage.updateStatus();
+      } catch (error) {
+        console.error('❌ Error updating home page status:', error);
+      }
     }
 
-    // Called when token status changes
-    onTokenStatusChange(tokenStatus) {
-        this.updateTokenDisplay();
-    }
+    console.log('✅ Population refresh completed on all pages');
+  }
 
-    // Called when settings change
-    onSettingsChange(settings) {
-        // Token management doesn't need to react to settings changes
-    }
+  // Called when token status changes
+  onTokenStatusChange(tokenStatus) {
+    this.updateTokenDisplay();
+  }
 
-    // Cleanup when page is unloaded
-    unload() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-            this.refreshInterval = null;
-        }
+  // Called when settings change
+  onSettingsChange(settings) {
+    // Token management doesn't need to react to settings changes
+  }
+
+  // Cleanup when page is unloaded
+  unload() {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
     }
+  }
 }

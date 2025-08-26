@@ -31,7 +31,7 @@ class MockElementRegistry {
   constructor() {
     this.elements = new Map();
   }
-  
+
   get(id) {
     if (!this.elements.has(id)) {
       const el = document.createElement('div');
@@ -88,12 +88,12 @@ describe('UIManager', () => {
   beforeEach(() => {
     // Reset all mocks before each test
     jest.clearAllMocks();
-    
+
     // Create a test element for the UI manager
     testElement = document.createElement('div');
     testElement.id = 'test-container';
     document.body.appendChild(testElement);
-    
+
     // Create a new UIManager instance
     uiManager = new UIManager({
       errorManager: mockErrorManager,
@@ -122,7 +122,7 @@ describe('UIManager', () => {
     it('should show status message', () => {
       const message = 'Test status message';
       uiManager.showStatus(message);
-      
+
       // Verify the status message was logged
       expect(mockLogger.info).toHaveBeenCalledWith('Status update', {
         message,
@@ -131,7 +131,7 @@ describe('UIManager', () => {
         instanceId: 'test-instance',
         env: 'development'
       });
-      
+
       // Verify the status bar was updated if it exists
       const statusBar = document.getElementById('status-bar');
       if (statusBar) {
@@ -142,7 +142,7 @@ describe('UIManager', () => {
     it('should show error status with custom type', () => {
       const message = 'Error status';
       uiManager.showStatus(message, 'error');
-      
+
       // Verify the error status was logged
       expect(mockLogger.error).toHaveBeenCalledWith('Status update', {
         message,
@@ -158,9 +158,9 @@ describe('UIManager', () => {
     it('should update progress bar', () => {
       const progress = 50;
       const message = 'Processing...';
-      
+
       uiManager.updateProgress(progress, message);
-      
+
       // Verify progress was logged
       expect(mockLogger.debug).toHaveBeenCalledWith('Progress update', {
         progress,
@@ -169,7 +169,7 @@ describe('UIManager', () => {
         instanceId: 'test-instance',
         env: 'development'
       });
-      
+
       // Verify progress bar was updated if it exists
       const progressBar = document.querySelector('.progress-bar');
       if (progressBar) {
@@ -182,21 +182,21 @@ describe('UIManager', () => {
     it('should handle error with error object', () => {
       const error = new Error('Test error');
       const context = { operation: 'test' };
-      
+
       uiManager.showError('Operation failed', { error, ...context });
-      
+
       // Verify error was passed to error manager
       expect(mockErrorManager.handleError).toHaveBeenCalledWith(error, {
         message: 'Operation failed',
         ...context
       });
     });
-    
+
     it('should handle error with string message', () => {
       const errorMessage = 'Test error message';
-      
+
       uiManager.showError(errorMessage);
-      
+
       // Verify error was passed to error manager
       expect(mockErrorManager.handleError).toHaveBeenCalledWith(
         expect.any(Error),
@@ -204,12 +204,12 @@ describe('UIManager', () => {
       );
     });
   });
-  
+
   describe('showNotification', () => {
     it('should show notification with default type', () => {
       const message = 'Test notification';
       uiManager.showNotification(message);
-      
+
       // Verify notification was logged
       expect(mockLogger.info).toHaveBeenCalledWith('Notification', {
         message,
@@ -219,11 +219,11 @@ describe('UIManager', () => {
         env: 'development'
       });
     });
-    
+
     it('should show error notification', () => {
       const message = 'Error notification';
       uiManager.showNotification(message, 'error');
-      
+
       // Verify error notification was logged
       expect(mockLogger.error).toHaveBeenCalledWith('Notification', {
         message,

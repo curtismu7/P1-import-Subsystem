@@ -17,31 +17,31 @@ class HealthCheck {
       { name: 'token_validation', status: 'unknown', message: 'Not checked yet' },
       { name: 'api_access', status: 'unknown', message: 'Not checked yet' }
     ];
-    
+
     this.lastCheck = null;
     this.status = 'unknown';
   }
-  
+
   /**
    * Run all health checks
    */
   async runChecks() {
     this.lastCheck = new Date();
-    
+
     try {
       // Check settings file
       await this.checkSettingsFile();
-      
+
       // Only run API checks if settings are valid
       if (this.getCheck('settings_file').status === 'healthy') {
         await this.checkPingOneConnection();
         await this.validateToken();
         await this.checkApiAccess();
       }
-      
+
       // Update overall status
       this.updateOverallStatus();
-      
+
       return this.getStatus();
     } catch (error) {
       console.error('Health check failed:', error);
@@ -49,18 +49,18 @@ class HealthCheck {
       return this.getStatus();
     }
   }
-  
+
   /**
    * Check if settings file exists and is valid
    */
   async checkSettingsFile() {
     try {
       const settings = JSON.parse(await readFile(SETTINGS_PATH, 'utf8'));
-      
+
       // Validate required fields
       const requiredFields = ['environmentId', 'apiClientId', 'apiSecret', 'region'];
       const missingFields = requiredFields.filter(field => !settings[field]);
-      
+
       if (missingFields.length > 0) {
         this.updateCheck('settings_file', {
           status: 'unhealthy',
@@ -79,7 +79,7 @@ class HealthCheck {
       });
     }
   }
-  
+
   /**
    * Check PingOne connection
    */
@@ -87,7 +87,7 @@ class HealthCheck {
     try {
       const settings = JSON.parse(await readFile(SETTINGS_PATH, 'utf8'));
       const authUrl = `https://auth.pingone.com/${settings.environmentId}/as/token`;
-      
+
       // Try a GET request instead of HEAD since HEAD might be blocked
       const response = await fetch(authUrl, {
         method: 'GET',
@@ -96,7 +96,7 @@ class HealthCheck {
         },
         timeout: 5000
       });
-      
+
       // Consider any 2xx or 3xx status as successful connection
       if (response.ok || response.redirected) {
         this.updateCheck('pingone_connection', {
@@ -124,7 +124,7 @@ class HealthCheck {
       });
     }
   }
-  
+
   /**
    * Validate authentication token
    */
@@ -133,7 +133,7 @@ class HealthCheck {
       const settings = JSON.parse(await readFile(SETTINGS_PATH, 'utf8'));
       const authUrl = `https://auth.pingone.com/${settings.environmentId}/as/token`;
       const authHeader = 'Basic ' + Buffer.from(`${settings.apiClientId}:${settings.apiSecret}`).toString('base64');
-      
+
       const response = await fetch(authUrl, {
         method: 'POST',
         headers: {
@@ -143,9 +143,9 @@ class HealthCheck {
         body: 'grant_type=client_credentials',
         timeout: 5000
       });
-      
+
       const data = await response.json();
-      
+
       if (response.ok && data.access_token) {
         this.updateCheck('token_validation', {
           status: 'healthy',
@@ -169,7 +169,7 @@ class HealthCheck {
       });
     }
   }
-  
+
   /**
    * Check API access
    */
@@ -177,7 +177,7 @@ class HealthCheck {
     try {
       const settings = JSON.parse(await readFile(SETTINGS_PATH, 'utf8'));
       const token = await this.getAccessToken();
-      
+
       if (!token) {
         this.updateCheck('api_access', {
           status: 'unhealthy',
@@ -185,7 +185,7 @@ class HealthCheck {
         });
         return;
       }
-      
+
       const apiUrl = `https://api.pingone.com/v1/environments/${settings.environmentId}/populations`;
       const response = await fetch(apiUrl, {
         headers: {
@@ -193,7 +193,7 @@ class HealthCheck {
         },
         timeout: 5000
       });
-      
+
       if (response.ok) {
         this.updateCheck('api_access', {
           status: 'healthy',
@@ -214,7 +214,7 @@ class HealthCheck {
       });
     }
   }
-  
+
   /**
    * Helper to get access token
    */
@@ -223,7 +223,7 @@ class HealthCheck {
       const settings = JSON.parse(await readFile(SETTINGS_PATH, 'utf8'));
       const authUrl = `https://auth.pingone.com/${settings.environmentId}/as/token`;
       const authHeader = 'Basic ' + Buffer.from(`${settings.apiClientId}:${settings.apiSecret}`).toString('base64');
-      
+
       const response = await fetch(authUrl, {
         method: 'POST',
         headers: {
@@ -233,21 +233,21 @@ class HealthCheck {
         body: 'grant_type=client_credentials',
         timeout: 5000
       });
-      
+
       const data = await response.json();
       return data.access_token;
     } catch (error) {
       return null;
     }
   }
-  
+
   /**
    * Update overall status based on individual checks
    */
   updateOverallStatus() {
     const critical = this.checks.some(check => check.status === 'critical');
     const unhealthy = this.checks.some(check => check.status === 'unhealthy');
-    
+
     if (critical) {
       this.status = 'critical';
     } else if (unhealthy) {
@@ -258,7 +258,7 @@ class HealthCheck {
       this.status = 'unknown';
     }
   }
-  
+
   /**
    * Update a specific health check
    */
@@ -271,14 +271,14 @@ class HealthCheck {
       check.lastChecked = new Date();
     }
   }
-  
+
   /**
    * Get a specific health check
    */
   getCheck(name) {
     return this.checks.find(c => c.name === name) || { status: 'unknown', message: 'Check not found' };
   }
-  
+
   /**
    * Get current health status
    */

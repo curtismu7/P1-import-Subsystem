@@ -23,10 +23,10 @@ describe('User Import API', () => {
       // Mock successful response
       const responseData = { id: 'test-import-id' };
       const mockResponse = createMockResponse(200, responseData);
-      
+
       // Set up the fetch mock with immediate resolution
       fetch.mockResolvedValueOnce(mockResponse);
-      
+
       // Make the request
       const response = await fetch(
         `${baseUrl}/api/pingone/v1/environments/test-env-id/users/import`,
@@ -45,11 +45,11 @@ describe('User Import API', () => {
       // Verify response
       expect(response.status).toBe(200);
       expect(response.ok).toBe(true);
-      
+
       // Verify response data
       const data = await response.json();
       expect(data).toEqual(responseData);
-      
+
       // Verify fetch was called with the correct arguments
       expect(fetch).toHaveBeenCalledTimes(1);
       expect(fetch).toHaveBeenCalledWith(
@@ -73,12 +73,12 @@ describe('User Import API', () => {
         error: 'Unsupported Media Type',
         message: 'Content-Type must be application/vnd.pingone.import.users+json'
       };
-      
+
       const mockResponse = createMockResponse(415, errorResponse);
-      
+
       // Set up the fetch mock with immediate resolution
       fetch.mockResolvedValueOnce(mockResponse);
-      
+
       // Make the request with incorrect content type
       const response = await fetch(
         `${baseUrl}/api/pingone/v1/environments/test-env-id/users/import`,
@@ -97,11 +97,11 @@ describe('User Import API', () => {
       // Verify response status and data
       expect(response.status).toBe(415);
       expect(response.ok).toBe(false);
-      
+
       // Verify the error response
       const errorData = await response.json();
       expect(errorData).toEqual(errorResponse);
-      
+
       // Verify fetch was called with the incorrect content type
       expect(fetch).toHaveBeenCalledTimes(1);
       expect(fetch).toHaveBeenCalledWith(

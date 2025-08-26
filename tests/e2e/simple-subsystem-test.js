@@ -1,6 +1,6 @@
 /**
  * Simple Subsystem Test
- * 
+ *
  * A minimal test to verify that the testing environment is working correctly
  */
 
@@ -27,26 +27,26 @@ global.window = dom.window;
 global.document = dom.window.document;
 
 describe('Simple Subsystem Test', () => {
-    beforeEach(() => {
-        // Reset DOM
-        document.body.innerHTML = dom.window.document.body.innerHTML;
+  beforeEach(() => {
+    // Reset DOM
+    document.body.innerHTML = dom.window.document.body.innerHTML;
+  });
+
+  test('should update output when button is clicked', () => {
+    const button = document.getElementById('test-button');
+    const output = document.getElementById('test-output');
+
+    // Add click handler
+    button.addEventListener('click', () => {
+      output.textContent = 'Button clicked!';
     });
-    
-    test('should update output when button is clicked', () => {
-        const button = document.getElementById('test-button');
-        const output = document.getElementById('test-output');
-        
-        // Add click handler
-        button.addEventListener('click', () => {
-            output.textContent = 'Button clicked!';
-        });
-        
-        // Simulate click using a proper Event object
-        const clickEvent = document.createEvent('MouseEvents');
-        clickEvent.initEvent('click', true, true);
-        button.dispatchEvent(clickEvent);
-        
-        // Check result
-        expect(output.textContent).toBe('Button clicked!');
-    });
+
+    // Simulate click using a proper Event object
+    const clickEvent = document.createEvent('MouseEvents');
+    clickEvent.initEvent('click', true, true);
+    button.dispatchEvent(clickEvent);
+
+    // Check result
+    expect(output.textContent).toBe('Button clicked!');
+  });
 });

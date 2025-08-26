@@ -1,26 +1,26 @@
 /**
- * @fileoverview Swagger/OpenAPI configuration for PingOne Import Tool API
- * 
+ * @file Swagger/OpenAPI configuration for PingOne Import Tool API
+ *
  * This file configures Swagger documentation for all API endpoints,
  * including request/response schemas, authentication, and examples.
- * 
+ *
  * @author PingOne Import Tool
  * @version 6.5.2.4
  */
 
-var swaggerJsdoc = require('swagger-jsdoc');
-var swaggerUi = require('swagger-ui-express');
-var express = require('express');
-var fs = require('fs');
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
+const express = require('express');
+const fs = require('fs');
 // Credential fallback logic
-var swaggerCredentials = {};
-var credentialSource = 'env';
-var path = require('path');
+let swaggerCredentials = {};
+let credentialSource = 'env';
+const path = require('path');
 try {
-  var settingsPath = path.join(process.cwd(), 'data', 'settings.json');
+  const settingsPath = path.join(process.cwd(), 'data', 'settings.json');
   if (fs.existsSync(settingsPath)) {
-    var raw = fs.readFileSync(settingsPath, 'utf8');
-    var parsed = JSON.parse(raw);
+    const raw = fs.readFileSync(settingsPath, 'utf8');
+    const parsed = JSON.parse(raw);
     if (parsed.apiClientId && parsed.apiSecret && parsed.environmentId) {
       swaggerCredentials = {
         apiClientId: parsed.apiClientId,
@@ -41,14 +41,14 @@ swaggerCredentials.environmentId = swaggerCredentials.environmentId || process.e
 swaggerCredentials.region = swaggerCredentials.region || process.env.PINGONE_REGION || 'NorthAmerica';
 
 function logSwaggerCredentialSource(source) {
-  var msg = '[🗝️ CREDENTIAL-MANAGER] [' + new Date().toISOString() + '] [swagger] INFO: Credential source: ' + source;
+  const msg = '[🗝️ CREDENTIAL-MANAGER] [' + new Date().toISOString() + '] [swagger] INFO: Credential source: ' + source;
   console.log(msg);
 }
 logSwaggerCredentialSource(credentialSource);
 
 function getSwaggerToken(customCreds) {
   customCreds = customCreds || {};
-  var creds = {
+  const creds = {
     apiClientId: customCreds.apiClientId || swaggerCredentials.apiClientId,
     apiSecret: customCreds.apiSecret || swaggerCredentials.apiSecret,
     environmentId: customCreds.environmentId || swaggerCredentials.environmentId,
@@ -1419,4 +1419,4 @@ const setupSwagger = (app) => {
   console.log('📄 Swagger JSON available at /swagger.json');
 };
 
-export { setupSwagger, specs }; 
+export { setupSwagger, specs };

@@ -39,9 +39,9 @@ export async function loadSettings(logger = console) {
 
   // Validate presence
   const missing = [];
-  if (!environmentId) missing.push('environmentId');
-  if (!clientId) missing.push('apiClientId');
-  if (!rawSecret) missing.push('apiSecret');
+  if (!environmentId) {missing.push('environmentId');}
+  if (!clientId) {missing.push('apiClientId');}
+  if (!rawSecret) {missing.push('apiSecret');}
   // Region defaults to 'NA' via mapper; do not treat as missing
   if (missing.length) {
     const msg = `settings-loader: Missing required fields in data/settings.json: ${missing.join(', ')}`;

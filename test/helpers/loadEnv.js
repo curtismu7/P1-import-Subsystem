@@ -1,8 +1,8 @@
 /**
- * @fileoverview Environment loader for tests
- * 
+ * @file Environment loader for tests
+ *
  * Loads environment variables from .env file for testing
- * 
+ *
  * @author PingOne Import Tool
  * @version 4.9
  */
@@ -17,7 +17,7 @@ export function loadEnv() {
   try {
     const envPath = join(process.cwd(), '.env');
     const envContent = readFileSync(envPath, 'utf8');
-    
+
     const envVars = {};
     envContent.split('\n').forEach(line => {
       const trimmed = line.trim();
@@ -28,14 +28,14 @@ export function loadEnv() {
         }
       }
     });
-    
+
     // Set environment variables
     Object.entries(envVars).forEach(([key, value]) => {
       if (!process.env[key]) {
         process.env[key] = value;
       }
     });
-    
+
     return envVars;
   } catch (error) {
     console.warn('No .env file found, using existing environment variables');

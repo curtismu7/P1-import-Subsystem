@@ -1,6 +1,6 @@
 /**
  * Optimized API Client with Caching and Retry Logic
- * 
+ *
  * Provides enhanced API communication with:
  * - Request/response caching
  * - Connection pooling
@@ -25,21 +25,21 @@ class RateLimiter {
 
   async acquire() {
     const now = Date.now();
-    
+
     // Remove old requests outside the window
     this.requests = this.requests.filter(time => now - time < this.windowMs);
-    
+
     // Check if we can make a request
     if (this.requests.length >= this.maxRequests) {
       const oldestRequest = Math.min(...this.requests);
       const waitTime = this.windowMs - (now - oldestRequest);
-      
+
       if (waitTime > 0) {
         await new Promise(resolve => setTimeout(resolve, waitTime));
         return this.acquire(); // Retry after waiting
       }
     }
-    
+
     // Add current request
     this.requests.push(now);
   }
@@ -72,18 +72,18 @@ class RequestCache {
 
   get(key) {
     const entry = this.cache.get(key);
-    if (!entry) return null;
-    
+    if (!entry) {return null;}
+
     // Check if expired
     if (Date.now() > entry.expiresAt) {
       this.cache.delete(key);
       return null;
     }
-    
+
     // Move to end (LRU)
     this.cache.delete(key);
     this.cache.set(key, entry);
-    
+
     return entry.data;
   }
 
@@ -93,7 +93,7 @@ class RequestCache {
       const firstKey = this.cache.keys().next().value;
       this.cache.delete(firstKey);
     }
-    
+
     this.cache.set(key, {
       data,
       expiresAt: Date.now() + ttl
@@ -123,12 +123,12 @@ class RequestDeduplicator {
     if (this.pendingRequests.has(key)) {
       return await this.pendingRequests.get(key);
     }
-    
+
     // Create new request promise
     const requestPromise = requestFn().finally(() => {
       this.pendingRequests.delete(key);
     });
-    
+
     this.pendingRequests.set(key, requestPromise);
     return await requestPromise;
   }
@@ -158,7 +158,7 @@ export class OptimizedAPIClient {
     this.rateLimiter = new RateLimiter(this.config.rateLimit, this.config.rateLimitWindow);
     this.cache = new RequestCache(this.config.cacheSize, this.config.cacheTTL);
     this.deduplicator = new RequestDeduplicator();
-    
+
     // Connection pooling agent
     this.agent = new Agent({
       keepAlive: true,
@@ -185,10 +185,10 @@ export class OptimizedAPIClient {
   async request(method, endpoint, options = {}) {
     const url = this.buildURL(endpoint);
     const requestOptions = this.buildRequestOptions(method, options);
-    
+
     // Generate cache key
     const cacheKey = this.cache.generateKey(method, url, requestOptions);
-    
+
     // Check cache first (for GET requests)
     if (method.toUpperCase() === 'GET' && this.config.cacheEnabled && options.cache !== false) {
       const cached = this.cache.get(cacheKey);
@@ -201,7 +201,7 @@ export class OptimizedAPIClient {
 
     // Deduplicate concurrent requests
     if (this.config.deduplicationEnabled && method.toUpperCase() === 'GET') {
-      return await this.deduplicator.deduplicate(cacheKey, () => 
+      return await this.deduplicator.deduplicate(cacheKey, () =>
         this.executeRequest(method, url, requestOptions, cacheKey, options)
       );
     }
@@ -220,44 +220,44 @@ export class OptimizedAPIClient {
       try {
         // Rate limiting
         await this.rateLimiter.acquire();
-        
+
         // Make request
         this.stats.requests++;
         const response = await this.makeRequest(url, requestOptions);
-        
+
         // Parse response
         const result = await this.parseResponse(response);
-        
+
         // Cache successful GET responses
-        if (method.toUpperCase() === 'GET' && 
-            this.config.cacheEnabled && 
-            options.cache !== false && 
+        if (method.toUpperCase() === 'GET' &&
+            this.config.cacheEnabled &&
+            options.cache !== false &&
             response.ok) {
           const ttl = options.cacheTTL || this.config.cacheTTL;
           this.cache.set(cacheKey, result, ttl);
         }
-        
+
         return result;
-        
+
       } catch (error) {
         lastError = error;
         this.stats.errors++;
-        
+
         // Don't retry on client errors (4xx) except 429 (rate limit)
         if (error.status >= 400 && error.status < 500 && error.status !== 429) {
           throw error;
         }
-        
+
         // Don't retry on last attempt
         if (attempt === this.config.retries) {
           break;
         }
-        
+
         // Wait before retry with exponential backoff
         this.stats.retries++;
         await this.sleep(delay);
         delay = Math.min(delay * 2, this.config.maxRetryDelay);
-        
+
         console.warn(`Request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${this.config.retries})`, {
           url,
           error: error.message,
@@ -265,7 +265,7 @@ export class OptimizedAPIClient {
         });
       }
     }
-    
+
     throw lastError;
   }
 
@@ -275,26 +275,26 @@ export class OptimizedAPIClient {
   async makeRequest(url, options) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
-    
+
     try {
       const response = await fetch(url, {
         ...options,
         agent: this.agent,
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
       return response;
-      
+
     } catch (error) {
       clearTimeout(timeoutId);
-      
+
       if (error.name === 'AbortError') {
         const timeoutError = new Error(`Request timeout after ${this.config.timeout}ms`);
         timeoutError.status = 408;
         throw timeoutError;
       }
-      
+
       throw error;
     }
   }
@@ -304,10 +304,10 @@ export class OptimizedAPIClient {
    */
   async parseResponse(response) {
     const contentType = response.headers.get('content-type') || '';
-    
+
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-      
+
       try {
         if (contentType.includes('application/json')) {
           const errorData = await response.json();
@@ -318,13 +318,13 @@ export class OptimizedAPIClient {
       } catch (parseError) {
         // Use default error message if parsing fails
       }
-      
+
       const error = new Error(errorMessage);
       error.status = response.status;
       error.response = response;
       throw error;
     }
-    
+
     // Parse successful response
     if (contentType.includes('application/json')) {
       return await response.json();
@@ -342,7 +342,7 @@ export class OptimizedAPIClient {
     if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
       return endpoint;
     }
-    
+
     const baseURL = this.config.baseURL.replace(/\/$/, '');
     const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     return `${baseURL}${path}`;

@@ -33,7 +33,7 @@ function findMissingRequired(settings) {
   const missing = [];
   for (const key of required) {
     const val = settings?.[key];
-    if (!val || String(val).trim() === '') missing.push(key);
+    if (!val || String(val).trim() === '') {missing.push(key);}
   }
   return missing;
 }
@@ -48,7 +48,7 @@ function normalizeRegion(region) {
 // On decryption failure, THROW a specific error so callers can surface a clear message
 async function getDecryptedClientSecret(settings) {
   const secret = settings?.pingone_client_secret;
-  if (secret == null || String(secret).trim() === '') return '';
+  if (secret == null || String(secret).trim() === '') {return '';}
   if (typeof secret === 'string' && secret.startsWith('enc:')) {
     try {
       return await encryptor.decrypt(secret);
@@ -168,7 +168,7 @@ router.get('/refresh-dev', async (req, res) => {
   try {
     // Local-only guard
     const guard = ensureLocalOnly(req, res);
-    if (!guard.ok) return; // response already sent
+    if (!guard.ok) {return;} // response already sent
 
     // Concurrency guard: avoid overlapping refreshes
     if (refreshInFlight) {
@@ -284,7 +284,7 @@ router.delete('/revoke', async (req, res) => {
   try {
     // Clear the current token from the token service
     tokenService.clearToken();
-    
+
     return res.json({
       success: true,
       message: 'Token revoked successfully',
@@ -292,10 +292,10 @@ router.delete('/revoke', async (req, res) => {
     });
   } catch (error) {
     logger.error('Token revoke failed', { error: error.message });
-    return res.status(500).json({ 
-      success: false, 
+    return res.status(500).json({
+      success: false,
       error: 'Failed to revoke token',
-      details: error.message 
+      details: error.message
     });
   }
 });

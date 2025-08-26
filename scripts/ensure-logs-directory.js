@@ -20,14 +20,14 @@ const logsDir = path.join(projectRoot, 'logs');
 export async function ensureLogsDirectory() {
   try {
     console.log(`Ensuring logs directory exists: ${logsDir}`);
-    
+
     // Check if logs directory exists
     if (!fs.existsSync(logsDir)) {
       console.log('Logs directory does not exist, creating it...');
       fs.mkdirSync(logsDir, { recursive: true });
       console.log('Logs directory created successfully');
     }
-    
+
     // Check if logs directory is writable
     try {
       const testFile = path.join(logsDir, '.write-test');
@@ -38,14 +38,14 @@ export async function ensureLogsDirectory() {
       console.error('Logs directory is not writable:', writeError.message);
       return false;
     }
-    
+
     // Create an empty readable.log file if it doesn't exist
     const readableLogPath = path.join(logsDir, 'readable.log');
     if (!fs.existsSync(readableLogPath)) {
       console.log('Creating empty readable.log file');
       fs.writeFileSync(readableLogPath, '');
     }
-    
+
     return true;
   } catch (error) {
     console.error('Failed to ensure logs directory:', error.message);

@@ -43,7 +43,7 @@ app.use('/api', (req, res, next) => {
       }
     });
   }
-  
+
   if (req.path.startsWith('/import/') && req.method === 'GET') {
     const jobId = req.params[0];
     return res.status(200).json({
@@ -59,7 +59,7 @@ app.use('/api', (req, res, next) => {
       }
     });
   }
-  
+
   next();
 });
 
@@ -81,16 +81,16 @@ const PORT = parseInt(process.env.PORT) || 3001;
 
 // Validate port range
 if (PORT < 0 || PORT > 65535) {
-    console.error(`Invalid port number: ${PORT}. Port must be between 0 and 65535.`);
-    process.exit(1);
+  console.error(`Invalid port number: ${PORT}. Port must be between 0 and 65535.`);
+  process.exit(1);
 }
 
 // Debug: Log the port value and type
-console.log(`🔍 PORT debugging:`, {
-    rawEnvPort: process.env.PORT,
-    parsedPort: PORT,
-    portType: typeof PORT,
-    portValid: PORT >= 0 && PORT <= 65535
+console.log('🔍 PORT debugging:', {
+  rawEnvPort: process.env.PORT,
+  parsedPort: PORT,
+  portType: typeof PORT,
+  portValid: PORT >= 0 && PORT <= 65535
 });
 const server = httpServer.listen(PORT, () => {
   console.log(`Test server running on port ${PORT}`);
@@ -107,7 +107,7 @@ const io = new Server(server, {
 // WebSocket connection
 io.on('connection', (socket) => {
   console.log('Client connected');
-  
+
   socket.on('disconnect', () => {
     console.log('Client disconnected');
   });

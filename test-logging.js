@@ -14,14 +14,14 @@ if (!fs.existsSync(logDir)) {
 try {
   const timestamp = new Date().toISOString();
   const testMessage = `[${timestamp}] [TEST] This is a test log message\n`;
-  
+
   fs.appendFileSync(logFile, testMessage);
   console.log(`Successfully wrote to: ${logFile}`);
   console.log(`File contents:\n${fs.readFileSync(logFile, 'utf8')}`);
 } catch (error) {
   console.error('Error writing to log file:', error.message);
   console.error('Error details:', error);
-  
+
   // Debug: Check directory permissions
   try {
     const stats = fs.statSync(logDir);

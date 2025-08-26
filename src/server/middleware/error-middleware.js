@@ -1,6 +1,6 @@
 /**
  * Enhanced Error Handling Middleware
- * 
+ *
  * Provides comprehensive error handling for Express applications with:
  * - Structured error responses
  * - Error logging and tracking
@@ -48,7 +48,7 @@ export class AppError extends Error {
     this.severity = severity;
     this.timestamp = new Date().toISOString();
     this.isOperational = true;
-    
+
     Error.captureStackTrace(this, this.constructor);
   }
 }
@@ -109,22 +109,22 @@ function classifyError(error) {
   if (error.type && error.severity) {
     return { type: error.type, severity: error.severity };
   }
-  
+
   // Classify by status code
   if (error.statusCode || error.status) {
     const code = error.statusCode || error.status;
-    
-    if (code === 400) return { type: ERROR_TYPES.VALIDATION, severity: ERROR_SEVERITY.LOW };
-    if (code === 401) return { type: ERROR_TYPES.AUTHENTICATION, severity: ERROR_SEVERITY.HIGH };
-    if (code === 403) return { type: ERROR_TYPES.AUTHORIZATION, severity: ERROR_SEVERITY.HIGH };
-    if (code === 404) return { type: ERROR_TYPES.NOT_FOUND, severity: ERROR_SEVERITY.LOW };
-    if (code === 429) return { type: ERROR_TYPES.RATE_LIMIT, severity: ERROR_SEVERITY.MEDIUM };
-    if (code >= 500) return { type: ERROR_TYPES.SYSTEM, severity: ERROR_SEVERITY.HIGH };
+
+    if (code === 400) {return { type: ERROR_TYPES.VALIDATION, severity: ERROR_SEVERITY.LOW };}
+    if (code === 401) {return { type: ERROR_TYPES.AUTHENTICATION, severity: ERROR_SEVERITY.HIGH };}
+    if (code === 403) {return { type: ERROR_TYPES.AUTHORIZATION, severity: ERROR_SEVERITY.HIGH };}
+    if (code === 404) {return { type: ERROR_TYPES.NOT_FOUND, severity: ERROR_SEVERITY.LOW };}
+    if (code === 429) {return { type: ERROR_TYPES.RATE_LIMIT, severity: ERROR_SEVERITY.MEDIUM };}
+    if (code >= 500) {return { type: ERROR_TYPES.SYSTEM, severity: ERROR_SEVERITY.HIGH };}
   }
-  
+
   // Classify by error message patterns
   const message = error.message?.toLowerCase() || '';
-  
+
   if (message.includes('timeout')) {
     return { type: ERROR_TYPES.TIMEOUT, severity: ERROR_SEVERITY.MEDIUM };
   }
@@ -137,7 +137,7 @@ function classifyError(error) {
   if (message.includes('unauthorized') || message.includes('token')) {
     return { type: ERROR_TYPES.AUTHENTICATION, severity: ERROR_SEVERITY.HIGH };
   }
-  
+
   return { type: ERROR_TYPES.UNKNOWN, severity: ERROR_SEVERITY.MEDIUM };
 }
 
@@ -146,31 +146,31 @@ function classifyError(error) {
  */
 function getUserFriendlyMessage(error, type) {
   const isProduction = configManager.get('server.environment') === 'production';
-  
+
   // Return specific message for known error types
   switch (type) {
-    case ERROR_TYPES.VALIDATION:
-      return error.message || 'Invalid input provided';
-    case ERROR_TYPES.AUTHENTICATION:
-      return 'Authentication required. Please log in.';
-    case ERROR_TYPES.AUTHORIZATION:
-      return 'You do not have permission to perform this action';
-    case ERROR_TYPES.NOT_FOUND:
-      return error.message || 'The requested resource was not found';
-    case ERROR_TYPES.RATE_LIMIT:
-      return 'Too many requests. Please try again later.';
-    case ERROR_TYPES.TIMEOUT:
-      return 'The request timed out. Please try again.';
-    case ERROR_TYPES.FILE_UPLOAD:
-      return error.message || 'File upload failed';
-    case ERROR_TYPES.EXTERNAL_API:
-      return 'External service is currently unavailable';
-    case ERROR_TYPES.DATABASE:
-      return isProduction ? 'Database operation failed' : error.message;
-    case ERROR_TYPES.SYSTEM:
-      return isProduction ? 'An internal server error occurred' : error.message;
-    default:
-      return isProduction ? 'An unexpected error occurred' : error.message;
+  case ERROR_TYPES.VALIDATION:
+    return error.message || 'Invalid input provided';
+  case ERROR_TYPES.AUTHENTICATION:
+    return 'Authentication required. Please log in.';
+  case ERROR_TYPES.AUTHORIZATION:
+    return 'You do not have permission to perform this action';
+  case ERROR_TYPES.NOT_FOUND:
+    return error.message || 'The requested resource was not found';
+  case ERROR_TYPES.RATE_LIMIT:
+    return 'Too many requests. Please try again later.';
+  case ERROR_TYPES.TIMEOUT:
+    return 'The request timed out. Please try again.';
+  case ERROR_TYPES.FILE_UPLOAD:
+    return error.message || 'File upload failed';
+  case ERROR_TYPES.EXTERNAL_API:
+    return 'External service is currently unavailable';
+  case ERROR_TYPES.DATABASE:
+    return isProduction ? 'Database operation failed' : error.message;
+  case ERROR_TYPES.SYSTEM:
+    return isProduction ? 'An internal server error occurred' : error.message;
+  default:
+    return isProduction ? 'An unexpected error occurred' : error.message;
   }
 }
 
@@ -181,7 +181,7 @@ function createErrorResponse(error, req, correlationId) {
   const { type, severity } = classifyError(error);
   const statusCode = error.statusCode || error.status || 500;
   const isProduction = configManager.get('server.environment') === 'production';
-  
+
   const response = {
     success: false,
     error: {
@@ -192,7 +192,7 @@ function createErrorResponse(error, req, correlationId) {
       correlationId
     }
   };
-  
+
   // Add additional details in non-production environments
   if (!isProduction) {
     response.error.details = {
@@ -200,12 +200,12 @@ function createErrorResponse(error, req, correlationId) {
       stack: error.stack,
       severity
     };
-    
+
     if (error.details) {
       response.error.validationDetails = error.details;
     }
   }
-  
+
   // Add request context for debugging
   if (configManager.get('debug.enableDebugMode')) {
     response.debug = {
@@ -215,7 +215,7 @@ function createErrorResponse(error, req, correlationId) {
       ip: req.ip
     };
   }
-  
+
   return { response, statusCode, type, severity };
 }
 
@@ -235,25 +235,25 @@ function logError(error, req, correlationId, type, severity) {
     stack: error.stack,
     timestamp: new Date().toISOString()
   };
-  
+
   // Log with appropriate level based on severity
   switch (severity) {
-    case ERROR_SEVERITY.CRITICAL:
-      debugLog.error(`CRITICAL ERROR: ${error.message}`, logData, DEBUG_CATEGORIES.API);
-      break;
-    case ERROR_SEVERITY.HIGH:
-      debugLog.error(`HIGH SEVERITY ERROR: ${error.message}`, logData, DEBUG_CATEGORIES.API);
-      break;
-    case ERROR_SEVERITY.MEDIUM:
-      debugLog.warn(`MEDIUM SEVERITY ERROR: ${error.message}`, logData, DEBUG_CATEGORIES.API);
-      break;
-    case ERROR_SEVERITY.LOW:
-      debugLog.info(`LOW SEVERITY ERROR: ${error.message}`, logData, DEBUG_CATEGORIES.API);
-      break;
-    default:
-      debugLog.error(`UNKNOWN SEVERITY ERROR: ${error.message}`, logData, DEBUG_CATEGORIES.API);
+  case ERROR_SEVERITY.CRITICAL:
+    debugLog.error(`CRITICAL ERROR: ${error.message}`, logData, DEBUG_CATEGORIES.API);
+    break;
+  case ERROR_SEVERITY.HIGH:
+    debugLog.error(`HIGH SEVERITY ERROR: ${error.message}`, logData, DEBUG_CATEGORIES.API);
+    break;
+  case ERROR_SEVERITY.MEDIUM:
+    debugLog.warn(`MEDIUM SEVERITY ERROR: ${error.message}`, logData, DEBUG_CATEGORIES.API);
+    break;
+  case ERROR_SEVERITY.LOW:
+    debugLog.info(`LOW SEVERITY ERROR: ${error.message}`, logData, DEBUG_CATEGORIES.API);
+    break;
+  default:
+    debugLog.error(`UNKNOWN SEVERITY ERROR: ${error.message}`, logData, DEBUG_CATEGORIES.API);
   }
-  
+
 
   errorTracker.track(error.message, logData, DEBUG_CATEGORIES.API);
 }
@@ -264,24 +264,24 @@ function logError(error, req, correlationId, type, severity) {
 export function errorHandler(error, req, res, next) {
   // Generate correlation ID if not present
   const correlationId = req.correlationId || `err-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   try {
     // Create structured error response
     const { response, statusCode, type, severity } = createErrorResponse(error, req, correlationId);
-    
+
     // Log the error
     logError(error, req, correlationId, type, severity);
-    
+
     // Set security headers
     res.set({
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
       'X-XSS-Protection': '1; mode=block'
     });
-    
+
     // Send error response
     res.status(statusCode).json(response);
-    
+
   } catch (handlingError) {
     // Fallback error handling
     debugLog.error('Error in error handler', {
@@ -289,7 +289,7 @@ export function errorHandler(error, req, res, next) {
       handlingError: handlingError.message,
       correlationId
     }, DEBUG_CATEGORIES.API);
-    
+
     res.status(500).json({
       success: false,
       error: {
@@ -341,11 +341,11 @@ export function timeoutHandler(timeout = 30000) {
       );
       next(error);
     }, timeout);
-    
+
     // Clear timeout when response finishes
     res.on('finish', () => clearTimeout(timer));
     res.on('close', () => clearTimeout(timer));
-    
+
     next();
   };
 }

@@ -26,6 +26,14 @@ export class HomePage {
                             <i class="mdi mdi-arrow-up"></i>
                             New Import
                         </button>
+                        <button class="btn btn-secondary" id="download-template-btn" title="Download CSV template">
+                            <i class="mdi mdi-file-download"></i>
+                            CSV Template
+                        </button>
+                        <button class="btn btn-secondary" id="open-swagger-btn" title="Open API docs" style="display:none;">
+                            <i class="mdi mdi-book-open-page-variant"></i>
+                            API Docs
+                        </button>
                     </div>
                 </div>
             </div>
@@ -34,7 +42,18 @@ export class HomePage {
             <div class="home-container">
                 <!-- Quick Status Overview -->
                 <div class="status-overview">
-                    <div class="status-card">
+                    <div class="status-card" data-page="home" title="Server status">
+                        <div class="status-icon">
+                            <i class="mdi mdi-server" id="server-kpi-icon"></i>
+                        </div>
+                        <div>
+                            <div class="status-label">Server</div>
+                            <div class="status-value" id="server-kpi-status">Checking...</div>
+                            <div class="status-subtext" id="server-kpi-started"></div>
+                        </div>
+                        <div class="status-indicator" id="server-kpi-indicator"></div>
+                    </div>
+                    <div class="status-card" data-page="settings" title="View connection details">
                         <div class="status-icon">
                             <i class="mdi mdi-shield" id="connection-icon"></i>
                         </div>
@@ -45,7 +64,7 @@ export class HomePage {
                         <div class="status-indicator" id="connection-indicator"></div>
                     </div>
                     
-                    <div class="status-card">
+                    <div class="status-card" data-page="token-management" title="Open Token Management">
                         <div class="status-icon">
                             <i class="icon-key" id="token-icon"></i>
                         </div>
@@ -56,7 +75,7 @@ export class HomePage {
                         <div class="status-indicator" id="token-indicator"></div>
                     </div>
                     
-                    <div class="status-card">
+                    <div class="status-card" data-page="import" title="Go to Import">
                         <div class="status-icon">
                             <i class="mdi mdi-account-group" id="population-icon"></i>
                         </div>
@@ -67,7 +86,7 @@ export class HomePage {
                         <div class="status-indicator" id="population-indicator"></div>
                     </div>
                     
-                    <div class="status-card">
+                    <div class="status-card" data-page="settings" title="Environment settings">
                         <div class="status-icon">
                             <i class="mdi mdi-earth" id="environment-icon"></i>
                         </div>
@@ -81,7 +100,7 @@ export class HomePage {
                         <div class="status-indicator valid" id="environment-indicator"></div>
                     </div>
                     
-                    <div class="status-card">
+                    <div class="status-card" data-page="settings" title="Environment name">
                         <div class="status-icon">
                             <i class="mdi mdi-map-marker" id="environment-name-icon"></i>
                         </div>
@@ -92,7 +111,7 @@ export class HomePage {
                         <div class="status-indicator valid" id="environment-name-indicator"></div>
                     </div>
 
-                    <div class="status-card">
+                    <div class="status-card" data-page="settings" title="PingOne region">
                         <div class="status-icon">
                             <i class="mdi mdi-map" id="region-name-icon"></i>
                         </div>
@@ -109,6 +128,30 @@ export class HomePage {
             
             <!-- Main Content Area - Left Side Layout -->
             <div class="main-content-left">
+                <!-- Version Info Panel -->
+                <div class="content-panel version-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="mdi mdi-information-outline"></i>
+                            System Version
+                        </div>
+                    </div>
+                    <div>
+                        <table class="results-table table-compact">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="version-table-body">
+                                <tr><td>UI</td><td id="version-ui">v${this.app.version || '...'}</td></tr>
+                                <tr><td>Server</td><td id="version-server">Loading…</td></tr>
+                                <tr><td>Timestamp</td><td id="version-timestamp">—</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 <!-- Recent Imports Panel -->
                 <div class="content-panel recent-imports-panel">
                     <div class="panel-header">
@@ -123,14 +166,13 @@ export class HomePage {
                     </div>
                     
                     <div class="imports-table">
-                        <table class="table">
+                        <table class="table table-striped table-compact">
                             <thead>
                                 <tr>
-                                    <th>Job Name</th>
-                                    <th>Type</th>
+                                    <th>File Name</th>
+                                    <th>Rows</th>
                                     <th>Status</th>
-                                    <th>Records</th>
-                                    <th>Started</th>
+                                    <th>Completed</th>
                                 </tr>
                             </thead>
                             <tbody id="imports-table-body">
@@ -193,6 +235,18 @@ export class HomePage {
                             <i class="mdi mdi-server"></i>
                             Server Status & Activity
                         </div>
+                        <div class="activity-controls">
+                            <div class="activity-filters" role="tablist" aria-label="Activity filter">
+                                <button class="chip active" data-filter="all">All</button>
+                                <button class="chip" data-filter="success">Success</button>
+                                <button class="chip" data-filter="warning">Warning</button>
+                                <button class="chip" data-filter="error">Error</button>
+                            </div>
+                            <div class="activity-actions">
+                                <button class="btn btn-secondary" id="pause-activity-btn" title="Pause updates"><i class="mdi mdi-pause-circle"></i> Pause</button>
+                                <button class="btn btn-outline-secondary" id="clear-activity-btn" title="Clear list"><i class="mdi mdi-broom"></i> Clear</button>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Prominent Time Display -->
@@ -242,19 +296,22 @@ export class HomePage {
                         </div>
                     </div>
                     
-                    <!-- Recent Activity List -->
+                    <!-- Recent Activity Table -->
                     <div class="activity-section">
                         <h3>Recent Activity</h3>
-                        <div class="activity-list" id="activity-list">
-                            <div class="activity-item">
-                                <div class="activity-icon">
-                                    <i class="mdi mdi-check-circle"></i>
-                                </div>
-                                <div class="activity-content">
-                                    <p>Application started successfully</p>
-                                    <span class="activity-time">${new Date().toLocaleString()}</span>
-                                </div>
-                            </div>
+                        <div class="activity-table-container">
+                            <table class="activity-table table-compact" id="activity-table">
+                                <thead>
+                                    <tr>
+                                        <th>When</th>
+                                        <th>Message</th>
+                                        <th>Status</th>
+                                        <th>Dup Ct</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="activity-table-body"></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -297,12 +354,104 @@ export class HomePage {
       });
     }
 
+    // Action bar buttons
+    const templateBtn = document.getElementById('download-template-btn');
+    if (templateBtn) {
+      templateBtn.addEventListener('click', async () => {
+        try {
+          // Simple client-side CSV template for now
+          const headers = ['username','email','givenName','familyName','enabled'];
+          const blob = new Blob([headers.join(',') + '\n'], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `pingone-import-template-${new Date().toISOString().split('T')[0]}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          this.app?.showNotification?.('Failed to download template', 'error');
+        }
+      });
+    }
+
+    const swaggerBtn = document.getElementById('open-swagger-btn');
+    if (swaggerBtn) {
+      // Show only if enabled
+      if (this.app.settings?.showSwaggerPage) { swaggerBtn.style.display = 'inline-flex'; }
+      swaggerBtn.addEventListener('click', () => {
+        window.location.hash = '#api-docs';
+      });
+    }
+
+    // Activity controls
+    const clearBtn = document.getElementById('clear-activity-btn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        const tbody = document.getElementById('activity-table-body');
+        if (tbody) { tbody.innerHTML = ''; }
+      });
+    }
+
+    const pauseBtn = document.getElementById('pause-activity-btn');
+    if (pauseBtn) {
+      pauseBtn.addEventListener('click', () => {
+        this._activityPaused = !this._activityPaused;
+        pauseBtn.innerHTML = this._activityPaused
+          ? '<i class="mdi mdi-play-circle"></i> Resume'
+          : '<i class="mdi mdi-pause-circle"></i> Pause';
+      });
+    }
+
+    document.querySelectorAll('.activity-filters .chip').forEach((chip) => {
+      chip.addEventListener('click', (e) => {
+        const filter = e.currentTarget.dataset.filter;
+        document.querySelectorAll('.activity-filters .chip').forEach(c => c.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        this.filterActivity(filter);
+      });
+    });
+
+    // Activity details buttons (event delegation)
+    const activityTable = document.getElementById('activity-table');
+    if (activityTable) {
+      activityTable.addEventListener('click', (e) => {
+        const btn = e.target.closest('.details-btn');
+        if (!btn) { return; }
+        const row = btn.closest('.activity-row');
+        if (!row) { return; }
+        const raw = row.getAttribute('data-details');
+        if (!raw) { return; }
+        try {
+          const details = JSON.parse(decodeURIComponent(raw));
+          const pretty = typeof details === 'string' ? details : JSON.stringify(details, null, 2);
+          const modal = document.getElementById('details-modal');
+          const content = document.getElementById('details-modal-content');
+          if (modal && content) {
+            content.textContent = pretty;
+            modal.style.display = 'flex';
+          }
+        } catch (_) { /* no-op */ }
+      });
+    }
+
+    // KPI tiles clickable navigation
+    document.querySelectorAll('.status-overview .status-card[data-page]').forEach((card) => {
+      card.addEventListener('click', (e) => {
+        const page = card.getAttribute('data-page');
+        if (page) { window.location.hash = `#${page}`; }
+      });
+      card.style.cursor = 'pointer';
+    });
     // Copy environment ID button
     const copyEnvironmentBtn = document.getElementById('copy-environment-btn');
 
     if (copyEnvironmentBtn) {
       copyEnvironmentBtn.addEventListener('click', () => this.copyEnvironmentId());
     }
+
+
   }
 
   async loadDashboardData() {
@@ -317,6 +466,21 @@ export class HomePage {
 
     // Load environment info
     this.loadEnvironmentInfo();
+
+    // Load version info for version table
+    try {
+      const r = await fetch('/api/version', { credentials: 'include' });
+      const j = await r.json().catch(() => ({}));
+      const data = j?.data || j || {};
+      const server = (typeof data.version === 'string') ? data.version : (data.server || '—');
+      const ts = data.timestamp || j.timestamp || new Date().toISOString();
+      const uiCell = document.getElementById('version-ui');
+      const serverCell = document.getElementById('version-server');
+      const tsCell = document.getElementById('version-timestamp');
+      if (uiCell) { uiCell.textContent = `v${this.app.version || '…'}`; }
+      if (serverCell) { serverCell.textContent = server; }
+      if (tsCell) { tsCell.textContent = new Date(ts).toLocaleString(); }
+    } catch (_) {}
 
     // Show/hide Swagger card based on settings
     this.updateSwaggerVisibility();
@@ -352,27 +516,17 @@ export class HomePage {
     if (hasSettings && hasValidToken) {
       if (connectionStatus) { connectionStatus.textContent = 'Connected'; }
       if (connectionIndicator) { connectionIndicator.className = 'status-indicator valid'; }
-      // Use a green check shield to convey positive state
-      if (connectionIcon) {
-        connectionIcon.className = 'mdi mdi-shield-check';
-        connectionIcon.style.color = '#2ea043'; // green
-      }
+      if (connectionIcon) { connectionIcon.className = 'mdi mdi-check-circle'; connectionIcon.parentElement?.classList?.add('success'); }
       // Connection status set to Connected
     } else if (hasSettings) {
       if (connectionStatus) { connectionStatus.textContent = 'Configured'; }
       if (connectionIndicator) { connectionIndicator.className = 'status-indicator warning'; }
-      if (connectionIcon) {
-        connectionIcon.className = 'mdi mdi-shield-alert';
-        connectionIcon.style.color = '#d4a72c'; // amber
-      }
+      if (connectionIcon) { connectionIcon.className = 'mdi mdi-alert-circle'; connectionIcon.parentElement?.classList?.add('warning'); }
       // Connection status set to Configured
     } else {
       if (connectionStatus) { connectionStatus.textContent = 'Not Configured'; }
       if (connectionIndicator) { connectionIndicator.className = 'status-indicator invalid'; }
-      if (connectionIcon) {
-        connectionIcon.className = 'mdi mdi-shield-off';
-        connectionIcon.style.color = '#dc3545'; // red
-      }
+      if (connectionIcon) { connectionIcon.className = 'mdi mdi-close-circle'; connectionIcon.parentElement?.classList?.add('error'); }
       // Connection status set to Not Configured
     }
   }
@@ -395,13 +549,13 @@ export class HomePage {
 
       if (tokenStatus) { tokenStatus.textContent = `Valid (${timeLeft})`; }
       if (tokenIndicator) { tokenIndicator.className = 'status-indicator valid'; }
-      if (tokenIcon) { tokenIcon.className = 'icon-key'; }
+      if (tokenIcon) { tokenIcon.className = 'mdi mdi-check-circle'; tokenIcon.parentElement?.classList?.add('success'); }
       if (refreshBtn) { refreshBtn.disabled = false; }
       if (refreshIcon) { refreshIcon.classList.remove('spinning'); }
     } else {
       if (tokenStatus) { tokenStatus.textContent = 'Invalid or Expired'; }
       if (tokenIndicator) { tokenIndicator.className = 'status-indicator invalid'; }
-      if (tokenIcon) { tokenIcon.className = 'icon-key-off'; }
+      if (tokenIcon) { tokenIcon.className = 'mdi mdi-close-circle'; tokenIcon.parentElement?.classList?.add('error'); }
       if (refreshBtn) { refreshBtn.disabled = false; }
       if (refreshIcon) { refreshIcon.classList.remove('spinning'); }
     }
@@ -420,7 +574,7 @@ export class HomePage {
         console.log('⚠️ No environment ID configured');
         if (populationStatus) { populationStatus.textContent = 'Not configured'; }
         if (populationIndicator) { populationIndicator.className = 'status-indicator invalid'; }
-        if (populationIcon) { populationIcon.className = 'mdi mdi-account-group-x'; }
+        if (populationIcon) { populationIcon.className = 'mdi mdi-close-circle'; populationIcon.parentElement?.classList?.add('error'); }
 
         return;
       }
@@ -430,7 +584,7 @@ export class HomePage {
         console.log('⚠️ No valid token available');
         if (populationStatus) { populationStatus.textContent = 'No valid token'; }
         if (populationIndicator) { populationIndicator.className = 'status-indicator invalid'; }
-        if (populationIcon) { populationIcon.className = 'mdi mdi-account-group-x'; }
+        if (populationIcon) { populationIcon.className = 'mdi mdi-close-circle'; populationIcon.parentElement?.classList?.add('error'); }
 
         return;
       }
@@ -458,7 +612,7 @@ export class HomePage {
 
         if (populationStatus) { populationStatus.textContent = `${count}`; }
         if (populationIndicator) { populationIndicator.className = 'status-indicator valid'; }
-        if (populationIcon) { populationIcon.className = 'mdi mdi-account-group'; }
+        if (populationIcon) { populationIcon.className = 'mdi mdi-check-circle'; populationIcon.parentElement?.classList?.add('success'); }
 
         // Add cache indicator to the UI if loaded from cache
         if (result.data?.message?.fromCache || result.data?.fromCache || result.message?.fromCache) {
@@ -473,7 +627,7 @@ export class HomePage {
       console.error('❌ Error loading population count:', error);
       if (populationStatus) { populationStatus.textContent = 'Unable to load'; }
       if (populationIndicator) { populationIndicator.className = 'status-indicator invalid'; }
-      if (populationIcon) { populationIcon.className = 'mdi mdi-account-group-x'; }
+      if (populationIcon) { populationIcon.className = 'mdi mdi-close-circle'; populationIcon.parentElement?.classList?.add('error'); }
     }
   }
 
@@ -493,11 +647,11 @@ export class HomePage {
       if (envId) {
         environmentStatus.textContent = envId;
         if (environmentIndicator) { environmentIndicator.className = 'status-indicator valid'; }
-        if (environmentIcon) { environmentIcon.className = 'mdi mdi-earth'; }
+        if (environmentIcon) { environmentIcon.className = 'mdi mdi-check-circle'; environmentIcon.parentElement?.classList?.add('success'); }
       } else {
         environmentStatus.textContent = 'Not configured';
         if (environmentIndicator) { environmentIndicator.className = 'status-indicator invalid'; }
-        if (environmentIcon) { environmentIcon.className = 'mdi mdi-earth-x'; }
+        if (environmentIcon) { environmentIcon.className = 'mdi mdi-close-circle'; environmentIcon.parentElement?.classList?.add('error'); }
       }
     }
 
@@ -661,6 +815,21 @@ export class HomePage {
   }
 
   /**
+   * Load dashboard statistics and recent imports
+   */
+  async loadDashboardStatsAndImports() {
+    try {
+      // Load both dashboard stats and recent imports
+      await Promise.all([
+        this.loadDashboardStats(),
+        this.loadRecentImports()
+      ]);
+    } catch (error) {
+      console.error('❌ Error loading dashboard data:', error);
+    }
+  }
+
+  /**
    * Load and populate recent imports table
    */
   async loadRecentImports() {
@@ -672,8 +841,27 @@ export class HomePage {
 
       if (!tableBody) { return; }
 
-      if (historyData.success && historyData.data && historyData.data.imports) {
-        const imports = historyData.data.imports.slice(0, 5); // Show last 5 imports
+      if (historyData.success && historyData.data) {
+        // Build a unified list of recent operations from history (imports + deletes + modifies + exports)
+        const historyList = historyData.data.history || historyData.history || [];
+        let unified = [];
+        if (Array.isArray(historyList) && historyList.length) {
+          unified = historyList
+            .filter(it => it && (it.type || it.message))
+            .map(it => ({
+              job_name: it.message || it.type || 'Operation',
+              filename: it.fileName || it.file || '-',
+              status: it.status || (it.success && !it.errors ? 'completed' : (it.errors ? 'failed' : 'unknown')),
+              records_processed: Number(it.success || it.processed || 0),
+              total_records: Number(it.total || 0),
+              start_time: it.timestamp
+            }));
+        }
+
+        // Back-compat for previous imports shape
+        const importsOnly = historyData.data.imports || [];
+        const combined = (unified.length ? unified : importsOnly);
+        const imports = combined.slice(0, 5);
 
         if (imports.length === 0) {
           tableBody.innerHTML = `
@@ -1215,7 +1403,7 @@ export class HomePage {
     }
   }
 
-    /**
+  /**
    * Load server health data from API
    */
   async loadServerHealthData() {
@@ -1223,7 +1411,7 @@ export class HomePage {
       const response = await fetch('/api/health');
       if (response.ok) {
         const healthData = await response.json();
-        
+
         // Update uptime
         const uptimeEl = document.getElementById('server-uptime');
         if (uptimeEl && healthData.uptime) {
@@ -1245,11 +1433,22 @@ export class HomePage {
           cpuEl.textContent = `${cpuPercent}%`;
         }
 
-        // Update server status
+        // Update server status (panel + KPI)
         const serverStatusEl = document.getElementById('server-status');
         if (serverStatusEl) {
           serverStatusEl.textContent = 'Online';
           serverStatusEl.className = 'status-online';
+        }
+        const kpiStatus = document.getElementById('server-kpi-status');
+        const kpiIcon = document.getElementById('server-kpi-icon');
+        const kpiIndicator = document.getElementById('server-kpi-indicator');
+        const kpiStarted = document.getElementById('server-kpi-started');
+        if (kpiStatus) { kpiStatus.textContent = 'Online'; }
+        if (kpiIcon) { kpiIcon.className = 'mdi mdi-check-circle'; kpiIcon.parentElement?.classList?.add('success'); }
+        if (kpiIndicator) { kpiIndicator.className = 'status-indicator valid'; }
+        if (kpiStarted) {
+          const started = (healthData && healthData.timestamp) ? new Date(healthData.timestamp).toLocaleString() : new Date().toLocaleString();
+          kpiStarted.textContent = `Started: ${started}`;
         }
 
         // Update database status
@@ -1261,19 +1460,27 @@ export class HomePage {
 
         // Update header color to green (server online)
         this.updateHeaderColor(true);
-        
-        // Add health check to activity list
-        this.addActivityItem('Server health check completed', 'success');
+
+        // Add health check to activity list (with de-dup grouping)
+        this.addActivityItem('Server health check completed', 'success', { health: healthData });
       }
     } catch (error) {
       console.warn('Failed to load server health data:', error);
-      
+
       // Set fallback values
       const serverStatusEl = document.getElementById('server-status');
       if (serverStatusEl) {
         serverStatusEl.textContent = 'Offline';
         serverStatusEl.className = 'status-offline';
       }
+      const kpiStatus = document.getElementById('server-kpi-status');
+      const kpiIcon = document.getElementById('server-kpi-icon');
+      const kpiIndicator = document.getElementById('server-kpi-indicator');
+      const kpiStarted = document.getElementById('server-kpi-started');
+      if (kpiStatus) { kpiStatus.textContent = 'Offline'; }
+      if (kpiIcon) { kpiIcon.className = 'mdi mdi-close-circle'; kpiIcon.parentElement?.classList?.add('error'); }
+      if (kpiIndicator) { kpiIndicator.className = 'status-indicator invalid'; }
+      if (kpiStarted) { kpiStarted.textContent = ''; }
 
       const dbStatusEl = document.getElementById('server-database-status');
       if (dbStatusEl) {
@@ -1283,9 +1490,9 @@ export class HomePage {
 
       // Update header color to red (server offline)
       this.updateHeaderColor(false);
-      
+
       // Add error to activity list
-      this.addActivityItem('Server health check failed', 'error');
+      this.addActivityItem('Server health check failed', 'error', { error: String(error?.message || error) });
     }
   }
 
@@ -1333,13 +1540,13 @@ export class HomePage {
    * Format uptime from seconds to human readable format
    */
   formatUptime(seconds) {
-    if (!seconds || seconds <= 0) return '0s';
-    
+    if (!seconds || seconds <= 0) {return '0s';}
+
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
+
     if (days > 0) {
       return `${days}d ${hours}h ${minutes}m`;
     } else if (hours > 0) {
@@ -1352,54 +1559,134 @@ export class HomePage {
   }
 
   /**
-   * Add activity item to the activity list
+   * Add activity item to the activity table
    */
-  addActivityItem(message, type = 'info') {
-    const activityList = document.getElementById('activity-list');
-    if (!activityList) return;
-    
-    const activityItem = document.createElement('div');
-    activityItem.className = 'activity-item';
-    
+  addActivityItem(message, type = 'info', details = null) {
+    const tbody = document.getElementById('activity-table-body');
+    if (!tbody) { return; }
+
+    if (this._activityPaused) { return; }
+
+    let statusText = 'Info';
+    let statusClass = 'status-info';
     let iconClass = 'mdi mdi-information';
-    if (type === 'success') iconClass = 'mdi mdi-check-circle';
-    if (type === 'error') iconClass = 'mdi mdi-alert-circle';
-    if (type === 'warning') iconClass = 'mdi mdi-alert';
-    
-    activityItem.innerHTML = `
-      <div class="activity-icon">
-        <i class="${iconClass}"></i>
-      </div>
-      <div class="activity-content">
-        <p>${message}</p>
-        <span class="activity-time">${new Date().toLocaleString()}</span>
-      </div>
-    `;
-    
-    // Add to the top of the list
-    activityList.insertBefore(activityItem, activityList.firstChild);
-    
-    // Keep only last 10 items
-    const items = activityList.querySelectorAll('.activity-item');
-    if (items.length > 10) {
-      items[items.length - 1].remove();
+
+    if (type === 'success') {
+      statusText = 'Success';
+      statusClass = 'status-success';
+      iconClass = 'mdi mdi-check-circle';
+    } else if (type === 'error') {
+      statusText = 'Error';
+      statusClass = 'status-error';
+      iconClass = 'mdi mdi-alert-circle';
+    } else if (type === 'warning') {
+      statusText = 'Warning';
+      statusClass = 'status-warning';
+      iconClass = 'mdi mdi-alert';
     }
+
+    // Merge with last row if message and status match within 30s
+    const firstRow = tbody.querySelector('.activity-row');
+    const now = Date.now();
+    const thirtySeconds = 30000;
+    if (firstRow && firstRow.dataset && firstRow.dataset.msg === message && firstRow.dataset.type === statusClass) {
+      const ts = Number(firstRow.dataset.ts || '0');
+      if (now - ts < thirtySeconds) {
+        const count = Number(firstRow.dataset.count || '1') + 1;
+        firstRow.dataset.count = String(count);
+        const countBadge = firstRow.querySelector('.dup-count');
+        if (countBadge) { countBadge.textContent = `×${count}`; }
+        const timeCell = firstRow.querySelector('.activity-time');
+        if (timeCell) { timeCell.textContent = this.relativeTime(now); }
+        return;
+      }
+    }
+
+    const tr = document.createElement('tr');
+    tr.className = 'activity-row';
+    tr.dataset.msg = message;
+    tr.dataset.type = statusClass;
+    tr.dataset.ts = String(now);
+    tr.dataset.count = '1';
+    tr.dataset.details = details ? encodeURIComponent(JSON.stringify(details)) : '';
+    const detailsBtn = details ? '<button class="btn btn-outline-secondary details-btn" title="View details">Details</button>' : '';
+    tr.innerHTML = `
+      <td>${message} ${detailsBtn} <span class="dup-count" style="margin-left:6px; color:#6b7280; font-weight:600;"></span></td>
+      <td><span class="status-badge ${statusClass}"><i class="${iconClass}"></i> ${statusText}</span></td>
+      <td class="activity-time">${this.relativeTime(now)}</td>
+    `;
+
+    // Add to the top of the table
+    tbody.insertBefore(tr, tbody.firstChild);
+
+    // Keep only last 10 rows
+    const rows = tbody.querySelectorAll('.activity-row');
+    if (rows.length > 10) {
+      rows[rows.length - 1].remove();
+    }
+  }
+
+  /**
+   * Filter activity rows by status
+   */
+  filterActivity(filter) {
+    const tbody = document.getElementById('activity-table-body');
+    if (!tbody) { return; }
+    const rows = Array.from(tbody.querySelectorAll('.activity-row'));
+    rows.forEach((row) => {
+      const type = row.dataset.type || '';
+      row.style.display = (filter === 'all' || type.includes(filter)) ? '' : 'none';
+    });
+  }
+
+  /**
+   * Relative time helper (e.g., "2m ago")
+   */
+  relativeTime(ts) {
+    const diff = Math.max(0, Date.now() - ts);
+    const s = Math.floor(diff / 1000);
+    if (s < 60) return `${s}s ago`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    return `${h}h ago`;
+  }
+
+  /**
+   * Test disclaimer functionality
+   */
+  testDisclaimer() {
+    console.log('🧪 Testing disclaimer functionality...');
+    
+    // Toggle the startup flag
+    const currentFlag = this.app.settings.showDisclaimerOnStartup;
+    this.app.saveDisclaimerStartupPreference(!currentFlag);
+    
+    // Show the disclaimer modal
+    this.app.showDisclaimerModal();
+    
+    // Add activity item
+    this.addActivityItem(`Disclaimer startup flag ${!currentFlag ? 'enabled' : 'disabled'}`, 'info');
   }
 
   /**
    * Set up time updates
    */
   setupTimeUpdates() {
+    // Prevent multiple interval registration
+    if (this._timersInitialized) { return; }
+    this._timersInitialized = true;
+
     // Update time every second
-    setInterval(() => {
+    this._timeInterval = setInterval(() => {
       this.updateCurrentTime();
     }, 1000);
 
     // Update server status every 30 seconds
-    setInterval(() => {
+    this._healthInterval = setInterval(() => {
       this.loadServerHealthData();
     }, 30000);
-    
+
     // Add initial activity items
     this.addActivityItem('Application started successfully', 'success');
     this.addActivityItem('Server status monitoring initialized', 'info');

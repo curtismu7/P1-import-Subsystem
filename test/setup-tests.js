@@ -1,9 +1,9 @@
 /**
- * @fileoverview Test setup configuration for Jest with ESM support
- * 
+ * @file Test setup configuration for Jest with ESM support
+ *
  * This file configures the test environment for automated API testing
  * including server setup, mock configurations, and test utilities.
- * 
+ *
  * @author PingOne Import Tool
  * @version 4.9
  */
@@ -55,9 +55,9 @@ jest.mock('multer', () => {
       // Check if this is a multipart request with file upload
       // This simulates real multer behavior where req.file is undefined if no file uploaded
       const contentType = req.headers['content-type'] || '';
-      const hasFileUpload = contentType.includes('multipart/form-data') && 
+      const hasFileUpload = contentType.includes('multipart/form-data') &&
                            (req.body && Object.keys(req.body).length > 0);
-      
+
       if (hasFileUpload) {
         req.file = {
           fieldname: 'file',

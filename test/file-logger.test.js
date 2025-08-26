@@ -63,7 +63,7 @@ describe('FileLogger', () => {
     jestMock.clearAllMocks();
     localStorage.clear();
     console.error = jestMock.fn(); // Mock console.error
-    
+
     // Create a new logger instance for each test
     logger = new FileLogger(testKey);
   });
@@ -84,19 +84,19 @@ describe('FileLogger', () => {
   test('should load existing logs from localStorage', () => {
     const testLogs = 'Test log entry\n';
     localStorage.setItem(testKey, testLogs);
-    
+
     // Create a new logger instance to test loading
     const newLogger = new FileLogger(testKey);
-    
+
     expect(newLogger.logs).toBe(testLogs);
   });
 
   test('should add log entry with timestamp and level', async () => {
     const message = 'Test message';
     const level = 'INFO';
-    
+
     await logger.log(level, message);
-    
+
     // Note the space after INFO to match the actual implementation (padEnd(5))
     expect(logger.logs).toContain(`[${level} ] ${message}`);
     expect(logger.logs).toMatch(/\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\]/);
@@ -104,22 +104,22 @@ describe('FileLogger', () => {
 
   test('should save logs to localStorage when they reach a certain size', async () => {
     const largeMessage = 'x'.repeat(10000); // 10KB message
-    
+
     // Add enough logs to exceed the max log size
     for (let i = 0; i < 15; i++) {
       await logger.log('INFO', `Log ${i}: ${largeMessage}`);
     }
-    
+
     expect(localStorage.setItem).toHaveBeenCalled();
   });
 
   test('should clear logs', async () => {
     // Add some logs
     await logger.log('INFO', 'Test message');
-    
+
     // Clear logs - note the method is clear(), not clearLogs()
     logger.clear();
-    
+
     // After clear, it will re-initialize with a header
     expect(logger.logs).toContain('PINGONE IMPORT LOG');
     expect(localStorage.setItem).toHaveBeenCalledWith(testKey, expect.any(String));
@@ -132,9 +132,9 @@ describe('FileLogger', () => {
       api_key: 'api-key-123',
       safeData: 'this is safe'
     };
-    
+
     await logger.log('INFO', 'Testing sensitive data', sensitiveData);
-    
+
     // Check that sensitive data is redacted
     expect(logger.logs).toContain('***REDACTED***');
     expect(logger.logs).toContain('this is safe');
@@ -149,10 +149,10 @@ describe('FileLogger', () => {
     const originalBlob = global.Blob;
     const originalCreateObjectURL = global.URL.createObjectURL;
     const originalRevokeObjectURL = global.URL.revokeObjectURL;
-    
+
     // Mock console.error
     console.error = jestMock.fn();
-    
+
     // Mock the Blob constructor
     global.Blob = class MockBlob {
       constructor(content, options) {
@@ -160,11 +160,11 @@ describe('FileLogger', () => {
         this.type = options?.type || '';
       }
     };
-    
+
     // Mock URL methods
     global.URL.createObjectURL = jestMock.fn(() => 'blob:mock-url');
     global.URL.revokeObjectURL = jestMock.fn();
-    
+
     // Mock document.createElement
     const originalCreateElement = document.createElement;
     document.createElement = jestMock.fn((tagName) => {
@@ -177,18 +177,18 @@ describe('FileLogger', () => {
       }
       return originalCreateElement(tagName);
     });
-    
+
     try {
       // Call the download method
       logger.download();
-      
+
       // Verify that the download was attempted by checking the logs
       const logs = logger.getLogs();
       expect(logs).toContain('PINGONE IMPORT LOG');
-      
+
       // Verify no errors were logged
       expect(console.error).not.toHaveBeenCalled();
-      
+
       // Verify URL.createObjectURL was called
       expect(global.URL.createObjectURL).toHaveBeenCalled();
     } finally {

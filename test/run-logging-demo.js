@@ -1,6 +1,6 @@
 /**
  * Logging Demo Runner
- * 
+ *
  * This script runs the logging demonstration to showcase
  * the enhanced logging features.
  */

@@ -5,12 +5,12 @@ let authInstance = null;
 
 /**
  * Initialize the authentication module
- * @param {Object} config - Configuration object
+ * @param {object} config - Configuration object
  * @param {string} config.environmentId - PingOne Environment ID
  * @param {string} config.clientId - PingOne Client ID
  * @param {string} config.clientSecret - PingOne Client Secret
  * @param {string} [config.region='NA'] - PingOne region
- * @param {Object} [options] - Additional options
+ * @param {object} [options] - Additional options
  * @returns {PingOneAuth} Initialized auth instance
  */
 export function initAuth(config, options) {

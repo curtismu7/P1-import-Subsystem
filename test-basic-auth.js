@@ -7,7 +7,7 @@ dotenv.config();
 
 async function testBasicAuth() {
   console.log('🔍 Testing PingOne API with Basic Auth...');
-  
+
   const credentials = {
     environmentId: process.env.PINGONE_ENVIRONMENT_ID || 'b9817c16-9910-4415-b67e-4ac687da74d9',
     clientId: process.env.PINGONE_CLIENT_ID || '26e7f07c-11a4-402a-b064-07b55aee189e',
@@ -34,21 +34,21 @@ async function testBasicAuth() {
   }[credentials.region] || 'auth.pingone.com';
 
   const tokenUrl = `https://${authDomain}/${credentials.environmentId}/as/token`; // Note: Using /token instead of /token.oauth2
-  
+
   console.log('\n🌐 Using Token URL:', tokenUrl);
 
   // Create Basic Auth header
   const authHeader = 'Basic ' + Buffer.from(`${credentials.clientId}:${credentials.clientSecret}`).toString('base64');
-  
+
   console.log('\n🔑 Using Authorization Header:', `Basic ${credentials.clientId}:***REDACTED***`);
 
   // Prepare form data
   const formData = new URLSearchParams();
   formData.append('grant_type', 'client_credentials');
-  
+
   console.log('\n📤 Request Body:', formData.toString());
   console.log('\n🔍 Sending token request...');
-  
+
   try {
     const startTime = Date.now();
     const response = await fetch(tokenUrl, {
@@ -64,18 +64,18 @@ async function testBasicAuth() {
       redirect: 'manual',
       timeout: 10000
     });
-    
+
     const responseTime = Date.now() - startTime;
     const responseText = await response.text();
-    
+
     console.log('\n📡 Response Status:', response.status, response.statusText);
     console.log('⏱️  Response Time:', responseTime, 'ms');
     console.log('📦 Response Headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
-    
+
     try {
       const responseData = JSON.parse(responseText);
       console.log('📄 Response Body:', JSON.stringify(responseData, null, 2));
-      
+
       if (response.ok) {
         console.log('\n✅ Authentication successful!');
         console.log('🔑 Access Token:', responseData.access_token ? '***REDACTED***' : 'Not found');
@@ -89,7 +89,7 @@ async function testBasicAuth() {
     }
   } catch (error) {
     console.error('\n❌ Request failed:', error.message);
-    if (error.code) console.error('Error Code:', error.code);
+    if (error.code) {console.error('Error Code:', error.code);}
     console.error('\n🔍 Full Error:', error);
   }
 }

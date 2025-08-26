@@ -8,21 +8,17 @@
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     
-    <!-- Ping Identity Official CSS -->
-    <link rel="stylesheet" href="https://assets.pingone.com/ux/end-user-nano/0.1.0-alpha.9/end-user-nano.css?v=1756032943738">
-    <link rel="stylesheet" href="https://assets.pingone.com/ux/astro-nano/0.1.0-alpha.11/icons.css?v=1756032943738">
+    <!-- Critical CSS to prevent legacy flash (removed after load) -->
+    <style id="critical-css">
+      /* Ensure status bar is visible for messages */
+    </style>
+
+    <!-- Preload + stylesheet to minimize FOUC -->
+    <link rel="preload" href="/css/pingone-modern-ui.css?v=1756217964199" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/pingone-modern-ui.css?v=1756217964199"></noscript>
     
-    <!-- Material Design Icons Fallback -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css?v=1756032943738">
-    
-          <!-- Custom PingOne UI CSS -->
-      <link rel="stylesheet" href="/css/pingone-ui-custom.css?v=1756032943738">
-      
-      <!-- PingOne Theme CSS (for CSS variables) -->
-      <link rel="stylesheet" href="/css/themes.css?v=1756032943738">
-      
-      <!-- Main CSS with cache busting -->
-      <link rel="stylesheet" href="/css/main.css?v=1756032943738">
+    <!-- Material Design Icons - Downloaded locally for reliability -->
+    <link rel="stylesheet" href="/css/materialdesignicons.min.css?v=1756217964199">
     
     <!-- Import Maps Configuration -->
     <script type="importmap">
@@ -34,15 +30,15 @@
             "@/modules/": "/js/modules/?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695374788?v=v1755695825384/?v=v1755696299775?v=v1755696398789/?v=v1755699026180?v=v1755699480998?v=v1755699773854/?v=v1755715873650?v=v1755716218245?v=v1755716613090?v=v1755717604912?v=v1755717777425?v=v1755718403734?v=v1755718681771?v=v1755718799661/?v=v1755718843264/?v=v1755718979239/?v=v1755719034410/?v=v1755719075302/?v=v1755719734624/?v=v1755719853731/?v=v1755719977273/?v=v1755720159342/?v=v1755722938845/?v=v1755723025370/?v=v1755723116396/?v=v1755724744445/?v=v1755724917248/?v=v1755724999631/?v=v1755725214792/?v=v1755727630530/?v=v1755727678983/?v=v1755727809958/?v=v1755727912368/?v=v1755731949592/?v=v1755732427045/?v=v1755733252044/?v=v1755733464648/?v=v1755733758576/?v=v1755733818122/?v=v1755733987444/?v=v1755734663732/",
             "@/utils/": "/js/utils/?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695374788?v=v1755695825384/?v=v1755696299775?v=v1755696398789/?v=v1755699026180?v=v1755699480998?v=v1755699773854/?v=v1755715873650?v=v1755716218245?v=v1755716613090?v=v1755717604912?v=v1755717777425?v=v1755718403734?v=v1755718681771?v=v1755718799661/?v=v1755718843264/?v=v1755718979239/?v=v1755719034410/?v=v1755719075302/?v=v1755719734624/?v=v1755719853731/?v=v1755719977273/?v=v1755720159342/?v=v1755722938845/?v=v1755723025370/?v=v1755723116396/?v=v1755724744445/?v=v1755724917248/?v=v1755724999631/?v=v1755725214792/?v=v1755727630530/?v=v1755727678983/?v=v1755727809958/?v=v1755727912368/?v=v1755731949592/?v=v1755732427045/?v=v1755733252044/?v=v1755733464648/?v=v1755733758576/?v=v1755733818122/?v=v1755733987444/?v=v1755734663732/",
             "@/state/": "/js/state/?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695063370?v=v1755695374788?v=v1755695825384/?v=v1755696299775?v=v1755696398789/?v=v1755699026180?v=v1755699480998?v=v1755699773854/?v=v1755715873650?v=v1755716218245?v=v1755716613090?v=v1755717604912?v=v1755717777425?v=v1755718403734?v=v1755718681771?v=v1755718799661/?v=v1755718843264/?v=v1755718979239/?v=v1755719034410/?v=v1755719075302/?v=v1755719734624/?v=v1755719853731/?v=v1755719977273/?v=v1755720159342/?v=v1755722938845/?v=v1755723025370/?v=v1755723116396/?v=v1755724744445/?v=v1755724917248/?v=v1755724999631/?v=v1755725214792/?v=v1755727630530/?v=v1755727678983/?v=v1755727809958/?v=v1755727912368/?v=v1755731949592/?v=v1755732427045/?v=v1755733252044/?v=v1755733464648/?v=v1755733758576/?v=v1755733818122/?v=v1755733987444/?v=v1755734663732/",
-            "app": "/js/app.js?v=1755871299056",
-            "ui-manager": "/js/modules/ui-manager.js?v=1755871299056",
-            "api-client": "/js/modules/api-client.js?v=1755871299056",
-            "settings-manager": "/js/modules/settings-manager.js?v=1755871299056",
-            "home-page": "./js/pages/home-page.js?v=1755871299056",
-            "settings-page": "./js/pages/settings-page.js?v=1755871299056",
-            "import-page": "./js/pages/import-page.js?v=1755871299056",
-            "export-page": "./js/pages/export-page.js?v=1755871299056",
-            "csrf-utils": "./js/utils/csrf-utils.js?v=1755871299056"
+            "app": "/js/app.js?v=1756217904991",
+            "ui-manager": "/js/modules/ui-manager.js?v=1756217904991",
+            "api-client": "/js/modules/api-client.js?v=1756217904991",
+            "settings-manager": "/js/modules/settings-manager.js?v=1756217904991",
+            "home-page": "./js/pages/home-page.js?v=1756217904991",
+            "settings-page": "./js/pages/settings-page.js?v=1756217904991",
+            "import-page": "./js/pages/import-page.js?v=1756217904991",
+            "export-page": "./js/pages/export-page.js?v=1756217904991",
+            "csrf-utils": "./js/utils/csrf-utils.js?v=1756217904991"
         }
     }
     </script>
@@ -107,281 +103,220 @@
         <!-- Left Navigation -->
         <nav class="left-nav" id="left-nav">
             <div class="nav-header">
-                <img src="/ping-identity-logo.svg" alt="Ping Identity" class="nav-logo">
-                <h3 class="nav-title">Ping Identity<br/>User Management</h3>
-                <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">
-                    <i class="icon-menu"></i>
-                </button>
+                <div class="nav-brand">
+                    <i class="mdi mdi-shield-check" style="font-size: 32px; color: var(--pingone-primary);"></i>
+                    <h2>PingOne</h2>
+                </div>
+                <p class="nav-subtitle text-muted">User Management</p>
             </div>
             
             <ul class="nav-menu">
                 <li class="nav-item">
                     <a href="#home" class="nav-link active" data-page="home">
-                        <i class="icon-home"></i>
-                        <span class="nav-text">Home</span>
+                        <i class="mdi mdi-view-dashboard"></i>
+                        Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="#settings" class="nav-link" data-page="settings">
-                        <i class="icon-settings"></i>
-                        <span class="nav-text">Settings</span>
+                        <i class="mdi mdi-cog"></i>
+                        Settings
                     </a>
                 </li>
-                <li class="nav-divider"></li>
                 <li class="nav-item">
                     <a href="#export" class="nav-link" data-page="export">
-                        <i class="icon-download"></i>
-                        <span class="nav-text">Export Users</span>
+                        <i class="mdi mdi-download"></i>
+                        Export Users
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="#import" class="nav-link" data-page="import">
-                        <i class="icon-upload"></i>
-                        <span class="nav-text">Import Users</span>
+                        <i class="mdi mdi-upload"></i>
+                        Import Users
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="#delete" class="nav-link" data-page="delete">
-                        <i class="icon-trash"></i>
-                        <span class="nav-text">Delete Users</span>
+                        <i class="mdi mdi-delete"></i>
+                        Delete Users
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="#modify" class="nav-link" data-page="modify">
-                        <i class="icon-edit"></i>
-                        <span class="nav-text">Modify Users</span>
+                        <i class="mdi mdi-account-edit"></i>
+                        Modify Users
                     </a>
                 </li>
-                <li class="nav-divider"></li>
                 <li class="nav-item">
                     <a href="#logs" class="nav-link" data-page="logs">
-                        <i class="icon-file-text"></i>
-                        <span class="nav-text">Logs</span>
+                        <i class="mdi mdi-file-document"></i>
+                        Management Logs
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="#token-management" class="nav-link" data-page="token-management">
-                        <i class="icon-key"></i>
-                        <span class="nav-text">Token Management</span>
+                        <i class="mdi mdi-key"></i>
+                        Token Management
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="#history" class="nav-link" data-page="history">
-                        <i class="icon-clock"></i>
-                        <span class="nav-text">History</span>
+                        <i class="mdi mdi-history"></i>
+                        History
                     </a>
                 </li>
-                <li class="nav-item" id="swagger-nav" style="display: none;">
-                    <a href="#swagger" class="nav-link" data-page="swagger">
-                        <i class="icon-code"></i>
-                        <span class="nav-text">Swagger</span>
-                    </a>
-                </li>
-                <li class="nav-divider"></li>
             </ul>
-            
-            <!-- Status Information Box -->
-            <div class="nav-status-box">
-                <div class="status-item">
-                    <i class="icon-key status-icon"></i>
-                    <span class="status-label">Token Status:</span>
-                    <span class="status-value" id="nav-token-status">Checking...</span>
-                </div>
-                
-                <div class="status-separator"></div>
-                
-                <div class="status-item">
-                    <i class="icon-clock status-icon"></i>
-                    <span class="status-label">Token Time:</span>
-                    <span class="status-value" id="nav-token-time">--:--:--</span>
-                </div>
-                
-                <div class="status-separator"></div>
-                
-                <div class="status-item">
-                    <i class="icon-check-circle status-icon status-success"></i>
-                    <span class="status-label">Server Status:</span>
-                    <span class="status-value status-success" id="nav-server-status">Online</span>
-                </div>
-                
-                <div class="status-separator"></div>
-                
-                <div class="status-item">
-                    <i class="icon-activity status-icon"></i>
-                    <span class="status-label">Server Health:</span>
-                    <span class="status-value" id="nav-server-health">Checking...</span>
-                </div>
-                
-                <div class="status-separator"></div>
-                
-                <div class="status-item">
-                    <i class="icon-trending-up status-icon"></i>
-                    <span class="status-label">Memory Usage:</span>
-                    <span class="status-value" id="nav-memory-usage">--</span>
-                </div>
-                
-                <div class="status-separator"></div>
-                
-                <div class="status-item">
-                    <i class="icon-clock status-icon"></i>
-                    <span class="status-label">Uptime:</span>
-                    <span class="status-value" id="nav-uptime">--</span>
-                </div>
-                
-                <div class="status-separator"></div>
-                
-                <div class="status-item">
-                    <i class="icon-calendar status-icon"></i>
-                    <span class="status-label">Server Start:</span>
-                    <span class="status-value" id="nav-server-start">--/--/---- --:--:--</span>
-                </div>
-                
-                <div class="status-separator"></div>
-                
-                <div class="status-item">
-                    <i class="icon-tag status-icon"></i>
-                    <span class="status-label">Version:</span>
-                    <span class="status-value" id="nav-version">v...</span>
-                </div>
-                
-                <div class="status-separator"></div>
-                
-                <div class="status-item">
-                    <i class="icon-code status-icon"></i>
-                    <span class="status-label">UI Version:</span>
-                    <span class="status-value" id="nav-ui-version">Loading...</span>
-                </div>
-            </div>
         </nav>
 
         <!-- Main Content Area -->
         <main class="main-content" id="main-content">
             <!-- Home Page -->
             <div class="page" id="home-page" data-page="home">
-                <div class="page-header">
-                    <p class="page-subtitle">Manage users across your PingOne environment</p>
+                <div class="content-header">
+                    <h1 class="content-title">Dashboard</h1>
+                    <p class="content-subtitle">Manage users across your PingOne environment</p>
                 </div>
                 
-                <div class="home-grid">
-                    <div class="home-section">
-                        <div class="section-header">
-                            <h2>Settings</h2>
+                <div class="content-body">
+                    <!-- Status Cards -->
+                    <div class="dashboard-grid mb-32">
+                        <div class="status-card">
+                            <div class="status-card-header">
+                                <h3 class="status-card-title">Connection Status</h3>
+                                <div class="status-card-icon primary">
+                                    <i class="mdi mdi-server"></i>
+                                </div>
+                            </div>
+                            <div class="status-card-value" id="connection-status">Checking...</div>
+                            <p class="status-card-description">PingOne API connection</p>
                         </div>
+                        
+                        <div class="status-card">
+                            <div class="status-card-header">
+                                <h3 class="status-card-title">Token Status</h3>
+                                <div class="status-card-icon warning">
+                                    <i class="mdi mdi-key"></i>
+                                </div>
+                            </div>
+                            <div class="status-card-value" id="token-status">Checking...</div>
+                            <p class="status-card-description">API token validity</p>
+                        </div>
+                        
+                        <div class="status-card">
+                            <div class="status-card-header">
+                                <h3 class="status-card-title">Populations</h3>
+                                <div class="status-card-icon success">
+                                    <i class="mdi mdi-account-group"></i>
+                                </div>
+                            </div>
+                            <div class="status-card-value" id="populations-count">--</div>
+                            <p class="status-card-description">Available user populations</p>
+                        </div>
+                        
+                        <div class="status-card">
+                            <div class="status-card-header">
+                                <h3 class="status-card-title">Environment</h3>
+                                <div class="status-card-icon primary">
+                                    <i class="mdi mdi-earth"></i>
+                                </div>
+                            </div>
+                            <div class="status-card-value" id="environment-name">--</div>
+                            <p class="status-card-description">Current environment</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Cards -->
+                    <div class="dashboard-grid mb-32">
                         <div class="action-card" data-action="settings">
-                            <div class="card-icon">
-                                <i class="icon-settings"></i>
+                            <div class="action-card-icon">
+                                <i class="mdi mdi-cog"></i>
                             </div>
-                            <div class="card-content">
-                                <h3>Settings</h3>
-                                <p>Configure PingOne credentials and preferences</p>
-                                <div class="card-status" id="settings-status">Ready</div>
+                            <h3 class="action-card-title">Settings</h3>
+                            <p class="action-card-description">Configure PingOne credentials and preferences</p>
+                        </div>
+                        
+                        <div class="action-card" data-action="export">
+                            <div class="action-card-icon">
+                                <i class="mdi mdi-download"></i>
                             </div>
+                            <h3 class="action-card-title">Export Users</h3>
+                            <p class="action-card-description">Export users to CSV file</p>
+                        </div>
+                        
+                        <div class="action-card" data-action="import">
+                            <div class="action-card-icon">
+                                <i class="mdi mdi-upload"></i>
+                            </div>
+                            <h3 class="action-card-title">Import Users</h3>
+                            <p class="action-card-description">Import users from CSV file</p>
+                        </div>
+                        
+                        <div class="action-card" data-action="delete">
+                            <div class="action-card-icon">
+                                <i class="mdi mdi-delete"></i>
+                            </div>
+                            <h3 class="action-card-title">Delete Users</h3>
+                            <p class="action-card-description">Delete users from CSV file</p>
+                        </div>
+                        
+                        <div class="action-card" data-action="modify">
+                            <div class="action-card-icon">
+                                <i class="mdi mdi-account-edit"></i>
+                            </div>
+                            <h3 class="action-card-title">Modify Users</h3>
+                            <p class="action-card-description">Update user attributes from CSV</p>
+                        </div>
+                        
+                        <div class="action-card" data-action="logs">
+                            <div class="action-card-icon">
+                                <i class="mdi mdi-file-document"></i>
+                            </div>
+                            <h3 class="action-card-title">Management Logs</h3>
+                            <p class="action-card-description">View application logs and errors</p>
+                        </div>
+                        
+                        <div class="action-card" data-action="token-management">
+                            <div class="action-card-icon">
+                                <i class="mdi mdi-key"></i>
+                            </div>
+                            <h3 class="action-card-title">Token Management</h3>
+                            <p class="action-card-description">Manage API tokens and authentication</p>
+                        </div>
+                        
+                        <div class="action-card" data-action="history">
+                            <div class="action-card-icon">
+                                <i class="mdi mdi-history"></i>
+                            </div>
+                            <h3 class="action-card-title">History</h3>
+                            <p class="action-card-description">View past operations and activities</p>
                         </div>
                     </div>
                     
-                    <div class="home-divider"></div>
-                    
-                    <div class="home-section">
-                        <div class="section-header">
-                            <h2>User Operations</h2>
+                    <!-- Recent Imports Table -->
+                    <div class="data-section">
+                        <div class="data-section-header">
+                            <h2 class="data-section-title">
+                                <i class="mdi mdi-table"></i>
+                                Recent Imports
+                            </h2>
                         </div>
-                        <div class="action-cards">
-                            <div class="action-card" data-action="export">
-                                <div class="card-icon">
-                                    <i class="icon-download"></i>
-                                </div>
-                                <div class="card-content">
-                                    <h3>Export Users</h3>
-                                    <p>Export users to CSV file</p>
-                                    <div class="card-status" id="export-status">Ready</div>
-                                </div>
-                            </div>
-                            
-                            <div class="action-card" data-action="import">
-                                <div class="card-icon">
-                                    <i class="icon-upload"></i>
-                                </div>
-                                <div class="card-content">
-                                    <h3>Import Users</h3>
-                                    <p>Import users from CSV file</p>
-                                    <div class="card-status" id="import-status">Ready</div>
-                                </div>
-                            </div>
-                            
-                            <div class="action-card" data-action="delete">
-                                <div class="card-icon">
-                                    <i class="icon-trash"></i>
-                                </div>
-                                <div class="card-content">
-                                    <h3>Delete Users</h3>
-                                    <p>Delete users from CSV file</p>
-                                    <div class="card-status" id="delete-status">Ready</div>
-                                </div>
-                            </div>
-                            
-                            <div class="action-card" data-action="modify">
-                                <div class="card-icon">
-                                    <i class="icon-edit"></i>
-                                </div>
-                                <div class="card-content">
-                                    <h3>Modify Users</h3>
-                                    <p>Update user attributes from CSV</p>
-                                    <div class="card-status" id="modify-status">Ready</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="home-divider"></div>
-                    
-                    <div class="home-section">
-                        <div class="section-header">
-                            <h2>Management</h2>
-                        </div>
-                        <div class="action-cards">
-                            <div class="action-card" data-action="logs">
-                                <div class="card-icon">
-                                    <i class="icon-file-text"></i>
-                                </div>
-                                <div class="card-content">
-                                    <h3>Logs</h3>
-                                    <p>View application logs and errors</p>
-                                    <div class="card-status" id="logs-status">Ready</div>
-                                </div>
-                            </div>
-                            
-                            <div class="action-card" data-action="token-management">
-                                <div class="card-icon">
-                                    <i class="icon-key"></i>
-                                </div>
-                                <div class="card-content">
-                                    <h3>Token Management</h3>
-                                    <p>Manage API tokens and authentication</p>
-                                    <div class="card-status" id="token-management-status">Ready</div>
-                                </div>
-                            </div>
-                            
-                            <div class="action-card" data-action="history">
-                                <div class="card-icon">
-                                    <i class="icon-clock"></i>
-                                </div>
-                                <div class="card-content">
-                                    <h3>History</h3>
-                                    <p>View past operations and activities</p>
-                                    <div class="card-status" id="history-status">Ready</div>
-                                </div>
-                            </div>
-                            
-                            <div class="action-card" id="swagger-card" data-action="swagger" style="display: none;">
-                                <div class="card-icon">
-                                    <i class="icon-code"></i>
-                                </div>
-                                <div class="card-content">
-                                    <h3>Swagger</h3>
-                                    <p>API documentation and testing</p>
-                                    <div class="card-status" id="swagger-status">Ready</div>
-                                </div>
-                            </div>
+                        <div class="data-section-body">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Operation</th>
+                                        <th>Users</th>
+                                        <th>Status</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-imports-table">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">No recent imports</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -424,32 +359,7 @@
     </footer>
 
     <!-- Modals -->
-    <!-- Disclaimer Modal (formal style) -->
-    <div class="modal-overlay" id="disclaimer-modal" style="display: none;">
-        <div class="modal disclaimer-modal" style="box-shadow: 0 8px 24px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.08);">
-            <div class="modal-header">
-                <h2><i class="icon-alert-circle" aria-hidden="true"></i> Important Disclaimer</h2>
-                <p class="subtitle">Please review and acknowledge before continuing</p>
-            </div>
-            <div class="modal-body">
-                <section class="tos-panel" style="background:#f7f9fc; border:1px solid rgba(0,0,0,0.06); padding:16px; border-radius:8px;">
-                    <h3>Ping Library Terms of Service</h3>
-                    <p class="muted">The code provided hereunder shall be deemed "Sample Code." This Sample Code is to be used exclusively in connection with Ping Identity's software or services.</p>
-                    <p class="muted">
-                        THE CODE HEREUNDER IS PROVIDED “AS IS” AND WITHOUT WARRANTY OF ANY KIND. SUCH CODE IS EXPRESSLY EXCLUDED FROM PING IDENTITY'S INDEMNITY OR SUPPORT OBLIGATIONS, IF ANY, PURSUANT TO THE RELEVANT GOVERNING AGREEMENT. PING IDENTITY AND ITS LICENSORS EXPRESSLY DISCLAIM ALL WARRANTIES, WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND ANY WARRANTY OF NON-INFRINGEMENT. PING IDENTITY SHALL NOT HAVE ANY LIABILITY ARISING OUT OF OR RELATING TO ANY USE, IMPLEMENTATION OR CONFIGURATION OF THE SAMPLE CODE.
-                    </p>
-                </section>
-                <div class="ack-row" style="margin-top:12px; display:flex; align-items:center; gap:8px;">
-                    <input type="checkbox" id="disclaimer-agree" required>
-                    <label for="disclaimer-agree"><strong>Terms of Service (Required)</strong></label>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="disclaimer-quit">Quit</button>
-                <button class="btn btn-primary" id="disclaimer-accept" disabled>Accept</button>
-            </div>
-        </div>
-    </div>
+    <!-- Disclaimer Modal removed per requirements -->
 
     <!-- Credentials Modal -->
     <div class="modal-overlay" id="credentials-modal" style="display: none;">
@@ -524,17 +434,37 @@
         </div>
     </div>
 
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loading-overlay" style="display: none;">
-        <div class="loading-content">
-            <div class="loading-spinner"></div>
-            <div class="loading-text" id="loading-text">Loading...</div>
+    <!-- Details Modal (for readable JSON/error payloads) -->
+    <div class="modal-overlay" id="details-modal" style="display: none;">
+        <div class="modal" style="max-width: 880px; width: 92%; max-height: 85vh; overflow: auto;">
+            <div class="modal-header">
+                <h2>Details</h2>
+                <p class="subtitle">Payload from the selected activity</p>
+            </div>
+            <div class="modal-body">
+                <pre id="details-modal-content" style="white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 13px; line-height: 1.5; background:#0f172a0d; padding:12px; border-radius:8px; border:1px solid rgba(0,0,0,0.06);
+                "></pre>
+            </div>
+            <div class="modal-footer" style="display:flex; gap:10px;">
+                <button class="btn btn-secondary" id="details-copy">Copy</button>
+                <button class="btn btn-primary" id="details-close">Close</button>
+            </div>
         </div>
     </div>
 
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loader">Ping Identity...</div>
+            <div class="loading-text" id="loading-text">Loading...</div>
+        </div>
+    </div>
+    <!-- Toast Container for notifications -->
+    <div id="toast-container" style="position: fixed; top: 16px; right: 16px; z-index: 10010;"></div>
+ 
     <!-- Main Application Script -->
-    <script src="/socket.io/socket.io.js?v=1756032943738"></script>
-    <script type="module" src="/js/app.js?v=1756032943738"></script>
+    <script src="/socket.io/socket.io.js?v=1756217964199"></script>
+    <script type="module" src="/js/app.js?v=1756217964199"></script>
     
     <!-- Error Handling -->
     <script>

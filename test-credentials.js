@@ -5,7 +5,7 @@ import path from 'path';
 async function testCredentials() {
   // Load .env file
   dotenv.config();
-  
+
   // Get credentials from environment
   const envCredentials = {
     environmentId: process.env.PINGONE_ENVIRONMENT_ID,
@@ -20,7 +20,7 @@ async function testCredentials() {
     const settingsPath = path.resolve(process.cwd(), 'data/settings.json');
     const settingsFile = await fs.readFile(settingsPath, 'utf8');
     const settings = JSON.parse(settingsFile);
-    
+
     fileCredentials = {
       environmentId: settings.environmentId,
       clientId: settings.apiClientId,
@@ -35,20 +35,20 @@ async function testCredentials() {
   console.log(JSON.stringify(envCredentials, null, 2));
   console.log('\nSettings File:');
   console.log(JSON.stringify(fileCredentials, null, 2));
-  
+
   // Check if credentials are present
   const hasEnvCreds = envCredentials.environmentId && envCredentials.clientId && process.env.PINGONE_CLIENT_SECRET;
   const hasFileCreds = fileCredentials.environmentId && fileCredentials.clientId && fileCredentials.clientSecret;
-  
+
   console.log('\nStatus:');
   console.log(`- Environment variables: ${hasEnvCreds ? '✅ Present' : '❌ Missing'}`);
   console.log(`- Settings file: ${hasFileCreds ? '✅ Present' : '❌ Missing'}`);
-  
+
   if (!hasEnvCreds && !hasFileCreds) {
     console.error('\n❌ Error: No valid credentials found in any source!');
     process.exit(1);
   }
-  
+
   return hasEnvCreds ? envCredentials : fileCredentials;
 }
 

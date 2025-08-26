@@ -1,6 +1,6 @@
 /**
  * Enhanced Connection Manager
- * 
+ *
  * Provides reliable real-time communication with:
  * - Connection pooling and management
  * - Message queuing for offline clients
@@ -20,7 +20,7 @@ export class EnhancedConnectionManager extends EventEmitter {
       activeConnections: 0,
       messagesSent: 0
     };
-    
+
     this.setupIOHandlers();
   }
 
@@ -37,10 +37,10 @@ export class EnhancedConnectionManager extends EventEmitter {
       connectedAt: Date.now(),
       lastActivity: Date.now()
     });
-    
+
     this.stats.totalConnections++;
     this.stats.activeConnections++;
-    
+
     this.logger.info('New connection established', {
       connectionId,
       totalConnections: this.stats.activeConnections
@@ -56,7 +56,7 @@ export class EnhancedConnectionManager extends EventEmitter {
   handleDisconnection(connectionId) {
     this.connections.delete(connectionId);
     this.stats.activeConnections--;
-    
+
     this.logger.info('Connection disconnected', {
       connectionId,
       activeConnections: this.stats.activeConnections

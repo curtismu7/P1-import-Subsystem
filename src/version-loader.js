@@ -1,6 +1,6 @@
 /**
  * Version Loader
- * 
+ *
  * This module loads the version information for server-side use.
  * It provides the same version information as src/version.js but in a format
  * that can be used by CommonJS modules.

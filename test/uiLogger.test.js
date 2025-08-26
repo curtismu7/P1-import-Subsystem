@@ -1,6 +1,6 @@
 /**
  * UI Logger Test
- * 
+ *
  * This script tests the functionality of the centralized UI logger.
  */
 

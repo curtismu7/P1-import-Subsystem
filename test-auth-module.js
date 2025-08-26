@@ -35,7 +35,7 @@ async function testAuthModule() {
       const populations = await auth.apiRequest('GET', '/populations');
       console.log('✅ Successfully retrieved populations');
       console.log(`Found ${populations._embedded?.populations?.length || 0} populations`);
-      
+
       if (populations._embedded?.populations?.length > 0) {
         console.log('First population:', {
           id: populations._embedded.populations[0].id,

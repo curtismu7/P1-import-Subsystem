@@ -1,13 +1,13 @@
 /**
  * Centralized Application State Management
- * 
+ *
  * Provides a centralized state management system for the frontend
  * with subscription-based updates and state persistence.
  */
 
 /**
  * Application State Manager
- * 
+ *
  * Manages global application state with reactive updates
  * and subscription-based notifications.
  */
@@ -19,17 +19,17 @@ class AppStateManager {
       isAuthenticated: false,
       token: null,
       tokenExpiry: null,
-      
+
       // Application settings
       settings: null,
       populations: [],
       selectedPopulation: null,
-      
+
       // Current operation state
       currentOperation: null,
       operationProgress: null,
       operationHistory: [],
-      
+
       // UI state
       ui: {
         loading: false,
@@ -45,7 +45,7 @@ class AppStateManager {
           activeItem: 'dashboard'
         }
       },
-      
+
       // Real-time connection state
       connection: {
         status: 'disconnected',
@@ -53,7 +53,7 @@ class AppStateManager {
         lastHeartbeat: null,
         reconnectAttempts: 0
       },
-      
+
       // Feature flags
       features: {
         progressPage: false,
@@ -61,15 +61,15 @@ class AppStateManager {
         realTimeUpdates: true
       }
     };
-    
+
     this.subscribers = new Map();
     this.middleware = [];
     this.history = [];
     this.maxHistorySize = 50;
-    
+
     // Load persisted state
     this.loadPersistedState();
-    
+
     // Setup auto-save
     this.setupAutoSave();
   }
@@ -83,14 +83,14 @@ class AppStateManager {
   subscribe(keys, callback) {
     const keyArray = Array.isArray(keys) ? keys : [keys];
     const subscriptionId = `${Date.now()}_${Math.random()}`;
-    
+
     keyArray.forEach(key => {
       if (!this.subscribers.has(key)) {
         this.subscribers.set(key, new Map());
       }
       this.subscribers.get(key).set(subscriptionId, callback);
     });
-    
+
     // Return unsubscribe function
     return () => {
       keyArray.forEach(key => {
@@ -103,32 +103,32 @@ class AppStateManager {
 
   /**
    * Update state with new values
-   * @param {Object} updates - State updates
-   * @param {Object} options - Update options
+   * @param {object} updates - State updates
+   * @param {object} options - Update options
    */
   setState(updates, options = {}) {
-    const { 
-      merge = true, 
-      notify = true, 
+    const {
+      merge = true,
+      notify = true,
       persist = true,
       source = 'unknown'
     } = options;
-    
+
     const oldState = this.deepClone(this.state);
-    
+
     // Apply middleware
     let processedUpdates = updates;
     for (const middleware of this.middleware) {
       processedUpdates = middleware(processedUpdates, oldState, options);
     }
-    
+
     // Update state
     if (merge) {
       this.state = this.deepMerge(this.state, processedUpdates);
     } else {
       this.state = { ...processedUpdates };
     }
-    
+
     // Add to history
     this.addToHistory({
       timestamp: Date.now(),
@@ -137,12 +137,12 @@ class AppStateManager {
       oldState: this.getRelevantState(processedUpdates, oldState),
       newState: this.getRelevantState(processedUpdates, this.state)
     });
-    
+
     // Notify subscribers
     if (notify) {
       this.notifySubscribers(processedUpdates, oldState, this.state);
     }
-    
+
     // Persist state
     if (persist) {
       this.persistState();
@@ -158,7 +158,7 @@ class AppStateManager {
     if (key === null) {
       return this.deepClone(this.state);
     }
-    
+
     return this.getNestedValue(this.state, key);
   }
 
@@ -211,7 +211,7 @@ class AppStateManager {
         realTimeUpdates: true
       }
     };
-    
+
     this.setState(defaultState, { merge: false, source: 'reset' });
   }
 
@@ -226,13 +226,13 @@ class AppStateManager {
 
   /**
    * Notify subscribers of state changes
-   * @param {Object} updates - State updates
-   * @param {Object} oldState - Previous state
-   * @param {Object} newState - New state
+   * @param {object} updates - State updates
+   * @param {object} oldState - Previous state
+   * @param {object} newState - New state
    */
   notifySubscribers(updates, oldState, newState) {
     const changedKeys = this.getChangedKeys(updates);
-    
+
     changedKeys.forEach(key => {
       if (this.subscribers.has(key)) {
         const callbacks = this.subscribers.get(key);
@@ -249,34 +249,34 @@ class AppStateManager {
 
   /**
    * Get all keys that changed in the update
-   * @param {Object} updates - State updates
+   * @param {object} updates - State updates
    * @param {string} prefix - Key prefix
    * @returns {Array} Changed keys
    */
   getChangedKeys(updates, prefix = '') {
     const keys = [];
-    
+
     for (const [key, value] of Object.entries(updates)) {
       const fullKey = prefix ? `${prefix}.${key}` : key;
       keys.push(fullKey);
-      
+
       if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
         keys.push(...this.getChangedKeys(value, fullKey));
       }
     }
-    
+
     return keys;
   }
 
   /**
    * Deep merge two objects
-   * @param {Object} target - Target object
-   * @param {Object} source - Source object
-   * @returns {Object} Merged object
+   * @param {object} target - Target object
+   * @param {object} source - Source object
+   * @returns {object} Merged object
    */
   deepMerge(target, source) {
     const result = { ...target };
-    
+
     for (const [key, value] of Object.entries(source)) {
       if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
         result[key] = this.deepMerge(result[key] || {}, value);
@@ -284,7 +284,7 @@ class AppStateManager {
         result[key] = value;
       }
     }
-    
+
     return result;
   }
 
@@ -297,26 +297,26 @@ class AppStateManager {
     if (obj === null || typeof obj !== 'object') {
       return obj;
     }
-    
+
     if (obj instanceof Date) {
       return new Date(obj.getTime());
     }
-    
+
     if (Array.isArray(obj)) {
       return obj.map(item => this.deepClone(item));
     }
-    
+
     const cloned = {};
     for (const [key, value] of Object.entries(obj)) {
       cloned[key] = this.deepClone(value);
     }
-    
+
     return cloned;
   }
 
   /**
    * Get nested value from object using dot notation
-   * @param {Object} obj - Object to search
+   * @param {object} obj - Object to search
    * @param {string} path - Dot notation path
    * @returns {*} Value at path
    */
@@ -328,29 +328,29 @@ class AppStateManager {
 
   /**
    * Get relevant state slice for history
-   * @param {Object} updates - State updates
-   * @param {Object} state - Full state
-   * @returns {Object} Relevant state slice
+   * @param {object} updates - State updates
+   * @param {object} state - Full state
+   * @returns {object} Relevant state slice
    */
   getRelevantState(updates, state) {
     const relevant = {};
-    
+
     for (const key of Object.keys(updates)) {
       if (state[key] !== undefined) {
         relevant[key] = state[key];
       }
     }
-    
+
     return relevant;
   }
 
   /**
    * Add entry to state history
-   * @param {Object} entry - History entry
+   * @param {object} entry - History entry
    */
   addToHistory(entry) {
     this.history.push(entry);
-    
+
     // Limit history size
     if (this.history.length > this.maxHistorySize) {
       this.history = this.history.slice(-this.maxHistorySize);
@@ -365,7 +365,7 @@ class AppStateManager {
       const persistedState = localStorage.getItem('appState');
       if (persistedState) {
         const parsed = JSON.parse(persistedState);
-        
+
         // Only restore certain parts of state
         const restorableState = {
           settings: parsed.settings,
@@ -374,11 +374,11 @@ class AppStateManager {
           },
           features: parsed.features
         };
-        
-        this.setState(restorableState, { 
-          notify: false, 
-          persist: false, 
-          source: 'persistence' 
+
+        this.setState(restorableState, {
+          notify: false,
+          persist: false,
+          source: 'persistence'
         });
       }
     } catch (error) {
@@ -399,7 +399,7 @@ class AppStateManager {
         },
         features: this.state.features
       };
-      
+
       localStorage.setItem('appState', JSON.stringify(persistableState));
     } catch (error) {
       console.warn('Failed to persist state:', error);
@@ -418,7 +418,7 @@ class AppStateManager {
         this.persistState();
       }, 1000);
     };
-    
+
     // Subscribe to all state changes for auto-save
     this.subscribe('*', debouncedSave);
   }

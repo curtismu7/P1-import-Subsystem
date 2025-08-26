@@ -57,7 +57,7 @@ console.log(`✓ Archived log file to: ${archiveFile}`);
 // Test 5: Verify log content
 console.log('\n=== Verifying Log Content ===');
 const logContent = fs.readFileSync(LOG_FILE, 'utf8');
-const hasAllLevels = Object.keys(TEST_MESSAGES).every(level => 
+const hasAllLevels = Object.keys(TEST_MESSAGES).every(level =>
   logContent.includes(`[${level}]`)
 );
 console.log(`✓ All log levels present: ${hasAllLevels}`);

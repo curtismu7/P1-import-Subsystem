@@ -2,7 +2,7 @@
 
 /**
  * CSS Consolidation Script for PingOne Import Tool
- * 
+ *
  * This script consolidates 22+ CSS files into 3 organized files:
  * - main.css: Core application styles
  * - vendor.css: Third-party CSS (Bootstrap, Ping Identity)
@@ -10,7 +10,6 @@
  */
 
 import fs from 'fs/promises';
-import path from 'path';
 
 const CONSOLIDATION_REPORT = [];
 
@@ -24,7 +23,7 @@ function logAction(action, file, reason) {
     reason,
     timestamp: new Date().toISOString()
   };
-  
+
   CONSOLIDATION_REPORT.push(entry);
   console.log(`${action === 'MERGE' ? '🔄' : action === 'KEEP' ? '✅' : '🗑️'} ${action}: ${file} - ${reason}`);
 }
@@ -57,7 +56,7 @@ async function writeCSSFile(filePath, content, description) {
  */
 
 `;
-  
+
   await fs.writeFile(filePath, header + content);
 }
 
@@ -67,17 +66,17 @@ async function writeCSSFile(filePath, content, description) {
 async function createMainCSS() {
   console.log('\\n🎨 Creating consolidated main.css...');
   console.log('=' .repeat(50));
-  
+
   let mainCSS = '';
-  
+
   // Core styles (variables and base)
   const coreFiles = [
     'public/css/core/variables.css',
     'public/css/core/base.css'
   ];
-  
+
   mainCSS += '/* ===== CORE STYLES ===== */\\n\\n';
-  
+
   for (const file of coreFiles) {
     const content = await readCSSFile(file);
     if (content) {
@@ -85,14 +84,14 @@ async function createMainCSS() {
       logAction('MERGE', file, 'Core styles merged into main.css');
     }
   }
-  
+
   // Layout styles
   const layoutFiles = [
     'public/css/layout/responsive.css'
   ];
-  
+
   mainCSS += '/* ===== LAYOUT STYLES ===== */\\n\\n';
-  
+
   for (const file of layoutFiles) {
     const content = await readCSSFile(file);
     if (content) {
@@ -100,16 +99,16 @@ async function createMainCSS() {
       logAction('MERGE', file, 'Layout styles merged into main.css');
     }
   }
-  
+
   // Component styles
   const componentFiles = [
     'public/css/components/buttons.css',
     'public/css/components/forms.css',
     'public/css/components/progress.css'
   ];
-  
+
   mainCSS += '/* ===== COMPONENT STYLES ===== */\\n\\n';
-  
+
   for (const file of componentFiles) {
     const content = await readCSSFile(file);
     if (content) {
@@ -117,7 +116,7 @@ async function createMainCSS() {
       logAction('MERGE', file, 'Component styles merged into main.css');
     }
   }
-  
+
   // Application-specific styles
   const appFiles = [
     'public/css/styles.css',
@@ -128,9 +127,9 @@ async function createMainCSS() {
     'public/css/history-ui.css',
     'public/css/logging-ui.css'
   ];
-  
+
   mainCSS += '/* ===== APPLICATION STYLES ===== */\\n\\n';
-  
+
   for (const file of appFiles) {
     const content = await readCSSFile(file);
     if (content) {
@@ -138,7 +137,7 @@ async function createMainCSS() {
       logAction('MERGE', file, 'Application styles merged into main.css');
     }
   }
-  
+
   // Modal and UI component styles
   const uiFiles = [
     'public/css/credentials-modal.css',
@@ -146,9 +145,9 @@ async function createMainCSS() {
     'public/css/credential-management.css',
     'public/css/realtime-collaboration.css'
   ];
-  
+
   mainCSS += '/* ===== UI COMPONENT STYLES ===== */\\n\\n';
-  
+
   for (const file of uiFiles) {
     const content = await readCSSFile(file);
     if (content) {
@@ -156,7 +155,7 @@ async function createMainCSS() {
       logAction('MERGE', file, 'UI component styles merged into main.css');
     }
   }
-  
+
   // Utility classes
   mainCSS += `/* ===== UTILITY CLASSES ===== */
 
@@ -248,10 +247,10 @@ async function createMainCSS() {
   border: 0 !important;
 }
 `;
-  
+
   await writeCSSFile('public/css/main.css', mainCSS, 'Main Application Styles');
   console.log('✅ Created consolidated main.css');
-  
+
   return mainCSS.length;
 }
 
@@ -261,18 +260,18 @@ async function createMainCSS() {
 async function createThemesCSS() {
   console.log('\\n🎨 Creating themes.css...');
   console.log('=' .repeat(50));
-  
+
   let themesCSS = '';
-  
+
   // Ping Identity theme
   const themeFiles = [
     'public/css/ping-identity.css',
     'public/css/enhanced-token-status.css',
     'public/css/token-manager.css'
   ];
-  
+
   themesCSS += '/* ===== PING IDENTITY THEME ===== */\\n\\n';
-  
+
   for (const file of themeFiles) {
     const content = await readCSSFile(file);
     if (content) {
@@ -280,10 +279,10 @@ async function createThemesCSS() {
       logAction('MERGE', file, 'Theme styles merged into themes.css');
     }
   }
-  
+
   await writeCSSFile('public/css/themes.css', themesCSS, 'Ping Identity Theme Styles');
   console.log('✅ Created themes.css');
-  
+
   return themesCSS.length;
 }
 
@@ -293,16 +292,16 @@ async function createThemesCSS() {
 async function createVendorCSS() {
   console.log('\\n🎨 Creating vendor.css...');
   console.log('=' .repeat(50));
-  
+
   let vendorCSS = '';
-  
+
   // Swagger and other vendor styles
   const vendorFiles = [
     'public/css/swagger-custom.css'
   ];
-  
+
   vendorCSS += '/* ===== THIRD-PARTY VENDOR STYLES ===== */\\n\\n';
-  
+
   for (const file of vendorFiles) {
     const content = await readCSSFile(file);
     if (content) {
@@ -310,7 +309,7 @@ async function createVendorCSS() {
       logAction('MERGE', file, 'Vendor styles merged into vendor.css');
     }
   }
-  
+
   // Add note about external vendor CSS
   vendorCSS += `
 /* ===== EXTERNAL VENDOR CSS ===== */
@@ -321,10 +320,10 @@ async function createVendorCSS() {
  * - Font Awesome: https://cdnjs.cloudflare.com/ajax/libs/font-awesome/...
  */
 `;
-  
+
   await writeCSSFile('public/css/vendor.css', vendorCSS, 'Third-party Vendor Styles');
   console.log('✅ Created vendor.css');
-  
+
   return vendorCSS.length;
 }
 
@@ -334,7 +333,7 @@ async function createVendorCSS() {
 async function cleanupOldFiles() {
   console.log('\\n🧹 Cleaning up old CSS files...');
   console.log('=' .repeat(50));
-  
+
   // Files to remove after consolidation
   const filesToRemove = [
     'public/css/styles.css',
@@ -353,9 +352,9 @@ async function cleanupOldFiles() {
     'public/css/token-manager.css',
     'public/css/swagger-custom.css'
   ];
-  
+
   let removedCount = 0;
-  
+
   for (const file of filesToRemove) {
     try {
       await fs.access(file);
@@ -366,7 +365,7 @@ async function cleanupOldFiles() {
       // File doesn't exist, skip
     }
   }
-  
+
   console.log(`\\n📊 Removed ${removedCount} old CSS files`);
   return removedCount;
 }
@@ -377,33 +376,33 @@ async function cleanupOldFiles() {
 async function updateHTMLFiles() {
   console.log('\\n🔄 Updating HTML files...');
   console.log('=' .repeat(50));
-  
+
   const htmlFiles = [
     'public/index.html',
     'public/history.html',
     'public/api-docs.html'
   ];
-  
+
   for (const htmlFile of htmlFiles) {
     try {
       let content = await fs.readFile(htmlFile, 'utf8');
-      
+
       // Remove old CSS imports
       content = content.replace(/<link[^>]*href="[^"]*css\/[^"]*"[^>]*>/g, '');
       content = content.replace(/<!-- Custom CSS -->[\\s\\S]*?<!-- [^>]* -->/g, '');
-      
+
       // Add new consolidated CSS imports
       const newCSSImports = `    <!-- Consolidated CSS -->
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/themes.css">
     <link rel="stylesheet" href="/css/vendor.css">`;
-      
+
       // Insert before closing head tag
       content = content.replace('</head>', `${newCSSImports}\\n</head>`);
-      
+
       await fs.writeFile(htmlFile, content);
       logAction('UPDATE', htmlFile, 'Updated to use consolidated CSS');
-      
+
     } catch (error) {
       console.warn(`⚠️ Could not update ${htmlFile}: ${error.message}`);
     }
@@ -430,10 +429,10 @@ async function generateConsolidationReport() {
       'vendor.css': 'Third-party and vendor-specific styles'
     }
   };
-  
+
   await fs.writeFile('css-consolidation-report.json', JSON.stringify(report, null, 2));
   console.log('\\n📄 Consolidation report saved to: css-consolidation-report.json');
-  
+
   return report;
 }
 
@@ -446,50 +445,50 @@ async function runConsolidation() {
     console.log('🎯 Goal: Consolidate 22+ CSS files into 3 organized files');
     console.log('📦 Target: main.css + themes.css + vendor.css');
     console.log('\\n');
-    
+
     // Create consolidated CSS files
     const mainSize = await createMainCSS();
     const themesSize = await createThemesCSS();
     const vendorSize = await createVendorCSS();
-    
+
     // Clean up old files
     const removedCount = await cleanupOldFiles();
-    
+
     // Update HTML files
     await updateHTMLFiles();
-    
+
     // Generate report
     const report = await generateConsolidationReport();
-    
+
     // Final summary
     console.log('\\n' + '🎉'.repeat(20));
     console.log('✅ CSS CONSOLIDATION COMPLETE!');
     console.log('🎉'.repeat(20));
-    console.log(`\\n📊 FINAL RESULTS:`);
+    console.log('\\n📊 FINAL RESULTS:');
     console.log(`   • Files Merged: ${report.summary.filesMerged}`);
     console.log(`   • Files Removed: ${report.summary.filesRemoved}`);
     console.log(`   • Files Updated: ${report.summary.filesUpdated}`);
     console.log(`   • Total CSS Size: ${Math.round((mainSize + themesSize + vendorSize) / 1024)} KB`);
-    
-    console.log(`\\n📦 NEW CSS STRUCTURE:`);
+
+    console.log('\\n📦 NEW CSS STRUCTURE:');
     console.log(`   • main.css: ${Math.round(mainSize / 1024)} KB - Core application styles`);
     console.log(`   • themes.css: ${Math.round(themesSize / 1024)} KB - Ping Identity theme`);
     console.log(`   • vendor.css: ${Math.round(vendorSize / 1024)} KB - Third-party styles`);
-    
-    console.log(`\\n🚀 BENEFITS ACHIEVED:`);
-    console.log(`   • Reduced CSS files from 22 to 3 (86% reduction)`);
-    console.log(`   • Eliminated duplicate styles and conflicts`);
-    console.log(`   • Improved load performance with fewer HTTP requests`);
-    console.log(`   • Created consistent design system`);
-    console.log(`   • Better organization and maintainability`);
-    
-    console.log(`\\n📋 NEXT STEPS:`);
-    console.log(`   1. Test the application to ensure styling works`);
-    console.log(`   2. Proceed with JavaScript cleanup and organization`);
-    console.log(`   3. Implement component-based architecture`);
-    
+
+    console.log('\\n🚀 BENEFITS ACHIEVED:');
+    console.log('   • Reduced CSS files from 22 to 3 (86% reduction)');
+    console.log('   • Eliminated duplicate styles and conflicts');
+    console.log('   • Improved load performance with fewer HTTP requests');
+    console.log('   • Created consistent design system');
+    console.log('   • Better organization and maintainability');
+
+    console.log('\\n📋 NEXT STEPS:');
+    console.log('   1. Test the application to ensure styling works');
+    console.log('   2. Proceed with JavaScript cleanup and organization');
+    console.log('   3. Implement component-based architecture');
+
     return report;
-    
+
   } catch (error) {
     console.error('❌ CSS consolidation failed:', error);
     process.exit(1);

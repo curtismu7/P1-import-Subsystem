@@ -1,6 +1,6 @@
 /**
  * Disclaimer Banner Test Suite
- * 
+ *
  * Tests the Ping Identity-style disclaimer banner functionality
  */
 
@@ -32,7 +32,7 @@ const setupDOM = () => {
   global.document = window.document;
   global.navigator = window.navigator;
   global.localStorage = window.localStorage;
-  
+
   return { window };
 };
 
@@ -74,7 +74,7 @@ describe('Disclaimer Banner', () => {
     test('should not show banner if previously dismissed', () => {
       // Set dismissed flag
       dom.window.localStorage.setItem('ping-disclaimer-dismissed', 'true');
-      
+
       const banner = new DisclaimerBanner();
       expect(banner.shouldShowBanner()).toBe(false);
     });
@@ -84,7 +84,7 @@ describe('Disclaimer Banner', () => {
     test('should create banner HTML', () => {
       const banner = new DisclaimerBanner();
       banner.createBanner();
-      
+
       const bannerElement = dom.window.document.getElementById('ping-disclaimer-banner');
       expect(bannerElement).toBeDefined();
       expect(bannerElement.className).toContain('ping-disclaimer-banner');
@@ -93,7 +93,7 @@ describe('Disclaimer Banner', () => {
     test('should add banner to DOM', () => {
       const banner = new DisclaimerBanner();
       banner.createBanner();
-      
+
       const bannerElement = dom.window.document.querySelector('.ping-disclaimer-banner');
       expect(bannerElement).toBeDefined();
       expect(bannerElement.parentNode).toBe(dom.window.document.body);
@@ -102,14 +102,14 @@ describe('Disclaimer Banner', () => {
     test('should add body class for spacing', () => {
       const banner = new DisclaimerBanner();
       banner.createBanner();
-      
+
       expect(dom.window.document.body.classList.contains('has-disclaimer-banner')).toBe(true);
     });
 
     test('should include proper ARIA attributes', () => {
       const banner = new DisclaimerBanner();
       banner.createBanner();
-      
+
       const bannerElement = dom.window.document.getElementById('ping-disclaimer-banner');
       expect(bannerElement.getAttribute('role')).toBe('alert');
       expect(bannerElement.getAttribute('aria-live')).toBe('polite');
@@ -120,7 +120,7 @@ describe('Disclaimer Banner', () => {
     test('should include warning icon', () => {
       const banner = new DisclaimerBanner();
       banner.createBanner();
-      
+
       const icon = dom.window.document.querySelector('.ping-disclaimer-icon');
       expect(icon).toBeDefined();
       expect(icon.textContent).toBe('⚠️');
@@ -129,7 +129,7 @@ describe('Disclaimer Banner', () => {
     test('should include disclaimer message', () => {
       const banner = new DisclaimerBanner();
       banner.createBanner();
-      
+
       const message = dom.window.document.querySelector('.ping-disclaimer-message');
       expect(message).toBeDefined();
       expect(message.textContent).toContain('DISCLAIMER:');
@@ -139,7 +139,7 @@ describe('Disclaimer Banner', () => {
     test('should include dismiss button', () => {
       const banner = new DisclaimerBanner();
       banner.createBanner();
-      
+
       const button = dom.window.document.getElementById('ping-disclaimer-dismiss');
       expect(button).toBeDefined();
       expect(button.textContent.trim()).toBe('I Understand');
@@ -152,9 +152,9 @@ describe('Disclaimer Banner', () => {
       const banner = new DisclaimerBanner();
       banner.createBanner();
       banner.showBanner();
-      
+
       expect(banner.isVisible).toBe(true);
-      
+
       const bannerElement = dom.window.document.getElementById('ping-disclaimer-banner');
       expect(bannerElement.classList.contains('show')).toBe(true);
     });
@@ -164,9 +164,9 @@ describe('Disclaimer Banner', () => {
       banner.createBanner();
       banner.showBanner();
       banner.dismissBanner();
-      
+
       expect(banner.isVisible).toBe(false);
-      
+
       const bannerElement = dom.window.document.getElementById('ping-disclaimer-banner');
       expect(bannerElement.classList.contains('hide')).toBe(true);
     });
@@ -178,7 +178,7 @@ describe('Disclaimer Banner', () => {
       banner.createBanner();
       banner.showBanner();
       banner.dismissBanner();
-      
+
       expect(dom.window.localStorage.getItem('ping-disclaimer-dismissed')).toBe('true');
     });
 
@@ -187,7 +187,7 @@ describe('Disclaimer Banner', () => {
       banner.createBanner();
       banner.showBanner();
       banner.dismissBanner();
-      
+
       // Wait for animation to complete
       setTimeout(() => {
         const bannerElement = dom.window.document.getElementById('ping-disclaimer-banner');
@@ -200,7 +200,7 @@ describe('Disclaimer Banner', () => {
       banner.createBanner();
       banner.showBanner();
       banner.dismissBanner();
-      
+
       // Wait for animation to complete
       setTimeout(() => {
         expect(dom.window.document.body.classList.contains('has-disclaimer-banner')).toBe(false);
@@ -213,11 +213,11 @@ describe('Disclaimer Banner', () => {
       const banner = new DisclaimerBanner();
       banner.createBanner();
       banner.showBanner();
-      
+
       const button = dom.window.document.getElementById('ping-disclaimer-dismiss');
       const clickEvent = new dom.window.Event('click');
       button.dispatchEvent(clickEvent);
-      
+
       expect(banner.isVisible).toBe(false);
     });
 
@@ -225,13 +225,13 @@ describe('Disclaimer Banner', () => {
       const banner = new DisclaimerBanner();
       banner.createBanner();
       banner.showBanner();
-      
+
       const button = dom.window.document.getElementById('ping-disclaimer-dismiss');
-      
+
       // Test Enter key
       const enterEvent = new dom.window.KeyboardEvent('keydown', { key: 'Enter' });
       button.dispatchEvent(enterEvent);
-      
+
       expect(banner.isVisible).toBe(false);
     });
   });
@@ -239,32 +239,32 @@ describe('Disclaimer Banner', () => {
   describe('Auto-hide Functionality', () => {
     test('should auto-hide after timeout', (done) => {
       jest.useFakeTimers();
-      
+
       const banner = new DisclaimerBanner();
       banner.createBanner();
       banner.showBanner();
-      
+
       // Fast-forward time
       jest.advanceTimersByTime(30000);
-      
+
       setTimeout(() => {
         expect(banner.isVisible).toBe(false);
         done();
       }, 100);
-      
+
       jest.useRealTimers();
     });
 
     test('should clear timeout on manual dismissal', () => {
       jest.useFakeTimers();
-      
+
       const banner = new DisclaimerBanner();
       banner.createBanner();
       banner.showBanner();
       banner.dismissBanner();
-      
+
       expect(banner.autoHideTimeout).toBeNull();
-      
+
       jest.useRealTimers();
     });
   });
@@ -276,10 +276,10 @@ describe('Disclaimer Banner', () => {
       dom.window.localStorage.getItem = jest.fn(() => {
         throw new Error('Storage error');
       });
-      
+
       const banner = new DisclaimerBanner();
       expect(banner.getDismissalStatus()).toBe(false);
-      
+
       // Restore original function
       dom.window.localStorage.getItem = originalGetItem;
     });
@@ -290,15 +290,15 @@ describe('Disclaimer Banner', () => {
       dom.window.localStorage.setItem = jest.fn(() => {
         throw new Error('Storage error');
       });
-      
+
       const banner = new DisclaimerBanner();
       banner.createBanner();
       banner.showBanner();
       banner.dismissBanner();
-      
+
       // Should not throw error
       expect(banner).toBeDefined();
-      
+
       // Restore original function
       dom.window.localStorage.setItem = originalSetItem;
     });
@@ -313,7 +313,7 @@ describe('Disclaimer Banner', () => {
         },
         writable: true
       });
-      
+
       const banner = new DisclaimerBanner();
       expect(banner.shouldShowBanner()).toBe(false);
     });
@@ -326,7 +326,7 @@ describe('Disclaimer Banner', () => {
         },
         writable: true
       });
-      
+
       const banner = new DisclaimerBanner();
       expect(banner.shouldShowBanner()).toBe(true);
     });
@@ -337,7 +337,7 @@ describe('Disclaimer Banner', () => {
       const banner = new DisclaimerBanner();
       banner.createBanner();
       banner.showBanner();
-      
+
       // Check if announcement element was created
       const announcements = dom.window.document.querySelectorAll('[aria-live="assertive"]');
       expect(announcements.length).toBeGreaterThan(0);
@@ -346,7 +346,7 @@ describe('Disclaimer Banner', () => {
     test('should have proper focus management', () => {
       const banner = new DisclaimerBanner();
       banner.createBanner();
-      
+
       const button = dom.window.document.getElementById('ping-disclaimer-dismiss');
       expect(button).toBeDefined();
       expect(button.getAttribute('type')).toBe('button');
@@ -357,18 +357,18 @@ describe('Disclaimer Banner', () => {
     test('should reset banner state', () => {
       // Set dismissed state
       dom.window.localStorage.setItem('ping-disclaimer-dismissed', 'true');
-      
+
       const banner = new DisclaimerBanner();
       banner.reset();
-      
+
       expect(dom.window.localStorage.getItem('ping-disclaimer-dismissed')).toBe('false');
     });
 
     test('should force show banner', () => {
       const banner = new DisclaimerBanner();
       banner.forceShow();
-      
+
       expect(banner.shouldShowBanner()).toBe(true);
     });
   });
-}); 
+});

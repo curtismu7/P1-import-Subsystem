@@ -63,14 +63,14 @@ beforeEach(() => {
 afterEach(() => {
   // Reset mocks
   global.fetch.mockClear();
-  
+
   // Restore console methods if needed
   consoleMocks.forEach(method => {
     if (originalConsole[method]) {
       global.console[method] = originalConsole[method];
     }
   });
-  
+
   // Clear DOM after each test
   document.body.innerHTML = '';
 });

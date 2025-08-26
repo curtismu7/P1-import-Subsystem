@@ -1,0 +1,6 @@
+id,username,email,givenName,familyName,enabled,groups
+8f1a2c41-5b2e-4b84-8b4e-0a1b2c3d4e5f,alice,alice@example.com,Alice,Anderson,true,Default Group;Marketing
+9b2b3d52-6c3f-4c95-9c5f-1b2c3d4e5f6a,bob,bob@example.com,Bob,,true,Default Group
+1c3c4e63-7d40-5da6-ad60-2c3d4e5f6a7b,carol,carol@example.com,,,false,
+2d4d5f74-8e51-6eb7-be71-3d4e5f6a7b8c,dave,dave@example.com,Dave,Diaz,true,
+5e5e6075-9f62-7fc8-cf82-4e5f6a7b8c9d,eve,eve@example.com,Eve,Escobar,true,Admins

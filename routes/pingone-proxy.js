@@ -13,171 +13,171 @@ const router = express.Router();
 
 // PingOne API base URLs by region
 const PINGONE_API_BASE_URLS = {
-    'NorthAmerica': 'https://api.pingone.com',
-    'Europe': 'https://api.eu.pingone.com',
-    'Canada': 'https://api.ca.pingone.com',
-    'Asia': 'https://api.apsoutheast.pingone.com',
-    'Australia': 'https://api.aus.pingone.com',
-    'US': 'https://api.pingone.com',
-    'EU': 'https://api.eu.pingone.com',
-    'AP': 'https://api.apsoutheast.pingone.com',
-    'default': 'https://auth.pingone.com'
+  'NorthAmerica': 'https://api.pingone.com',
+  'Europe': 'https://api.eu.pingone.com',
+  'Canada': 'https://api.ca.pingone.com',
+  'Asia': 'https://api.apsoutheast.pingone.com',
+  'Australia': 'https://api.aus.pingone.com',
+  'US': 'https://api.pingone.com',
+  'EU': 'https://api.eu.pingone.com',
+  'AP': 'https://api.apsoutheast.pingone.com',
+  'default': 'https://auth.pingone.com'
 };
 
 // Middleware to validate required settings
 const validateSettings = (req, res, next) => {
-    const { environmentId, region } = req.settings;
-    
-    if (!environmentId) {
-        return res.status(400).json({ error: 'Environment ID is required' });
-    }
-    
-    if (!region || !PINGONE_API_BASE_URLS[region]) {
-        return res.status(400).json({ error: 'Valid region is required' });
-    }
-    
-    next();
+  const { environmentId, region } = req.settings;
+
+  if (!environmentId) {
+    return res.status(400).json({ error: 'Environment ID is required' });
+  }
+
+  if (!region || !PINGONE_API_BASE_URLS[region]) {
+    return res.status(400).json({ error: 'Valid region is required' });
+  }
+
+  next();
 };
 
 // Middleware to inject settings
 const injectSettings = (req, res, next) => {
-    try {
-        // Use environment variables for settings
-        req.settings = {
-            environmentId: process.env.PINGONE_ENVIRONMENT_ID || '',
-            region: process.env.PINGONE_REGION || 'NorthAmerica',
-            apiClientId: process.env.PINGONE_CLIENT_ID || '',
-            apiSecret: process.env.PINGONE_CLIENT_SECRET || ''
-        };
-        next();
-    } catch (error) {
-        console.error('Error injecting settings:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
+  try {
+    // Use environment variables for settings
+    req.settings = {
+      environmentId: process.env.PINGONE_ENVIRONMENT_ID || '',
+      region: process.env.PINGONE_REGION || 'NorthAmerica',
+      apiClientId: process.env.PINGONE_CLIENT_ID || '',
+      apiSecret: process.env.PINGONE_CLIENT_SECRET || ''
+    };
+    next();
+  } catch (error) {
+    console.error('Error injecting settings:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 };
 
 // Proxy request handler
 const proxyRequest = async (req, res) => {
-    const requestId = uuidv4();
-    const startTime = Date.now();
-    
-    try {
-        // Check if URL is provided in query parameter
-        const targetUrl = req.query.url;
-        
-        if (!targetUrl) {
-            return res.status(400).json({ error: 'Target URL is required' });
-        }
-        
-        // Determine if this is an auth request
-        const isAuthRequest = targetUrl.includes('/as/token');
-        
-        console.log(`[${requestId}] Proxying to: ${targetUrl}`);
-        
-        // Prepare request headers - filter out unwanted headers
-        const headers = {};
-        
-        // Copy only the headers we want to forward
-        const allowedHeaders = [
-            'accept',
-            'accept-encoding',
-            'authorization',
-            'content-type',
-            'x-request-id'
-        ];
-        
-        // Add allowed headers from the original request
-        Object.entries(req.headers).forEach(([key, value]) => {
-            const lowerKey = key.toLowerCase();
-            if (allowedHeaders.includes(lowerKey)) {
-                headers[key] = value;
-            }
-        });
-        
-        // Add our own headers
-        headers['x-request-id'] = requestId;
-        headers['accept'] = 'application/json';
-        
-        // Handle authentication for token requests
-        if (isAuthRequest && process.env.PINGONE_CLIENT_ID && process.env.PINGONE_CLIENT_SECRET) {
-            const credentials = Buffer.from(`${process.env.PINGONE_CLIENT_ID}:${process.env.PINGONE_CLIENT_SECRET}`).toString('base64');
-            headers['authorization'] = `Basic ${credentials}`;
-        }
-        
-        // Prepare request options
-        const options = {
-            method: req.method,
-            headers,
-            timeout: 30000, // 30 second timeout
-            redirect: 'follow'
-        };
-        
-        // Add request body for applicable methods
-        if (['POST', 'PUT', 'PATCH'].includes(req.method) && req.body) {
-            options.body = JSON.stringify(req.body);
-        }
-        
-        // In proxyRequest, before making the request to PingOne API, get the token from the shared manager
-        let token;
-        try {
-            token = await workerTokenManager.getAccessToken({
-                apiClientId: process.env.PINGONE_CLIENT_ID,
-                apiSecret: process.env.PINGONE_CLIENT_SECRET,
-                environmentId: process.env.PINGONE_ENVIRONMENT_ID,
-                region: process.env.PINGONE_REGION || 'NorthAmerica'
-            });
-            headers['Authorization'] = `Bearer ${token}`;
-        } catch (error) {
-            console.error('Error obtaining access token from workerTokenManager:', error);
-            return res.status(401).json({ error: 'Failed to authenticate with PingOne API', details: error.message });
-        }
-        
-        // Make the request to PingOne API
-        const response = await fetch(targetUrl, options);
-        const responseTime = Date.now() - startTime;
-        
-        // Get response headers
-        const responseHeaders = Object.fromEntries([...response.headers.entries()]);
-        
-        // Handle response based on content type
-        const contentType = response.headers.get('content-type') || '';
-        let responseData;
-        
-        if (contentType.includes('application/json')) {
-            responseData = await response.json().catch(() => ({}));
-        } else {
-            responseData = await response.text();
-        }
-        
-        console.log(`[${requestId}] Response status: ${response.status} (${responseTime}ms)`);
-        
-        // Set CORS headers
-        res.set({
-            'access-control-allow-origin': '*',
-            'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
-            'access-control-allow-headers': 'Content-Type, Authorization, X-Requested-With',
-            ...responseHeaders
-        });
-        
-        // Remove problematic headers
-        res.removeHeader('content-encoding');
-        res.removeHeader('transfer-encoding');
-        
-        // Send response
-        if (typeof responseData === 'string') {
-            res.status(response.status).send(responseData);
-        } else {
-            res.status(response.status).json(responseData);
-        }
-        
-    } catch (error) {
-        console.error(`[${requestId}] Error:`, error);
-        res.status(500).json({
-            error: 'Proxy Error',
-            message: error.message,
-            ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
-        });
+  const requestId = uuidv4();
+  const startTime = Date.now();
+
+  try {
+    // Check if URL is provided in query parameter
+    const targetUrl = req.query.url;
+
+    if (!targetUrl) {
+      return res.status(400).json({ error: 'Target URL is required' });
     }
+
+    // Determine if this is an auth request
+    const isAuthRequest = targetUrl.includes('/as/token');
+
+    console.log(`[${requestId}] Proxying to: ${targetUrl}`);
+
+    // Prepare request headers - filter out unwanted headers
+    const headers = {};
+
+    // Copy only the headers we want to forward
+    const allowedHeaders = [
+      'accept',
+      'accept-encoding',
+      'authorization',
+      'content-type',
+      'x-request-id'
+    ];
+
+    // Add allowed headers from the original request
+    Object.entries(req.headers).forEach(([key, value]) => {
+      const lowerKey = key.toLowerCase();
+      if (allowedHeaders.includes(lowerKey)) {
+        headers[key] = value;
+      }
+    });
+
+    // Add our own headers
+    headers['x-request-id'] = requestId;
+    headers['accept'] = 'application/json';
+
+    // Handle authentication for token requests
+    if (isAuthRequest && process.env.PINGONE_CLIENT_ID && process.env.PINGONE_CLIENT_SECRET) {
+      const credentials = Buffer.from(`${process.env.PINGONE_CLIENT_ID}:${process.env.PINGONE_CLIENT_SECRET}`).toString('base64');
+      headers['authorization'] = `Basic ${credentials}`;
+    }
+
+    // Prepare request options
+    const options = {
+      method: req.method,
+      headers,
+      timeout: 30000, // 30 second timeout
+      redirect: 'follow'
+    };
+
+    // Add request body for applicable methods
+    if (['POST', 'PUT', 'PATCH'].includes(req.method) && req.body) {
+      options.body = JSON.stringify(req.body);
+    }
+
+    // In proxyRequest, before making the request to PingOne API, get the token from the shared manager
+    let token;
+    try {
+      token = await workerTokenManager.getAccessToken({
+        apiClientId: process.env.PINGONE_CLIENT_ID,
+        apiSecret: process.env.PINGONE_CLIENT_SECRET,
+        environmentId: process.env.PINGONE_ENVIRONMENT_ID,
+        region: process.env.PINGONE_REGION || 'NorthAmerica'
+      });
+      headers['Authorization'] = `Bearer ${token}`;
+    } catch (error) {
+      console.error('Error obtaining access token from workerTokenManager:', error);
+      return res.status(401).json({ error: 'Failed to authenticate with PingOne API', details: error.message });
+    }
+
+    // Make the request to PingOne API
+    const response = await fetch(targetUrl, options);
+    const responseTime = Date.now() - startTime;
+
+    // Get response headers
+    const responseHeaders = Object.fromEntries([...response.headers.entries()]);
+
+    // Handle response based on content type
+    const contentType = response.headers.get('content-type') || '';
+    let responseData;
+
+    if (contentType.includes('application/json')) {
+      responseData = await response.json().catch(() => ({}));
+    } else {
+      responseData = await response.text();
+    }
+
+    console.log(`[${requestId}] Response status: ${response.status} (${responseTime}ms)`);
+
+    // Set CORS headers
+    res.set({
+      'access-control-allow-origin': '*',
+      'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'access-control-allow-headers': 'Content-Type, Authorization, X-Requested-With',
+      ...responseHeaders
+    });
+
+    // Remove problematic headers
+    res.removeHeader('content-encoding');
+    res.removeHeader('transfer-encoding');
+
+    // Send response
+    if (typeof responseData === 'string') {
+      res.status(response.status).send(responseData);
+    } else {
+      res.status(response.status).json(responseData);
+    }
+
+  } catch (error) {
+    console.error(`[${requestId}] Error:`, error);
+    res.status(500).json({
+      error: 'Proxy Error',
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
+  }
 };
 
 // Apply middleware and routes
@@ -185,97 +185,97 @@ router.use(express.json());
 
 // Worker token test endpoint - MUST be before the catch-all proxy handler
 router.get('/test-connection', async (req, res) => {
-    const requestId = uuidv4();
-    const startTime = Date.now();
-    
-    try {
-        console.log(`[${requestId}] Testing worker token connection...`);
-        
-        // Check if we have required environment variables
-        if (!process.env.PINGONE_CLIENT_ID || !process.env.PINGONE_CLIENT_SECRET || !process.env.PINGONE_ENVIRONMENT_ID) {
-            console.log(`[${requestId}] Missing required environment variables`);
-            return res.status(401).json({ 
-                error: 'Credentials not configured', 
-                message: 'PingOne credentials not available in environment variables',
-                available: false
-            });
-        }
-        
-        // Try to get a worker token
-        let token;
-        try {
-            token = await workerTokenManager.getAccessToken({
-                apiClientId: process.env.PINGONE_CLIENT_ID,
-                apiSecret: process.env.PINGONE_CLIENT_SECRET,
-                environmentId: process.env.PINGONE_ENVIRONMENT_ID,
-                region: process.env.PINGONE_REGION || 'NorthAmerica'
-            });
-        } catch (tokenError) {
-            console.log(`[${requestId}] Worker token acquisition failed:`, tokenError.message);
-            return res.status(401).json({ 
-                error: 'Token acquisition failed', 
-                message: tokenError.message,
-                available: false
-            });
-        }
-        
-        // Test the token by making a simple API call
-        const region = process.env.PINGONE_REGION || 'NorthAmerica';
-        const baseUrl = PINGONE_API_BASE_URLS[region] || PINGONE_API_BASE_URLS.default;
-        const testUrl = `${baseUrl}/v1/environments/${process.env.PINGONE_ENVIRONMENT_ID}`;
-        
-        const testResponse = await fetch(testUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-                'X-Request-Id': requestId
-            },
-            timeout: 10000
-        });
-        
-        const responseTime = Date.now() - startTime;
-        
-        if (testResponse.ok) {
-            console.log(`[${requestId}] Worker token test successful (${responseTime}ms)`);
-            res.status(200).json({ 
-                message: 'Worker token available and valid', 
-                available: true,
-                responseTime,
-                environmentId: process.env.PINGONE_ENVIRONMENT_ID,
-                region: process.env.PINGONE_REGION || 'NorthAmerica'
-            });
-        } else {
-            console.log(`[${requestId}] Worker token test failed: ${testResponse.status} ${testResponse.statusText}`);
-            res.status(testResponse.status).json({ 
-                error: 'Token validation failed', 
-                message: `API test returned ${testResponse.status} ${testResponse.statusText}`,
-                available: false,
-                responseTime
-            });
-        }
-        
-    } catch (error) {
-        const responseTime = Date.now() - startTime;
-        console.error(`[${requestId}] Worker token test error:`, error);
-        res.status(500).json({
-            error: 'Connection test failed',
-            message: error.message,
-            available: false,
-            responseTime
-        });
+  const requestId = uuidv4();
+  const startTime = Date.now();
+
+  try {
+    console.log(`[${requestId}] Testing worker token connection...`);
+
+    // Check if we have required environment variables
+    if (!process.env.PINGONE_CLIENT_ID || !process.env.PINGONE_CLIENT_SECRET || !process.env.PINGONE_ENVIRONMENT_ID) {
+      console.log(`[${requestId}] Missing required environment variables`);
+      return res.status(401).json({
+        error: 'Credentials not configured',
+        message: 'PingOne credentials not available in environment variables',
+        available: false
+      });
     }
+
+    // Try to get a worker token
+    let token;
+    try {
+      token = await workerTokenManager.getAccessToken({
+        apiClientId: process.env.PINGONE_CLIENT_ID,
+        apiSecret: process.env.PINGONE_CLIENT_SECRET,
+        environmentId: process.env.PINGONE_ENVIRONMENT_ID,
+        region: process.env.PINGONE_REGION || 'NorthAmerica'
+      });
+    } catch (tokenError) {
+      console.log(`[${requestId}] Worker token acquisition failed:`, tokenError.message);
+      return res.status(401).json({
+        error: 'Token acquisition failed',
+        message: tokenError.message,
+        available: false
+      });
+    }
+
+    // Test the token by making a simple API call
+    const region = process.env.PINGONE_REGION || 'NorthAmerica';
+    const baseUrl = PINGONE_API_BASE_URLS[region] || PINGONE_API_BASE_URLS.default;
+    const testUrl = `${baseUrl}/v1/environments/${process.env.PINGONE_ENVIRONMENT_ID}`;
+
+    const testResponse = await fetch(testUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+        'X-Request-Id': requestId
+      },
+      timeout: 10000
+    });
+
+    const responseTime = Date.now() - startTime;
+
+    if (testResponse.ok) {
+      console.log(`[${requestId}] Worker token test successful (${responseTime}ms)`);
+      res.status(200).json({
+        message: 'Worker token available and valid',
+        available: true,
+        responseTime,
+        environmentId: process.env.PINGONE_ENVIRONMENT_ID,
+        region: process.env.PINGONE_REGION || 'NorthAmerica'
+      });
+    } else {
+      console.log(`[${requestId}] Worker token test failed: ${testResponse.status} ${testResponse.statusText}`);
+      res.status(testResponse.status).json({
+        error: 'Token validation failed',
+        message: `API test returned ${testResponse.status} ${testResponse.statusText}`,
+        available: false,
+        responseTime
+      });
+    }
+
+  } catch (error) {
+    const responseTime = Date.now() - startTime;
+    console.error(`[${requestId}] Worker token test error:`, error);
+    res.status(500).json({
+      error: 'Connection test failed',
+      message: error.message,
+      available: false,
+      responseTime
+    });
+  }
 });
 
 // Only apply settings validation to non-auth requests
 router.use((req, res, next) => {
-    if (req.path !== '/as/token' && !req.query.url?.includes('/as/token') && req.path !== '/test-connection') {
-        injectSettings(req, res, () => {
-            validateSettings(req, res, next);
-        });
-    } else {
-        next();
-    }
+  if (req.path !== '/as/token' && !req.query.url?.includes('/as/token') && req.path !== '/test-connection') {
+    injectSettings(req, res, () => {
+      validateSettings(req, res, next);
+    });
+  } else {
+    next();
+  }
 });
 
 // All requests go through the proxy handler

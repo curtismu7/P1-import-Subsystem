@@ -9,7 +9,7 @@ export default {
 
   // Test environment
   testEnvironment: 'jsdom',
-  
+
   // Test file patterns
   testMatch: [
     '**/test/**/*.test.{js,mjs}',
@@ -23,7 +23,7 @@ export default {
   // No transform for pure JS/ESM (uncomment if using Babel)
   transform: {},
 
-  
+
   // File extensions to test
   moduleFileExtensions: ['js', 'mjs', 'jsx', 'json', 'node'],
 
@@ -33,12 +33,12 @@ export default {
   //   '^.+\\.(js|mjs)$': ['babel-jest', { configFile: './babel.config.mjs' }]
   // },
 
-  
+
   // Transform ignore patterns
   transformIgnorePatterns: [
     '/node_modules/(?!(@babel|regenerator-runtime|node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill)/)',
   ],
-  
+
   // Module name mapper for path aliases
   // moduleNameMapper: {
   //   '^@/(.*)$': '<rootDir>/$1',
@@ -62,20 +62,20 @@ export default {
   //   '^@src/(.*)$': '<rootDir>/src/$1',
   //   '^(\\.{1,2}/.*)\\.js$': '$1'
   // },
-  
+
   // Setup files - use only the CommonJS setup file for now
   setupFilesAfterEnv: [
     '<rootDir>/test/setup-tests.cjs'
   ],
-  
+
   // Test environment options
   testEnvironmentOptions: {
     url: 'http://localhost'
   },
-  
+
   // Test timeout
   testTimeout: 10000,
-  
+
   // Reporters for test results
   reporters: [
     'default',
@@ -88,9 +88,9 @@ export default {
       usePathForSuiteName: 'true'
     }]
   ],
-  
+
   verbose: true,
-  
+
   // Clear mocks between tests
   clearMocks: true
 };

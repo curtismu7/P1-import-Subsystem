@@ -1,6 +1,6 @@
 /**
  * Example Component - User Card
- * 
+ *
  * Demonstrates how to create components using the new structure
  * Uses the consolidated UI components and utilities
  */
@@ -14,12 +14,12 @@ export class UserCard {
   constructor(userData) {
     this.userData = userData;
     this.element = null;
-    
+
     // Use consolidated utilities
     this.logger = CoreUtils.createLogger('UserCard');
     this.domUtils = CoreUtils.getDOMUtils();
   }
-  
+
   /**
    * Render the user card component
    */
@@ -31,16 +31,16 @@ export class UserCard {
       content: this.renderUserDetails(),
       actions: this.renderActions()
     });
-    
+
     this.element = this.domUtils.createElement('div', {
       className: 'user-card',
       innerHTML: cardTemplate
     });
-    
+
     this.attachEventListeners();
     return this.element;
   }
-  
+
   /**
    * Render user details
    */
@@ -53,7 +53,7 @@ export class UserCard {
       </div>
     `;
   }
-  
+
   /**
    * Render action buttons
    */
@@ -65,13 +65,13 @@ export class UserCard {
       </div>
     `;
   }
-  
+
   /**
    * Attach event listeners
    */
   attachEventListeners() {
-    if (!this.element) return;
-    
+    if (!this.element) {return;}
+
     this.element.addEventListener('click', (e) => {
       const action = e.target.getAttribute('data-action');
       if (action) {
@@ -79,28 +79,28 @@ export class UserCard {
       }
     });
   }
-  
+
   /**
    * Handle user actions
    */
   async handleAction(action) {
     try {
       switch (action) {
-        case 'edit':
-          await this.editUser();
-          break;
-        case 'delete':
-          await this.deleteUser();
-          break;
-        default:
-          this.logger.warn('Unknown action:', action);
+      case 'edit':
+        await this.editUser();
+        break;
+      case 'delete':
+        await this.deleteUser();
+        break;
+      default:
+        this.logger.warn('Unknown action:', action);
       }
     } catch (error) {
       this.logger.error('Action failed:', error);
       actions.addError(`Failed to ${action} user: ${error.message}`);
     }
   }
-  
+
   /**
    * Edit user
    */
@@ -108,10 +108,10 @@ export class UserCard {
     // Use consolidated services
     const { ModalManager } = await import('../services/ui-management.js');
     const { apiClient } = await import('../services/api-client.js');
-    
+
     const modal = new ModalManager();
     const result = await modal.showEditUserModal(this.userData);
-    
+
     if (result) {
       const response = await apiClient.put(`/api/users/${this.userData.id}`, result);
       if (response.isSuccess()) {
@@ -121,20 +121,20 @@ export class UserCard {
       }
     }
   }
-  
+
   /**
    * Delete user
    */
   async deleteUser() {
     const { ModalManager } = await import('../services/ui-management.js');
     const { apiClient } = await import('../services/api-client.js');
-    
+
     const modal = new ModalManager();
     const confirmed = await modal.showConfirmDialog(
       'Delete User',
       `Are you sure you want to delete ${this.userData.name}?`
     );
-    
+
     if (confirmed) {
       const response = await apiClient.delete(`/api/users/${this.userData.id}`);
       if (response.isSuccess()) {
@@ -143,7 +143,7 @@ export class UserCard {
       }
     }
   }
-  
+
   /**
    * Refresh the component
    */
@@ -153,7 +153,7 @@ export class UserCard {
       this.element.replaceWith(newElement);
     }
   }
-  
+
   /**
    * Destroy the component
    */

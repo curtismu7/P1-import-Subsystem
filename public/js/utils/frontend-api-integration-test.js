@@ -10,17 +10,17 @@ export class FrontendAPIIntegrationTest {
   constructor() {
     this.testResults = [];
   }
-  
+
   /**
    * Test API client with standardized responses
    */
   async testAPIClient() {
     console.log('🧪 Testing Frontend API Integration...');
-    
+
     // Test success response handling
     try {
       const response = await apiClient.get('/api/health');
-      
+
       if (response.isSuccess()) {
         this.logTest('API Client Success Handling', 'PASS', {
           message: 'Successfully handled standardized success response',
@@ -37,11 +37,11 @@ export class FrontendAPIIntegrationTest {
         error: error.message
       });
     }
-    
+
     // Test error response handling
     try {
       const response = await apiClient.get('/api/nonexistent');
-      
+
       if (!response.isSuccess()) {
         this.logTest('API Client Error Handling', 'PASS', {
           message: 'Successfully handled standardized error response',
@@ -58,13 +58,13 @@ export class FrontendAPIIntegrationTest {
       });
     }
   }
-  
+
   /**
    * Test UI response handling
    */
   async testUIResponseHandling() {
     console.log('🖥️ Testing UI Response Handling...');
-    
+
     // Mock standardized responses
     const mockSuccessResponse = {
       success: true,
@@ -72,7 +72,7 @@ export class FrontendAPIIntegrationTest {
       data: { users: [{ id: 1, name: 'Test User' }] },
       timestamp: new Date().toISOString()
     };
-    
+
     const mockErrorResponse = {
       success: false,
       message: 'Failed to load data',
@@ -80,7 +80,7 @@ export class FrontendAPIIntegrationTest {
       timestamp: new Date().toISOString(),
       error: { code: 'NOT_FOUND', details: {} }
     };
-    
+
     // Test success handling
     try {
       this.handleAPIResponse(mockSuccessResponse);
@@ -92,7 +92,7 @@ export class FrontendAPIIntegrationTest {
         error: error.message
       });
     }
-    
+
     // Test error handling
     try {
       this.handleAPIResponse(mockErrorResponse);
@@ -105,7 +105,7 @@ export class FrontendAPIIntegrationTest {
       });
     }
   }
-  
+
   /**
    * Handle API response (simulates UI logic)
    */
@@ -114,19 +114,19 @@ export class FrontendAPIIntegrationTest {
     if (typeof response.success !== 'boolean') {
       throw new Error('Invalid response: missing success field');
     }
-    
+
     if (typeof response.message !== 'string') {
       throw new Error('Invalid response: missing message field');
     }
-    
+
     if (!response.hasOwnProperty('data')) {
       throw new Error('Invalid response: missing data field');
     }
-    
+
     if (typeof response.timestamp !== 'string') {
       throw new Error('Invalid response: missing timestamp field');
     }
-    
+
     // Handle based on success status
     if (response.success) {
       this.showSuccessMessage(response.message);
@@ -136,28 +136,28 @@ export class FrontendAPIIntegrationTest {
       this.handleError(response.error);
     }
   }
-  
+
   /**
    * Show success message (simulated)
    */
   showSuccessMessage(message) {
     console.log(`✅ Success: ${message}`);
   }
-  
+
   /**
    * Show error message (simulated)
    */
   showErrorMessage(message) {
     console.log(`❌ Error: ${message}`);
   }
-  
+
   /**
    * Update UI with data (simulated)
    */
   updateUIWithData(data) {
     console.log('📊 Updating UI with data:', data);
   }
-  
+
   /**
    * Handle error details (simulated)
    */
@@ -166,7 +166,7 @@ export class FrontendAPIIntegrationTest {
       console.log('🔍 Error details:', error);
     }
   }
-  
+
   /**
    * Log test result
    */
@@ -177,29 +177,29 @@ export class FrontendAPIIntegrationTest {
       details,
       timestamp: new Date().toISOString()
     };
-    
+
     this.testResults.push(result);
-    
+
     const emoji = status === 'PASS' ? '✅' : '❌';
     console.log(`${emoji} ${testName}: ${status}`);
-    
+
     if (details.error) {
       console.log(`   Error: ${details.error}`);
     }
   }
-  
+
   /**
    * Run all tests
    */
   async runTests() {
     await this.testAPIClient();
     await this.testUIResponseHandling();
-    
+
     const passed = this.testResults.filter(r => r.status === 'PASS').length;
     const total = this.testResults.length;
-    
+
     console.log(`\n📊 Frontend Integration Test Results: ${passed}/${total} passed`);
-    
+
     return {
       passed,
       total,

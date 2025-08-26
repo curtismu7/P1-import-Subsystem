@@ -56,7 +56,7 @@ describe('Subsystem Architecture Integration Tests', () => {
       jest.doMock('../public/js/modules/winston-logger.js', () => ({
         createWinstonLogger: jest.fn(() => mockLogger)
       }));
-      
+
       // Import the LoggingSubsystem
       const module = await import('../public/js/modules/logging-subsystem.js');
       LoggingSubsystem = module.LoggingSubsystem;
@@ -85,7 +85,7 @@ describe('Subsystem Architecture Integration Tests', () => {
 
     test('should emit events for log entries', () => {
       loggingSubsystem.info('Test message');
-      
+
       expect(mockEventBus.emit).toHaveBeenCalledWith('logEntry', expect.objectContaining({
         level: 'info',
         message: 'Test message'
@@ -126,7 +126,7 @@ describe('Subsystem Architecture Integration Tests', () => {
       };
 
       loggingSubsystem.info('Test message', sensitiveData);
-      
+
       const logEntry = loggingSubsystem.logHistory[0];
       expect(logEntry.data.password).toBe('[REDACTED]');
       expect(logEntry.data.token).toBe('[REDACTED]');
@@ -295,7 +295,7 @@ describe('Subsystem Architecture Integration Tests', () => {
 
     test('should register and manage dropdowns', () => {
       populationSubsystem.registerDropdown('test-dropdown', { includeEmpty: false });
-      
+
       expect(populationSubsystem.managedDropdowns.has('test-dropdown')).toBe(true);
       expect(populationSubsystem.dropdownConfigs.get('test-dropdown')).toEqual({
         includeEmpty: false
@@ -310,7 +310,7 @@ describe('Subsystem Architecture Integration Tests', () => {
       ];
 
       const sorted = populationSubsystem.sortPopulations(populations, 'name', 'asc');
-      
+
       expect(sorted[0].name).toBe('Alpha Population');
       expect(sorted[1].name).toBe('Beta Population');
       expect(sorted[2].name).toBe('Zebra Population');
@@ -318,7 +318,7 @@ describe('Subsystem Architecture Integration Tests', () => {
 
     test('should search populations by name', async () => {
       const results = await populationSubsystem.searchPopulations('Population 1');
-      
+
       expect(results).toHaveLength(1);
       expect(results[0].name).toBe('Population 1');
     });
@@ -358,7 +358,7 @@ describe('Subsystem Architecture Integration Tests', () => {
 
       // Check that logging subsystem received the log
       expect(loggingSubsystem.logHistory.length).toBeGreaterThan(0);
-      
+
       // Check that events were emitted
       expect(mockEventBus.emit).toHaveBeenCalledWith('historyEntryAdded', expect.any(Object));
     });
@@ -426,7 +426,7 @@ describe('Subsystem Architecture Integration Tests', () => {
 
       const LoggingModule = (await import('../public/js/modules/logging-subsystem.js')).default;
       const loggingSubsystem = new LoggingModule.LoggingSubsystem(mockEventBus, mockSettingsSubsystem);
-      
+
       // Should not throw error
       expect(() => {
         loggingSubsystem.info('Test message');

@@ -1,6 +1,6 @@
 /**
  * API Client Subsystem UI Tests
- * 
+ *
  * Tests the UI integration and functionality of the API Client Subsystem
  */
 
@@ -89,280 +89,280 @@ global.document = dom.window.document;
 global.fetch = jest.fn();
 
 describe('API Client Subsystem UI Tests', () => {
-    let mockApiClient;
-    
-    beforeEach(() => {
-        document.body.innerHTML = dom.window.document.body.innerHTML;
-        jest.clearAllMocks();
-        
-        mockApiClient = {
-            request: jest.fn(),
-            get: jest.fn(),
-            post: jest.fn(),
-            put: jest.fn(),
-            delete: jest.fn(),
-            cancel: jest.fn(),
-            getRequestHistory: jest.fn().mockReturnValue([]),
-            clearHistory: jest.fn(),
-            isConnected: jest.fn().mockReturnValue(false),
-            refreshToken: jest.fn().mockResolvedValue({ success: true, token: 'new-token' }),
-            pingOneClient: {
-                getPopulations: jest.fn(),
-                getUsers: jest.fn(),
-                createUser: jest.fn(),
-                updateUser: jest.fn(),
-                deleteUser: jest.fn()
-            }
-        };
-        
-        // Mock successful responses
-        fetch.mockResolvedValue({
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            headers: new Map([['content-type', 'application/json']]),
-            json: () => Promise.resolve({ success: true, data: 'test' }),
-            text: () => Promise.resolve('{"success": true, "data": "test"}')
-        });
-        
-        // Make mockApiClient available globally for the tests
-        global.apiClient = mockApiClient;
+  let mockApiClient;
+
+  beforeEach(() => {
+    document.body.innerHTML = dom.window.document.body.innerHTML;
+    jest.clearAllMocks();
+
+    mockApiClient = {
+      request: jest.fn(),
+      get: jest.fn(),
+      post: jest.fn(),
+      put: jest.fn(),
+      delete: jest.fn(),
+      cancel: jest.fn(),
+      getRequestHistory: jest.fn().mockReturnValue([]),
+      clearHistory: jest.fn(),
+      isConnected: jest.fn().mockReturnValue(false),
+      refreshToken: jest.fn().mockResolvedValue({ success: true, token: 'new-token' }),
+      pingOneClient: {
+        getPopulations: jest.fn(),
+        getUsers: jest.fn(),
+        createUser: jest.fn(),
+        updateUser: jest.fn(),
+        deleteUser: jest.fn()
+      }
+    };
+
+    // Mock successful responses
+    fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      headers: new Map([['content-type', 'application/json']]),
+      json: () => Promise.resolve({ success: true, data: 'test' }),
+      text: () => Promise.resolve('{"success": true, "data": "test"}')
     });
-    
-    describe('Request Configuration UI', () => {
-        test('should populate request form fields', () => {
-            const methodSelect = document.getElementById('request-method');
-            const urlInput = document.getElementById('request-url');
-            const headersTextarea = document.getElementById('request-headers');
-            const bodyTextarea = document.getElementById('request-body');
-            
-            expect(methodSelect).toBeTruthy();
-            expect(urlInput).toBeTruthy();
-            expect(headersTextarea).toBeTruthy();
-            expect(bodyTextarea).toBeTruthy();
-            
-            // Test form population
-            methodSelect.value = 'POST';
-            urlInput.value = '/api/test';
-            headersTextarea.value = '{"Authorization": "Bearer token"}';
-            bodyTextarea.value = '{"test": "data"}';
-            
-            expect(methodSelect.value).toBe('POST');
-            expect(urlInput.value).toBe('/api/test');
-            expect(headersTextarea.value).toContain('Authorization');
-            expect(bodyTextarea.value).toContain('test');
-        });
+
+    // Make mockApiClient available globally for the tests
+    global.apiClient = mockApiClient;
+  });
+
+  describe('Request Configuration UI', () => {
+    test('should populate request form fields', () => {
+      const methodSelect = document.getElementById('request-method');
+      const urlInput = document.getElementById('request-url');
+      const headersTextarea = document.getElementById('request-headers');
+      const bodyTextarea = document.getElementById('request-body');
+
+      expect(methodSelect).toBeTruthy();
+      expect(urlInput).toBeTruthy();
+      expect(headersTextarea).toBeTruthy();
+      expect(bodyTextarea).toBeTruthy();
+
+      // Test form population
+      methodSelect.value = 'POST';
+      urlInput.value = '/api/test';
+      headersTextarea.value = '{"Authorization": "Bearer token"}';
+      bodyTextarea.value = '{"test": "data"}';
+
+      expect(methodSelect.value).toBe('POST');
+      expect(urlInput.value).toBe('/api/test');
+      expect(headersTextarea.value).toContain('Authorization');
+      expect(bodyTextarea.value).toContain('test');
     });
-    
-    describe('Request Execution', () => {
-        test('should send HTTP request and display response', async () => {
-            console.log('🧪 [TEST LOG] Starting HTTP request test');
-            
-            const sendButton = document.getElementById('send-request');
-            const responseBody = document.getElementById('response-body');
-            const responseStatus = document.getElementById('response-status');
-            const urlInput = document.getElementById('request-url');
-            
-            console.log('🧪 [TEST LOG] Elements found:', {
-                sendButton: !!sendButton,
-                responseBody: !!responseBody,
-                responseStatus: !!responseStatus,
-                urlInput: !!urlInput
-            });
-            
-            // Setup request
-            urlInput.value = '/api/test';
-            
-            // Mock the HTTP request response
-            mockApiClient.request.mockResolvedValue({ 
-                success: true, 
-                data: 'test-response',
-                value: 'expected value'
-            });
-            
-            // Simulate button click
-            const clickEvent = new Event('click');
-            sendButton.dispatchEvent(clickEvent);
-            console.log('🧪 [TEST LOG] Send request button clicked');
-            
-            // Wait for async operations to complete
-            await new Promise(resolve => setTimeout(resolve, 50));
-            
-            // Simulate response display
-            responseStatus.textContent = 'Success: 200 OK';
-            responseBody.innerHTML = `
+  });
+
+  describe('Request Execution', () => {
+    test('should send HTTP request and display response', async () => {
+      console.log('🧪 [TEST LOG] Starting HTTP request test');
+
+      const sendButton = document.getElementById('send-request');
+      const responseBody = document.getElementById('response-body');
+      const responseStatus = document.getElementById('response-status');
+      const urlInput = document.getElementById('request-url');
+
+      console.log('🧪 [TEST LOG] Elements found:', {
+        sendButton: !!sendButton,
+        responseBody: !!responseBody,
+        responseStatus: !!responseStatus,
+        urlInput: !!urlInput
+      });
+
+      // Setup request
+      urlInput.value = '/api/test';
+
+      // Mock the HTTP request response
+      mockApiClient.request.mockResolvedValue({
+        success: true,
+        data: 'test-response',
+        value: 'expected value'
+      });
+
+      // Simulate button click
+      const clickEvent = new Event('click');
+      sendButton.dispatchEvent(clickEvent);
+      console.log('🧪 [TEST LOG] Send request button clicked');
+
+      // Wait for async operations to complete
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Simulate response display
+      responseStatus.textContent = 'Success: 200 OK';
+      responseBody.innerHTML = `
                 <div class="response-data">test-response</div>
                 <div class="response-value">expected value</div>
             `;
-            
-            console.log('🧪 [TEST LOG] Response simulated:', {
-                responseStatus: responseStatus.textContent,
-                responseBodyHTML: responseBody.innerHTML,
-                responseBodyText: responseBody.textContent
-            });
-            
-            try {
-                // Verify response status
-                expect(responseStatus.textContent).toContain('Success');
-                console.log('🧪 [TEST LOG] ✅ Response status assertion passed');
-                
-                // Verify response contains expected value
-                const responseValueElement = responseBody.querySelector('.response-value');
-                expect(responseValueElement.textContent).toBe('expected value');
-                console.log('🧪 [TEST LOG] ✅ Expected value assertion passed');
-                
-                console.log('🧪 [TEST LOG] 🎉 All HTTP request test assertions passed');
-            } catch (error) {
-                console.error('🧪 [TEST LOG] ❌ HTTP request test failed:', {
-                    error: error.message,
-                    stack: error.stack,
-                    actualResponseStatus: responseStatus.textContent,
-                    actualResponseBody: responseBody.textContent,
-                    responseValueElement: !!responseValueElement,
-                    responseValueText: responseValueElement ? responseValueElement.textContent : 'NOT FOUND'
-                });
-                throw error;
-            }
+
+      console.log('🧪 [TEST LOG] Response simulated:', {
+        responseStatus: responseStatus.textContent,
+        responseBodyHTML: responseBody.innerHTML,
+        responseBodyText: responseBody.textContent
+      });
+
+      try {
+        // Verify response status
+        expect(responseStatus.textContent).toContain('Success');
+        console.log('🧪 [TEST LOG] ✅ Response status assertion passed');
+
+        // Verify response contains expected value
+        const responseValueElement = responseBody.querySelector('.response-value');
+        expect(responseValueElement.textContent).toBe('expected value');
+        console.log('🧪 [TEST LOG] ✅ Expected value assertion passed');
+
+        console.log('🧪 [TEST LOG] 🎉 All HTTP request test assertions passed');
+      } catch (error) {
+        console.error('🧪 [TEST LOG] ❌ HTTP request test failed:', {
+          error: error.message,
+          stack: error.stack,
+          actualResponseStatus: responseStatus.textContent,
+          actualResponseBody: responseBody.textContent,
+          responseValueElement: !!responseValueElement,
+          responseValueText: responseValueElement ? responseValueElement.textContent : 'NOT FOUND'
         });
-        
-        test('should handle request errors', async () => {
-            console.log('🧪 [TEST LOG] Starting request error handling test');
-            
-            const sendButton = document.getElementById('send-request');
-            const responseBody = document.getElementById('response-body');
-            const responseStatus = document.getElementById('response-status');
-            const errorDisplay = document.getElementById('error-display');
-            const errorMessage = document.getElementById('error-message');
-            
-            console.log('🧪 [TEST LOG] Elements found:', {
-                sendButton: !!sendButton,
-                responseBody: !!responseBody,
-                responseStatus: !!responseStatus,
-                errorDisplay: !!errorDisplay,
-                errorMessage: !!errorMessage
-            });
-            
-            // Mock a failed request
-            mockApiClient.request.mockRejectedValue(new Error('Network error'));
-            
-            // Simulate button click
-            const clickEvent = new Event('click');
-            sendButton.dispatchEvent(clickEvent);
-            console.log('🧪 [TEST LOG] Send request button clicked (error scenario)');
-            
-            // Wait for async operations to complete
-            await new Promise(resolve => setTimeout(resolve, 50));
-            
-            // Simulate error display
-            responseStatus.textContent = 'Error: 500 Network Error';
-            errorDisplay.style.display = 'block';
-            errorMessage.innerHTML = `
+        throw error;
+      }
+    });
+
+    test('should handle request errors', async () => {
+      console.log('🧪 [TEST LOG] Starting request error handling test');
+
+      const sendButton = document.getElementById('send-request');
+      const responseBody = document.getElementById('response-body');
+      const responseStatus = document.getElementById('response-status');
+      const errorDisplay = document.getElementById('error-display');
+      const errorMessage = document.getElementById('error-message');
+
+      console.log('🧪 [TEST LOG] Elements found:', {
+        sendButton: !!sendButton,
+        responseBody: !!responseBody,
+        responseStatus: !!responseStatus,
+        errorDisplay: !!errorDisplay,
+        errorMessage: !!errorMessage
+      });
+
+      // Mock a failed request
+      mockApiClient.request.mockRejectedValue(new Error('Network error'));
+
+      // Simulate button click
+      const clickEvent = new Event('click');
+      sendButton.dispatchEvent(clickEvent);
+      console.log('🧪 [TEST LOG] Send request button clicked (error scenario)');
+
+      // Wait for async operations to complete
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Simulate error display
+      responseStatus.textContent = 'Error: 500 Network Error';
+      errorDisplay.style.display = 'block';
+      errorMessage.innerHTML = `
                 <div class="error-text">Network error occurred</div>
                 <div class="error-value">expected value</div>
             `;
-            
-            console.log('🧪 [TEST LOG] Error response simulated:', {
-                responseStatus: responseStatus.textContent,
-                errorDisplayVisible: errorDisplay.style.display === 'block',
-                errorMessageHTML: errorMessage.innerHTML,
-                errorMessageText: errorMessage.textContent
-            });
-            
-            try {
-                // Verify error status
-                expect(responseStatus.textContent).toContain('Error');
-                console.log('🧪 [TEST LOG] ✅ Error status assertion passed');
-                
-                // Verify error display is visible
-                expect(errorDisplay.style.display).toBe('block');
-                console.log('🧪 [TEST LOG] ✅ Error display visibility assertion passed');
-                
-                // Verify error contains expected value
-                const errorValueElement = errorMessage.querySelector('.error-value');
-                expect(errorValueElement.textContent).toBe('expected value');
-                console.log('🧪 [TEST LOG] ✅ Error expected value assertion passed');
-                
-                console.log('🧪 [TEST LOG] 🎉 All request error handling test assertions passed');
-            } catch (error) {
-                console.error('🧪 [TEST LOG] ❌ Request error handling test failed:', {
-                    error: error.message,
-                    stack: error.stack,
-                    actualResponseStatus: responseStatus.textContent,
-                    actualErrorDisplay: errorDisplay.style.display,
-                    actualErrorMessage: errorMessage.textContent,
-                    errorValueElement: !!errorValueElement,
-                    errorValueText: errorValueElement ? errorValueElement.textContent : 'NOT FOUND'
-                });
-                throw error;
-            }
+
+      console.log('🧪 [TEST LOG] Error response simulated:', {
+        responseStatus: responseStatus.textContent,
+        errorDisplayVisible: errorDisplay.style.display === 'block',
+        errorMessageHTML: errorMessage.innerHTML,
+        errorMessageText: errorMessage.textContent
+      });
+
+      try {
+        // Verify error status
+        expect(responseStatus.textContent).toContain('Error');
+        console.log('🧪 [TEST LOG] ✅ Error status assertion passed');
+
+        // Verify error display is visible
+        expect(errorDisplay.style.display).toBe('block');
+        console.log('🧪 [TEST LOG] ✅ Error display visibility assertion passed');
+
+        // Verify error contains expected value
+        const errorValueElement = errorMessage.querySelector('.error-value');
+        expect(errorValueElement.textContent).toBe('expected value');
+        console.log('🧪 [TEST LOG] ✅ Error expected value assertion passed');
+
+        console.log('🧪 [TEST LOG] 🎉 All request error handling test assertions passed');
+      } catch (error) {
+        console.error('🧪 [TEST LOG] ❌ Request error handling test failed:', {
+          error: error.message,
+          stack: error.stack,
+          actualResponseStatus: responseStatus.textContent,
+          actualErrorDisplay: errorDisplay.style.display,
+          actualErrorMessage: errorMessage.textContent,
+          errorValueElement: !!errorValueElement,
+          errorValueText: errorValueElement ? errorValueElement.textContent : 'NOT FOUND'
         });
+        throw error;
+      }
     });
-    
-    describe('Token Management', () => {
-        test('should test token refresh', async () => {
-            console.log('🧪 [TEST LOG] Starting token refresh test');
-            
-            // Setup
-            const refreshButton = document.getElementById('test-token-refresh');
-            const responseBody = document.getElementById('response-body');
-            const responseStatus = document.getElementById('response-status');
-            
-            console.log('🧪 [TEST LOG] Elements found:', {
-                refreshButton: !!refreshButton,
-                responseBody: !!responseBody,
-                responseStatus: !!responseStatus
-            });
-            
-            // Mock the token refresh response
-            mockApiClient.refreshToken.mockResolvedValue({ 
-                success: true, 
-                token: 'new-token',
-                value: 'expected value'  // This matches the expected value in the test
-            });
-            
-            // Simulate button click
-            const clickEvent = new Event('click');
-            refreshButton.dispatchEvent(clickEvent);
-            console.log('🧪 [TEST LOG] Token refresh button clicked');
-            
-            // Wait for async operations to complete
-            await new Promise(resolve => setTimeout(resolve, 50));
-            
-            // Simulate response display
-            responseStatus.textContent = 'Success: 200 OK';
-            responseBody.innerHTML = `
+  });
+
+  describe('Token Management', () => {
+    test('should test token refresh', async () => {
+      console.log('🧪 [TEST LOG] Starting token refresh test');
+
+      // Setup
+      const refreshButton = document.getElementById('test-token-refresh');
+      const responseBody = document.getElementById('response-body');
+      const responseStatus = document.getElementById('response-status');
+
+      console.log('🧪 [TEST LOG] Elements found:', {
+        refreshButton: !!refreshButton,
+        responseBody: !!responseBody,
+        responseStatus: !!responseStatus
+      });
+
+      // Mock the token refresh response
+      mockApiClient.refreshToken.mockResolvedValue({
+        success: true,
+        token: 'new-token',
+        value: 'expected value'  // This matches the expected value in the test
+      });
+
+      // Simulate button click
+      const clickEvent = new Event('click');
+      refreshButton.dispatchEvent(clickEvent);
+      console.log('🧪 [TEST LOG] Token refresh button clicked');
+
+      // Wait for async operations to complete
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Simulate response display
+      responseStatus.textContent = 'Success: 200 OK';
+      responseBody.innerHTML = `
                 <div class="token-data">{"success": true, "token": "new-token"}</div>
                 <div class="token-value">expected value</div>
             `;
-            
-            console.log('🧪 [TEST LOG] Token response simulated:', {
-                responseStatus: responseStatus.textContent,
-                responseBodyHTML: responseBody.innerHTML,
-                responseBodyText: responseBody.textContent
-            });
-            
-            try {
-                // Verify response status
-                expect(responseStatus.textContent).toContain('Success');
-                console.log('🧪 [TEST LOG] ✅ Token response status assertion passed');
-                
-                // Verify the response contains the expected value
-                const tokenValueElement = responseBody.querySelector('.token-value');
-                expect(tokenValueElement.textContent).toBe('expected value');
-                console.log('🧪 [TEST LOG] ✅ Token expected value assertion passed');
-                
-                console.log('🧪 [TEST LOG] 🎉 All token refresh test assertions passed');
-            } catch (error) {
-                console.error('🧪 [TEST LOG] ❌ Token refresh test failed:', {
-                    error: error.message,
-                    stack: error.stack,
-                    actualResponseStatus: responseStatus.textContent,
-                    actualResponseBody: responseBody.textContent,
-                    tokenValueElement: !!tokenValueElement,
-                    tokenValueText: tokenValueElement ? tokenValueElement.textContent : 'NOT FOUND'
-                });
-                throw error;
-            }
+
+      console.log('🧪 [TEST LOG] Token response simulated:', {
+        responseStatus: responseStatus.textContent,
+        responseBodyHTML: responseBody.innerHTML,
+        responseBodyText: responseBody.textContent
+      });
+
+      try {
+        // Verify response status
+        expect(responseStatus.textContent).toContain('Success');
+        console.log('🧪 [TEST LOG] ✅ Token response status assertion passed');
+
+        // Verify the response contains the expected value
+        const tokenValueElement = responseBody.querySelector('.token-value');
+        expect(tokenValueElement.textContent).toBe('expected value');
+        console.log('🧪 [TEST LOG] ✅ Token expected value assertion passed');
+
+        console.log('🧪 [TEST LOG] 🎉 All token refresh test assertions passed');
+      } catch (error) {
+        console.error('🧪 [TEST LOG] ❌ Token refresh test failed:', {
+          error: error.message,
+          stack: error.stack,
+          actualResponseStatus: responseStatus.textContent,
+          actualResponseBody: responseBody.textContent,
+          tokenValueElement: !!tokenValueElement,
+          tokenValueText: tokenValueElement ? tokenValueElement.textContent : 'NOT FOUND'
         });
+        throw error;
+      }
     });
+  });
 });

@@ -14,7 +14,7 @@ export function setupBrowserEnv() {
   global.document = dom.window.document;
   global.navigator = dom.window.navigator;
   global.HTMLElement = dom.window.HTMLElement;
-  
+
   // Mock localStorage
   const localStorageMock = (() => {
     let store = {};
@@ -25,7 +25,7 @@ export function setupBrowserEnv() {
       clear: () => { store = {}; }
     };
   })();
-  
+
   global.localStorage = localStorageMock;
   global.sessionStorage = localStorageMock;
 }
@@ -35,7 +35,7 @@ export async function loadScript(scriptPath) {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const fullPath = path.resolve(__dirname, '../../', scriptPath);
-  
+
   try {
     const module = await import(fullPath);
     return module.default || module;
@@ -49,7 +49,7 @@ export async function loadScript(scriptPath) {
 export function setupFetchMock() {
   const fetchMock = (url, options = {}) => {
     console.log(`Mock fetch called: ${url}`, options);
-    
+
     // Mock responses for different endpoints
     if (url.includes('/api/settings')) {
       if (options.method === 'GET') {
@@ -63,7 +63,7 @@ export function setupFetchMock() {
           })
         });
       }
-      
+
       if (options.method === 'POST') {
         return Promise.resolve({
           ok: true,
@@ -74,14 +74,14 @@ export function setupFetchMock() {
         });
       }
     }
-    
+
     // Default mock response
     return Promise.resolve({
       ok: true,
       json: () => Promise.resolve({})
     });
   };
-  
+
   global.fetch = jest.fn(fetchMock);
   return fetchMock;
 }
@@ -93,7 +93,7 @@ export function waitFor(ms = 0) {
 
 // Helper to test if an element exists and is visible
 export function isVisible(element) {
-  if (!element) return false;
+  if (!element) {return false;}
   const style = window.getComputedStyle(element);
   return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
 }

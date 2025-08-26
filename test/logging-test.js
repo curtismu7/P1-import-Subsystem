@@ -38,15 +38,15 @@ async function withRetry(fn, options = {}) {
     shouldRetry = () => true,
     onRetry = () => {}
   } = options;
-  
+
   let lastError;
   let attempt = 0;
-  
+
   while (attempt <= maxRetries) {
     attempt++;
     const startTime = Date.now();
     let timeoutId;
-    
+
     try {
       // Create a promise that will reject if the operation times out
       const timeoutPromise = new Promise((_, reject) => {
@@ -54,46 +54,46 @@ async function withRetry(fn, options = {}) {
           reject(new Error(`Operation timed out after ${timeout}ms`));
         }, timeout);
       });
-      
+
       // Race the operation against the timeout
       const result = await Promise.race([
         Promise.resolve(fn(attempt)),
         timeoutPromise
       ]);
-      
+
       // Clear the timeout since we got a result
       clearTimeout(timeoutId);
       return result;
-      
+
     } catch (error) {
       // Clear the timeout in case it's still pending
-      if (timeoutId) clearTimeout(timeoutId);
-      
+      if (timeoutId) {clearTimeout(timeoutId);}
+
       lastError = error;
-      
+
       // Check if we should retry
       const shouldRetryError = shouldRetry(error, attempt);
       const isLastAttempt = attempt > maxRetries;
-      
+
       if (!shouldRetryError || isLastAttempt) {
         break;
       }
-      
+
       // Calculate delay with exponential backoff and jitter
       const baseDelay = Math.min(initialDelay * Math.pow(2, attempt - 1), maxDelay);
       const jitter = Math.random() * baseDelay * 0.2; // ±20% jitter
       const delay = Math.floor(baseDelay - (baseDelay * 0.1) + jitter);
-      
+
       // Call the onRetry callback
       onRetry(error, attempt, delay);
-      
+
       console.warn(`  ↳ Attempt ${attempt}/${maxRetries} failed, retrying in ${delay}ms... (${error.message})`);
-      
+
       // Wait for the calculated delay
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  
+
   // If we get here, all retries failed
   const error = new Error(`All ${maxRetries} retry attempts failed: ${lastError.message}`);
   error.originalError = lastError;
@@ -113,7 +113,7 @@ class LoggingTester {
       maxRedirects: 0, // Don't follow redirects
       validateStatus: (status) => status < 500, // Reject only on server errors
     });
-    
+
     // Add request interceptor for logging
     this.client.interceptors.request.use(
       (config) => {
@@ -121,7 +121,7 @@ class LoggingTester {
         const method = config.method?.toUpperCase().padEnd(7);
         const url = config.url || '';
         console.log(`[${timestamp}] ${method} ${url}`);
-        
+
         // Add cache-busting parameter to GET requests
         if (config.method?.toLowerCase() === 'get') {
           config.params = {
@@ -129,7 +129,7 @@ class LoggingTester {
             _: Date.now(),
           };
         }
-        
+
         return config;
       },
       (error) => {
@@ -137,7 +137,7 @@ class LoggingTester {
         return Promise.reject(error);
       }
     );
-    
+
     // Add response interceptor for logging
     this.client.interceptors.response.use(
       (response) => {
@@ -174,7 +174,7 @@ class LoggingTester {
         return Promise.reject(error);
       }
     );
-    
+
     this.testResults = {
       startTime: Date.now(),
       tests: [],
@@ -182,7 +182,7 @@ class LoggingTester {
       failed: 0,
       total: 0,
     };
-    
+
     // Test configuration
     this.testConfig = {
       maxRetries: 3,
@@ -193,32 +193,32 @@ class LoggingTester {
 
   async runTests() {
     console.log('🚀 Starting logging system tests...\n');
-    
+
     try {
       // Test 1: Basic logging
       await this.testBasicLogging();
-      
+
       // Test 2: Batch logging
       await this.testBatchLogging();
-      
+
       // Test 3: Invalid logs
       await this.testInvalidLogs();
-      
+
       // Test 4: Performance test
       await this.testPerformance();
-      
+
       // Test 5: Retrieve logs
       await this.testRetrieveLogs();
-      
+
       // Print summary
       this.printSummary();
-      
+
     } catch (error) {
       console.error('❌ Test suite failed:', error.message);
       process.exit(1);
     }
   }
-  
+
   async testBasicLogging() {
     console.log('\n🔍 Testing basic logging functionality...');
     const testName = 'Basic Logging';
@@ -226,13 +226,13 @@ class LoggingTester {
     let passedCount = 0;
     let failedCount = 0;
     const errors = [];
-    
+
     // Test each log level
     for (const log of TEST_LOGS) {
       const logTestName = `Log ${log.level.toUpperCase()}`;
       const logStart = Date.now();
       let logError = null;
-      
+
       try {
         // Use the enhanced withRetry function
         const response = await withRetry(
@@ -263,7 +263,7 @@ class LoggingTester {
             }
           }
         );
-        
+
         const passed = response.status === 200;
         if (passed) {
           passedCount++;
@@ -273,10 +273,10 @@ class LoggingTester {
           logError = `Unexpected status: ${response.status} ${response.statusText}`;
           console.error(`  ✗ ${logTestName}: ${logError}`);
         }
-        
+
       } catch (error) {
         failedCount++;
-        logError = error.response 
+        logError = error.response
           ? `${error.response.status} ${error.response.statusText}: ${error.message}`
           : error.message;
         console.error(`  ✗ ${logTestName}: ${logError}`);
@@ -292,11 +292,11 @@ class LoggingTester {
         });
       }
     }
-    
+
     // Record overall test result
     const overallPassed = failedCount === 0;
     const testDuration = Date.now() - testStart;
-    
+
     this.recordResult({
       test: testName,
       passed: overallPassed,
@@ -308,7 +308,7 @@ class LoggingTester {
         errors: errors.length > 0 ? errors : undefined
       }
     });
-    
+
     if (overallPassed) {
       console.log(`✅ ${testName}: All ${passedCount} logs processed successfully in ${testDuration}ms`);
     } else {
@@ -317,37 +317,37 @@ class LoggingTester {
         console.error('  Errors:', errors.join('\n    '));
       }
     }
-    
+
   }
-  
+
   async testBatchLogging() {
     console.log('\n🔍 Testing batch logging...');
     const testName = 'Batch Logging';
     const testStart = Date.now();
     let logError = null;
-    
+
     try {
       // Create a batch of test logs with unique identifiers
       const batchLogs = Array(5).fill().map((_, i) => ({
         level: ['info', 'warn', 'error', 'debug'][i % 4],
         message: `Batch log message ${i + 1}`,
         timestamp: new Date().toISOString(),
-        data: { 
-          batchId: uuidv4(), 
+        data: {
+          batchId: uuidv4(),
           index: i + 1,
           testRun: `test-${Date.now()}`
         }
       }));
-      
+
       console.log(`  Sending batch of ${batchLogs.length} logs...`);
-      
+
       // Send the batch with retry logic
       const response = await withRetry(
         async (attempt) => {
           const startTime = Date.now();
           try {
             const result = await this.client.post(
-              CONFIG.logsEndpoint, 
+              CONFIG.logsEndpoint,
               batchLogs,
               { timeout: this.testConfig.timeout * 2 } // Give more time for batch operations
             );
@@ -374,10 +374,10 @@ class LoggingTester {
           }
         }
       );
-      
+
       const passed = response.status === 200;
       const testDuration = Date.now() - testStart;
-      
+
       this.recordResult({
         test: testName,
         passed,
@@ -390,7 +390,7 @@ class LoggingTester {
           lastLog: batchLogs[batchLogs.length - 1]
         }
       });
-      
+
       if (passed) {
         console.log(`✅ ${testName}: Successfully sent batch of ${batchLogs.length} logs in ${testDuration}ms`);
         return true;
@@ -399,14 +399,14 @@ class LoggingTester {
         console.error(`❌ ${testName}: ${logError}`);
         return false;
       }
-      
+
     } catch (error) {
-      logError = error.response 
+      logError = error.response
         ? `${error.response.status} ${error.response.statusText}: ${error.message}`
         : error.message;
-      
+
       console.error(`❌ ${testName}: ${logError}`);
-      
+
       this.recordResult({
         test: testName,
         passed: false,
@@ -417,11 +417,11 @@ class LoggingTester {
           stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
         }
       });
-      
+
       return false;
     }
   }
-  
+
   async testInvalidLogs() {
     console.log('\n🔍 Testing invalid log submissions...');
     const testName = 'Invalid Logs';
@@ -429,7 +429,7 @@ class LoggingTester {
     let passedCount = 0;
     let failedCount = 0;
     const errors = [];
-    
+
     const invalidLogs = [
       { level: 'info' }, // Missing message
       { message: 'No level' }, // Missing level
@@ -437,12 +437,12 @@ class LoggingTester {
       null, // Null log
       { level: 'info', message: 12345 }, // Invalid message type
     ];
-    
+
     for (const [index, log] of invalidLogs.entries()) {
       const logTestName = `Invalid Log ${index + 1}`;
       const logStart = Date.now();
       let logError = null;
-      
+
       try {
         const response = await withRetry(
           async (attempt) => {
@@ -472,7 +472,7 @@ class LoggingTester {
             }
           }
         );
-        
+
         if (response.status === 400) {
           passedCount++;
           console.log(`  ✓ ${logTestName}: Rejected invalid log (${JSON.stringify(log).substring(0, 50)}...)`);
@@ -482,10 +482,10 @@ class LoggingTester {
           console.error(`  ✗ ${logTestName}: ${logError}`);
           errors.push(`${logTestName}: ${logError}`);
         }
-        
+
       } catch (error) {
         failedCount++;
-        logError = error.response 
+        logError = error.response
           ? `${error.response.status} ${error.response.statusText}: ${error.message}`
           : error.message;
         console.error(`  ✗ ${logTestName}: ${logError}`);
@@ -500,11 +500,11 @@ class LoggingTester {
         });
       }
     }
-    
+
     // Record overall test result
     const overallPassed = failedCount === 0;
     const testDuration = Date.now() - testStart;
-    
+
     this.recordResult({
       test: testName,
       passed: overallPassed,
@@ -516,7 +516,7 @@ class LoggingTester {
         errors: errors.length > 0 ? errors : undefined
       }
     });
-    
+
     if (overallPassed) {
       console.log(`✅ ${testName}: All ${passedCount} invalid logs were properly rejected in ${testDuration}ms`);
     } else {
@@ -525,81 +525,81 @@ class LoggingTester {
         console.error('  Errors:', errors.join('\n    '));
       }
     }
-    
+
     return overallPassed;
   }
-  
+
   async testPerformance() {
     console.log('\n⏱️  Testing performance...');
-    
+
     const testStart = Date.now();
     const testName = 'Performance test';
     const requests = [];
     const results = [];
-    
+
     // Helper function to send a single log with retry
     const sendLog = async (log, attempt = 0) => {
       const startTime = Date.now();
-      
+
       try {
         const response = await this.client.post(CONFIG.logEndpoint, log);
         const duration = Date.now() - startTime;
-        
+
         if (response.status !== 200) {
           throw new Error(`Unexpected status: ${response.status}`);
         }
-        
+
         return { success: true, duration, status: response.status };
       } catch (error) {
         if (attempt < CONFIG.retryCount) {
           await new Promise(resolve => setTimeout(resolve, CONFIG.retryDelay * (attempt + 1)));
           return sendLog(log, attempt + 1);
         }
-        
-        return { 
-          success: false, 
+
+        return {
+          success: false,
           duration: Date.now() - startTime,
           error: error.message,
-          status: error.response?.status 
+          status: error.response?.status
         };
       }
     };
-    
+
     // Create test logs
     const testLogs = Array(CONFIG.testIterations).fill().map((_, i) => ({
       level: ['info', 'warn', 'error', 'debug'][i % 4],
       message: `Performance test message ${i + 1}`,
-      data: { 
-        testId: uuidv4(), 
+      data: {
+        testId: uuidv4(),
         iteration: i,
         timestamp: new Date().toISOString()
       },
     }));
-    
+
     // Process logs in batches to limit concurrency
     for (let i = 0; i < testLogs.length; i += CONFIG.maxConcurrentRequests) {
       const batch = testLogs.slice(i, i + CONFIG.maxConcurrentRequests);
       const batchResults = await Promise.all(batch.map(log => sendLog(log)));
       results.push(...batchResults);
-      
+
       // Show progress
       const completed = Math.min(i + batch.length, testLogs.length);
       const progress = ((completed / testLogs.length) * 100).toFixed(1);
       process.stdout.write(`\r  ↳ Progress: ${completed}/${testLogs.length} (${progress}%)`);
     }
-    
+
     console.log(); // New line after progress
-    
+
     const successful = results.filter(r => r.success);
     const failed = results.filter(r => !r.success);
     const totalDuration = Date.now() - testStart;
-    const avgDuration = successful.length > 0 
+    const avgDuration = successful.length > 0
       ? successful.reduce((sum, r) => sum + r.duration, 0) / successful.length
       : 0;
-    
+
     const successRate = (successful.length / results.length * 100).toFixed(1);
     const requestsPerSecond = (results.length / (totalDuration / 1000)).toFixed(2);
-    
+
     this.recordResult({
       test: testName,
       passed: failed.length === 0,
@@ -614,11 +614,11 @@ class LoggingTester {
         totalDuration: `${(totalDuration / 1000).toFixed(2)}s`,
       },
     });
-    
+
     console.log(`  ✓ Completed ${results.length} requests (${failed.length} failed, ${successRate}% success)`);
     console.log(`  ↳ Avg. response time: ${avgDuration.toFixed(2)}ms`);
     console.log(`  ↳ Throughput: ${requestsPerSecond} requests/second`);
-    
+
     if (failed.length > 0) {
       console.error('  ↳ Failed requests:', failed.map(f => ({
         status: f.status,
@@ -626,12 +626,12 @@ class LoggingTester {
       })));
     }
   }
-  
+
   async testRetrieveLogs() {
     console.log('\n🔍 Testing log retrieval...');
     const testName = 'Retrieve logs';
     let lastError = null;
-    
+
     try {
       // First, ensure we have some logs to retrieve
       const testLog = {
@@ -639,7 +639,7 @@ class LoggingTester {
         message: 'Test log for retrieval',
         data: { testId: uuidv4(), purpose: 'log retrieval test' },
       };
-      
+
       // Send a test log to ensure we have data
       await withRetry(async () => {
         const response = await this.client.post(CONFIG.logEndpoint, testLog);
@@ -647,32 +647,32 @@ class LoggingTester {
           throw new Error(`Failed to create test log: ${response.status}`);
         }
       });
-      
+
       // Now try to retrieve logs with retry
       const result = await withRetry(async () => {
         try {
           const response = await this.client.get(CONFIG.logsEndpoint, {
             params: { _t: Date.now() } // Prevent caching
           });
-          
+
           if (response.status !== 200) {
             throw new Error(`Unexpected status: ${response.status}`);
           }
-          
+
           if (!Array.isArray(response.data)) {
             throw new Error('Expected an array of logs');
           }
-          
+
           return response.data;
         } catch (error) {
           lastError = error;
           throw error;
         }
       });
-      
+
       const logs = result || [];
       const passed = logs.length > 0;
-      
+
       this.recordResult({
         test: testName,
         passed,
@@ -683,7 +683,7 @@ class LoggingTester {
           firstLog: logs[0] || null,
         },
       });
-      
+
       if (passed) {
         console.log(`  ✓ Retrieved ${logs.length} log entries`);
         if (logs.length > 0) {
@@ -697,7 +697,7 @@ class LoggingTester {
       } else {
         console.error('  ✗ No logs retrieved or invalid format');
       }
-      
+
     } catch (error) {
       const errorMessage = lastError?.message || error.message;
       this.recordResult({
@@ -710,14 +710,14 @@ class LoggingTester {
           stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
         }
       });
-      
+
       console.error('  ✗ Failed to retrieve logs:', errorMessage);
       if (lastError?.response?.data) {
         console.error('   Response:', JSON.stringify(lastError.response.data, null, 2));
       }
     }
   }
-  
+
   recordResult({ test, passed, duration, error, details }) {
     this.testResults.total++;
     if (passed) {
@@ -734,21 +734,21 @@ class LoggingTester {
       });
     }
   }
-  
+
   printSummary() {
     console.log('\n📊 Test Summary');
     console.log('='.repeat(50));
-    
+
     const { total, passed, failed, errors, responseTimes } = this.testResults;
     const passRate = (passed / total * 100).toFixed(2);
-    const avgResponseTime = responseTimes.length > 0 
+    const avgResponseTime = responseTimes.length > 0
       ? (responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length).toFixed(2) + 'ms'
       : 'N/A';
-    
+
     console.log(`✅ Passed: ${passed}/${total} (${passRate}%)`);
     console.log(`❌ Failed: ${failed}/${total}`);
     console.log(`⏱️  Avg. Response Time: ${avgResponseTime}`);
-    
+
     if (errors.length > 0) {
       console.log('\n🔴 Errors:');
       errors.forEach((err, i) => {
@@ -759,7 +759,7 @@ class LoggingTester {
         }
       });
     }
-    
+
     console.log('\n🎉 Test completed!');
     process.exit(failed > 0 ? 1 : 0);
   }

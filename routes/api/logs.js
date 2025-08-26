@@ -20,74 +20,74 @@ const logger = {
  * Get application logs
  */
 router.get('/', async (req, res) => {
-    try {
-        const { level, limit = 50, offset = 0 } = req.query;
-        
-        // Read log files from logs directory
-        const logsDir = path.join(__dirname, '../../logs');
-        const logFiles = ['application.log', 'combined.log', 'error.log'];
-        
-        let allLogs = [];
-        
-        for (const logFile of logFiles) {
-            try {
-                const logPath = path.join(logsDir, logFile);
-                const logContent = await fs.readFile(logPath, 'utf8');
-                const lines = logContent.split('\n').filter(line => line.trim());
-                
-                // Parse log lines (assuming JSON format)
-                const parsedLogs = lines.map(line => {
-                    try {
-                        const logEntry = JSON.parse(line);
-                        return {
-                            timestamp: logEntry.timestamp,
-                            level: logEntry.level,
-                            message: logEntry.message,
-                            meta: logEntry.meta || {},
-                            source: logFile
-                        };
-                    } catch (e) {
-                        // Handle non-JSON log lines
-                        return {
-                            timestamp: new Date().toISOString(),
-                            level: 'info',
-                            message: line,
-                            meta: {},
-                            source: logFile
-                        };
-                    }
-                }).filter(log => !level || log.level === level);
-                
-                allLogs = allLogs.concat(parsedLogs);
-            } catch (fileError) {
-                // Log file might not exist, continue with other files
-                continue;
-            }
-        }
-        
-        // Sort by timestamp (newest first)
-        allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
-        // Apply pagination
-        const paginatedLogs = allLogs.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
-        
-        res.success('Logs retrieved successfully', {
-            logs: paginatedLogs,
-            pagination: {
-                total: allLogs.length,
-                limit: parseInt(limit),
-                offset: parseInt(offset),
-                hasMore: parseInt(offset) + parseInt(limit) < allLogs.length
-            }
-        });
-        
-    } catch (error) {
-        logger.error('Failed to retrieve logs', { error: error.message });
-        res.error('Failed to retrieve logs', {
-            code: 'LOG_RETRIEVAL_ERROR',
-            details: error.message
-        }, 500);
+  try {
+    const { level, limit = 50, offset = 0 } = req.query;
+
+    // Read log files from logs directory
+    const logsDir = path.join(__dirname, '../../logs');
+    const logFiles = ['application.log', 'combined.log', 'error.log'];
+
+    let allLogs = [];
+
+    for (const logFile of logFiles) {
+      try {
+        const logPath = path.join(logsDir, logFile);
+        const logContent = await fs.readFile(logPath, 'utf8');
+        const lines = logContent.split('\n').filter(line => line.trim());
+
+        // Parse log lines (assuming JSON format)
+        const parsedLogs = lines.map(line => {
+          try {
+            const logEntry = JSON.parse(line);
+            return {
+              timestamp: logEntry.timestamp,
+              level: logEntry.level,
+              message: logEntry.message,
+              meta: logEntry.meta || {},
+              source: logFile
+            };
+          } catch (e) {
+            // Handle non-JSON log lines
+            return {
+              timestamp: new Date().toISOString(),
+              level: 'info',
+              message: line,
+              meta: {},
+              source: logFile
+            };
+          }
+        }).filter(log => !level || log.level === level);
+
+        allLogs = allLogs.concat(parsedLogs);
+      } catch (fileError) {
+        // Log file might not exist, continue with other files
+        continue;
+      }
     }
+
+    // Sort by timestamp (newest first)
+    allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    // Apply pagination
+    const paginatedLogs = allLogs.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
+
+    res.success('Logs retrieved successfully', {
+      logs: paginatedLogs,
+      pagination: {
+        total: allLogs.length,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: parseInt(offset) + parseInt(limit) < allLogs.length
+      }
+    });
+
+  } catch (error) {
+    logger.error('Failed to retrieve logs', { error: error.message });
+    res.error('Failed to retrieve logs', {
+      code: 'LOG_RETRIEVAL_ERROR',
+      details: error.message
+    }, 500);
+  }
 });
 
 /**
@@ -155,32 +155,32 @@ router.get('/', async (req, res) => {
  *         description: Log received successfully
  */
 router.post('/', (req, res) => {
-    try {
-        const { level = 'info', message, meta = {} } = req.body;
-        const logMessage = `[CLIENT] ${message}`;
-        
-        switch (level) {
-            case 'error':
-                logger.error(logMessage, meta);
-                break;
-            case 'warn':
-                logger.warn(logMessage, meta);
-                break;
-            case 'info':
-                logger.info(logMessage, meta);
-                break;
-            case 'debug':
-                logger.debug(logMessage, meta);
-                break;
-            default:
-                logger.info(logMessage, meta);
-        }
-        
-        res.success('Log received successfully', null);
-    } catch (error) {
-        logger.error('Error processing log from client', { error });
-        res.error('Failed to process log', { code: 'CLIENT_LOG_ERROR', details: error.message }, 500);
+  try {
+    const { level = 'info', message, meta = {} } = req.body;
+    const logMessage = `[CLIENT] ${message}`;
+
+    switch (level) {
+    case 'error':
+      logger.error(logMessage, meta);
+      break;
+    case 'warn':
+      logger.warn(logMessage, meta);
+      break;
+    case 'info':
+      logger.info(logMessage, meta);
+      break;
+    case 'debug':
+      logger.debug(logMessage, meta);
+      break;
+    default:
+      logger.info(logMessage, meta);
     }
+
+    res.success('Log received successfully', null);
+  } catch (error) {
+    logger.error('Error processing log from client', { error });
+    res.error('Failed to process log', { code: 'CLIENT_LOG_ERROR', details: error.message }, 500);
+  }
 });
 
 /**
@@ -229,88 +229,88 @@ router.post('/', (req, res) => {
  *         description: Failed to retrieve logs
  */
 router.get('/ui', async (req, res) => {
-    try {
-        const { limit = 100, level } = req.query;
-        const logLimit = Math.min(parseInt(limit) || 100, 1000); // Cap at 1000
-        
-        // Define log file paths
-        const logDir = path.join(__dirname, '../../logs');
-        const logFiles = [
-            path.join(logDir, 'combined.log'),
-            path.join(logDir, 'application.log'),
-            path.join(logDir, 'error.log')
-        ];
-        
-        let allLogs = [];
-        
-        // Read logs from each file
-        for (const logFile of logFiles) {
-            try {
-                const exists = await fs.access(logFile).then(() => true).catch(() => false);
-                if (!exists) continue;
-                
-                const content = await fs.readFile(logFile, 'utf8');
-                const lines = content.split('\n').filter(line => line.trim());
-                
-                // Parse log lines (assuming JSON format)
-                for (const line of lines) {
-                    try {
-                        const logEntry = JSON.parse(line);
-                        
-                        // Filter by level if specified
-                        if (level && logEntry.level !== level) {
-                            continue;
-                        }
-                        
-                        allLogs.push({
-                            timestamp: logEntry.timestamp || new Date().toISOString(),
-                            level: logEntry.level || 'info',
-                            message: logEntry.message || '',
-                            meta: logEntry.meta || {},
-                            source: path.basename(logFile)
-                        });
-                    } catch (parseError) {
-                        // If not JSON, treat as plain text log
-                        if (line.includes('[') && (line.includes('ERROR') || line.includes('WARN') || line.includes('INFO'))) {
-                            const timestamp = new Date().toISOString();
-                            const logLevel = line.includes('ERROR') ? 'error' : 
-                                           line.includes('WARN') ? 'warn' : 'info';
-                            
-                            if (!level || logLevel === level) {
-                                allLogs.push({
-                                    timestamp,
-                                    level: logLevel,
-                                    message: line,
-                                    meta: {},
-                                    source: path.basename(logFile)
-                                });
-                            }
-                        }
-                    }
-                }
-            } catch (fileError) {
-                logger.warn(`Could not read log file ${logFile}`, { error: fileError.message });
+  try {
+    const { limit = 100, level } = req.query;
+    const logLimit = Math.min(parseInt(limit) || 100, 1000); // Cap at 1000
+
+    // Define log file paths
+    const logDir = path.join(__dirname, '../../logs');
+    const logFiles = [
+      path.join(logDir, 'combined.log'),
+      path.join(logDir, 'application.log'),
+      path.join(logDir, 'error.log')
+    ];
+
+    const allLogs = [];
+
+    // Read logs from each file
+    for (const logFile of logFiles) {
+      try {
+        const exists = await fs.access(logFile).then(() => true).catch(() => false);
+        if (!exists) {continue;}
+
+        const content = await fs.readFile(logFile, 'utf8');
+        const lines = content.split('\n').filter(line => line.trim());
+
+        // Parse log lines (assuming JSON format)
+        for (const line of lines) {
+          try {
+            const logEntry = JSON.parse(line);
+
+            // Filter by level if specified
+            if (level && logEntry.level !== level) {
+              continue;
             }
+
+            allLogs.push({
+              timestamp: logEntry.timestamp || new Date().toISOString(),
+              level: logEntry.level || 'info',
+              message: logEntry.message || '',
+              meta: logEntry.meta || {},
+              source: path.basename(logFile)
+            });
+          } catch (parseError) {
+            // If not JSON, treat as plain text log
+            if (line.includes('[') && (line.includes('ERROR') || line.includes('WARN') || line.includes('INFO'))) {
+              const timestamp = new Date().toISOString();
+              const logLevel = line.includes('ERROR') ? 'error' :
+                line.includes('WARN') ? 'warn' : 'info';
+
+              if (!level || logLevel === level) {
+                allLogs.push({
+                  timestamp,
+                  level: logLevel,
+                  message: line,
+                  meta: {},
+                  source: path.basename(logFile)
+                });
+              }
+            }
+          }
         }
-        
-        // Sort by timestamp (newest first) and limit
-        allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        const limitedLogs = allLogs.slice(0, logLimit);
-        
-        res.success('Logs retrieved successfully', {
-            logs: limitedLogs,
-            total: allLogs.length,
-            limit: logLimit,
-            filtered: !!level
-        });
-        
-    } catch (error) {
-        logger.error('Error retrieving logs for UI', { error: error.message });
-        res.error('Failed to retrieve logs', {
-            code: 'LOG_RETRIEVAL_ERROR',
-            details: error.message
-        }, 500);
+      } catch (fileError) {
+        logger.warn(`Could not read log file ${logFile}`, { error: fileError.message });
+      }
     }
+
+    // Sort by timestamp (newest first) and limit
+    allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const limitedLogs = allLogs.slice(0, logLimit);
+
+    res.success('Logs retrieved successfully', {
+      logs: limitedLogs,
+      total: allLogs.length,
+      limit: logLimit,
+      filtered: !!level
+    });
+
+  } catch (error) {
+    logger.error('Error retrieving logs for UI', { error: error.message });
+    res.error('Failed to retrieve logs', {
+      code: 'LOG_RETRIEVAL_ERROR',
+      details: error.message
+    }, 500);
+  }
 });
 
 // Export the router for use in other modules

@@ -1,5 +1,5 @@
 /**
- * @fileoverview Version Service - Centralized version management for the application
+ * @file Version Service - Centralized version management for the application
  * Handles version fetching, caching, and formatting across the application
  * @version 7.0.0.21
  */
@@ -14,7 +14,7 @@ const DEFAULT_VERSION = APP_VERSION || '7.0.0.21';
 
 /**
  * Cache for version information to avoid repeated API calls
- * @type {Object}
+ * @type {object}
  */
 let versionCache = null;
 let versionFetchPromise = null;
@@ -34,18 +34,18 @@ export class VersionService {
     if (versionCache && !forceRefresh) {
       return versionCache.version;
     }
-    
+
     // If already fetching, return the existing promise
     if (versionFetchPromise) {
       return versionFetchPromise;
     }
-    
+
     // Create a new fetch promise
     versionFetchPromise = this._fetchVersionFromApi()
       .then(version => {
-        versionCache = { 
+        versionCache = {
           version,
-          timestamp: Date.now() 
+          timestamp: Date.now()
         };
         versionFetchPromise = null;
         return version;
@@ -55,10 +55,10 @@ export class VersionService {
         versionFetchPromise = null;
         return DEFAULT_VERSION;
       });
-    
+
     return versionFetchPromise;
   }
-  
+
   /**
    * Get formatted version string with prefix (e.g., "v7.0.0.21")
    * @async
@@ -68,11 +68,11 @@ export class VersionService {
     const version = await this.getVersion();
     return `v${version}`;
   }
-  
+
   /**
    * Get detailed version information including build date and environment
    * @async
-   * @returns {Promise<Object>} - Version information object
+   * @returns {Promise<object>} - Version information object
    */
   static async getVersionInfo() {
     const version = await this.getVersion();
@@ -83,7 +83,7 @@ export class VersionService {
       environment: process.env.NODE_ENV || 'development'
     };
   }
-  
+
   /**
    * Fetch version from API
    * @private
@@ -103,7 +103,7 @@ export class VersionService {
       return DEFAULT_VERSION;
     }
   }
-  
+
   /**
    * Clear the version cache
    */

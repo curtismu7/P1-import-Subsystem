@@ -1,10 +1,10 @@
 /**
  * UI Component Subsystem
- * 
+ *
  * Provides a unified API for UI components with consistent styling and behavior.
  * This subsystem encapsulates all UI-related functionality, providing a clean
  * interface for the rest of the application.
- * 
+ *
  * Key features:
  * - Reusable UI components
  * - Consistent styling and behavior
@@ -12,11 +12,11 @@
  * - Component lifecycle management
  * - Event handling
  * - Accessibility features
- * 
+ *
  * Usage:
  * ```javascript
  * import { Button, Modal, Notification, ThemeManager } from 'ui-subsystem';
- * 
+ *
  * // Create a button
  * const button = new Button({
  *   text: 'Click me',
@@ -25,13 +25,13 @@
  *     console.log('Button clicked!');
  *   }
  * });
- * 
+ *
  * // Mount button to DOM
  * button.mount(document.getElementById('button-container'));
- * 
+ *
  * // Show a notification
  * Notification.success('Operation completed successfully!');
- * 
+ *
  * // Create and show a modal
  * const modal = new Modal({
  *   title: 'Confirm Action',
@@ -52,15 +52,15 @@
  *     }
  *   ]
  * });
- * 
+ *
  * modal.show();
- * 
+ *
  * // Set up theme management
  * const themeManager = new ThemeManager({
  *   defaultTheme: 'light',
  *   persistent: true
  * });
- * 
+ *
  * // Switch theme
  * themeManager.setTheme('dark');
  * ```
@@ -74,66 +74,66 @@ import ThemeManager from './theme/theme-manager.js';
 
 /**
  * Create a theme manager with the provided configuration
- * @param {Object} options - Configuration options
+ * @param {object} options - Configuration options
  * @returns {ThemeManager} Configured theme manager
  */
 function createThemeManager(options = {}) {
-    return new ThemeManager(options);
+  return new ThemeManager(options);
 }
 
 /**
  * Create a button component
- * @param {Object} options - Button options
+ * @param {object} options - Button options
  * @returns {Button} Button component
  */
 function createButton(options = {}) {
-    return new Button(options);
+  return new Button(options);
 }
 
 /**
  * Create a modal component
- * @param {Object} options - Modal options
+ * @param {object} options - Modal options
  * @returns {Modal} Modal component
  */
 function createModal(options = {}) {
-    return new Modal(options);
+  return new Modal(options);
 }
 
 /**
  * Create a notification component
- * @param {Object} options - Notification options
+ * @param {object} options - Notification options
  * @returns {Notification} Notification component
  */
 function createNotification(options = {}) {
-    return new Notification(options);
+  return new Notification(options);
 }
 
 // Export factory functions
-export { 
-    createThemeManager, 
-    createButton, 
-    createModal, 
-    createNotification 
+export {
+  createThemeManager,
+  createButton,
+  createModal,
+  createNotification
 };
 
 // Export classes for direct instantiation
-export { 
-    BaseComponent, 
-    Button, 
-    Modal, 
-    Notification, 
-    ThemeManager 
+export {
+  BaseComponent,
+  Button,
+  Modal,
+  Notification,
+  ThemeManager
 };
 
 // Export default object with factory functions
 export default {
-    createThemeManager,
-    createButton,
-    createModal,
-    createNotification,
-    BaseComponent,
-    Button,
-    Modal,
-    Notification,
-    ThemeManager
+  createThemeManager,
+  createButton,
+  createModal,
+  createNotification,
+  BaseComponent,
+  Button,
+  Modal,
+  Notification,
+  ThemeManager
 };

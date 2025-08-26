@@ -24,20 +24,20 @@ class SettingsManager {
     try {
       // Try to load settings
       this.settings = await this.loadSettings();
-      
+
       // If loading failed, try to restore from backup
       if (!this.settings) {
         console.warn('⚠️  Could not load settings, attempting to restore from backup...');
         this.settings = await this.restoreFromBackup();
       }
-      
+
       // If still no settings, create default
       if (!this.settings) {
         console.warn('⚠️  No valid settings found, creating default settings...');
         this.settings = this.getDefaultSettings();
         await this.saveSettings(this.settings);
       }
-      
+
       return this.settings;
     } catch (error) {
       console.error('❌ Failed to initialize settings manager:', error);
@@ -52,12 +52,12 @@ class SettingsManager {
     try {
       const settings = JSON.parse(await readFile(this.settingsPath, 'utf8'));
       const validation = CredentialValidator.validate(settings);
-      
+
       if (!validation.isValid) {
         console.warn('⚠️  Invalid settings format:', validation.errors.join(', '));
         return null;
       }
-      
+
       return settings;
     } catch (error) {
       console.warn('⚠️  Could not load settings:', error.message);
@@ -75,30 +75,30 @@ class SettingsManager {
       if (!validation.isValid) {
         throw new Error(`Invalid settings: ${validation.errors.join(', ')}`);
       }
-      
+
       // Create backup of current settings
       if (this.settings) {
         await this.createBackup();
       }
-      
+
       // Save new settings
       const settingsWithTimestamp = {
         ...newSettings,
         lastUpdated: new Date().toISOString(),
         version: '1.0.0'
       };
-      
+
       await writeFile(
-        this.settingsPath, 
+        this.settingsPath,
         JSON.stringify(settingsWithTimestamp, null, 2),
         'utf8'
       );
-      
+
       this.settings = settingsWithTimestamp;
       return true;
     } catch (error) {
       console.error('❌ Failed to save settings:', error.message);
-      
+
       // Attempt to restore from backup if save failed
       try {
         console.warn('⚠️  Attempting to restore from backup...');
@@ -106,7 +106,7 @@ class SettingsManager {
       } catch (restoreError) {
         console.error('❌ Failed to restore from backup:', restoreError.message);
       }
-      
+
       throw error;
     }
   }
@@ -116,8 +116,8 @@ class SettingsManager {
    */
   async createBackup() {
     try {
-      if (!this.settings) return;
-      
+      if (!this.settings) {return;}
+
       await writeFile(
         this.backupPath,
         JSON.stringify({
@@ -127,7 +127,7 @@ class SettingsManager {
         }, null, 2),
         'utf8'
       );
-      
+
       console.log('✅ Settings backup created');
     } catch (error) {
       console.error('⚠️  Failed to create settings backup:', error.message);
@@ -141,14 +141,14 @@ class SettingsManager {
     try {
       const backup = JSON.parse(await readFile(this.backupPath, 'utf8'));
       const validation = CredentialValidator.validate(backup);
-      
+
       if (!validation.isValid) {
         throw new Error('Invalid backup file');
       }
-      
+
       await writeFile(this.settingsPath, JSON.stringify(backup, null, 2), 'utf8');
       this.settings = backup;
-      
+
       console.log('✅ Settings restored from backup');
       return backup;
     } catch (error) {
@@ -171,7 +171,7 @@ class SettingsManager {
       version: '1.0.0'
     };
   }
-  
+
   /**
    * Get current settings
    */

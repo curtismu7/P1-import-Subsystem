@@ -52,12 +52,12 @@ describe('Logger', () => {
   beforeEach(() => {
     // Reset all mocks before each test
     jest.clearAllMocks();
-    
+
     // Create a new log element for each test
     logElement = document.createElement('div');
     logElement.id = 'test-log';
     document.body.appendChild(logElement);
-    
+
     // Create a new logger instance
     logger = new Logger(logElement);
   });
@@ -93,7 +93,7 @@ describe('Logger', () => {
     it('should log info messages', () => {
       const message = 'Test info message';
       logger.info(message);
-      
+
       expect(mockWinstonLogger.info).toHaveBeenCalledWith(message, undefined);
       expect(mockUIManager.logToUI).toHaveBeenCalledWith(message, 'info');
     });
@@ -101,7 +101,7 @@ describe('Logger', () => {
     it('should log error messages', () => {
       const error = new Error('Test error');
       logger.error('Test error', error);
-      
+
       expect(mockWinstonLogger.error).toHaveBeenCalledWith('Test error', error);
       expect(mockUIManager.showError).toHaveBeenCalledWith('Test error', {
         error: error,
@@ -112,7 +112,7 @@ describe('Logger', () => {
     it('should log warning messages', () => {
       const message = 'Test warning';
       logger.warn(message);
-      
+
       expect(mockWinstonLogger.warn).toHaveBeenCalledWith(message, undefined);
       expect(mockUIManager.showWarning).toHaveBeenCalledWith(message);
     });
@@ -121,11 +121,11 @@ describe('Logger', () => {
       const message = 'Debug message';
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
-      
+
       logger.debug(message);
-      
+
       expect(mockWinstonLogger.debug).toHaveBeenCalledWith(message, undefined);
-      
+
       // Clean up
       process.env.NODE_ENV = originalEnv;
     });
@@ -135,7 +135,7 @@ describe('Logger', () => {
     it('should count valid logs', () => {
       logger.info('Test message 1');
       logger.info('Test message 2');
-      
+
       expect(logger.validCount).toBe(2);
       expect(logger.errorCount).toBe(0);
     });
@@ -143,7 +143,7 @@ describe('Logger', () => {
     it('should count error logs', () => {
       logger.error('Error 1');
       logger.error('Error 2');
-      
+
       expect(logger.errorCount).toBe(2);
     });
   });
@@ -152,7 +152,7 @@ describe('Logger', () => {
     it('should clear logs', () => {
       logger.info('Test message');
       logger.clearLogs();
-      
+
       expect(logger.logs).toEqual([]);
       expect(logElement.innerHTML).toBe('');
     });

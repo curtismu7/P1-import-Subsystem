@@ -1,6 +1,6 @@
 /**
  * Centralized UI Logger
- * 
+ *
  * This module provides a unified logging system for client-side operations,
  * ensuring consistent formatting, color coding, and token status tracking.
  */

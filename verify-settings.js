@@ -5,16 +5,16 @@ async function verifySettings() {
   try {
     // Read settings file
     const settings = JSON.parse(await readFile('./data/settings.json', 'utf-8'));
-    
+
     console.log('🔍 Verifying settings.json...');
     console.log('Environment ID:', settings.environmentId);
     console.log('Client ID:', settings.apiClientId);
     console.log('Region:', settings.region);
-    
+
     // Test authentication
     const authUrl = `https://auth.pingone.com/${settings.environmentId}/as/token`;
     const authHeader = 'Basic ' + Buffer.from(`${settings.apiClientId}:${settings.apiSecret}`).toString('base64');
-    
+
     console.log('\n🔑 Testing authentication...');
     const response = await fetch(authUrl, {
       method: 'POST',
@@ -24,9 +24,9 @@ async function verifySettings() {
       },
       body: 'grant_type=client_credentials'
     });
-    
+
     const result = await response.json();
-    
+
     if (response.ok) {
       console.log('✅ Authentication successful!');
       console.log('Token type:', result.token_type);
@@ -34,7 +34,7 @@ async function verifySettings() {
     } else {
       console.error('❌ Authentication failed:', result);
     }
-    
+
   } catch (error) {
     console.error('Error:', error.message);
   }

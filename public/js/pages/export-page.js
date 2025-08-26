@@ -4,163 +4,163 @@
  */
 
 export class ExportPage {
-    constructor(app) {
-        this.app = app;
-        this.selectedPopulation = null;
-        this.lastTokenValidity = null; // Track token validity changes
-        this.exportInterval = null; // Track export progress interval
-        this.lastExport = null; // Cache last export artifact and metadata
-        this.exportOptions = {
-            format: 'csv',
-            profile: 'pingone',
-            includeHeaders: true,
-            includeDisabledUsers: false,
-            attributes: []
-        };
+  constructor(app) {
+    this.app = app;
+    this.selectedPopulation = null;
+    this.lastTokenValidity = null; // Track token validity changes
+    this.exportInterval = null; // Track export progress interval
+    this.lastExport = null; // Cache last export artifact and metadata
+    this.exportOptions = {
+      format: 'csv',
+      profile: 'pingone',
+      includeHeaders: true,
+      includeDisabledUsers: false,
+      attributes: []
+    };
+  }
+
+  /**
+   * Transform a single user's attributes based on the selected export profile.
+   * Returns an object whose property insertion order matches the headers.
+   * @param {string[]} selectedAttributes
+   * @param {number} index
+   * @param {string} userStatus
+   */
+  applyProfileTransform(selectedAttributes, index, userStatus) {
+    const profile = this.exportOptions.profile || 'pingone';
+    const headers = this.getProfileHeaders(selectedAttributes);
+    const out = {};
+    const v = (key) => this.getAttributeValue(key, index);
+
+    if (profile === 'pingone') {
+      headers.forEach(h => {
+        // Direct mapping for PingOne style fields
+        if (h === 'enabled') {out[h] = v('enabled');}
+        else if (h === 'groups') {out[h] = v('groups');}
+        else {out[h] = v(h);}
+      });
+      return out;
     }
 
-    /**
-     * Transform a single user's attributes based on the selected export profile.
-     * Returns an object whose property insertion order matches the headers.
-     * @param {string[]} selectedAttributes
-     * @param {number} index
-     * @param {string} userStatus
-     */
-    applyProfileTransform(selectedAttributes, index, userStatus) {
-        const profile = this.exportOptions.profile || 'pingone';
-        const headers = this.getProfileHeaders(selectedAttributes);
-        const out = {};
-        const v = (key) => this.getAttributeValue(key, index);
-
-        if (profile === 'pingone') {
-            headers.forEach(h => {
-                // Direct mapping for PingOne style fields
-                if (h === 'enabled') out[h] = v('enabled');
-                else if (h === 'groups') out[h] = v('groups');
-                else out[h] = v(h);
-            });
-            return out;
+    if (profile === 'ad') {
+      // Ensure order matches headers
+      headers.forEach(h => {
+        switch (h) {
+        case 'sAMAccountName':
+          out[h] = v('sAMAccountName') || v('username');
+          break;
+        case 'mail':
+          out[h] = v('mail') || v('email');
+          break;
+        case 'givenName':
+          out[h] = v('givenName') || v('firstName');
+          break;
+        case 'sn':
+          out[h] = v('sn') || v('familyName') || v('lastName');
+          break;
+        case 'distinguishedName': {
+          const sam = (v('sAMAccountName') || v('username') || 'user').toString();
+          out[h] = v('distinguishedName') || `CN=${sam},OU=Users,DC=example,DC=com`;
+          break;
         }
-
-        if (profile === 'ad') {
-            // Ensure order matches headers
-            headers.forEach(h => {
-                switch (h) {
-                    case 'sAMAccountName':
-                        out[h] = v('sAMAccountName') || v('username');
-                        break;
-                    case 'mail':
-                        out[h] = v('mail') || v('email');
-                        break;
-                    case 'givenName':
-                        out[h] = v('givenName') || v('firstName');
-                        break;
-                    case 'sn':
-                        out[h] = v('sn') || v('familyName') || v('lastName');
-                        break;
-                    case 'distinguishedName': {
-                        const sam = (v('sAMAccountName') || v('username') || 'user').toString();
-                        out[h] = v('distinguishedName') || `CN=${sam},OU=Users,DC=example,DC=com`;
-                        break;
-                    }
-                    default:
-                        out[h] = v(h);
-                }
-            });
-            return out;
+        default:
+          out[h] = v(h);
         }
-
-        if (profile === 'okta') {
-            headers.forEach(h => {
-                switch (h) {
-                    case 'login':
-                        out[h] = v('login') || v('username') || v('email');
-                        break;
-                    case 'email':
-                        out[h] = v('email');
-                        break;
-                    case 'firstName':
-                        out[h] = v('firstName') || v('givenName');
-                        break;
-                    case 'lastName':
-                        out[h] = v('lastName') || v('familyName');
-                        break;
-                    case 'status':
-                        out[h] = userStatus || v('status');
-                        break;
-                    case 'groups':
-                        out[h] = v('groups');
-                        break;
-                    default:
-                        out[h] = v(h);
-                }
-            });
-            return out;
-        }
-
-        if (profile === 'siem') {
-            headers.forEach(h => {
-                switch (h) {
-                    case 'id':
-                        out[h] = v('id');
-                        break;
-                    case 'username':
-                        out[h] = v('username');
-                        break;
-                    case 'email':
-                        out[h] = v('email');
-                        break;
-                    case 'enabled':
-                        out[h] = v('enabled');
-                        break;
-                    case 'createdDate':
-                        out[h] = v('createdDate');
-                        break;
-                    case 'lastLogin':
-                        out[h] = v('lastLogin');
-                        break;
-                    default:
-                        out[h] = v(h);
-                }
-            });
-            return out;
-        }
-
-        // Fallback: map selected/deduced headers directly
-        headers.forEach(h => { out[h] = v(h); });
-        return out;
+      });
+      return out;
     }
 
-    // Format bytes to human readable string
-    formatBytes(bytes) {
-        try {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            const value = (bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 2);
-            return `${value} ${sizes[i]}`;
-        } catch {
-            return `${bytes} B`;
+    if (profile === 'okta') {
+      headers.forEach(h => {
+        switch (h) {
+        case 'login':
+          out[h] = v('login') || v('username') || v('email');
+          break;
+        case 'email':
+          out[h] = v('email');
+          break;
+        case 'firstName':
+          out[h] = v('firstName') || v('givenName');
+          break;
+        case 'lastName':
+          out[h] = v('lastName') || v('familyName');
+          break;
+        case 'status':
+          out[h] = userStatus || v('status');
+          break;
+        case 'groups':
+          out[h] = v('groups');
+          break;
+        default:
+          out[h] = v(h);
         }
+      });
+      return out;
     }
 
-    // Format date/time consistently
-    formatDateTime(date) {
-        try {
-            return new Intl.DateTimeFormat(undefined, {
-                year: 'numeric', month: 'short', day: '2-digit',
-                hour: '2-digit', minute: '2-digit', second: '2-digit'
-            }).format(date);
-        } catch {
-            return new Date(date).toLocaleString();
+    if (profile === 'siem') {
+      headers.forEach(h => {
+        switch (h) {
+        case 'id':
+          out[h] = v('id');
+          break;
+        case 'username':
+          out[h] = v('username');
+          break;
+        case 'email':
+          out[h] = v('email');
+          break;
+        case 'enabled':
+          out[h] = v('enabled');
+          break;
+        case 'createdDate':
+          out[h] = v('createdDate');
+          break;
+        case 'lastLogin':
+          out[h] = v('lastLogin');
+          break;
+        default:
+          out[h] = v(h);
         }
+      });
+      return out;
     }
 
-    async load() {
-        console.log('📄 Loading Export page...');
-        
-        const content = `
+    // Fallback: map selected/deduced headers directly
+    headers.forEach(h => { out[h] = v(h); });
+    return out;
+  }
+
+  // Format bytes to human readable string
+  formatBytes(bytes) {
+    try {
+      if (bytes === 0) {return '0 B';}
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      const value = (bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 2);
+      return `${value} ${sizes[i]}`;
+    } catch {
+      return `${bytes} B`;
+    }
+  }
+
+  // Format date/time consistently
+  formatDateTime(date) {
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        year: 'numeric', month: 'short', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      }).format(date);
+    } catch {
+      return new Date(date).toLocaleString();
+    }
+  }
+
+  async load() {
+    console.log('📄 Loading Export page...');
+
+    const content = `
             <div class="page-header">
                 <h1>Export Users</h1>
                 <p>Download user data from PingOne populations</p>
@@ -270,31 +270,7 @@ export class ExportPage {
                             </div>
                         </div>
 
-                        <div class="attributes-group">
-                            <h4>User Attributes to Export</h4>
-                            <div class="mb-2" style="display:flex; gap:12px; align-items:center;">
-                                <div class="form-check">
-                                    <input type="checkbox" id="attrs-select-all" class="form-check-input">
-                                    <label for="attrs-select-all" class="form-check-label">Select All</label>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" id="attrs-unselect-all" class="form-check-input">
-                                    <label for="attrs-unselect-all" class="form-check-label">Unselect All</label>
-                                </div>
-                                <div class="form-check">
-                                    <button type="button" id="attrs-refresh" class="btn btn-outline-secondary btn-sm">
-                                        <i class="mdi mdi-refresh"></i> Refresh Attributes
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="attributes-selection" class="attributes-grid">
-                                <!-- Dynamically populated -->
-                                <div class="form-check">
-                                    <input type="checkbox" id="attr-username" class="form-check-input" checked disabled data-key="username">
-                                    <label for="attr-username" class="form-check-label">Username (Required)</label>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- Attributes selection removed: always exporting all fields via server -->
                     </div>
                 </section>
 
@@ -305,13 +281,14 @@ export class ExportPage {
                             <button type="button" id="start-export" class="btn btn-danger" disabled>
                                 <i class="mdi mdi-download"></i> Start Export
                             </button>
-                            <button type="button" id="preview-export" class="btn btn-danger">
-                                <i class="mdi mdi-eye"></i> Preview Export
+                            <button type="button" id="download-direct" class="btn btn-outline-primary" disabled>
+                                <i class="mdi mdi-file-download"></i> Download CSV (All fields)
                             </button>
                         </div>
                     </div>
                 </section>
 
+                
                 <!-- Export Progress -->
                 <section id="export-progress" class="export-section" style="display: none;">
                     <div class="export-box">
@@ -323,23 +300,16 @@ export class ExportPage {
                             <div class="progress-bar">
                                 <div id="export-progress-bar" class="progress-fill" style="width: 0%;"></div>
                             </div>
-                            <!-- Animated beer mug icon that fills with progress -->
-                            <svg id="beer-mug-svg" class="beer-mug" width="56" height="56" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
+                            <svg id="beer-mug-svg-export" class="beer-mug" width="112" height="112" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
                                 <defs>
-                                    <clipPath id="beer-clip">
-                                        <!-- Inner mug shape used to clip the fill -->
+                                    <clipPath id="beer-clip-export">
                                         <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z" />
                                     </clipPath>
                                 </defs>
-                                <!-- Mug outline -->
-                                <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z"
-                                      fill="none" stroke="#1f2937" stroke-width="1.5"/>
-                                <!-- Handle -->
+                                <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z" fill="none" stroke="#1f2937" stroke-width="1.5"/>
                                 <path d="M27 12 h2 a3 3 0 0 1 3 3 v6 a3 3 0 0 1-3 3 h-2" fill="none" stroke="#1f2937" stroke-width="1.5"/>
-                                <!-- Beer fill rectangle (position updated by JS) -->
-                                <rect id="beer-fill" x="9" y="26" width="16" height="0" fill="#f59e0b" clip-path="url(#beer-clip)"/>
-                                <!-- Foam cap sits on top of beer fill (position updated by JS) -->
-                                <rect id="beer-foam" x="9" y="26" width="16" height="3" fill="#ffffff" opacity="0.95" clip-path="url(#beer-clip)"/>
+                                <rect id="beer-fill-export" x="9" y="26" width="16" height="0" fill="#f59e0b" clip-path="url(#beer-clip-export)"/>
+                                <rect id="beer-foam-export" x="9" y="26" width="16" height="0.001" fill="#ffffff" opacity="0.95" clip-path="url(#beer-clip-export)"/>
                             </svg>
                             <div id="export-progress-text" class="progress-text">0%</div>
                         </div>
@@ -374,17 +344,19 @@ export class ExportPage {
                         </div>
                     </div>
                 </section>
-                
+
                 <!-- Results Section -->
                 <section class="export-section" id="export-results" style="display: none;">
                     <div class="export-box">
                         <h3 class="section-title">Export Complete</h3>
                         <p>Your export has been completed successfully</p>
 
-                        <!-- Consistent summary block -->
                         <div id="export-summary" class="results-container" style="margin-bottom: 16px;"></div>
                         
                         <div class="export-actions">
+                            <button type="button" id="download-export" class="btn btn-danger">
+                                <i class="mdi mdi-download"></i> Download Export
+                            </button>
                             <button type="button" id="new-export" class="btn btn-outline-primary">
                                 <i class="mdi mdi-refresh"></i> Start New Export
                             </button>
@@ -394,241 +366,241 @@ export class ExportPage {
             </div>
         `;
 
-        const exportPage = document.getElementById('export-page');
-        console.log('📝 Export page element found:', !!exportPage);
-        if (exportPage) {
-            exportPage.innerHTML = content;
-            console.log('📝 Content set, setting up event listeners...');
-            await this.setupEventListeners();
-            console.log('📝 Event listeners set up, loading populations...');
-            await this.loadPopulations();
-            console.log('📝 Populations loading completed');
-            // Load attributes dynamically
-            await this.loadAttributes();
-        } else {
-            console.error('❌ Export page element not found!');
-        }
+    const exportPage = document.getElementById('export-page');
+    console.log('📝 Export page element found:', !!exportPage);
+    if (exportPage) {
+      exportPage.innerHTML = content;
+      console.log('📝 Content set, setting up event listeners...');
+      await this.setupEventListeners();
+      console.log('📝 Event listeners set up, loading populations...');
+      await this.loadPopulations();
+      console.log('📝 Populations loading completed');
+      // Load attributes dynamically
+      await this.loadAttributes();
+    } else {
+      console.error('❌ Export page element not found!');
+    }
+  }
+
+  async setupEventListeners() {
+    // Population selection
+    const populationSelect = document.getElementById('export-population-select');
+    if (populationSelect) {
+      populationSelect.addEventListener('change', (e) => this.handlePopulationChange(e.target.value));
     }
 
-    async setupEventListeners() {
-        // Population selection
-        const populationSelect = document.getElementById('export-population-select');
-        if (populationSelect) {
-            populationSelect.addEventListener('change', (e) => this.handlePopulationChange(e.target.value));
-        }
-
-        // Refresh populations button
-        const refreshPopulationsBtn = document.getElementById('refresh-populations');
-        if (refreshPopulationsBtn) {
-            refreshPopulationsBtn.addEventListener('click', () => this.loadPopulations());
-        }
-
-        // Export format change
-        const exportFormat = document.getElementById('export-format');
-        if (exportFormat) {
-            exportFormat.addEventListener('change', (e) => this.handleFormatChange(e.target.value));
-        }
-
-        // Export profile change
-        const exportProfile = document.getElementById('export-profile');
-        if (exportProfile) {
-            // Set the initial value to match the default profile
-            exportProfile.value = this.exportOptions.profile;
-            
-            exportProfile.addEventListener('change', (e) => {
-                this.exportOptions.profile = e.target.value || 'pingone';
-                // Refresh options dependent UI if needed
-                this.updateExportOptions();
-            });
-        }
-
-        // Export options
-        const includeHeaders = document.getElementById('include-headers');
-        const includeDisabled = document.getElementById('include-disabled');
-        const includeMetadata = document.getElementById('include-metadata');
-        
-        if (includeHeaders) includeHeaders.addEventListener('change', () => this.updateExportOptions());
-        if (includeDisabled) includeDisabled.addEventListener('change', () => this.updateExportOptions());
-        if (includeMetadata) includeMetadata.addEventListener('change', () => this.updateExportOptions());
-
-        // Select All / Unselect All for options
-        const optionIds = ['include-headers','include-disabled','include-metadata'];
-        const toggleGroup = (ids, checked) => ids.forEach(id => { const el = document.getElementById(id); if (el) el.checked = checked; });
-        const optionsSelectAll = document.getElementById('options-select-all');
-        const optionsUnselectAll = document.getElementById('options-unselect-all');
-        if (optionsSelectAll) optionsSelectAll.addEventListener('change', (e) => { if (e.target.checked) { toggleGroup(optionIds, true); if (optionsUnselectAll) optionsUnselectAll.checked = false; this.updateExportOptions(); } });
-        if (optionsUnselectAll) optionsUnselectAll.addEventListener('change', (e) => { if (e.target.checked) { toggleGroup(optionIds, false); if (optionsSelectAll) optionsSelectAll.checked = false; this.updateExportOptions(); } });
-
-        // Attribute selection
-        const bindAttributeCheckboxListeners = () => {
-            const attributeCheckboxes = document.querySelectorAll('#attributes-selection input[type="checkbox"]');
-            attributeCheckboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', () => this.updateExportOptions());
-            });
-        };
-        bindAttributeCheckboxListeners();
-
-        // Select All / Unselect All for attributes (exclude required username)
-        const attrsSelectAll = document.getElementById('attrs-select-all');
-        const attrsUnselectAll = document.getElementById('attrs-unselect-all');
-        if (attrsSelectAll) attrsSelectAll.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                document.querySelectorAll('#attributes-selection input[type="checkbox"]:not(#attr-username)')
-                    .forEach(cb => { cb.checked = true; });
-                if (attrsUnselectAll) attrsUnselectAll.checked = false;
-                this.updateExportOptions();
-            }
-        });
-        if (attrsUnselectAll) attrsUnselectAll.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                document.querySelectorAll('#attributes-selection input[type="checkbox"]:not(#attr-username)')
-                    .forEach(cb => { cb.checked = false; });
-                if (attrsSelectAll) attrsSelectAll.checked = false;
-                this.updateExportOptions();
-            }
-        });
-
-        // Refresh attributes button
-        const attrsRefresh = document.getElementById('attrs-refresh');
-        if (attrsRefresh) {
-            attrsRefresh.addEventListener('click', async () => {
-                await this.loadAttributes(true);
-                // Re-bind listeners after DOM update
-                bindAttributeCheckboxListeners();
-                this.updateExportOptions();
-            });
-        }
-
-        // Action buttons
-        const previewBtn = document.getElementById('preview-export');
-        const startBtn = document.getElementById('start-export');
-        const downloadBtn = document.getElementById('download-export');
-        const newExportBtn = document.getElementById('new-export');
-        const cancelBtn = document.getElementById('cancel-export');
-
-        console.log('🔍 Setting up export page event listeners:');
-        console.log('  - Preview button:', !!previewBtn);
-        console.log('  - Start button:', !!startBtn);
-        console.log('  - Download button:', !!downloadBtn);
-        console.log('  - New export button:', !!newExportBtn);
-        console.log('  - Cancel button:', !!cancelBtn);
-
-        if (previewBtn) previewBtn.addEventListener('click', () => this.handlePreviewExport());
-        if (startBtn) startBtn.addEventListener('click', () => this.handleStartExport());
-        if (downloadBtn) {
-            downloadBtn.addEventListener('click', () => {
-                console.log('📥 Download button clicked!');
-                this.handleDownloadExport();
-            });
-        } else {
-            console.warn('⚠️ Download button not found during initial setup');
-        }
-        if (newExportBtn) newExportBtn.addEventListener('click', () => this.handleNewExport());
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => {
-                console.log('❌ Cancel export button clicked!');
-                this.handleCancelExport();
-            });
-        } else {
-            console.warn('⚠️ Cancel button not found during initial setup');
-        }
+    // Refresh populations button
+    const refreshPopulationsBtn = document.getElementById('refresh-populations');
+    if (refreshPopulationsBtn) {
+      refreshPopulationsBtn.addEventListener('click', () => this.loadPopulations());
     }
 
-    async loadPopulations() {
-        // Import the population loader service
-        const { populationLoader } = await import('../services/population-loader.js');
-        
-        // Use the unified service to load populations
-        await populationLoader.loadPopulations('export-population-select', {
-            onError: (error) => {
-                this.app?.showNotification?.('Failed to load populations: ' + error.message, 'error');
-            }
-        });
+    // Export format change
+    const exportFormat = document.getElementById('export-format');
+    if (exportFormat) {
+      exportFormat.addEventListener('change', (e) => this.handleFormatChange(e.target.value));
     }
 
-    handlePopulationChange(populationId) {
-        const populationSelect = document.getElementById('export-population-select');
-        const populationInfo = document.getElementById('population-info');
-        const previewBtn = document.getElementById('preview-export');
-        const startBtn = document.getElementById('start-export');
+    // Export profile change
+    const exportProfile = document.getElementById('export-profile');
+    if (exportProfile) {
+      // Set the initial value to match the default profile
+      exportProfile.value = this.exportOptions.profile;
 
-        if (!populationId) {
-            if (populationInfo) populationInfo.style.display = 'none';
-            if (previewBtn) previewBtn.disabled = true;
-            if (startBtn) startBtn.disabled = true;
-            this.selectedPopulation = null;
-            return;
-        }
-
-        // Get population data from selected option
-        const selectedOption = populationSelect.querySelector(`option[value="${populationId}"]`);
-        if (selectedOption && selectedOption.dataset.population) {
-            this.selectedPopulation = JSON.parse(selectedOption.dataset.population);
-            
-            // Update population info display with correct element IDs
-            if (populationInfo) {
-                const populationName = document.getElementById('population-name');
-                const populationUserCount = document.getElementById('population-user-count');
-                const populationDescription = document.getElementById('population-description');
-                
-                if (populationName) populationName.textContent = this.selectedPopulation.name || '-';
-                if (populationUserCount) populationUserCount.textContent = this.selectedPopulation.userCount || '0';
-                if (populationDescription) populationDescription.textContent = this.selectedPopulation.description || 'No description';
-                
-                populationInfo.style.display = 'block';
-            }
-
-            // Enable action buttons
-            if (previewBtn) previewBtn.disabled = false;
-            if (startBtn) startBtn.disabled = false;
-        }
+      exportProfile.addEventListener('change', (e) => {
+        this.exportOptions.profile = e.target.value || 'pingone';
+        // Refresh options dependent UI if needed
+        this.updateExportOptions();
+      });
     }
 
-    handleFormatChange(format) {
-        this.exportOptions.format = format;
-        console.log('Export format changed to:', format);
-    }
+    // Export options
+    const includeHeaders = document.getElementById('include-headers');
+    const includeDisabled = document.getElementById('include-disabled');
+    const includeMetadata = document.getElementById('include-metadata');
 
-    updateExportOptions() {
-        // Update export options based on form inputs
-        const includeHeaders = document.getElementById('include-headers');
-        const includeDisabled = document.getElementById('include-disabled');
-        const includeMetadata = document.getElementById('include-metadata');
+    if (includeHeaders) {includeHeaders.addEventListener('change', () => this.updateExportOptions());}
+    if (includeDisabled) {includeDisabled.addEventListener('change', () => this.updateExportOptions());}
+    if (includeMetadata) {includeMetadata.addEventListener('change', () => this.updateExportOptions());}
 
-        this.exportOptions.includeHeaders = includeHeaders?.checked || false;
-        this.exportOptions.includeDisabledUsers = includeDisabled?.checked || false;
-        this.exportOptions.includeMetadata = includeMetadata?.checked || false;
+    // Select All / Unselect All for options
+    const optionIds = ['include-headers','include-disabled','include-metadata'];
+    const toggleGroup = (ids, checked) => ids.forEach(id => { const el = document.getElementById(id); if (el) {el.checked = checked;} });
+    const optionsSelectAll = document.getElementById('options-select-all');
+    const optionsUnselectAll = document.getElementById('options-unselect-all');
+    if (optionsSelectAll) {optionsSelectAll.addEventListener('change', (e) => { if (e.target.checked) { toggleGroup(optionIds, true); if (optionsUnselectAll) {optionsUnselectAll.checked = false;} this.updateExportOptions(); } });}
+    if (optionsUnselectAll) {optionsUnselectAll.addEventListener('change', (e) => { if (e.target.checked) { toggleGroup(optionIds, false); if (optionsSelectAll) {optionsSelectAll.checked = false;} this.updateExportOptions(); } });}
 
-        // Update selected attributes using data-key to support dotted keys (e.g., custom.foo)
-        const attributeCheckboxes = document.querySelectorAll('#attributes-selection input[type="checkbox"]:checked');
-        this.exportOptions.attributes = Array.from(attributeCheckboxes)
-            .map(cb => cb.dataset.key)
-            .filter(Boolean);
+    // Attribute selection UI removed: nothing to bind
 
-        console.log('Export options updated:', this.exportOptions);
-    }
+    // Action buttons
+    const previewBtn = document.getElementById('preview-export');
+    const startBtn = document.getElementById('start-export');
+    const directBtn = document.getElementById('download-direct');
+    const downloadBtn = document.getElementById('download-export');
+    const newExportBtn = document.getElementById('new-export');
+    const cancelBtn = document.getElementById('cancel-export');
 
-    async handlePreviewExport() {
+    console.log('🔍 Setting up export page event listeners:');
+    console.log('  - Preview button:', !!previewBtn);
+    console.log('  - Start button:', !!startBtn);
+    console.log('  - Download button:', !!downloadBtn);
+    console.log('  - Direct CSV button:', !!directBtn);
+    console.log('  - New export button:', !!newExportBtn);
+    console.log('  - Cancel button:', !!cancelBtn);
+
+    if (previewBtn) {previewBtn.addEventListener('click', async () => { this.app.setButtonLoading(previewBtn, true); try { await this.handlePreviewExport(); } finally { this.app.setButtonLoading(previewBtn, false); } });}
+    if (startBtn) {startBtn.addEventListener('click', async () => { this.app.setButtonLoading(startBtn, true); try { await this.handleStartExport(); } finally { this.app.setButtonLoading(startBtn, false); } });}
+    if (directBtn) {
+      directBtn.addEventListener('click', async () => {
         if (!this.selectedPopulation) {
-            this.app?.showNotification?.('Please select a population first', 'warning');
-            return;
+          this.app?.showNotification?.('Please select a population first', 'warning');
+          return;
         }
-
+        this.app.setButtonLoading(directBtn, true);
         try {
-            this.updateExportOptions();
-            
-            // Create preview modal
-            this.showPreviewModal();
-            
-        } catch (error) {
-            console.error('Error previewing export:', error);
-            this.app?.showNotification?.('Failed to preview export: ' + error.message, 'error');
+          const resp = await csrfManager.fetchWithCSRF('/api/export/download', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'text/csv' },
+            body: JSON.stringify({ populationId: this.selectedPopulation.id, populationName: this.selectedPopulation.name })
+          });
+          if (!resp.ok) {
+            const t = await resp.text();
+            throw new Error(`Export failed (${resp.status}): ${t}`);
+          }
+          const blob = await resp.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = this.generateFileName().replace(/\.\w+$/, '.csv');
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          this.app?.showNotification?.('CSV downloaded (all fields).', 'success');
+        } catch (e) {
+          console.error('Direct export failed:', e);
+          this.app?.showNotification?.('Direct export failed: ' + e.message, 'error');
+        } finally {
+          this.app.setButtonLoading(directBtn, false);
         }
+      });
+    }
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', () => {
+        console.log('📥 Download button clicked!');
+        this.handleDownloadExport();
+      });
+    } else {
+      console.warn('⚠️ Download button not found during initial setup');
+    }
+    if (newExportBtn) {newExportBtn.addEventListener('click', () => this.handleNewExport());}
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        console.log('❌ Cancel export button clicked!');
+        this.handleCancelExport();
+      });
+    } else {
+      console.warn('⚠️ Cancel button not found during initial setup');
+    }
+  }
+
+  async loadPopulations() {
+    // Import the population loader service
+    const { populationLoader } = await import('../services/population-loader.js');
+
+    // Use the unified service to load populations
+    await populationLoader.loadPopulations('export-population-select', {
+      onError: (error) => {
+        this.app?.showNotification?.('Failed to load populations: ' + error.message, 'error');
+      }
+    });
+  }
+
+  handlePopulationChange(populationId) {
+    const populationSelect = document.getElementById('export-population-select');
+    const populationInfo = document.getElementById('population-info');
+    const previewBtn = document.getElementById('preview-export');
+    const startBtn = document.getElementById('start-export');
+    const directBtn = document.getElementById('download-direct');
+
+    if (!populationId) {
+      if (populationInfo) {populationInfo.style.display = 'none';}
+      if (previewBtn) {previewBtn.disabled = true;}
+      if (startBtn) {startBtn.disabled = true;}
+      if (directBtn) {directBtn.disabled = true;}
+      this.selectedPopulation = null;
+      return;
     }
 
-    showPreviewModal() {
-        // Create modal HTML
-        const modalHTML = `
+    // Get population data from selected option
+    const selectedOption = populationSelect.querySelector(`option[value="${populationId}"]`);
+    if (selectedOption && selectedOption.dataset.population) {
+      this.selectedPopulation = JSON.parse(selectedOption.dataset.population);
+
+      // Update population info display with correct element IDs
+      if (populationInfo) {
+        const populationName = document.getElementById('population-name');
+        const populationUserCount = document.getElementById('population-user-count');
+        const populationDescription = document.getElementById('population-description');
+
+        if (populationName) {populationName.textContent = this.selectedPopulation.name || '-';}
+        if (populationUserCount) {populationUserCount.textContent = this.selectedPopulation.userCount || '0';}
+        if (populationDescription) {populationDescription.textContent = this.selectedPopulation.description || 'No description';}
+
+        populationInfo.style.display = 'block';
+      }
+
+      // Enable action buttons
+      if (previewBtn) {previewBtn.disabled = false;}
+      if (startBtn) {startBtn.disabled = false;}
+      if (directBtn) {directBtn.disabled = false;}
+    }
+  }
+
+  handleFormatChange(format) {
+    this.exportOptions.format = format;
+    console.log('Export format changed to:', format);
+  }
+
+  updateExportOptions() {
+    // Update export options based on form inputs
+    const includeHeaders = document.getElementById('include-headers');
+    const includeDisabled = document.getElementById('include-disabled');
+    const includeMetadata = document.getElementById('include-metadata');
+
+    this.exportOptions.includeHeaders = includeHeaders?.checked || false;
+    this.exportOptions.includeDisabledUsers = includeDisabled?.checked || false;
+    this.exportOptions.includeMetadata = includeMetadata?.checked || false;
+
+    // Attribute selection UI removed: server exports all fields; keep minimal client hint
+    this.exportOptions.attributes = ['username'];
+
+    console.log('Export options updated:', this.exportOptions);
+  }
+
+  async handlePreviewExport() {
+    if (!this.selectedPopulation) {
+      this.app?.showNotification?.('Please select a population first', 'warning');
+      return;
+    }
+
+    try {
+      this.updateExportOptions();
+
+      // Create preview modal
+      this.showPreviewModal();
+
+    } catch (error) {
+      console.error('Error previewing export:', error);
+      this.app?.showNotification?.('Failed to preview export: ' + error.message, 'error');
+    }
+  }
+
+  showPreviewModal() {
+    // Create modal HTML
+    const modalHTML = `
             <div class="modal-overlay" id="preview-modal" style="display: flex;">
                 <div class="modal preview-modal" style="max-width: 800px; width: 90%;">
                     <div class="modal-header">
@@ -681,1023 +653,963 @@ export class ExportPage {
             </div>
         `;
 
-        // Add modal to page
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
 
-        // Add event listeners
-        const closeButtons = document.querySelectorAll('#close-preview');
-        const startExportButton = document.getElementById('start-export-from-preview');
+    // Add event listeners and make draggable
+    const closeButtons = document.querySelectorAll('#close-preview');
+    const startExportButton = document.getElementById('start-export-from-preview');
+    const modalRoot = document.getElementById('preview-modal');
+    const modalPanel = modalRoot?.querySelector('.preview-modal');
+    const header = modalRoot?.querySelector('.modal-header');
 
-        closeButtons.forEach(btn => {
-            btn.addEventListener('click', () => this.closePreviewModal());
+    closeButtons.forEach(btn => {
+      btn.addEventListener('click', () => this.closePreviewModal());
+    });
+
+    if (startExportButton) {
+      startExportButton.addEventListener('click', () => {
+        this.closePreviewModal();
+        this.handleStartExport();
+      });
+    }
+
+    // Simple drag behavior
+    if (modalPanel && header) {
+      let isDragging = false; let startX = 0; let startY = 0; let originLeft = 0; let originTop = 0;
+      modalPanel.style.position = 'fixed';
+      modalPanel.style.left = '50%';
+      modalPanel.style.top = '20%';
+      modalPanel.style.transform = 'translate(-50%, 0)';
+      const onMove = (e) => {
+        if (!isDragging) {return;}
+        const dx = e.clientX - startX; const dy = e.clientY - startY;
+        modalPanel.style.left = `${originLeft + dx}px`;
+        modalPanel.style.top = `${originTop + dy}px`;
+        modalPanel.style.transform = 'translate(0, 0)';
+      };
+      header.addEventListener('mousedown', (e) => {
+        isDragging = true; startX = e.clientX; startY = e.clientY;
+        const rect = modalPanel.getBoundingClientRect(); originLeft = rect.left; originTop = rect.top;
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', () => { isDragging = false; document.removeEventListener('mousemove', onMove); }, { once: true });
+      });
+    }
+
+    // Add escape key listener
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.closePreviewModal();
+      }
+    });
+  }
+
+  closePreviewModal() {
+    const modal = document.getElementById('preview-modal');
+    if (modal) {
+      modal.remove();
+    }
+  }
+
+  generateSampleData() {
+    const format = this.exportOptions.format;
+
+    // Get checkbox states
+    const includeHeaders = document.getElementById('include-headers')?.checked ?? true;
+    const includeDisabled = document.getElementById('include-disabled')?.checked ?? false;
+    const includeMetadata = document.getElementById('include-metadata')?.checked ?? false;
+
+    // Get selected attributes from checkboxes
+    const selectedAttributes = this.getSelectedAttributes();
+
+    // Add metadata attributes if selected
+    if (includeMetadata) {
+      selectedAttributes.push('created_date', 'last_updated', 'last_login');
+    }
+
+    if (format === 'csv' || format === 'xlsx') {
+      let csv = '';
+      if (includeHeaders) {
+        const headers = this.getProfileHeaders(selectedAttributes);
+        csv += headers.join(',') + '\n';
+      }
+
+      // Generate sample rows
+      const sampleUsers = [
+        { index: 1, status: 'Active' },
+        { index: 2, status: 'Active' },
+        { index: 3, status: 'Active' },
+        { index: 4, status: 'Disabled' },
+        { index: 5, status: 'Active' }
+      ];
+
+      sampleUsers.forEach(user => {
+        // Skip disabled users if not included
+        if (!includeDisabled && user.status === 'Disabled') {
+          return;
+        }
+
+        const transformed = this.applyProfileTransform(selectedAttributes, user.index, user.status);
+        const row = Object.values(transformed);
+        csv += row.join(format === 'xlsx' ? '\t' : ',') + '\n';
+      });
+
+      return csv;
+    } else if (format === 'json') {
+      const sampleUsers = [
+        { index: 1, status: 'Active' },
+        { index: 2, status: 'Active' },
+        { index: 3, status: 'Active' },
+        { index: 4, status: 'Disabled' },
+        { index: 5, status: 'Active' }
+      ];
+
+      const users = sampleUsers
+        .filter(user => includeDisabled || user.status !== 'Disabled')
+        .map(user => {
+          return this.applyProfileTransform(selectedAttributes, user.index, user.status);
         });
 
-        if (startExportButton) {
-            startExportButton.addEventListener('click', () => {
-                this.closePreviewModal();
-                this.handleStartExport();
-            });
-        }
+      return JSON.stringify(users, null, 2);
+    } else if (format === 'ndjson') {
+      const sampleUsers = [1,2,3,4,5]
+        .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
+        .filter(u => includeDisabled || u.status !== 'Disabled')
+        .map(u => JSON.stringify(u))
+        .join('\n');
+      return sampleUsers;
+    } else if (format === 'xml') {
+      const sampleUsers = [1,2,3,4,5]
+        .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
+        .filter(u => includeDisabled || u.status !== 'Disabled');
+      return this.convertUsersToXML(sampleUsers);
+    } else if (format === 'ldif') {
+      const sampleUsers = [1,2,3,4,5]
+        .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
+        .filter(u => includeDisabled || u.status !== 'Disabled');
+      return this.convertUsersToLDIF(sampleUsers);
+    } else if (format === 'scim') {
+      const sampleUsers = [1,2,3,4,5]
+        .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
+        .filter(u => includeDisabled || u.status !== 'Disabled');
+      return JSON.stringify(this.convertUsersToSCIMBulk(sampleUsers), null, 2);
+    }
 
-        // Add escape key listener
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.closePreviewModal();
-            }
+    return 'Preview not available for this format.';
+  }
+
+  async handleStartExport() {
+    if (!this.selectedPopulation) {
+      this.app?.showNotification?.('Please select a population from the dropdown before starting export.', 'warning');
+      const selectEl = document.getElementById('export-population-select');
+      if (selectEl) {
+        selectEl.focus();
+        try { selectEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+        selectEl.classList.add('input-error');
+        setTimeout(() => selectEl.classList.remove('input-error'), 1800);
+      }
+      return;
+    }
+
+    try {
+      this.updateExportOptions();
+      // Guard: prevent export when selected population has 0 users
+      const rawCount = this.selectedPopulation?.userCount;
+      const totalCount = Number(rawCount ?? 0);
+      if (!Number.isFinite(totalCount) || totalCount <= 0) {
+        this.app?.showNotification?.('No records to export: the selected population has 0 users.', 'warning');
+        return;
+      }
+
+      // Show progress section
+      const progressSection = document.getElementById('export-progress');
+      const resultsSection = document.getElementById('export-results');
+      const cancelBtn = document.getElementById('cancel-export');
+
+      if (progressSection) {progressSection.style.display = 'block';}
+      if (resultsSection) {resultsSection.style.display = 'none';}
+      if (cancelBtn) {cancelBtn.style.display = 'inline-block';}
+
+      // Scroll to progress section
+      this.scrollToSection(progressSection);
+
+      // If an export is already running, attach instead of erroring out
+      try {
+        const statusResp = await fetch('/api/export/status', { credentials: 'include', headers: { 'Accept': 'application/json' } });
+        const statusJson = await statusResp.json().catch(() => ({}));
+        const data = statusJson.data || statusJson;
+        if (statusResp.ok && (data?.isRunning || data?.status === 'running')) {
+          this.app?.showNotification?.('An export is already running. Attaching to progress…', 'info');
+          await this.driveBackendExportProgress(Number(data?.progress?.total ?? totalCount));
+          return;
+        }
+      } catch (_) { /* best-effort */ }
+
+      // Start backend export session
+      const outputFileName = this.generateFileName();
+
+      // Ensure server-side token is fresh before starting
+      try {
+        await csrfManager.fetchWithCSRF('/api/token/refresh', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
         });
+      } catch (_) {}
+
+      // Optionally include Authorization header if a worker token exists (best effort)
+      const authHeader = localStorage.getItem('pingone_worker_token')
+        ? { 'Authorization': `Bearer ${localStorage.getItem('pingone_worker_token')}` }
+        : {};
+
+      const startResp = await csrfManager.fetchWithCSRF('/api/export/start', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', ...authHeader },
+        body: JSON.stringify({
+          sessionId: `export_${Date.now()}`,
+          totalRecords: totalCount,
+          populationId: this.selectedPopulation.id,
+          populationName: this.selectedPopulation.name,
+          outputFileName
+        })
+      });
+      const startJson = await startResp.json().catch(() => ({}));
+      if (startResp.status === 409) {
+        // Already running – attach without throwing
+        this.app?.showNotification?.('An export is already running. Attaching to progress…', 'info');
+      } else if (!startResp.ok || startJson.success === false) {
+        const errMsg = typeof startJson === 'object' ? (startJson.error || startJson.message) : String(startJson);
+        throw new Error(errMsg || 'Failed to start export');
+      }
+
+      // Drive progress and keep backend status updated (including ignoredUsers)
+      await this.driveBackendExportProgress(totalCount);
+
+    } catch (error) {
+      console.error('Error starting export:', error);
+      this.app?.showNotification?.('Failed to start export: ' + (error?.message || String(error)), 'error');
+    }
+  }
+
+  async driveBackendExportProgress(total) {
+    // Cache UI elements
+    const progressBar = document.getElementById('export-progress-bar');
+    const progressText = document.getElementById('export-progress-text');
+    const progressTextLeft = document.getElementById('export-progress-text-left');
+    const statusText = document.getElementById('export-status');
+    const usersProcessed = document.getElementById('users-processed');
+    const totalUsers = document.getElementById('total-users');
+    const ignoredUsersEl = document.getElementById('ignored-users');
+    const cancelBtn = document.getElementById('cancel-export');
+
+    if (typeof total === 'number' && totalUsers) {
+      totalUsers.textContent = total;
     }
 
-    closePreviewModal() {
-        const modal = document.getElementById('preview-modal');
-        if (modal) {
-            modal.remove();
-        }
+    // Clear any existing interval first
+    if (this.exportInterval) {
+      clearInterval(this.exportInterval);
+      this.exportInterval = null;
     }
 
-    generateSampleData() {
-        const format = this.exportOptions.format;
-        
-        // Get checkbox states
-        const includeHeaders = document.getElementById('include-headers')?.checked ?? true;
-        const includeDisabled = document.getElementById('include-disabled')?.checked ?? false;
-        const includeMetadata = document.getElementById('include-metadata')?.checked ?? false;
-        
-        // Get selected attributes from checkboxes
-        const selectedAttributes = this.getSelectedAttributes();
-        
-        // Add metadata attributes if selected
-        if (includeMetadata) {
-            selectedAttributes.push('created_date', 'last_updated', 'last_login');
+    const updateUIFromStatus = (data) => {
+      try {
+        const pct = Math.max(0, Math.min(100, Number(data?.progress?.percentage ?? 0)));
+        const processed = Number(data?.progress?.current ?? data?.statistics?.processed ?? 0);
+        const totalCount = Number(data?.progress?.total ?? total ?? 0);
+        const ignored = Number(data?.statistics?.ignoredUsers ?? 0);
+
+        if (totalUsers && Number.isFinite(totalCount)) {totalUsers.textContent = totalCount;}
+        if (usersProcessed) {usersProcessed.textContent = processed;}
+        if (ignoredUsersEl) {ignoredUsersEl.textContent = ignored;}
+
+        if (progressBar) {
+          progressBar.style.width = `${pct}%`;
+          // Force repaint to keep CSS animation
+
+          progressBar.offsetHeight;
         }
-        
-        if (format === 'csv' || format === 'xlsx') {
-            let csv = '';
-            if (includeHeaders) {
-                const headers = this.getProfileHeaders(selectedAttributes);
-                csv += headers.join(',') + '\n';
-            }
-            
-            // Generate sample rows
-            const sampleUsers = [
-                { index: 1, status: 'Active' },
-                { index: 2, status: 'Active' },
-                { index: 3, status: 'Active' },
-                { index: 4, status: 'Disabled' },
-                { index: 5, status: 'Active' }
-            ];
-            
-            sampleUsers.forEach(user => {
-                // Skip disabled users if not included
-                if (!includeDisabled && user.status === 'Disabled') {
-                    return;
-                }
-                
-                const transformed = this.applyProfileTransform(selectedAttributes, user.index, user.status);
-                const row = Object.values(transformed);
-                csv += row.join(format === 'xlsx' ? '\t' : ',') + '\n';
-            });
-            
-            return csv;
-        } else if (format === 'json') {
-            const sampleUsers = [
-                { index: 1, status: 'Active' },
-                { index: 2, status: 'Active' },
-                { index: 3, status: 'Active' },
-                { index: 4, status: 'Disabled' },
-                { index: 5, status: 'Active' }
-            ];
-            
-            const users = sampleUsers
-                .filter(user => includeDisabled || user.status !== 'Disabled')
-                .map(user => {
-                    return this.applyProfileTransform(selectedAttributes, user.index, user.status);
-                });
-            
-            return JSON.stringify(users, null, 2);
-        } else if (format === 'ndjson') {
-            const sampleUsers = [1,2,3,4,5]
-                .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
-                .filter(u => includeDisabled || u.status !== 'Disabled')
-                .map(u => JSON.stringify(u))
-                .join('\n');
-            return sampleUsers;
-        } else if (format === 'xml') {
-            const sampleUsers = [1,2,3,4,5]
-                .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
-                .filter(u => includeDisabled || u.status !== 'Disabled');
-            return this.convertUsersToXML(sampleUsers);
-        } else if (format === 'ldif') {
-            const sampleUsers = [1,2,3,4,5]
-                .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
-                .filter(u => includeDisabled || u.status !== 'Disabled');
-            return this.convertUsersToLDIF(sampleUsers);
-        } else if (format === 'scim') {
-            const sampleUsers = [1,2,3,4,5]
-                .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
-                .filter(u => includeDisabled || u.status !== 'Disabled');
-            return JSON.stringify(this.convertUsersToSCIMBulk(sampleUsers), null, 2);
+        if (progressText) {progressText.textContent = `${pct}%`;}
+        if (progressTextLeft) {progressTextLeft.textContent = `${pct}%`;}
+        if (statusText) {statusText.textContent = data?.status ? `Status: ${data.status}` : 'Export in progress...';}
+
+        // Coffee cup visual
+        const beerFill = document.getElementById('beer-fill-export');
+        const beerFoam = document.getElementById('beer-foam-export');
+        if (beerFill) {
+          const maxHeight = 16;
+          const height = Math.max(0, Math.min(maxHeight, (pct / 100) * maxHeight));
+          const y = 26 - height;
+          beerFill.setAttribute('y', String(y));
+          beerFill.setAttribute('height', String(height));
+          beerFill.setAttribute('x', '8.5');
+          beerFill.setAttribute('width', '17');
         }
-        
-        return 'Preview not available for this format.';
-    }
-
-    async handleStartExport() {
-        if (!this.selectedPopulation) return;
-
-        try {
-            this.updateExportOptions();
-            // Guard: prevent export when selected population has 0 users
-            const rawCount = this.selectedPopulation?.userCount;
-            const totalCount = Number(rawCount ?? 0);
-            if (!Number.isFinite(totalCount) || totalCount <= 0) {
-                this.app?.showNotification?.('No records to export: the selected population has 0 users.', 'warning');
-                return;
-            }
-            
-            // Show progress section
-            const progressSection = document.getElementById('export-progress');
-            const resultsSection = document.getElementById('export-results');
-            const cancelBtn = document.getElementById('cancel-export');
-            
-            if (progressSection) progressSection.style.display = 'block';
-            if (resultsSection) resultsSection.style.display = 'none';
-            if (cancelBtn) cancelBtn.style.display = 'inline-block';
-
-            // Scroll to progress section
-            this.scrollToSection(progressSection);
-
-            // Start backend export session
-            const outputFileName = this.generateFileName();
-
-            // Ensure server-side token is fresh before starting
-            try {
-                await csrfManager.fetchWithCSRF('/api/token/refresh', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            } catch (_) {}
-
-            // Optionally include Authorization header if a worker token exists (best effort)
-            const authHeader = localStorage.getItem('pingone_worker_token')
-                ? { 'Authorization': `Bearer ${localStorage.getItem('pingone_worker_token')}` }
-                : {};
-
-            const startResp = await csrfManager.fetchWithCSRF('/api/export/start', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', ...authHeader },
-                body: JSON.stringify({
-                    sessionId: `export_${Date.now()}`,
-                    totalRecords: totalCount,
-                    populationId: this.selectedPopulation.id,
-                    populationName: this.selectedPopulation.name,
-                    outputFileName
-                })
-            });
-            const startJson = await startResp.json();
-            if (!startResp.ok || startJson.success === false) {
-                throw new Error(startJson.error || startJson.message || 'Failed to start export');
-            }
-
-            // Drive progress and keep backend status updated (including ignoredUsers)
-            await this.driveBackendExportProgress(totalCount);
-            
-        } catch (error) {
-            console.error('Error starting export:', error);
-            this.app?.showNotification?.('Failed to start export: ' + error.message, 'error');
-        }
-    }
-
-    async driveBackendExportProgress(total) {
-        // Cache UI elements
-        const progressBar = document.getElementById('export-progress-bar');
-        const progressText = document.getElementById('export-progress-text');
-        const progressTextLeft = document.getElementById('export-progress-text-left');
-        const statusText = document.getElementById('export-status');
-        const usersProcessed = document.getElementById('users-processed');
-        const totalUsers = document.getElementById('total-users');
-        const ignoredUsersEl = document.getElementById('ignored-users');
-        const cancelBtn = document.getElementById('cancel-export');
-
-        if (typeof total === 'number' && totalUsers) {
-            totalUsers.textContent = total;
+        if (beerFoam) {
+          const height = Math.max(0, Math.min(16, (pct / 100) * 16));
+          if (pct > 0) {
+            const foamHeight = pct < 100 ? 3 : 4;
+            const yFoam = 26 - height - foamHeight;
+            beerFoam.setAttribute('y', String(yFoam));
+            beerFoam.setAttribute('height', String(foamHeight));
+            beerFoam.setAttribute('opacity', '0.95');
+          } else {
+            beerFoam.setAttribute('height', '0.001');
+            beerFoam.setAttribute('opacity', '0');
+          }
         }
 
-        // Clear any existing interval first
-        if (this.exportInterval) {
-            clearInterval(this.exportInterval);
-            this.exportInterval = null;
+        return { pct, processed, totalCount, ignored, status: data?.status };
+      } catch (e) {
+        console.warn('Failed updating export UI from status:', e);
+        return { pct: 0, processed: 0, totalCount: total ?? 0, ignored: 0, status: 'running' };
+      }
+    };
+
+    // Poll backend status periodically
+    this.exportInterval = setInterval(async () => {
+      try {
+        const resp = await fetch('/api/export/status', {
+          credentials: 'include',
+          headers: { 'Accept': 'application/json' }
+        });
+        const json = await resp.json();
+        if (!resp.ok || json.success === false) {
+          throw new Error(json.error || json.message || 'Failed to get export status');
         }
 
-        const updateUIFromStatus = (data) => {
-            try {
-                const pct = Math.max(0, Math.min(100, Number(data?.progress?.percentage ?? 0)));
-                const processed = Number(data?.progress?.current ?? data?.statistics?.processed ?? 0);
-                const totalCount = Number(data?.progress?.total ?? total ?? 0);
-                const ignored = Number(data?.statistics?.ignoredUsers ?? 0);
+        const data = json.data || json; // some middleware wraps in {success,data}
+        const { pct, processed, totalCount, status } = updateUIFromStatus(data);
 
-                if (totalUsers && Number.isFinite(totalCount)) totalUsers.textContent = totalCount;
-                if (usersProcessed) usersProcessed.textContent = processed;
-                if (ignoredUsersEl) ignoredUsersEl.textContent = ignored;
-
-                if (progressBar) {
-                    progressBar.style.width = `${pct}%`;
-                    // Force repaint to keep CSS animation
-                    // eslint-disable-next-line no-unused-expressions
-                    progressBar.offsetHeight;
-                }
-                if (progressText) progressText.textContent = `${pct}%`;
-                if (progressTextLeft) progressTextLeft.textContent = `${pct}%`;
-                if (statusText) statusText.textContent = data?.status ? `Status: ${data.status}` : 'Export in progress...';
-
-                // Beer mug visual
-                const beerFill = document.getElementById('beer-fill');
-                const beerFoam = document.getElementById('beer-foam');
-                if (beerFill) beerFill.style.height = `${(pct / 100) * 16}px`;
-                if (beerFoam) beerFoam.style.top = `${16 - ((pct / 100) * 16)}px`;
-
-                return { pct, processed, totalCount, ignored, status: data?.status };
-            } catch (e) {
-                console.warn('Failed updating export UI from status:', e);
-                return { pct: 0, processed: 0, totalCount: total ?? 0, ignored: 0, status: 'running' };
-            }
-        };
-
-        // Poll backend status periodically
-        this.exportInterval = setInterval(async () => {
-            try {
-                const resp = await fetch('/api/export/status', {
-                    credentials: 'include',
-                    headers: { 'Accept': 'application/json' }
-                });
-                const json = await resp.json();
-                if (!resp.ok || json.success === false) {
-                    throw new Error(json.error || json.message || 'Failed to get export status');
-                }
-
-                const data = json.data || json; // some middleware wraps in {success,data}
-                const { pct, processed, totalCount, status } = updateUIFromStatus(data);
-
-                const done = (status && ['completed','failed','cancelled','canceled'].includes(String(status)))
+        const done = (status && ['completed','failed','cancelled','canceled'].includes(String(status)))
                     || (totalCount > 0 && processed >= totalCount) || pct >= 100;
-                if (done) {
-                    clearInterval(this.exportInterval);
-                    this.exportInterval = null;
-                    if (cancelBtn) cancelBtn.style.display = 'none';
+        if (done) {
+          clearInterval(this.exportInterval);
+          this.exportInterval = null;
+          if (cancelBtn) {cancelBtn.style.display = 'none';}
 
-                    // Prepare downloadable blob now so the Download button works immediately
-                    try {
-                        const exportData = this.generateExportData();
-                        const fileName = this.generateFileName();
-                        const blob = new Blob([exportData.content], { type: this.getMimeType(this.exportOptions.format) });
-                        const size = blob.size;
-                        const createdAt = new Date();
-                        const modifiedAt = createdAt;
-                        this.lastExport = { blob, fileName, size, createdAt, modifiedAt, type: exportData.type };
-                    } catch (_) {}
-
-                    // Slight delay for UX polish
-                    setTimeout(() => this.showExportResults(), 300);
-                }
-            } catch (err) {
-                console.error('Polling export status failed:', err);
-                // Stop polling on persistent error
-                clearInterval(this.exportInterval);
-                this.exportInterval = null;
-                if (statusText) statusText.textContent = 'Export status error';
-                this.app?.showNotification?.('Failed to poll export status: ' + err.message, 'error');
-            }
-        }, 800);
-    }
-
-    async simulateExport() {
-        const progressBar = document.getElementById('export-progress-bar');
-                const progressText = document.getElementById('export-progress-text');
-                const progressTextLeft = document.getElementById('export-progress-text-left');
-        const statusText = document.getElementById('export-status');
-        const usersProcessed = document.getElementById('users-processed');
-        const totalUsers = document.getElementById('total-users');
-        const ignoredUsersEl = document.getElementById('ignored-users');
-
-        const total = Number(this.selectedPopulation?.userCount ?? 0);
-        if (totalUsers) totalUsers.textContent = total;
-
-        // Determine how many will be ignored based on includeDisabledUsers option.
-        // Our preview/sample logic marks every 5th user as Disabled.
-        const includeDisabled = !!this.exportOptions.includeDisabledUsers;
-        const totalDisabled = includeDisabled ? 0 : Math.floor(total / 5);
-
-        let currentProgress = 0;
-        
-        return new Promise((resolve) => {
-            // If no users to export, exit gracefully
-            if (total <= 0) {
-                if (statusText) statusText.textContent = 'No users to export';
-                if (usersProcessed) usersProcessed.textContent = '0';
-                if (progressBar) progressBar.style.width = '0%';
-                if (progressText) progressText.textContent = '0%';
-                if (progressTextLeft) progressTextLeft.textContent = '0%';
-                const cancelBtn = document.getElementById('cancel-export');
-                if (cancelBtn) cancelBtn.style.display = 'none';
-                const progressSection = document.getElementById('export-progress');
-                if (progressSection) progressSection.style.display = 'none';
-                this.app?.showNotification?.('No records to export: the selected population has 0 users.', 'info');
-                resolve();
-                return;
-            }
-            this.exportInterval = setInterval(() => {
-                if (currentProgress >= total) {
-                    clearInterval(this.exportInterval);
-                    this.exportInterval = null;
-                    
-                    // Show results
-                    setTimeout(() => this.showExportResults(), 1000);
-                    // Record in history
-                    this.app.addHistoryEntry('export', 'success', `Exported users from ${this.selectedPopulation.name}`, total, Math.floor(Math.random()*90000)+5000);
-                    resolve();
-                    return;
-                }
-
-                currentProgress += 10;
-                const progress = Math.min((currentProgress / total) * 100, 100);
-
-                if (progressBar) {
-                    progressBar.style.width = `${progress}%`;
-                    // Force repaint to ensure CSS animations remain visible as width changes
-                    // eslint-disable-next-line no-unused-expressions
-                    progressBar.offsetHeight;
-                }
-
-                // Update beer mug fill height based on progress (0–16px height)
-                const beerFill = document.getElementById('beer-fill');
-                const beerFoam = document.getElementById('beer-foam');
-                if (beerFill) {
-                    const maxHeight = 16; // SVG mug inner height
-                    const height = Math.max(0, Math.min(maxHeight, (progress / 100) * maxHeight));
-                    const y = 26 - height;
-                    beerFill.setAttribute('y', String(y));
-                    beerFill.setAttribute('height', String(height));
-                }
-                if (beerFoam) {
-                    const foamHeight = progress > 0 ? 4 : 0.001;
-                    const yFoam = 26 - Math.max(0, Math.min(16, (progress / 100) * 16)) - foamHeight;
-                    beerFoam.setAttribute('y', String(yFoam));
-                    beerFoam.setAttribute('height', String(foamHeight));
-                }
-                if (progressText) progressText.textContent = `${Math.round(progress)}%`;
-                if (progressTextLeft) progressTextLeft.textContent = `${Math.round(progress)}%`;
-                if (statusText) statusText.textContent = currentProgress >= total ? 'Export complete!' : 'Exporting users...';
-                if (usersProcessed) usersProcessed.textContent = Math.min(currentProgress, total);
-
-                // Update ignored users gradually in proportion to progress
-                if (ignoredUsersEl) {
-                    const processedNow = Math.min(currentProgress, total);
-                    const ignoredSoFar = Math.min(Math.floor(processedNow / 5), totalDisabled);
-                    ignoredUsersEl.textContent = ignoredSoFar;
-                }
-            }, 200);
-        });
-    }
-
-    showExportResults() {
-        const progressSection = document.getElementById('export-progress');
-        const resultsSection = document.getElementById('export-results');
-        const summaryDiv = document.getElementById('export-summary');
-
-        if (progressSection) progressSection.style.display = 'none';
-        if (resultsSection) resultsSection.style.display = 'block';
-
-        // Scroll to results section
-        this.scrollToSection(resultsSection);
-
-        // Set up event listeners for the results section buttons
-        this.setupResultsEventListeners();
-
-        if (summaryDiv) {
-            const total = Number(document.getElementById('total-users')?.textContent || this.selectedPopulation.userCount || 0);
-            const processed = Number(document.getElementById('users-processed')?.textContent || total);
-            const ignored = Number(document.getElementById('ignored-users')?.textContent || 0);
-            const success = processed; // for now assume all processed succeeded
-            const failed = 0;
-            const skipped = 0;
-            const successRate = total > 0 ? ((success / total) * 100).toFixed(1) : '0.0';
-
-            // Prepare file metadata safely
-            const fileName = this.lastExport?.fileName || this.generateFileName();
-            const fileSizeBytes = this.lastExport?.size ?? this.lastExport?.blob?.size ?? 0;
-            const sizeText = fileSizeBytes > 0 ? this.formatBytes(fileSizeBytes) : 'N/A';
-            const createdDate = this.lastExport?.createdAt || new Date();
-            const modifiedDate = this.lastExport?.modifiedAt || createdDate;
-            const createdText = this.formatDateTime(createdDate);
-            const modifiedText = this.formatDateTime(modifiedDate);
-
-            summaryDiv.innerHTML = `
-                <div class="results-grid">
-                    <div class="result-card success">
-                        <i class="mdi mdi-check-circle"></i>
-                        <div>
-                            </div>
-                            <div class="metric">
-                                <div class="metric-label">Format</div>
-                                <div class="metric-value">${this.exportOptions.format.toUpperCase()}</div>
-                            </div>
-                            <div class="metric">
-                                <div class="metric-label">Headers</div>
-                                <div class="metric-value">${this.exportOptions.includeHeaders ? 'Included' : 'Excluded'}</div>
-                            </div>
-                            <div class="metric">
-                                <div class="metric-label">Ignored Users</div>
-                                <div class="metric-value">${ignored}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="file-details-section" style="background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; margin-top: 12px;">
-                    <div class="file-details" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <i class="mdi mdi-file-document" style="font-size:22px; color:#374151;"></i>
-                            <div class="file-meta">
-                                <div class="file-name" id="file-name" style="font-weight:600; color:#111827;">${fileName}</div>
-                                <div class="file-extra" style="font-size:12px; color:#4b5563;">
-                                    <span id="file-size">${sizeText}</span>
-                                    <span style="padding:0 6px; color:#9ca3af;">|</span>
-                                    <span id="file-created">Created: ${createdText}</span>
-                                    <span style="padding:0 6px; color:#9ca3af;">|</span>
-                                    <span id="file-modified">Last Modified: ${modifiedText}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="display:flex; gap:8px;">
-                            <button type="button" id="remove-file" class="btn btn-danger" style="border-radius:4px; padding:8px 14px !important; display:inline-flex; align-items:center; gap:6px; line-height:1.2; font-size:13px;">
-                                <i class="mdi mdi-delete" style="font-size:14px; line-height:1;"></i> <span>Remove</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="result-details" style="color:#b91c1c; font-weight:700;">
-                    <h4>Export Details</h4>
-                    <ul>
-                        <li><strong>Target Population:</strong> ${this.selectedPopulation.name}</li>
-                        <li><strong>Completed:</strong> ${this.formatDateTime(new Date())}</li>
-                        <li><strong>Total Users:</strong> ${total}</li>
-                        <li><strong>Processed Users:</strong> ${processed}</li>
-                        <li><strong>Ignored Users:</strong> ${ignored}</li>
-                    </ul>
-                </div>
-            `;
-
-            // Wire up Remove button to clear cached export
-            const removeBtn = document.getElementById('remove-file');
-            if (removeBtn) {
-                removeBtn.addEventListener('click', () => {
-                    this.lastExport = null;
-                    const details = document.querySelector('.file-details-section');
-                    if (details) details.remove();
-                    this.app?.showNotification?.('Export file removed from session.', 'info');
-                });
-            }
-        }
-    }
-
-    setupResultsEventListeners() {
-        const downloadBtn = document.getElementById('download-export');
-        const newExportBtn = document.getElementById('new-export');
-
-        console.log('🔍 Setting up results event listeners:');
-        console.log('  - Download button:', !!downloadBtn);
-        console.log('  - New export button:', !!newExportBtn);
-
-        if (downloadBtn) {
-            // Remove any existing event listeners
-            downloadBtn.replaceWith(downloadBtn.cloneNode(true));
-            const newDownloadBtn = document.getElementById('download-export');
-            
-            newDownloadBtn.addEventListener('click', () => {
-                console.log('📥 Download button clicked!');
-                this.handleDownloadExport();
-            });
-        } else {
-            console.warn('⚠️ Download button not found in results section');
-        }
-
-        if (newExportBtn) {
-            // Remove any existing event listeners
-            newExportBtn.replaceWith(newExportBtn.cloneNode(true));
-            const newNewExportBtn = document.getElementById('new-export');
-            
-            newNewExportBtn.addEventListener('click', () => {
-                console.log('🔄 New export button clicked!');
-                this.handleNewExport();
-            });
-        } else {
-            console.warn('⚠️ New export button not found in results section');
-        }
-    }
-
-    handleDownloadExport() {
-        if (!this.selectedPopulation) {
-            this.app?.showNotification?.('No export data available. Please run an export first.', 'warning');
-            return;
-        }
-
-        try {
-            // Generate the export data
+          // Prepare downloadable blob now so the Download button works immediately
+          try {
             const exportData = this.generateExportData();
             const fileName = this.generateFileName();
-            const blob = this.lastExport?.blob || new Blob([exportData.content], { type: this.getMimeType(this.exportOptions.format) });
+            const blob = new Blob([exportData.content], { type: this.getMimeType(this.exportOptions.format) });
             const size = blob.size;
             const createdAt = new Date();
             const modifiedAt = createdAt;
             this.lastExport = { blob, fileName, size, createdAt, modifiedAt, type: exportData.type };
-            
-            // Create a download link
-            const downloadLink = document.createElement('a');
-            downloadLink.href = URL.createObjectURL(blob);
-            downloadLink.download = fileName;
-            downloadLink.style.display = 'none';
-            
-            // Add to DOM, click, and remove
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-            
-            // Clean up the URL object
-        URL.revokeObjectURL(downloadLink.href);
-        
-        this.app?.showNotification?.(`Export file "${fileName}" downloaded successfully!`, 'success');
-        
+          } catch (_) {}
+
+          // Slight delay for UX polish
+          setTimeout(() => this.showExportResults(), 300);
+        }
+      } catch (err) {
+        console.error('Polling export status failed:', err);
+        // Stop polling on persistent error
+        clearInterval(this.exportInterval);
+        this.exportInterval = null;
+        if (statusText) {statusText.textContent = 'Export status error';}
+        this.app?.showNotification?.('Failed to poll export status: ' + err.message, 'error');
+      }
+    }, 800);
+  }
+
+  // simulateExport removed – progress is driven by backend status only
+
+  showExportResults() {
+    const progressSection = document.getElementById('export-progress');
+    const resultsSection = document.getElementById('export-results');
+    const summaryDiv = document.getElementById('export-summary');
+
+    if (progressSection) {progressSection.style.display = 'none';}
+    if (resultsSection) {resultsSection.style.display = 'block';}
+
+    // Scroll to results section
+    this.scrollToSection(resultsSection);
+
+    // Set up event listeners for the results section buttons
+    this.setupResultsEventListeners();
+
+    if (summaryDiv) {
+      const total = Number(document.getElementById('total-users')?.textContent || this.selectedPopulation?.userCount || 0);
+      const processed = Number(document.getElementById('users-processed')?.textContent || total);
+      const ignored = Number(document.getElementById('ignored-users')?.textContent || 0);
+      const fileName = this.lastExport?.fileName || this.generateFileName();
+      const fileSizeBytes = this.lastExport?.size ?? this.lastExport?.blob?.size ?? 0;
+      const sizeText = fileSizeBytes > 0 ? this.formatBytes(fileSizeBytes) : 'N/A';
+      const createdDate = this.lastExport?.createdAt || new Date();
+      const createdText = this.formatDateTime(createdDate);
+
+      summaryDiv.innerHTML = `
+        <div class="result-success"><i class="mdi mdi-check-circle"></i> Export Complete</div>
+        <div class="results-grid">
+          <div class="result-row"><span class="result-label">Format</span><span class="result-value">${(this.exportOptions.format || 'csv').toUpperCase()}</span></div>
+          <div class="result-row"><span class="result-label">Headers</span><span class="result-value">${this.exportOptions.includeHeaders ? 'Included' : 'Excluded'}</span></div>
+          <div class="result-row"><span class="result-label">Processed</span><span class="result-value" id="summary-processed">${processed}</span></div>
+          <div class="result-row"><span class="result-label">Successes</span><span class="result-value" id="summary-successes">${processed - ignored}</span></div>
+          <div class="result-row"><span class="result-label">Skipped</span><span class="result-value" id="summary-skipped">${ignored}</span></div>
+          <div class="result-row"><span class="result-label">Failures</span><span class="result-value" id="summary-failures">0</span></div>
+        </div>
+        <div class="file-details file-details-panel" style="margin-top:12px; font-size:12px; color:#4b5563;">
+          <span class="file-name" style="font-weight:600; color:#111827;">${fileName}</span>
+          <span style="padding:0 6px; color:#9ca3af;">|</span>
+          <span>${sizeText}</span>
+          <span style="padding:0 6px; color:#9ca3af;">|</span>
+          <span>Created: ${createdText}</span>
+        </div>`;
+
+      // Wire up Remove button to clear cached export
+      const removeBtn = document.getElementById('remove-file');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+          this.lastExport = null;
+          const details = document.querySelector('.file-details-section');
+          if (details) {details.remove();}
+          this.app?.showNotification?.('Export file removed from session.', 'info');
+        });
+      }
+    }
+  }
+
+  setupResultsEventListeners() {
+    const downloadBtn = document.getElementById('download-export');
+    const newExportBtn = document.getElementById('new-export');
+
+    console.log('🔍 Setting up results event listeners:');
+    console.log('  - Download button:', !!downloadBtn);
+    console.log('  - New export button:', !!newExportBtn);
+
+    if (downloadBtn) {
+      // Remove any existing event listeners
+      downloadBtn.replaceWith(downloadBtn.cloneNode(true));
+      const newDownloadBtn = document.getElementById('download-export');
+
+      newDownloadBtn.addEventListener('click', () => {
+        console.log('📥 Download button clicked!');
+        this.handleDownloadExport();
+      });
+    } else {
+      console.warn('⚠️ Download button not found in results section');
+    }
+
+    if (newExportBtn) {
+      // Remove any existing event listeners
+      newExportBtn.replaceWith(newExportBtn.cloneNode(true));
+      const newNewExportBtn = document.getElementById('new-export');
+
+      newNewExportBtn.addEventListener('click', () => {
+        console.log('🔄 New export button clicked!');
+        this.handleNewExport();
+      });
+    } else {
+      console.warn('⚠️ New export button not found in results section');
+    }
+  }
+
+  handleDownloadExport() {
+    if (!this.selectedPopulation) {
+      this.app?.showNotification?.('No export data available. Please run an export first.', 'warning');
+      return;
+    }
+
+    try {
+      // Generate the export data
+      const exportData = this.generateExportData();
+      const fileName = this.generateFileName();
+      const blob = this.lastExport?.blob || new Blob([exportData.content], { type: this.getMimeType(this.exportOptions.format) });
+      const size = blob.size;
+      const createdAt = new Date();
+      const modifiedAt = createdAt;
+      this.lastExport = { blob, fileName, size, createdAt, modifiedAt, type: exportData.type };
+
+      // Create a download link
+      const downloadLink = document.createElement('a');
+      downloadLink.href = URL.createObjectURL(blob);
+      downloadLink.download = fileName;
+      downloadLink.style.display = 'none';
+
+      // Add to DOM, click, and remove
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+
+      // Clean up the URL object
+      URL.revokeObjectURL(downloadLink.href);
+
+      this.app?.showNotification?.(`Export file "${fileName}" downloaded successfully!`, 'success');
+
     } catch (error) {
-        console.error('Error downloading export:', error);
-        this.app?.showNotification?.('Failed to download export file: ' + error.message, 'error');
+      console.error('Error downloading export:', error);
+      this.app?.showNotification?.('Failed to download export file: ' + error.message, 'error');
     }
+  }
+
+  generateExportData() {
+    const format = this.exportOptions.format;
+
+    // Get checkbox states
+    const includeHeaders = document.getElementById('include-headers')?.checked ?? true;
+    const includeDisabled = document.getElementById('include-disabled')?.checked ?? false;
+    const includeMetadata = document.getElementById('include-metadata')?.checked ?? false;
+
+    // Get selected attributes from checkboxes
+    const selectedAttributes = this.getSelectedAttributes();
+
+    // Add metadata attributes if selected
+    if (includeMetadata) {
+      selectedAttributes.push('created_date', 'last_updated', 'last_login');
     }
 
-    generateExportData() {
-        const format = this.exportOptions.format;
-        
-        // Get checkbox states
-        const includeHeaders = document.getElementById('include-headers')?.checked ?? true;
-        const includeDisabled = document.getElementById('include-disabled')?.checked ?? false;
-        const includeMetadata = document.getElementById('include-metadata')?.checked ?? false;
-        
-        // Get selected attributes from checkboxes
-        const selectedAttributes = this.getSelectedAttributes();
-        
-        // Add metadata attributes if selected
-        if (includeMetadata) {
-            selectedAttributes.push('created_date', 'last_updated', 'last_login');
+    if (format === 'csv' || format === 'xlsx') {
+      let csv = '';
+      if (includeHeaders) {
+        const headers = this.getProfileHeaders(selectedAttributes);
+        csv += headers.join(format === 'xlsx' ? '\t' : ',') + '\n';
+      }
+
+      // Generate sample data based on population size
+      const userCount = this.selectedPopulation.userCount || 100;
+      for (let i = 1; i <= userCount; i++) {
+        // Skip disabled users if not included
+        const userStatus = this.getAttributeValue('status', i);
+        if (!includeDisabled && userStatus === 'Disabled') {
+          continue;
         }
-        
-        if (format === 'csv' || format === 'xlsx') {
-            let csv = '';
-            if (includeHeaders) {
-                const headers = this.getProfileHeaders(selectedAttributes);
-                csv += headers.join(format === 'xlsx' ? '\t' : ',') + '\n';
-            }
-            
-            // Generate sample data based on population size
-            const userCount = this.selectedPopulation.userCount || 100;
-            for (let i = 1; i <= userCount; i++) {
-                // Skip disabled users if not included
-                const userStatus = this.getAttributeValue('status', i);
-                if (!includeDisabled && userStatus === 'Disabled') {
-                    continue;
-                }
-                
-                const transformed = this.applyProfileTransform(selectedAttributes, i, userStatus);
-                const row = Object.values(transformed);
-                csv += row.join(format === 'xlsx' ? '\t' : ',') + '\n';
-            }
-            
-            return { content: csv, type: format };
-            
-        } else if (format === 'json') {
-            const userCount = this.selectedPopulation.userCount || 100;
-            const users = [];
-            
-            for (let i = 1; i <= userCount; i++) {
-                // Skip disabled users if not included
-                const userStatus = this.getAttributeValue('status', i);
-                if (!includeDisabled && userStatus === 'Disabled') {
-                    continue;
-                }
-                
-                users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
-            }
-            
-            return { content: JSON.stringify(users, null, 2), type: 'json' };
-        } else if (format === 'ndjson') {
-            const userCount = this.selectedPopulation.userCount || 100;
-            const lines = [];
-            for (let i = 1; i <= userCount; i++) {
-                const userStatus = this.getAttributeValue('status', i);
-                if (!includeDisabled && userStatus === 'Disabled') continue;
-                lines.push(JSON.stringify(this.applyProfileTransform(selectedAttributes, i, userStatus)));
-            }
-            return { content: lines.join('\n'), type: 'ndjson' };
-        } else if (format === 'xml') {
-            const userCount = this.selectedPopulation.userCount || 100;
-            const users = [];
-            for (let i = 1; i <= userCount; i++) {
-                const userStatus = this.getAttributeValue('status', i);
-                if (!includeDisabled && userStatus === 'Disabled') continue;
-                users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
-            }
-            return { content: this.convertUsersToXML(users), type: 'xml' };
-        } else if (format === 'ldif') {
-            const userCount = this.selectedPopulation.userCount || 100;
-            const users = [];
-            for (let i = 1; i <= userCount; i++) {
-                const userStatus = this.getAttributeValue('status', i);
-                if (!includeDisabled && userStatus === 'Disabled') continue;
-                users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
-            }
-            return { content: this.convertUsersToLDIF(users), type: 'ldif' };
-        } else if (format === 'scim') {
-            const userCount = this.selectedPopulation.userCount || 100;
-            const users = [];
-            for (let i = 1; i <= userCount; i++) {
-                const userStatus = this.getAttributeValue('status', i);
-                if (!includeDisabled && userStatus === 'Disabled') continue;
-                users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
-            }
-            return { content: JSON.stringify(this.convertUsersToSCIMBulk(users), null, 2), type: 'scim' };
+
+        const transformed = this.applyProfileTransform(selectedAttributes, i, userStatus);
+        const row = Object.values(transformed);
+        csv += row.join(format === 'xlsx' ? '\t' : ',') + '\n';
+      }
+
+      return { content: csv, type: format };
+
+    } else if (format === 'json') {
+      const userCount = this.selectedPopulation.userCount || 100;
+      const users = [];
+
+      for (let i = 1; i <= userCount; i++) {
+        // Skip disabled users if not included
+        const userStatus = this.getAttributeValue('status', i);
+        if (!includeDisabled && userStatus === 'Disabled') {
+          continue;
         }
-        
-        return { content: 'Export data not available', type: 'txt' };
+
+        users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
+      }
+
+      return { content: JSON.stringify(users, null, 2), type: 'json' };
+    } else if (format === 'ndjson') {
+      const userCount = this.selectedPopulation.userCount || 100;
+      const lines = [];
+      for (let i = 1; i <= userCount; i++) {
+        const userStatus = this.getAttributeValue('status', i);
+        if (!includeDisabled && userStatus === 'Disabled') {continue;}
+        lines.push(JSON.stringify(this.applyProfileTransform(selectedAttributes, i, userStatus)));
+      }
+      return { content: lines.join('\n'), type: 'ndjson' };
+    } else if (format === 'xml') {
+      const userCount = this.selectedPopulation.userCount || 100;
+      const users = [];
+      for (let i = 1; i <= userCount; i++) {
+        const userStatus = this.getAttributeValue('status', i);
+        if (!includeDisabled && userStatus === 'Disabled') {continue;}
+        users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
+      }
+      return { content: this.convertUsersToXML(users), type: 'xml' };
+    } else if (format === 'ldif') {
+      const userCount = this.selectedPopulation.userCount || 100;
+      const users = [];
+      for (let i = 1; i <= userCount; i++) {
+        const userStatus = this.getAttributeValue('status', i);
+        if (!includeDisabled && userStatus === 'Disabled') {continue;}
+        users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
+      }
+      return { content: this.convertUsersToLDIF(users), type: 'ldif' };
+    } else if (format === 'scim') {
+      const userCount = this.selectedPopulation.userCount || 100;
+      const users = [];
+      for (let i = 1; i <= userCount; i++) {
+        const userStatus = this.getAttributeValue('status', i);
+        if (!includeDisabled && userStatus === 'Disabled') {continue;}
+        users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
+      }
+      return { content: JSON.stringify(this.convertUsersToSCIMBulk(users), null, 2), type: 'scim' };
     }
 
-    getProfileHeaders(selectedAttributes) {
-        const profile = this.exportOptions.profile || 'pingone';
-        if (profile === 'pingone') {
-            return ['username','email','givenName','familyName','enabled','groups'];
-        }
-        if (profile === 'ad') {
-            return ['sAMAccountName','mail','givenName','sn','distinguishedName'];
-        }
-        if (profile === 'okta') {
-            return ['login','email','firstName','lastName','status','groups'];
-        }
-        if (profile === 'siem') {
-            return ['id','username','email','enabled','createdDate','lastLogin'];
-        }
-        // default: use attribute display names
-        return selectedAttributes.map(attr => this.getAttributeDisplayName(attr));
-    }
+    return { content: 'Export data not available', type: 'txt' };
+  }
 
-    convertUsersToLDIF(users) {
-        const lines = users.map(u => {
-            const uid = (u.username || u.login || u.sAMAccountName || 'user').toString();
-            const cn = `${u.givenName || u.firstName || 'User'} ${u.familyName || u.lastName || ''}`.trim();
-            const sam = uid.includes('@') ? uid.split('@')[0] : uid;
-            const dn = `uid=${sam},ou=Users,dc=example,dc=com`;
-            const block = [
-                `dn: ${dn}`,
-                'objectClass: inetOrgPerson',
-                `uid: ${sam}`,
-                `cn: ${cn}`,
-                `sn: ${u.familyName || u.lastName || 'User'}`,
-                `givenName: ${u.givenName || u.firstName || 'User'}`,
-                `mail: ${u.email || `${sam}@example.com`}`
-            ].join('\n');
-            return block + '\n';
-        });
-        return lines.join('\n');
+  getProfileHeaders(selectedAttributes) {
+    const profile = this.exportOptions.profile || 'pingone';
+    if (profile === 'pingone') {
+      return ['username','email','givenName','familyName','enabled','groups'];
     }
-
-    convertUsersToSCIMBulk(users) {
-        const Operations = users.map((u, idx) => ({
-            method: 'POST',
-            path: '/Users',
-            bulkId: `user${idx+1}`,
-            data: {
-                userName: u.username || u.login || u.email,
-                name: {
-                    givenName: u.givenName || u.firstName || 'User',
-                    familyName: u.familyName || u.lastName || String(idx+1)
-                },
-                active: u.enabled !== false,
-                emails: [{ value: u.email, primary: true }]
-            }
-        }));
-        return {
-            schemas: ['urn:ietf:params:scim:api:messages:2.0:BulkRequest'],
-            Operations
-        };
+    if (profile === 'ad') {
+      return ['sAMAccountName','mail','givenName','sn','distinguishedName'];
     }
-    
-    /**
-     * Get selected attributes from checkboxes
-     */
-    getSelectedAttributes() {
-        const attributes = ['username'];
-        const checked = document.querySelectorAll('#attributes-selection input[type="checkbox"]:checked');
-        checked.forEach(cb => {
-            const key = cb.dataset.key;
-            if (key && key !== 'username') attributes.push(key);
-        });
-        return attributes;
+    if (profile === 'okta') {
+      return ['login','email','firstName','lastName','status','groups'];
     }
-
-    /**
-     * Fetch and render attributes dynamically from backend
-     * @param {boolean} forceRefresh
-     */
-    async loadAttributes(forceRefresh = false) {
-        try {
-            const url = `/api/export/attributes${forceRefresh ? '?forceRefresh=true' : ''}`;
-            const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
-            const json = await resp.json();
-            if (!resp.ok || json.success === false) {
-                throw new Error(json.error || json.message || 'Failed fetching attributes');
-            }
-            const attributes = json.data?.attributes || json.attributes || [];
-            this.renderAttributes(attributes);
-            this.updateExportOptions();
-        } catch (err) {
-            console.error('Failed to load attributes:', err);
-            this.app?.showNotification?.(`Failed to load attributes: ${err.message}`, 'error');
-        }
+    if (profile === 'siem') {
+      return ['id','username','email','enabled','createdDate','lastLogin'];
     }
+    // default: use attribute display names
+    return selectedAttributes.map(attr => this.getAttributeDisplayName(attr));
+  }
 
-    /**
-     * Render attribute checkboxes into #attributes-selection
-     * @param {Array<{key:string,label:string,group?:string,required?:boolean}>} attributes
-     */
-    renderAttributes(attributes) {
-        const container = document.getElementById('attributes-selection');
-        if (!container) return;
+  convertUsersToLDIF(users) {
+    const lines = users.map(u => {
+      const uid = (u.username || u.login || u.sAMAccountName || 'user').toString();
+      const cn = `${u.givenName || u.firstName || 'User'} ${u.familyName || u.lastName || ''}`.trim();
+      const sam = uid.includes('@') ? uid.split('@')[0] : uid;
+      const dn = `uid=${sam},ou=Users,dc=example,dc=com`;
+      const block = [
+        `dn: ${dn}`,
+        'objectClass: inetOrgPerson',
+        `uid: ${sam}`,
+        `cn: ${cn}`,
+        `sn: ${u.familyName || u.lastName || 'User'}`,
+        `givenName: ${u.givenName || u.firstName || 'User'}`,
+        `mail: ${u.email || `${sam}@example.com`}`
+      ].join('\n');
+      return block + '\n';
+    });
+    return lines.join('\n');
+  }
 
-        // Preserve the required username checkbox
-        container.innerHTML = '';
-        const usernameId = 'attr-username';
-        container.insertAdjacentHTML('beforeend', `
+  convertUsersToSCIMBulk(users) {
+    const Operations = users.map((u, idx) => ({
+      method: 'POST',
+      path: '/Users',
+      bulkId: `user${idx+1}`,
+      data: {
+        userName: u.username || u.login || u.email,
+        name: {
+          givenName: u.givenName || u.firstName || 'User',
+          familyName: u.familyName || u.lastName || String(idx+1)
+        },
+        active: u.enabled !== false,
+        emails: [{ value: u.email, primary: true }]
+      }
+    }));
+    return {
+      schemas: ['urn:ietf:params:scim:api:messages:2.0:BulkRequest'],
+      Operations
+    };
+  }
+
+  /**
+   * Get selected attributes from checkboxes
+   */
+  getSelectedAttributes() {
+    const attributes = ['username'];
+    const checked = document.querySelectorAll('#attributes-selection input[type="checkbox"]:checked');
+    checked.forEach(cb => {
+      const key = cb.dataset.key;
+      if (key && key !== 'username') {attributes.push(key);}
+    });
+    return attributes;
+  }
+
+  /**
+   * Fetch and render attributes dynamically from backend
+   * @param {boolean} forceRefresh
+   */
+  async loadAttributes(forceRefresh = false) {
+    try {
+      const cacheBuster = `ts=${Date.now()}`;
+      const url = `/api/export/attributes${forceRefresh ? `?forceRefresh=true&${cacheBuster}` : `?${cacheBuster}`}`;
+      const resp = await fetch(url, { headers: { 'Accept': 'application/scim+json, application/json' } });
+      const json = await resp.json();
+      if (!resp.ok || json.success === false) {
+        throw new Error(json.error || json.message || 'Failed fetching attributes');
+      }
+      const attributes = json.data?.attributes || json.attributes || [];
+      console.log(`✅ Loaded ${attributes.length} attributes from SCIM`, attributes.slice(0, 10));
+      this.renderAttributes(attributes);
+      this.updateExportOptions();
+      this.app?.showNotification?.(`Loaded ${attributes.length} attributes`, 'success');
+    } catch (err) {
+      console.error('Failed to load attributes:', err);
+      this.app?.showNotification?.(`Failed to load attributes: ${err.message}`, 'error');
+    }
+  }
+
+  /**
+   * Render attribute checkboxes into #attributes-selection
+   * @param {Array<{key:string,label:string,group?:string,required?:boolean}>} attributes
+   */
+  renderAttributes(attributes) {
+    const container = document.getElementById('attributes-selection');
+    if (!container) {return;}
+
+    // Preserve the required username checkbox
+    container.innerHTML = '';
+    const usernameId = 'attr-username';
+    container.insertAdjacentHTML('beforeend', `
             <div class="form-check">
                 <input type="checkbox" id="${usernameId}" class="form-check-input" checked disabled data-key="username">
                 <label for="${usernameId}" class="form-check-label">Username (Required)</label>
             </div>
         `);
 
-        // Sort attributes: standard/name/relations/metadata/custom; username first already added
-        const order = { standard: 1, name: 2, relations: 3, metadata: 4, custom: 5 };
-        const items = attributes
-            .filter(a => a.key !== 'username')
-            .slice()
-            .sort((a, b) => (order[a.group || 'standard'] - order[b.group || 'standard']) || a.label.localeCompare(b.label));
+    // Sort attributes: standard/name/relations/metadata/custom; username first already added
+    const order = { standard: 1, name: 2, relations: 3, metadata: 4, custom: 5 };
+    const items = attributes
+      .filter(a => a.key !== 'username')
+      .slice()
+      .sort((a, b) => (order[a.group || 'standard'] - order[b.group || 'standard']) || a.label.localeCompare(b.label));
 
-        // Defaults to check
-        const defaultChecked = new Set(['email','givenName','familyName','enabled','groups']);
+    // Defaults to check
+    const defaultChecked = new Set(['email','givenName','familyName','enabled','groups']);
 
-        for (const attr of items) {
-            const id = `attr-${this.sanitizeId(attr.key)}`;
-            const label = attr.label || attr.key;
-            const required = !!attr.required;
-            const checked = required || defaultChecked.has(attr.key);
-            container.insertAdjacentHTML('beforeend', `
+    for (const attr of items) {
+      const id = `attr-${this.sanitizeId(attr.key)}`;
+      const label = attr.label || attr.key;
+      const required = !!attr.required;
+      const checked = required || defaultChecked.has(attr.key);
+      container.insertAdjacentHTML('beforeend', `
                 <div class="form-check">
                     <input type="checkbox" id="${id}" class="form-check-input" ${checked ? 'checked' : ''} ${required ? 'disabled' : ''} data-key="${attr.key}">
                     <label for="${id}" class="form-check-label">${label}</label>
                 </div>
             `);
+    }
+  }
+
+  sanitizeId(key) {
+    return String(key).replace(/[^a-zA-Z0-9_-]/g, '_');
+  }
+
+  /**
+   * Get display name for attribute
+   */
+  getAttributeDisplayName(attr) {
+    const displayNames = {
+      'username': 'Username',
+      'email': 'Email',
+      'firstname': 'First Name',
+      'lastname': 'Last Name',
+      'status': 'Status',
+      'groups': 'Groups',
+      'roles': 'Roles',
+      'custom': 'Custom Attributes',
+      'created_date': 'Created Date',
+      'last_updated': 'Last Updated',
+      'last_login': 'Last Login'
+    };
+    return displayNames[attr] || attr;
+  }
+
+  /**
+   * Get attribute key for JSON
+   */
+  getAttributeKey(attr) {
+    const keys = {
+      'username': 'username',
+      'email': 'email',
+      'firstname': 'first_name',
+      'lastname': 'last_name',
+      'status': 'status',
+      'groups': 'groups',
+      'roles': 'roles',
+      'custom': 'custom_attributes',
+      'created_date': 'created_date',
+      'last_updated': 'last_updated',
+      'last_login': 'last_login'
+    };
+    return keys[attr] || attr;
+  }
+
+  /**
+   * Get sample value for attribute
+   */
+  getAttributeValue(attr, index) {
+    const now = new Date();
+    const createdDate = new Date(now.getTime() - (Math.random() * 365 * 24 * 60 * 60 * 1000));
+    const lastUpdated = new Date(createdDate.getTime() + (Math.random() * 30 * 24 * 60 * 60 * 1000));
+    const lastLogin = new Date(lastUpdated.getTime() + (Math.random() * 7 * 24 * 60 * 60 * 1000));
+    const isDisabled = index % 5 === 0; // ~20% disabled for preview richness
+
+    const map = {
+      // core identifiers
+      'id': `u-${index}`,
+      'username': `user${index}`,
+      'userName': `user${index}`,
+      'email': `user${index}@example.com`,
+
+      // legacy simple names
+      'firstname': 'User',
+      'lastname': String(index),
+
+      // SCIM name object and synonyms
+      'givenName': 'User',
+      'familyName': String(index),
+      'name.givenName': 'User',
+      'name.familyName': String(index),
+
+      // enable/active/status
+      'status': isDisabled ? 'Disabled' : 'Active',
+      'enabled': !isDisabled,
+      'active': !isDisabled,
+
+      // relations and groups
+      'groups': 'Default Group',
+      'roles': 'User',
+
+      // dates
+      'created_date': createdDate.toISOString().split('T')[0],
+      'last_updated': lastUpdated.toISOString().split('T')[0],
+      'last_login': lastLogin.toISOString().split('T')[0],
+      'created': createdDate.toISOString(),
+      'lastModified': lastUpdated.toISOString(),
+      'meta.created': createdDate.toISOString(),
+      'meta.lastModified': lastUpdated.toISOString()
+    };
+
+    // Support custom dotted attributes like custom.foo, x-... or urn:...:extension
+    if (attr && typeof attr === 'string') {
+      if (attr.startsWith('custom.')) {
+        const key = attr.split('.').slice(1).join('_') || 'attr';
+        return `custom_${key}_${index}`;
+      }
+      if (attr.includes('.')) {
+        // generic dotted key fallback e.g., addresses.workStreet
+        const baseKey = attr.split('.').pop();
+        if (baseKey && map[baseKey] !== undefined) {return map[baseKey];}
+      }
+    }
+
+    return map[attr] !== undefined ? map[attr] : '';
+  }
+
+  generateFileName() {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+    const populationName = this.selectedPopulation.name.replace(/[^a-zA-Z0-9]/g, '_');
+    const format = this.exportOptions.format;
+
+    return `pingone_export_${populationName}_${timestamp}.${format}`;
+  }
+
+  getMimeType(format) {
+    switch (format) {
+    case 'csv':
+      return 'text/csv';
+    case 'json':
+      return 'application/json';
+    case 'ndjson':
+      return 'application/x-ndjson';
+    case 'xlsx':
+      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'xml':
+      return 'application/xml';
+    case 'ldif':
+      return 'text/plain';
+    case 'scim':
+      return 'application/scim+json';
+    default:
+      return 'text/plain';
+    }
+  }
+
+  handleNewExport() {
+    // Reset the form
+    const progressSection = document.getElementById('export-progress');
+    const resultsSection = document.getElementById('export-results');
+    const populationSelect = document.getElementById('export-population-select');
+
+    if (progressSection) {progressSection.style.display = 'none';}
+    if (resultsSection) {resultsSection.style.display = 'none';}
+    if (populationSelect) {populationSelect.value = '';}
+
+    this.selectedPopulation = null;
+    this.handlePopulationChange('');
+  }
+
+  async handleCancelExport() {
+    console.log('🛑 Canceling export process...');
+
+    // Ask backend to cancel
+    try {
+      const resp = await csrfManager.fetchWithCSRF('/api/export/cancel', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Accept': 'application/json' }
+      });
+      // Best-effort: don't block on cancel errors
+      if (!resp.ok) {
+        const t = await resp.text();
+        console.warn('Backend cancel returned non-OK:', t);
+      }
+    } catch (e) {
+      console.warn('Cancel request failed (continuing UI cleanup):', e);
+    }
+
+    // Stop polling
+    if (this.exportInterval) {
+      clearInterval(this.exportInterval);
+      this.exportInterval = null;
+    }
+
+    // Hide progress section
+    const progressSection = document.getElementById('export-progress');
+    if (progressSection) {
+      progressSection.style.display = 'none';
+    }
+
+    // Hide cancel button
+    const cancelBtn = document.getElementById('cancel-export');
+    if (cancelBtn) {
+      cancelBtn.style.display = 'none';
+    }
+
+    // Show notification
+    this.app?.showNotification?.('Export cancelled successfully', 'info');
+
+    // Reset progress
+    const progressBar = document.getElementById('export-progress-bar');
+    const progressText = document.getElementById('export-progress-text');
+    const progressTextLeft = document.getElementById('export-progress-text-left');
+    const usersProcessed = document.getElementById('users-processed');
+    const ignoredUsersEl = document.getElementById('ignored-users');
+    if (progressBar) {progressBar.style.width = '0%';}
+    if (progressText) {progressText.textContent = '0%';}
+    if (progressTextLeft) {progressTextLeft.textContent = '0%';}
+    if (usersProcessed) {usersProcessed.textContent = '0';}
+    if (ignoredUsersEl) {ignoredUsersEl.textContent = '0';}
+
+    console.log('✅ Export cancellation completed');
+  }
+
+  // Called when token status changes
+  onTokenStatusChange(tokenStatus) {
+    // Only reload populations if page is loaded and token validity actually changed
+    if (this.isLoaded) {
+      const currentValidity = tokenStatus?.isValid;
+      if (this.lastTokenValidity !== currentValidity) {
+        console.log(`🔄 Export page - Token validity changed: ${this.lastTokenValidity} -> ${currentValidity}`);
+        this.lastTokenValidity = currentValidity;
+        if (currentValidity) {
+          this.loadPopulations();
         }
+      }
     }
+  }
 
-    sanitizeId(key) {
-        return String(key).replace(/[^a-zA-Z0-9_-]/g, '_');
+  // Called when settings change
+  onSettingsChange(settings) {
+    if (settings) {
+      this.loadPopulations();
     }
-    
-    /**
-     * Get display name for attribute
-     */
-    getAttributeDisplayName(attr) {
-        const displayNames = {
-            'username': 'Username',
-            'email': 'Email',
-            'firstname': 'First Name',
-            'lastname': 'Last Name',
-            'status': 'Status',
-            'groups': 'Groups',
-            'roles': 'Roles',
-            'custom': 'Custom Attributes',
-            'created_date': 'Created Date',
-            'last_updated': 'Last Updated',
-            'last_login': 'Last Login'
-        };
-        return displayNames[attr] || attr;
+  }
+
+  // Add missing helper to ensure smooth scrolling works
+  scrollToSection(element) {
+    if (!element || typeof element.scrollIntoView !== 'function') {return;}
+    try {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (_) {
+      try { element.scrollIntoView(true); } catch (_) {}
     }
-    
-    /**
-     * Get attribute key for JSON
-     */
-    getAttributeKey(attr) {
-        const keys = {
-            'username': 'username',
-            'email': 'email',
-            'firstname': 'first_name',
-            'lastname': 'last_name',
-            'status': 'status',
-            'groups': 'groups',
-            'roles': 'roles',
-            'custom': 'custom_attributes',
-            'created_date': 'created_date',
-            'last_updated': 'last_updated',
-            'last_login': 'last_login'
-        };
-        return keys[attr] || attr;
-    }
-    
-    /**
-     * Get sample value for attribute
-     */
-    getAttributeValue(attr, index) {
-        const now = new Date();
-        const createdDate = new Date(now.getTime() - (Math.random() * 365 * 24 * 60 * 60 * 1000));
-        const lastUpdated = new Date(createdDate.getTime() + (Math.random() * 30 * 24 * 60 * 60 * 1000));
-        const lastLogin = new Date(lastUpdated.getTime() + (Math.random() * 7 * 24 * 60 * 60 * 1000));
-        const isDisabled = index % 5 === 0; // ~20% disabled for preview richness
-
-        const map = {
-            // core identifiers
-            'id': `u-${index}`,
-            'username': `user${index}`,
-            'userName': `user${index}`,
-            'email': `user${index}@example.com`,
-
-            // legacy simple names
-            'firstname': 'User',
-            'lastname': String(index),
-
-            // SCIM name object and synonyms
-            'givenName': 'User',
-            'familyName': String(index),
-            'name.givenName': 'User',
-            'name.familyName': String(index),
-
-            // enable/active/status
-            'status': isDisabled ? 'Disabled' : 'Active',
-            'enabled': !isDisabled,
-            'active': !isDisabled,
-
-            // relations and groups
-            'groups': 'Default Group',
-            'roles': 'User',
-
-            // dates
-            'created_date': createdDate.toISOString().split('T')[0],
-            'last_updated': lastUpdated.toISOString().split('T')[0],
-            'last_login': lastLogin.toISOString().split('T')[0],
-            'created': createdDate.toISOString(),
-            'lastModified': lastUpdated.toISOString(),
-            'meta.created': createdDate.toISOString(),
-            'meta.lastModified': lastUpdated.toISOString()
-        };
-
-        // Support custom dotted attributes like custom.foo, x-... or urn:...:extension
-        if (attr && typeof attr === 'string') {
-            if (attr.startsWith('custom.')) {
-                const key = attr.split('.').slice(1).join('_') || 'attr';
-                return `custom_${key}_${index}`;
-            }
-            if (attr.includes('.')) {
-                // generic dotted key fallback e.g., addresses.workStreet
-                const baseKey = attr.split('.').pop();
-                if (baseKey && map[baseKey] !== undefined) return map[baseKey];
-            }
-        }
-
-        return map[attr] !== undefined ? map[attr] : '';
-    }
-
-    generateFileName() {
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
-        const populationName = this.selectedPopulation.name.replace(/[^a-zA-Z0-9]/g, '_');
-        const format = this.exportOptions.format;
-        
-        return `pingone_export_${populationName}_${timestamp}.${format}`;
-    }
-
-    getMimeType(format) {
-        switch (format) {
-            case 'csv':
-                return 'text/csv';
-            case 'json':
-                return 'application/json';
-            case 'ndjson':
-                return 'application/x-ndjson';
-            case 'xlsx':
-                return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-            case 'xml':
-                return 'application/xml';
-            case 'ldif':
-                return 'text/plain';
-            case 'scim':
-                return 'application/scim+json';
-            default:
-                return 'text/plain';
-        }
-    }
-
-    handleNewExport() {
-        // Reset the form
-        const progressSection = document.getElementById('export-progress');
-        const resultsSection = document.getElementById('export-results');
-        const populationSelect = document.getElementById('export-population-select');
-
-        if (progressSection) progressSection.style.display = 'none';
-        if (resultsSection) resultsSection.style.display = 'none';
-        if (populationSelect) populationSelect.value = '';
-
-        this.selectedPopulation = null;
-        this.handlePopulationChange('');
-    }
-
-    async handleCancelExport() {
-        console.log('🛑 Canceling export process...');
-
-        // Ask backend to cancel
-        try {
-            const resp = await csrfManager.fetchWithCSRF('/api/export/cancel', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Accept': 'application/json' }
-            });
-            // Best-effort: don't block on cancel errors
-            if (!resp.ok) {
-                const t = await resp.text();
-                console.warn('Backend cancel returned non-OK:', t);
-            }
-        } catch (e) {
-            console.warn('Cancel request failed (continuing UI cleanup):', e);
-        }
-
-        // Stop polling
-        if (this.exportInterval) {
-            clearInterval(this.exportInterval);
-            this.exportInterval = null;
-        }
-
-        // Hide progress section
-        const progressSection = document.getElementById('export-progress');
-        if (progressSection) {
-            progressSection.style.display = 'none';
-        }
-
-        // Hide cancel button
-        const cancelBtn = document.getElementById('cancel-export');
-        if (cancelBtn) {
-            cancelBtn.style.display = 'none';
-        }
-
-        // Show notification
-        this.app?.showNotification?.('Export cancelled successfully', 'info');
-
-        // Reset progress
-        const progressBar = document.getElementById('export-progress-bar');
-        const progressText = document.getElementById('export-progress-text');
-        const progressTextLeft = document.getElementById('export-progress-text-left');
-        const usersProcessed = document.getElementById('users-processed');
-        const ignoredUsersEl = document.getElementById('ignored-users');
-        if (progressBar) progressBar.style.width = '0%';
-        if (progressText) progressText.textContent = '0%';
-        if (progressTextLeft) progressTextLeft.textContent = '0%';
-        if (usersProcessed) usersProcessed.textContent = '0';
-        if (ignoredUsersEl) ignoredUsersEl.textContent = '0';
-
-        console.log('✅ Export cancellation completed');
-    }
-
-    // Called when token status changes
-    onTokenStatusChange(tokenStatus) {
-        // Only reload populations if page is loaded and token validity actually changed
-        if (this.isLoaded) {
-            const currentValidity = tokenStatus?.isValid;
-            if (this.lastTokenValidity !== currentValidity) {
-                console.log(`🔄 Export page - Token validity changed: ${this.lastTokenValidity} -> ${currentValidity}`);
-                this.lastTokenValidity = currentValidity;
-                if (currentValidity) {
-                    this.loadPopulations();
-                }
-            }
-        }
-    }
-
-    // Called when settings change
-    onSettingsChange(settings) {
-        if (settings) {
-            this.loadPopulations();
-        }
-    }
-
-    // Add missing helper to ensure smooth scrolling works
-    scrollToSection(element) {
-        if (!element || typeof element.scrollIntoView !== 'function') return;
-        try {
-            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } catch (_) {
-            try { element.scrollIntoView(true); } catch (_) {}
-        }
-    }
+  }
 }

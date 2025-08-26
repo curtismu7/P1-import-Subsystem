@@ -1,6 +1,6 @@
 /**
  * Version Manager - Import Maps Compatible
- * 
+ *
  * Manages version display and updates across the application
  * Works with ES modules and import maps
  */
@@ -24,7 +24,7 @@ export class VersionManager {
       this.updateVersionDisplays();
       this.updatePageTitle();
       this.initialized = true;
-      
+
       console.log(`Version Manager initialized: ${this.version}`);
     } catch (error) {
       console.warn('Failed to load version info:', error);

@@ -1,0 +1,114 @@
+@charset "UTF-8";
+
+@font-face {
+  font-display: block;
+  font-family: "webfont";
+  src: url("./src/icons/materialdesignicons-subset.eot") format("embedded-opentype");
+  src: url("./src/icons/materialdesignicons-subset.svg") format("svg"),
+    url("./src/icons/materialdesignicons-subset.woff2") format("woff2"),
+    url("./src/icons/materialdesignicons-subset.woff") format("woff"),
+    url("./src/icons/materialdesignicons-subset.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+.mdi::before,
+.mdi-set {
+  display: inline-block;
+  font-family: "webfont";
+  font-weight: 400;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  line-height: 1;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mdi-account-key-outline::before {
+  content: "\ea01"
+}
+
+.mdi-alert::before {
+  content: "\ea02"
+}
+
+.mdi-alert-circle::before {
+  content: "\ea03"
+}
+
+.mdi-alert-decagram::before {
+  content: "\ea04"
+}
+
+.mdi-auto-fix::before {
+  content: "\ea05";
+}
+
+.mdi-book-open-page-variant::before {
+  content: "\ea06"
+}
+
+.mdi-cellphone::before {
+  content: "\ea07";
+}
+
+.mdi-cellphone-key::before {
+  content: "\ea08"
+}
+
+.mdi-check-circle::before {
+  content: "\ea09"
+}
+
+.mdi-chevron-down::before {
+  content: "\ea0a"
+}
+
+.mdi-chevron-up::before {
+  content: "\ea0b";
+}
+
+.mdi-code-braces::before {
+  content: "\ea0c";
+}
+
+.mdi-comment-text-outline::before {
+  content: "\ea0d"
+}
+
+.mdi-email-outline::before {
+  content: "\ea0e"
+}
+
+.mdi-eye-off-outline::before {
+  content: "\ea0f"
+}
+
+.mdi-eye-outline::before {
+  content: "\ea10";
+}
+
+.mdi-face-agent::before {
+  content: "\ea11";
+}
+
+.mdi-fingerprint::before {
+  content: "\ea12";
+}
+
+.mdi-flag::before {
+  content: "\ea13";
+}
+
+.mdi-phone-outline::before {
+  content: "\ea14";
+}
+
+.mdi-puzzle-outline::before {
+  content: "\ea15";
+}
+
+.mdi-usb-flash-drive::before {
+  content: "\ea16"
+}

@@ -80,11 +80,11 @@ function buildJestCommand(config) {
     command: 'npx',
     args: ['jest', ...args],
     options: {
-      env: { 
-        ...process.env, 
-        NODE_ENV: 'test', 
+      env: {
+        ...process.env,
+        NODE_ENV: 'test',
         BABEL_ENV: 'test',
-        ...config.env 
+        ...config.env
       },
       stdio: 'inherit',
       shell: false
@@ -102,7 +102,7 @@ async function runTestSuite(suiteName) {
 
   console.log(colors.highlight(`\n=== ${config.name} ===`));
   console.log(colors.info(`Pattern: ${config.pattern}`));
-  
+
   const { command, args, options } = buildJestCommand(config);
   console.log(colors.info(`Running: ${command} ${args.join(' ')}`));
 
@@ -133,10 +133,10 @@ async function runTestSuite(suiteName) {
 async function main() {
   const args = process.argv.slice(2);
   const testType = args[0] || 'all';
-  
+
   try {
     let success = true;
-    
+
     if (testType === 'all') {
       // Run all test suites
       for (const suite of Object.keys(testConfig)) {
@@ -155,7 +155,7 @@ async function main() {
       });
       process.exit(1);
     }
-    
+
     process.exit(success ? 0 : 1);
   } catch (error) {
     console.error(colors.error('\n❌ Test runner failed:'), error);

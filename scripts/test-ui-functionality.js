@@ -18,7 +18,7 @@ function generateUITestChecklist() {
   console.log('=================================');
   console.log('\nThis checklist helps verify that all UI functionality works correctly with the optimized bundle.');
   console.log('Please manually test each item and check for any issues.\n');
-  
+
   const testGroups = [
     {
       name: 'Core Functionality',
@@ -88,43 +88,43 @@ function generateUITestChecklist() {
       ]
     }
   ];
-  
+
   // Print the checklist
   testGroups.forEach((group, groupIndex) => {
     console.log(`\n${groupIndex + 1}. ${group.name}`);
     console.log('   ' + '='.repeat(group.name.length));
-    
+
     group.tests.forEach((test, testIndex) => {
       console.log(`   ${groupIndex + 1}.${testIndex + 1}. [ ] ${test}`);
     });
   });
-  
+
   console.log('\n\nInstructions:');
   console.log('1. Open the application in your browser');
   console.log('2. Test each item in the checklist');
   console.log('3. Mark items as passed or failed');
   console.log('4. Report any issues found during testing');
-  
+
   // Save the checklist to a file
   const checklistPath = path.join(projectRoot, 'docs', 'ui-test-checklist.md');
-  
+
   let markdown = '# UI Functionality Test Checklist\n\n';
   markdown += 'This checklist helps verify that all UI functionality works correctly with the optimized bundle.\n\n';
-  
+
   testGroups.forEach((group, groupIndex) => {
     markdown += `## ${groupIndex + 1}. ${group.name}\n\n`;
-    
+
     group.tests.forEach((test, testIndex) => {
       markdown += `- [ ] ${groupIndex + 1}.${testIndex + 1}. ${test}\n`;
     });
-    
+
     markdown += '\n';
   });
-  
+
   markdown += '## Notes\n\n';
   markdown += '- Add any observations or issues here\n';
   markdown += '- Include browser and environment details\n';
-  
+
   fs.writeFileSync(checklistPath, markdown);
   console.log(`\n📝 Test checklist saved to: ${checklistPath}`);
 }

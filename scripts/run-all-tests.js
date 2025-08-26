@@ -42,17 +42,17 @@ const TEST_CATEGORIES = [
 
 async function runTests() {
   console.log(chalk.bold('\n🚀 Starting Comprehensive Test Suite\n'));
-  
+
   let allPassed = true;
   const results = [];
-  
+
   for (const test of TEST_CATEGORIES) {
     const colorFn = chalk[test.color] || chalk.white;
     console.log(colorFn(`\n${'='.repeat(50)}`));
     console.log(colorFn.bold(`\n${test.name}`));
     console.log(colorFn(test.description));
     console.log(colorFn('='.repeat(50) + '\n'));
-    
+
     try {
       execSync(test.command, { stdio: 'inherit' });
       results.push({ name: test.name, passed: true });
@@ -63,21 +63,21 @@ async function runTests() {
       console.error(chalk.red.bold(`\n❌ ${test.name} failed!\n`));
     }
   }
-  
+
   // Print summary
   console.log(chalk.bold('\n📊 Test Suite Summary\n'));
   results.forEach(result => {
-    const status = result.passed 
-      ? chalk.green('✓ PASSED') 
+    const status = result.passed
+      ? chalk.green('✓ PASSED')
       : chalk.red('✗ FAILED');
     console.log(`${status} - ${result.name}`);
   });
-  
+
   if (!allPassed) {
     console.error(chalk.red.bold('\n❌ Some tests failed. See above for details.\n'));
     process.exit(1);
   }
-  
+
   console.log(chalk.green.bold('\n✅ All tests passed successfully!\n'));
 }
 

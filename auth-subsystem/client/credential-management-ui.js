@@ -1,6 +1,6 @@
 /**
  * Client-Side Credential Management UI
- * 
+ *
  * Provides a user interface for managing PingOne credentials with:
  * - Secure credential input and validation
  * - Multi-location storage (localStorage, server .env, settings.json)
@@ -10,36 +10,36 @@
  */
 
 class CredentialManagementUI {
-    constructor(eventBus, logger) {
-        this.eventBus = eventBus;
-        this.logger = logger || console;
-        this.isVisible = false;
-        this.currentCredentials = null;
-        this.validationStatus = {
-            clientId: false,
-            clientSecret: false,
-            environmentId: false,
-            region: true // Region has default value
-        };
+  constructor(eventBus, logger) {
+    this.eventBus = eventBus;
+    this.logger = logger || console;
+    this.isVisible = false;
+    this.currentCredentials = null;
+    this.validationStatus = {
+      clientId: false,
+      clientSecret: false,
+      environmentId: false,
+      region: true // Region has default value
+    };
 
-        this.setupEventListeners();
-    }
+    this.setupEventListeners();
+  }
 
-    /**
-     * Initialize the credential management UI
-     */
-    initialize() {
-        this.createUI();
-        this.loadCurrentCredentials();
-        this.logger.info('Credential Management UI initialized');
-    }
+  /**
+   * Initialize the credential management UI
+   */
+  initialize() {
+    this.createUI();
+    this.loadCurrentCredentials();
+    this.logger.info('Credential Management UI initialized');
+  }
 
-    /**
-     * Create the credential management UI elements
-     */
-    createUI() {
-        // Create modal container
-        const modalHtml = `
+  /**
+   * Create the credential management UI elements
+   */
+  createUI() {
+    // Create modal container
+    const modalHtml = `
             <div id="credential-management-modal" class="modal credential-modal" style="display: none;">
                 <div class="modal-content credential-modal-content">
                     <div class="modal-header">
@@ -190,447 +190,447 @@ class CredentialManagementUI {
             </div>
         `;
 
-        // Add to page
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        this.bindEventHandlers();
+    // Add to page
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    this.bindEventHandlers();
+  }
+
+  /**
+   * Bind event handlers for UI interactions
+   */
+  bindEventHandlers() {
+    // Modal controls
+    document.getElementById('close-credential-modal').addEventListener('click', () => {
+      this.hide();
+    });
+
+    // Password visibility toggle
+    document.getElementById('toggle-client-secret').addEventListener('click', () => {
+      this.togglePasswordVisibility('client-secret', 'toggle-client-secret');
+    });
+
+    // Form validation
+    ['client-id', 'client-secret', 'environment-id'].forEach(fieldId => {
+      document.getElementById(fieldId).addEventListener('input', (e) => {
+        this.validateField(fieldId, e.target.value);
+      });
+    });
+
+    // Action buttons
+    document.getElementById('test-credentials-btn').addEventListener('click', () => {
+      this.testCredentials();
+    });
+
+    document.getElementById('save-credentials-btn').addEventListener('click', () => {
+      this.saveCredentials();
+    });
+
+    document.getElementById('load-credentials-btn').addEventListener('click', () => {
+      this.loadCurrentCredentials();
+    });
+
+    document.getElementById('clear-credentials-btn').addEventListener('click', () => {
+      this.clearCredentials();
+    });
+
+    // Close modal when clicking outside
+    document.getElementById('credential-management-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'credential-management-modal') {
+        this.hide();
+      }
+    });
+  }
+
+  /**
+   * Setup event listeners for external events
+   */
+  setupEventListeners() {
+    if (this.eventBus) {
+      this.eventBus.on('auth:statusChanged', (status) => {
+        this.updateStatusDisplay(status);
+      });
+
+      this.eventBus.on('credentials:updated', () => {
+        this.loadCurrentCredentials();
+      });
+    }
+  }
+
+  /**
+   * Show the credential management modal
+   */
+  show() {
+    const modal = document.getElementById('credential-management-modal');
+    if (modal) {
+      modal.style.display = 'flex';
+      this.isVisible = true;
+      this.loadCurrentCredentials();
+      this.updateAuthenticationStatus();
+    }
+  }
+
+  /**
+   * Hide the credential management modal
+   */
+  hide() {
+    const modal = document.getElementById('credential-management-modal');
+    if (modal) {
+      modal.style.display = 'none';
+      this.isVisible = false;
+    }
+  }
+
+  /**
+   * Toggle password visibility
+   */
+  togglePasswordVisibility(inputId, buttonId) {
+    const input = document.getElementById(inputId);
+    const button = document.getElementById(buttonId);
+    const icon = button.querySelector('i');
+
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.className = 'fas fa-eye-slash';
+    } else {
+      input.type = 'password';
+      icon.className = 'fas fa-eye';
+    }
+  }
+
+  /**
+   * Validate individual form fields
+   */
+  validateField(fieldId, value) {
+    const indicator = document.getElementById(`${fieldId}-indicator`);
+    const icon = indicator.querySelector('i');
+
+    let isValid = false;
+
+    switch (fieldId) {
+    case 'client-id':
+      isValid = value && value.length > 10 && !value.includes('YOUR_');
+      this.validationStatus.clientId = isValid;
+      break;
+    case 'client-secret':
+      isValid = value && value.length > 20 && !value.includes('YOUR_');
+      this.validationStatus.clientSecret = isValid;
+      break;
+    case 'environment-id':
+      isValid = value && value.length > 10 && !value.includes('YOUR_');
+      this.validationStatus.environmentId = isValid;
+      break;
     }
 
-    /**
-     * Bind event handlers for UI interactions
-     */
-    bindEventHandlers() {
-        // Modal controls
-        document.getElementById('close-credential-modal').addEventListener('click', () => {
-            this.hide();
-        });
+    // Update indicator
+    if (isValid) {
+      icon.className = 'fas fa-check-circle';
+      icon.style.color = '#28a745';
+    } else {
+      icon.className = 'fas fa-exclamation-circle';
+      icon.style.color = '#dc3545';
+    }
+  }
 
-        // Password visibility toggle
-        document.getElementById('toggle-client-secret').addEventListener('click', () => {
-            this.togglePasswordVisibility('client-secret', 'toggle-client-secret');
-        });
+  /**
+   * Test credentials by making a validation request
+   */
+  async testCredentials() {
+    const credentials = this.getFormCredentials();
+    const button = document.getElementById('test-credentials-btn');
+    const originalText = button.innerHTML;
 
-        // Form validation
-        ['client-id', 'client-secret', 'environment-id'].forEach(fieldId => {
-            document.getElementById(fieldId).addEventListener('input', (e) => {
-                this.validateField(fieldId, e.target.value);
-            });
-        });
+    try {
+      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+      button.disabled = true;
 
-        // Action buttons
-        document.getElementById('test-credentials-btn').addEventListener('click', () => {
-            this.testCredentials();
-        });
+      const response = await fetch('/api/auth/validate-credentials', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(credentials)
+      });
 
-        document.getElementById('save-credentials-btn').addEventListener('click', () => {
-            this.saveCredentials();
-        });
+      const result = await response.json();
 
-        document.getElementById('load-credentials-btn').addEventListener('click', () => {
-            this.loadCurrentCredentials();
-        });
+      this.showResults({
+        type: result.success ? 'success' : 'error',
+        title: 'Credential Test Results',
+        message: result.message,
+        details: result.details || null
+      });
 
-        document.getElementById('clear-credentials-btn').addEventListener('click', () => {
-            this.clearCredentials();
-        });
+    } catch (error) {
+      this.showResults({
+        type: 'error',
+        title: 'Test Failed',
+        message: 'Failed to test credentials: ' + error.message
+      });
+    } finally {
+      button.innerHTML = originalText;
+      button.disabled = false;
+    }
+  }
 
-        // Close modal when clicking outside
-        document.getElementById('credential-management-modal').addEventListener('click', (e) => {
-            if (e.target.id === 'credential-management-modal') {
-                this.hide();
-            }
-        });
+  /**
+   * Save credentials to selected storage locations
+   */
+  async saveCredentials() {
+    const credentials = this.getFormCredentials();
+    const storageTargets = this.getSelectedStorageTargets();
+    const button = document.getElementById('save-credentials-btn');
+    const originalText = button.innerHTML;
+
+    try {
+      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+      button.disabled = true;
+
+      const response = await fetch('/api/auth/save-credentials', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          credentials: credentials,
+          targets: storageTargets
+        })
+      });
+
+      const result = await response.json();
+
+      // Save to localStorage if selected
+      if (storageTargets.includes('localStorage')) {
+        this.saveToLocalStorage(credentials);
+      }
+
+      this.showResults({
+        type: result.success ? 'success' : 'warning',
+        title: 'Save Results',
+        message: 'Credential save operation completed',
+        details: result.results
+      });
+
+      if (result.success) {
+        this.eventBus?.emit('credentials:updated', credentials);
+      }
+
+    } catch (error) {
+      this.showResults({
+        type: 'error',
+        title: 'Save Failed',
+        message: 'Failed to save credentials: ' + error.message
+      });
+    } finally {
+      button.innerHTML = originalText;
+      button.disabled = false;
+    }
+  }
+
+  /**
+   * Load current credentials from server
+   */
+  async loadCurrentCredentials() {
+    try {
+      const response = await fetch('/api/auth/current-credentials');
+      const result = await response.json();
+
+      if (result.success && result.credentials) {
+        this.populateForm(result.credentials);
+        this.currentCredentials = result.credentials;
+      }
+    } catch (error) {
+      this.logger.error('Failed to load current credentials:', error);
+    }
+  }
+
+  /**
+   * Clear all credentials
+   */
+  async clearCredentials() {
+    if (!confirm('Are you sure you want to clear all credentials? This will require reconfiguration.')) {
+      return;
     }
 
-    /**
-     * Setup event listeners for external events
-     */
-    setupEventListeners() {
-        if (this.eventBus) {
-            this.eventBus.on('auth:statusChanged', (status) => {
-                this.updateStatusDisplay(status);
-            });
+    try {
+      // Clear form
+      document.getElementById('credential-form').reset();
 
-            this.eventBus.on('credentials:updated', () => {
-                this.loadCurrentCredentials();
-            });
+      // Clear localStorage
+      localStorage.removeItem('pingone_credentials');
+
+      // Clear server credentials
+      const response = await fetch('/api/auth/clear-credentials', {
+        method: 'POST'
+      });
+
+      const result = await response.json();
+
+      this.showResults({
+        type: result.success ? 'success' : 'error',
+        title: 'Clear Results',
+        message: result.message
+      });
+
+      // Reset validation indicators
+      Object.keys(this.validationStatus).forEach(key => {
+        this.validationStatus[key] = false;
+        const indicator = document.getElementById(`${key.replace(/([A-Z])/g, '-$1').toLowerCase()}-indicator`);
+        if (indicator) {
+          const icon = indicator.querySelector('i');
+          icon.className = 'fas fa-circle';
+          icon.style.color = '#6c757d';
         }
+      });
+
+    } catch (error) {
+      this.showResults({
+        type: 'error',
+        title: 'Clear Failed',
+        message: 'Failed to clear credentials: ' + error.message
+      });
+    }
+  }
+
+  /**
+   * Get credentials from form
+   */
+  getFormCredentials() {
+    return {
+      clientId: document.getElementById('client-id').value.trim(),
+      clientSecret: document.getElementById('client-secret').value.trim(),
+      environmentId: document.getElementById('environment-id').value.trim(),
+      region: document.getElementById('region').value
+    };
+  }
+
+  /**
+   * Get selected storage targets
+   */
+  getSelectedStorageTargets() {
+    const targets = [];
+    if (document.getElementById('save-to-env').checked) {targets.push('env');}
+    if (document.getElementById('save-to-settings').checked) {targets.push('settings');}
+    if (document.getElementById('save-to-localstorage').checked) {targets.push('localStorage');}
+    return targets;
+  }
+
+  /**
+   * Populate form with credentials
+   */
+  populateForm(credentials) {
+    if (credentials.clientId) {
+      document.getElementById('client-id').value = credentials.clientId;
+      this.validateField('client-id', credentials.clientId);
+    }
+    if (credentials.clientSecret) {
+      document.getElementById('client-secret').value = credentials.clientSecret;
+      this.validateField('client-secret', credentials.clientSecret);
+    }
+    if (credentials.environmentId) {
+      document.getElementById('environment-id').value = credentials.environmentId;
+      this.validateField('environment-id', credentials.environmentId);
+    }
+    if (credentials.region) {
+      document.getElementById('region').value = credentials.region;
+    }
+  }
+
+  /**
+   * Save credentials to localStorage
+   */
+  saveToLocalStorage(credentials) {
+    try {
+      // Only save non-sensitive data to localStorage
+      const safeCredentials = {
+        clientId: credentials.clientId,
+        environmentId: credentials.environmentId,
+        region: credentials.region,
+        // Never save client secret to localStorage
+        hasClientSecret: !!credentials.clientSecret
+      };
+
+      localStorage.setItem('pingone_credentials', JSON.stringify(safeCredentials));
+    } catch (error) {
+      this.logger.error('Failed to save to localStorage:', error);
+    }
+  }
+
+  /**
+   * Update authentication status display
+   */
+  async updateAuthenticationStatus() {
+    try {
+      const response = await fetch('/api/auth/status');
+      const status = await response.json();
+      this.updateStatusDisplay(status);
+    } catch (error) {
+      this.logger.error('Failed to get auth status:', error);
+    }
+  }
+
+  /**
+   * Update status display elements
+   */
+  updateStatusDisplay(status) {
+    const authStatus = document.getElementById('auth-status');
+    const tokenExpiry = document.getElementById('token-expiry');
+    const credentialSource = document.getElementById('credential-source');
+
+    if (authStatus) {
+      authStatus.textContent = status.isInitialized ?
+        (status.hasValidToken ? 'Active' : 'Token Expired') : 'Not Initialized';
+      authStatus.className = `status-value ${status.hasValidToken ? 'status-success' : 'status-error'}`;
     }
 
-    /**
-     * Show the credential management modal
-     */
-    show() {
-        const modal = document.getElementById('credential-management-modal');
-        if (modal) {
-            modal.style.display = 'flex';
-            this.isVisible = true;
-            this.loadCurrentCredentials();
-            this.updateAuthenticationStatus();
-        }
+    if (tokenExpiry && status.tokenExpiresAt) {
+      tokenExpiry.textContent = new Date(status.tokenExpiresAt).toLocaleString();
     }
 
-    /**
-     * Hide the credential management modal
-     */
-    hide() {
-        const modal = document.getElementById('credential-management-modal');
-        if (modal) {
-            modal.style.display = 'none';
-            this.isVisible = false;
-        }
+    if (credentialSource && status.credentialSource) {
+      credentialSource.textContent = status.credentialSource;
     }
+  }
 
-    /**
-     * Toggle password visibility
-     */
-    togglePasswordVisibility(inputId, buttonId) {
-        const input = document.getElementById(inputId);
-        const button = document.getElementById(buttonId);
-        const icon = button.querySelector('i');
+  /**
+   * Show results in the results section
+   */
+  showResults(result) {
+    const resultsSection = document.getElementById('credential-results');
+    const resultsContent = document.getElementById('results-content');
 
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.className = 'fas fa-eye-slash';
-        } else {
-            input.type = 'password';
-            icon.className = 'fas fa-eye';
-        }
-    }
-
-    /**
-     * Validate individual form fields
-     */
-    validateField(fieldId, value) {
-        const indicator = document.getElementById(`${fieldId}-indicator`);
-        const icon = indicator.querySelector('i');
-        
-        let isValid = false;
-        
-        switch (fieldId) {
-            case 'client-id':
-                isValid = value && value.length > 10 && !value.includes('YOUR_');
-                this.validationStatus.clientId = isValid;
-                break;
-            case 'client-secret':
-                isValid = value && value.length > 20 && !value.includes('YOUR_');
-                this.validationStatus.clientSecret = isValid;
-                break;
-            case 'environment-id':
-                isValid = value && value.length > 10 && !value.includes('YOUR_');
-                this.validationStatus.environmentId = isValid;
-                break;
-        }
-
-        // Update indicator
-        if (isValid) {
-            icon.className = 'fas fa-check-circle';
-            icon.style.color = '#28a745';
-        } else {
-            icon.className = 'fas fa-exclamation-circle';
-            icon.style.color = '#dc3545';
-        }
-    }
-
-    /**
-     * Test credentials by making a validation request
-     */
-    async testCredentials() {
-        const credentials = this.getFormCredentials();
-        const button = document.getElementById('test-credentials-btn');
-        const originalText = button.innerHTML;
-
-        try {
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
-            button.disabled = true;
-
-            const response = await fetch('/api/auth/validate-credentials', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(credentials)
-            });
-
-            const result = await response.json();
-            
-            this.showResults({
-                type: result.success ? 'success' : 'error',
-                title: 'Credential Test Results',
-                message: result.message,
-                details: result.details || null
-            });
-
-        } catch (error) {
-            this.showResults({
-                type: 'error',
-                title: 'Test Failed',
-                message: 'Failed to test credentials: ' + error.message
-            });
-        } finally {
-            button.innerHTML = originalText;
-            button.disabled = false;
-        }
-    }
-
-    /**
-     * Save credentials to selected storage locations
-     */
-    async saveCredentials() {
-        const credentials = this.getFormCredentials();
-        const storageTargets = this.getSelectedStorageTargets();
-        const button = document.getElementById('save-credentials-btn');
-        const originalText = button.innerHTML;
-
-        try {
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-            button.disabled = true;
-
-            const response = await fetch('/api/auth/save-credentials', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    credentials: credentials,
-                    targets: storageTargets
-                })
-            });
-
-            const result = await response.json();
-            
-            // Save to localStorage if selected
-            if (storageTargets.includes('localStorage')) {
-                this.saveToLocalStorage(credentials);
-            }
-
-            this.showResults({
-                type: result.success ? 'success' : 'warning',
-                title: 'Save Results',
-                message: 'Credential save operation completed',
-                details: result.results
-            });
-
-            if (result.success) {
-                this.eventBus?.emit('credentials:updated', credentials);
-            }
-
-        } catch (error) {
-            this.showResults({
-                type: 'error',
-                title: 'Save Failed',
-                message: 'Failed to save credentials: ' + error.message
-            });
-        } finally {
-            button.innerHTML = originalText;
-            button.disabled = false;
-        }
-    }
-
-    /**
-     * Load current credentials from server
-     */
-    async loadCurrentCredentials() {
-        try {
-            const response = await fetch('/api/auth/current-credentials');
-            const result = await response.json();
-
-            if (result.success && result.credentials) {
-                this.populateForm(result.credentials);
-                this.currentCredentials = result.credentials;
-            }
-        } catch (error) {
-            this.logger.error('Failed to load current credentials:', error);
-        }
-    }
-
-    /**
-     * Clear all credentials
-     */
-    async clearCredentials() {
-        if (!confirm('Are you sure you want to clear all credentials? This will require reconfiguration.')) {
-            return;
-        }
-
-        try {
-            // Clear form
-            document.getElementById('credential-form').reset();
-            
-            // Clear localStorage
-            localStorage.removeItem('pingone_credentials');
-            
-            // Clear server credentials
-            const response = await fetch('/api/auth/clear-credentials', {
-                method: 'POST'
-            });
-
-            const result = await response.json();
-            
-            this.showResults({
-                type: result.success ? 'success' : 'error',
-                title: 'Clear Results',
-                message: result.message
-            });
-
-            // Reset validation indicators
-            Object.keys(this.validationStatus).forEach(key => {
-                this.validationStatus[key] = false;
-                const indicator = document.getElementById(`${key.replace(/([A-Z])/g, '-$1').toLowerCase()}-indicator`);
-                if (indicator) {
-                    const icon = indicator.querySelector('i');
-                    icon.className = 'fas fa-circle';
-                    icon.style.color = '#6c757d';
-                }
-            });
-
-        } catch (error) {
-            this.showResults({
-                type: 'error',
-                title: 'Clear Failed',
-                message: 'Failed to clear credentials: ' + error.message
-            });
-        }
-    }
-
-    /**
-     * Get credentials from form
-     */
-    getFormCredentials() {
-        return {
-            clientId: document.getElementById('client-id').value.trim(),
-            clientSecret: document.getElementById('client-secret').value.trim(),
-            environmentId: document.getElementById('environment-id').value.trim(),
-            region: document.getElementById('region').value
-        };
-    }
-
-    /**
-     * Get selected storage targets
-     */
-    getSelectedStorageTargets() {
-        const targets = [];
-        if (document.getElementById('save-to-env').checked) targets.push('env');
-        if (document.getElementById('save-to-settings').checked) targets.push('settings');
-        if (document.getElementById('save-to-localstorage').checked) targets.push('localStorage');
-        return targets;
-    }
-
-    /**
-     * Populate form with credentials
-     */
-    populateForm(credentials) {
-        if (credentials.clientId) {
-            document.getElementById('client-id').value = credentials.clientId;
-            this.validateField('client-id', credentials.clientId);
-        }
-        if (credentials.clientSecret) {
-            document.getElementById('client-secret').value = credentials.clientSecret;
-            this.validateField('client-secret', credentials.clientSecret);
-        }
-        if (credentials.environmentId) {
-            document.getElementById('environment-id').value = credentials.environmentId;
-            this.validateField('environment-id', credentials.environmentId);
-        }
-        if (credentials.region) {
-            document.getElementById('region').value = credentials.region;
-        }
-    }
-
-    /**
-     * Save credentials to localStorage
-     */
-    saveToLocalStorage(credentials) {
-        try {
-            // Only save non-sensitive data to localStorage
-            const safeCredentials = {
-                clientId: credentials.clientId,
-                environmentId: credentials.environmentId,
-                region: credentials.region,
-                // Never save client secret to localStorage
-                hasClientSecret: !!credentials.clientSecret
-            };
-            
-            localStorage.setItem('pingone_credentials', JSON.stringify(safeCredentials));
-        } catch (error) {
-            this.logger.error('Failed to save to localStorage:', error);
-        }
-    }
-
-    /**
-     * Update authentication status display
-     */
-    async updateAuthenticationStatus() {
-        try {
-            const response = await fetch('/api/auth/status');
-            const status = await response.json();
-            this.updateStatusDisplay(status);
-        } catch (error) {
-            this.logger.error('Failed to get auth status:', error);
-        }
-    }
-
-    /**
-     * Update status display elements
-     */
-    updateStatusDisplay(status) {
-        const authStatus = document.getElementById('auth-status');
-        const tokenExpiry = document.getElementById('token-expiry');
-        const credentialSource = document.getElementById('credential-source');
-
-        if (authStatus) {
-            authStatus.textContent = status.isInitialized ? 
-                (status.hasValidToken ? 'Active' : 'Token Expired') : 'Not Initialized';
-            authStatus.className = `status-value ${status.hasValidToken ? 'status-success' : 'status-error'}`;
-        }
-
-        if (tokenExpiry && status.tokenExpiresAt) {
-            tokenExpiry.textContent = new Date(status.tokenExpiresAt).toLocaleString();
-        }
-
-        if (credentialSource && status.credentialSource) {
-            credentialSource.textContent = status.credentialSource;
-        }
-    }
-
-    /**
-     * Show results in the results section
-     */
-    showResults(result) {
-        const resultsSection = document.getElementById('credential-results');
-        const resultsContent = document.getElementById('results-content');
-
-        let html = `
+    let html = `
             <div class="result-item result-${result.type}">
                 <h4>${result.title}</h4>
                 <p>${result.message}</p>
         `;
 
-        if (result.details) {
-            html += '<div class="result-details">';
-            if (typeof result.details === 'object') {
-                for (const [key, value] of Object.entries(result.details)) {
-                    const status = value.success ? 'success' : 'error';
-                    html += `<div class="detail-item detail-${status}">
+    if (result.details) {
+      html += '<div class="result-details">';
+      if (typeof result.details === 'object') {
+        for (const [key, value] of Object.entries(result.details)) {
+          const status = value.success ? 'success' : 'error';
+          html += `<div class="detail-item detail-${status}">
                         <strong>${key}:</strong> ${value.success ? 'Success' : value.error || 'Failed'}
                     </div>`;
-                }
-            } else {
-                html += `<p>${result.details}</p>`;
-            }
-            html += '</div>';
         }
-
-        html += '</div>';
-
-        resultsContent.innerHTML = html;
-        resultsSection.style.display = 'block';
-
-        // Auto-hide after 10 seconds for success messages
-        if (result.type === 'success') {
-            setTimeout(() => {
-                resultsSection.style.display = 'none';
-            }, 10000);
-        }
+      } else {
+        html += `<p>${result.details}</p>`;
+      }
+      html += '</div>';
     }
+
+    html += '</div>';
+
+    resultsContent.innerHTML = html;
+    resultsSection.style.display = 'block';
+
+    // Auto-hide after 10 seconds for success messages
+    if (result.type === 'success') {
+      setTimeout(() => {
+        resultsSection.style.display = 'none';
+      }, 10000);
+    }
+  }
 }
 
 export default CredentialManagementUI;

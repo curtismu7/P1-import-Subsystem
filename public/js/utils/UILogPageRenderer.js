@@ -1,6 +1,6 @@
 /**
  * UI Logging Page Renderer
- * 
+ *
  * This module provides functionality to render logs in the UI Logging Page
  * with enhanced formatting, filtering, and grouping.
  */

@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Keep pathing consistent with existing settings path usage in settings.js
-const CACHE_PATH = join(__dirname, "../data/populations-cache.json");
+const CACHE_PATH = join(__dirname, '../data/populations-cache.json');
 
 const DEFAULT_TTL_MS = parseInt(process.env.POPULATIONS_CACHE_TTL_MS || '86400000', 10); // 24h
 
@@ -15,7 +15,7 @@ async function readCache() {
     const raw = await fs.readFile(CACHE_PATH, 'utf8');
     return JSON.parse(raw);
   } catch (err) {
-    if (err.code === 'ENOENT') return {};
+    if (err.code === 'ENOENT') {return {};}
     throw err;
   }
 }
@@ -29,7 +29,7 @@ async function writeCache(obj) {
 function now() { return Date.now(); }
 
 function isExpired(entry, ttlMs = DEFAULT_TTL_MS) {
-  if (!entry || !entry.timestamp) return true;
+  if (!entry || !entry.timestamp) {return true;}
   return (now() - entry.timestamp) > ttlMs;
 }
 
@@ -41,7 +41,7 @@ export async function getPopulation({ environmentId, clientId, region }, ttlMs =
   const key = makeKey({ environmentId, clientId, region });
   const cache = await readCache();
   const entry = cache[key];
-  if (!entry || isExpired(entry, ttlMs)) return null;
+  if (!entry || isExpired(entry, ttlMs)) {return null;}
   return entry.populationId || null;
 }
 

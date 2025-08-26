@@ -2,7 +2,7 @@
 
 /**
  * Dedicated Swagger UI Server
- * 
+ *
  * Serves Swagger UI on port 4004 while the main API runs on port 4000
  */
 
@@ -21,7 +21,7 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  
+
   if (req.method === 'OPTIONS') {
     res.sendStatus(200);
   } else {
@@ -52,7 +52,7 @@ app.get('/health', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Swagger UI Server started on port ${PORT}`);
   console.log(`📚 Swagger UI: http://localhost:${PORT}/swagger/index.html`);
-  console.log(`🔗 Main API: http://localhost:4000`);
+  console.log('🔗 Main API: http://localhost:4000');
   console.log(`💚 Health Check: http://localhost:${PORT}/health`);
 });
 

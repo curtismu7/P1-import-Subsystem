@@ -4,16 +4,16 @@
 
 export default async () => {
   console.log('🚀 Setting up integration test environment...');
-  
+
   // Check if required environment variables are set
   const requiredEnvVars = [
     'PINGONE_CLIENT_ID',
-    'PINGONE_CLIENT_SECRET', 
+    'PINGONE_CLIENT_SECRET',
     'PINGONE_ENVIRONMENT_ID'
   ];
-  
+
   const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-  
+
   if (missingVars.length > 0) {
     console.log('⚠️  Integration tests will be skipped - missing environment variables:');
     missingVars.forEach(varName => {
@@ -30,6 +30,6 @@ export default async () => {
     console.log(`   Environment ID: ${process.env.PINGONE_ENVIRONMENT_ID}`);
     console.log(`   Region: ${process.env.PINGONE_REGION || 'NA'}`);
   }
-  
+
   console.log('🎯 Integration test setup complete\n');
 };

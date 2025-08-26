@@ -26,25 +26,25 @@ let logStream = null;
 try {
   const fs = await import('fs');
   const path = await import('path');
-  
+
   const logDir = path.dirname(options.logFile);
-  
+
   // Create directory if it doesn't exist
   if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir, { recursive: true });
   }
-  
+
   // Create or append to log file
-  logStream = fs.createWriteStream(options.logFile, { 
+  logStream = fs.createWriteStream(options.logFile, {
     flags: 'a',
     encoding: 'utf8'
   });
-  
+
   // Handle stream errors
   logStream.on('error', (err) => {
     console.error('Log stream error:', err);
   });
-  
+
   console.log(`Logging to: ${options.logFile}`);
 } catch (error) {
   console.error('Failed to set up log file:', error.message);
@@ -55,25 +55,25 @@ try {
 function log(message, level = 'info') {
   const timestamp = new Date().toISOString();
   const logMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
-  
+
   // Color console output
   let coloredMessage;
   switch (level) {
-    case 'error':
-      coloredMessage = chalk.red(logMessage);
-      break;
-    case 'warn':
-      coloredMessage = chalk.yellow(logMessage);
-      break;
-    case 'success':
-      coloredMessage = chalk.green(logMessage);
-      break;
-    default:
-      coloredMessage = logMessage;
+  case 'error':
+    coloredMessage = chalk.red(logMessage);
+    break;
+  case 'warn':
+    coloredMessage = chalk.yellow(logMessage);
+    break;
+  case 'success':
+    coloredMessage = chalk.green(logMessage);
+    break;
+  default:
+    coloredMessage = logMessage;
   }
-  
+
   console.log(coloredMessage);
-  
+
   // Write to log file
   if (logStream && logStream.writable) {
     try {
@@ -88,7 +88,7 @@ function log(message, level = 'info') {
 async function sendAlert(message, details) {
   log(`ALERT: ${message}`, 'error');
   log(`Details: ${JSON.stringify(details, null, 2)}`, 'error');
-  
+
   // In a real implementation, you would send an email, Slack message, etc.
   if (options.email) {
     log(`Would send email to ${options.email} with message: ${message}`, 'info');
@@ -98,66 +98,66 @@ async function sendAlert(message, details) {
 // Format check results for display
 function formatCheckResults(results) {
   let output = '\n' + chalk.bold('=== PingOne Authentication Health Check ===\n');
-  
+
   Object.entries(results.checks).forEach(([name, check]) => {
     let status;
     switch (check.status) {
-      case 'healthy':
-        status = chalk.green('✓');
-        break;
-      case 'unhealthy':
-        status = chalk.yellow('!');
-        break;
-      case 'critical':
-        status = chalk.red('✗');
-        break;
-      default:
-        status = chalk.gray('?');
+    case 'healthy':
+      status = chalk.green('✓');
+      break;
+    case 'unhealthy':
+      status = chalk.yellow('!');
+      break;
+    case 'critical':
+      status = chalk.red('✗');
+      break;
+    default:
+      status = chalk.gray('?');
     }
-    
+
     output += `[${status}] ${chalk.bold(name)}: ${check.message}\n`;
-    
+
     if (check.details) {
       output += `    ${JSON.stringify(check.details, null, 2).replace(/\n/g, '\n    ')}\n`;
     }
   });
-  
+
   // Add overall status
   let statusText;
   switch (results.status) {
-    case 'healthy':
-      statusText = chalk.bgGreen.black(' HEALTHY ');
-      break;
-    case 'unhealthy':
-      statusText = chalk.bgYellow.black(' UNHEALTHY ');
-      break;
-    case 'critical':
-      statusText = chalk.bgRed.white(' CRITICAL ');
-      break;
-    default:
-      statusText = chalk.bgGray.white(' UNKNOWN ');
+  case 'healthy':
+    statusText = chalk.bgGreen.black(' HEALTHY ');
+    break;
+  case 'unhealthy':
+    statusText = chalk.bgYellow.black(' UNHEALTHY ');
+    break;
+  case 'critical':
+    statusText = chalk.bgRed.white(' CRITICAL ');
+    break;
+  default:
+    statusText = chalk.bgGray.white(' UNKNOWN ');
   }
-  
+
   output += `\nOverall Status: ${statusText}\n`;
-  
+
   return output;
 }
 
 // Main monitoring loop
 async function monitor() {
   log('Starting PingOne authentication monitor...', 'info');
-  
+
   let consecutiveFailures = 0;
   let lastStatus = null;
-  
+
   // Initial check
   await runCheck();
-  
+
   // Set up interval for periodic checks
   const intervalId = setInterval(async () => {
     await runCheck();
   }, CHECK_INTERVAL);
-  
+
   // Handle process termination
   process.on('SIGINT', async () => {
     clearInterval(intervalId);
@@ -167,33 +167,33 @@ async function monitor() {
     }
     process.exit(0);
   });
-  
+
   async function runCheck() {
     try {
       log('Running health check...', 'info');
       const results = await HealthCheck.runChecks();
-      
+
       // Log results
       log(formatCheckResults(results));
-      
+
       // Check for status changes
       if (lastStatus && lastStatus !== results.status) {
         log(`Status changed from ${lastStatus.toUpperCase()} to ${results.status.toUpperCase()}`, 'warn');
       }
-      
+
       // Check for critical issues
       if (results.status === 'critical') {
         const criticalIssues = Object.entries(results.checks)
           .filter(([_, check]) => check.status === 'critical')
           .map(([name, check]) => `${name}: ${check.message}`);
-        
+
         await sendAlert(
-          `CRITICAL: PingOne authentication issues detected`,
+          'CRITICAL: PingOne authentication issues detected',
           { issues: criticalIssues, details: results }
         );
-        
+
         consecutiveFailures++;
-        
+
         // If we have multiple consecutive critical failures, consider restarting the app
         if (consecutiveFailures >= 3) {
           log('Multiple consecutive critical failures detected. Consider restarting the application.', 'error');
@@ -203,26 +203,26 @@ async function monitor() {
         const unhealthyIssues = Object.entries(results.checks)
           .filter(([_, check]) => check.status === 'unhealthy')
           .map(([name, check]) => `${name}: ${check.message}`);
-        
+
         await sendAlert(
-          `WARNING: PingOne authentication issues detected`,
+          'WARNING: PingOne authentication issues detected',
           { issues: unhealthyIssues, details: results }
         );
-        
+
         consecutiveFailures = 0; // Reset counter on recovery
       } else {
         log('All systems operational', 'success');
         consecutiveFailures = 0; // Reset counter on success
       }
-      
+
       lastStatus = results.status;
-      
+
     } catch (error) {
       log(`Error during health check: ${error.message}`, 'error');
       log(error.stack, 'error');
-      
+
       consecutiveFailures++;
-      
+
       if (consecutiveFailures >= 3) {
         await sendAlert(
           'CRITICAL: Failed to run health check multiple times',

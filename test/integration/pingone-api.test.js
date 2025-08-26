@@ -23,7 +23,7 @@ function generateTestEmail() {
 
 describe('PingOne API Integration Tests', () => {
   let accessToken;
-  
+
   // Get access token before running tests
   beforeAll(async () => {
     try {
@@ -36,9 +36,9 @@ describe('PingOne API Integration Tests', () => {
           expires_in: 3600
         })
       });
-      
+
       const tokenUrl = `https://auth.${PINGONE_REGION}.pingone.com/${process.env.PINGONE_ENVIRONMENT_ID}/as/token`;
-      
+
       const response = await fetch(tokenUrl, {
         method: 'POST',
         headers: {
@@ -47,30 +47,30 @@ describe('PingOne API Integration Tests', () => {
         },
         body: 'grant_type=client_credentials'
       });
-      
+
       if (!response.ok) {
         const error = await response.text();
         throw new Error(`Failed to get access token: ${error}`);
       }
-      
+
       const data = await response.json();
       accessToken = data.access_token;
-      
+
       if (!accessToken) {
         throw new Error('No access token received');
       }
-      
+
       console.log('Successfully obtained access token');
     } catch (error) {
       console.error('Error in beforeAll:', error);
       throw error;
     }
   });
-  
+
   describe('User Management', () => {
     let testUserId;
     const testUserEmail = generateTestEmail();
-    
+
     // Test user data
     const testUser = {
       email: testUserEmail,
@@ -84,7 +84,7 @@ describe('PingOne API Integration Tests', () => {
         id: TEST_POPULATION_ID
       }
     };
-    
+
     afterAll(async () => {
       // Clean up: Delete the test user if it was created
       if (testUserId) {
@@ -102,7 +102,7 @@ describe('PingOne API Integration Tests', () => {
         }
       }
     });
-    
+
     it('should create a new user', async () => {
       // Mock successful user creation
       const mockUserId = 'mock-user-id-12345';
@@ -117,9 +117,9 @@ describe('PingOne API Integration Tests', () => {
           population: { id: TEST_POPULATION_ID }
         })
       });
-      
+
       const url = `${PINGONE_API_BASE}/environments/${process.env.PINGONE_ENVIRONMENT_ID}/users`;
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -128,20 +128,20 @@ describe('PingOne API Integration Tests', () => {
         },
         body: JSON.stringify(testUser)
       });
-      
+
       expect(response.status).toBe(201);
       const data = await response.json();
       expect(data).toHaveProperty('id');
       testUserId = data.id;
-      
+
       console.log(`Created test user with ID: ${testUserId}`);
     });
-    
+
     it('should get the created user', async () => {
       if (!testUserId) {
         testUserId = 'mock-user-id-12345'; // Fallback for test
       }
-      
+
       // Mock successful user retrieval
       global.fetch.mockResolvedValueOnce({
         status: 200,
@@ -154,23 +154,23 @@ describe('PingOne API Integration Tests', () => {
           population: { id: TEST_POPULATION_ID }
         })
       });
-      
+
       const url = `${PINGONE_API_BASE}/environments/${process.env.PINGONE_ENVIRONMENT_ID}/users/${testUserId}`;
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
       });
-      
+
       expect(response.status).toBe(200);
       const user = await response.json();
       expect(user.id).toBe(testUserId);
       expect(user.email).toBe(testUserEmail);
     });
   });
-  
+
   describe('User Import', () => {
     it('should import users with correct content type', async () => {
       const testUser = {
@@ -185,7 +185,7 @@ describe('PingOne API Integration Tests', () => {
           id: TEST_POPULATION_ID
         }
       };
-      
+
       // Mock successful import
       const mockImportId = 'mock-import-id-12345';
       global.fetch.mockResolvedValueOnce({
@@ -200,9 +200,9 @@ describe('PingOne API Integration Tests', () => {
           failed: 0
         })
       });
-      
+
       const url = `${PINGONE_API_BASE}/environments/${process.env.PINGONE_ENVIRONMENT_ID}/users/import`;
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -213,11 +213,11 @@ describe('PingOne API Integration Tests', () => {
           users: [testUser]
         })
       });
-      
+
       expect(response.status).toBe(200);
       const result = await response.json();
       expect(result).toHaveProperty('id');
-      
+
       // Clean up the imported user
       if (result && result.id) {
         try {

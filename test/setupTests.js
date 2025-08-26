@@ -104,14 +104,14 @@ if (typeof window.FileReader === 'undefined') {
       this.onload = null;
       this.onerror = null;
     }
-    
+
     readAsText(file) {
       this.result = file.parts[0] || '';
       if (this.onload) {
         this.onload({ target: { result: this.result } });
       }
     }
-    
+
     readAsDataURL() {
       this.result = 'data:text/plain;base64,' + Buffer.from('test').toString('base64');
       if (this.onload) {

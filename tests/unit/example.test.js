@@ -13,7 +13,7 @@ describe('MongoDB Connection', () => {
   });
 
   afterAll(async () => {
-    if (connection) await connection.close();
+    if (connection) {await connection.close();}
   });
 
   test('should connect to MongoDB', async () => {

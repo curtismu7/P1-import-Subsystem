@@ -18,12 +18,12 @@ describe('ESM Module Integration', () => {
     const obj = { a: { b: 42 } };
     const value = obj?.a?.b;
     expect(value).toBe(42);
-    
+
     // Test nullish coalescing
     const nullValue = null;
     const defaultValue = nullValue ?? 'default';
     expect(defaultValue).toBe('default');
-    
+
     // Test logical assignment
     let x = 0;
     x ||= 42;
@@ -32,11 +32,11 @@ describe('ESM Module Integration', () => {
 
   it('should support async/await patterns', async () => {
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    
+
     const start = Date.now();
     await delay(10);
     const elapsed = Date.now() - start;
-    
+
     expect(elapsed).toBeGreaterThanOrEqual(5);
   });
 });

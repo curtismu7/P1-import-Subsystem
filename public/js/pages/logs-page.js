@@ -1,6 +1,6 @@
 /**
  * Logs Page Module
- * 
+ *
  * Handles the Logs page functionality including:
  * - Application log viewing
  * - Log filtering and search
@@ -9,26 +9,26 @@
  */
 
 export class LogsPage {
-    constructor(app) {
-        this.app = app;
-        this.logs = [];
-        this.filteredLogs = [];
-        this.currentFilter = 'all';
-        this.searchTerm = '';
-        this.autoRefresh = false;
-        this.refreshInterval = null;
+  constructor(app) {
+    this.app = app;
+    this.logs = [];
+    this.filteredLogs = [];
+    this.currentFilter = 'all';
+    this.searchTerm = '';
+    this.autoRefresh = false;
+    this.refreshInterval = null;
+  }
+
+  async load() {
+    console.log('📄 Loading Logs page...');
+
+    const logsPage = document.getElementById('logs-page');
+    if (!logsPage) {
+      console.error('❌ Logs page div not found');
+      return;
     }
 
-    async load() {
-        console.log('📄 Loading Logs page...');
-        
-        const logsPage = document.getElementById('logs-page');
-        if (!logsPage) {
-            console.error('❌ Logs page div not found');
-            return;
-        }
-
-        logsPage.innerHTML = `
+    logsPage.innerHTML = `
             <div class="page-header">
                 <h1>Application Logs</h1>
                 <p>View and manage application logs and system events</p>
@@ -54,7 +54,22 @@ export class LogsPage {
                             </div>
                             <div class="form-group">
                                 <label for="log-search">Search Logs:</label>
-                                <input type="text" id="log-search" class="form-control" placeholder="Search log messages...">
+                                <div class="input-group" style="display:flex; gap:8px; align-items:center; background:#f8fafc; border:1px solid var(--pingone-border); border-radius:10px; padding:8px;">
+                                    <input type="text" id="log-search" class="form-control" placeholder="Search log messages..." style="flex:1; border:1px solid var(--pingone-border); border-radius:8px; height:36px; padding:0 10px;">
+                                    <button id="log-search-btn" class="btn btn-outline-secondary btn-sm" style="height:36px;">
+                                        <i class="fas fa-search"></i> Search
+                                    </button>
+                                    <label for="search-fields" style="margin-left:8px; font-weight:600; color:#374151;">Fields:</label>
+                                    <select id="search-fields" class="form-control" style="height:36px; min-width:140px;">
+                                        <option value="message">Message only</option>
+                                        <option value="message,details">Message + details (case-sensitive)</option>
+                                    </select>
+                                    <label for="search-mode" style="margin-left:8px; font-weight:600; color:#374151;">Mode:</label>
+                                    <select id="search-mode" class="form-control" style="height:36px; min-width:120px;">
+                                        <option value="plain" selected>Plain</option>
+                                        <option value="regex">Regex</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label for="log-source">Log Source:</label>
@@ -64,6 +79,11 @@ export class LogsPage {
                                     <option value="access">Access</option>
                                     <option value="error">Error</option>
                                     <option value="performance">Performance</option>
+                                    <option value="debug">Debug</option>
+                                    <option value="security">Security</option>
+                                    <option value="auth">Auth</option>
+                                    <option value="network">Network</option>
+                                    <option value="system">System</option>
                                 </select>
                             </div>
                             <div class="form-group" style="justify-self: start;">
@@ -174,199 +194,248 @@ export class LogsPage {
             </div>
         `;
 
-        this.setupEventListeners();
-        this.loadLogs();
-    }
+    this.setupEventListeners();
+    this.loadLogs();
+    this.subscribeRealtime();
+  }
 
-    setupEventListeners() {
-        // Filter controls
-        document.getElementById('log-level-filter')?.addEventListener('change', (e) => {
-            this.currentFilter = e.target.value;
-            this.filterLogs();
-        });
+  setupEventListeners() {
+    // Filter controls
+    document.getElementById('log-level-filter')?.addEventListener('change', (e) => {
+      this.currentFilter = e.target.value;
+      this.filterLogs();
+    });
 
-        document.getElementById('log-search')?.addEventListener('input', (e) => {
-            this.searchTerm = e.target.value.toLowerCase();
-            this.filterLogs();
-        });
+    document.getElementById('log-search')?.addEventListener('input', (e) => {
+      this.searchTerm = e.target.value.toLowerCase();
+      this.filterLogs();
+    });
 
-        document.getElementById('log-source')?.addEventListener('change', () => {
-            this.filterLogs();
-        });
+    document.getElementById('log-search-btn')?.addEventListener('click', () => {
+      const input = document.getElementById('log-search');
+      this.searchTerm = (input?.value || '').toLowerCase();
+      this.filterLogs();
+    });
 
-        // Auto refresh
-        document.getElementById('auto-refresh')?.addEventListener('change', (e) => {
-            this.toggleAutoRefresh(e.target.checked);
-        });
+    document.getElementById('log-source')?.addEventListener('change', () => {
+      this.filterLogs();
+    });
 
-        // Action buttons
-        document.getElementById('refresh-logs-btn')?.addEventListener('click', () => {
-            this.loadLogs();
-        });
+    // Auto refresh
+    document.getElementById('auto-refresh')?.addEventListener('change', (e) => {
+      this.toggleAutoRefresh(e.target.checked);
+    });
 
-        document.getElementById('clear-logs-btn')?.addEventListener('click', () => {
-            this.clearLogs();
-        });
+    // Action buttons
+    document.getElementById('refresh-logs-btn')?.addEventListener('click', () => {
+      this.loadLogs();
+    });
 
-        document.getElementById('export-logs-btn')?.addEventListener('click', () => {
-            // Export using selected single format (default JSON). If 'all' selected, export all.
-            const fmt = document.getElementById('logs-export-format')?.value || 'json';
-            if (fmt === 'all') this.exportLogs(); else this.exportSpecific(fmt);
-        });
+    document.getElementById('clear-logs-btn')?.addEventListener('click', () => {
+      this.clearLogs();
+    });
 
-        // When using select, we don't need individual links; still keep keyboard support via Enter
-        document.getElementById('logs-export-format')?.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                const fmt = e.target.value || 'json';
-                if (fmt === 'all') this.exportLogs(); else this.exportSpecific(fmt);
-            }
-        });
+    document.getElementById('export-logs-btn')?.addEventListener('click', () => {
+      // Export using selected single format (default JSON). If 'all' selected, export all.
+      const fmt = document.getElementById('logs-export-format')?.value || 'json';
+      if (fmt === 'all') {this.exportLogs();} else {this.exportSpecific(fmt);}
+    });
 
-        document.getElementById('download-logs-btn')?.addEventListener('click', () => {
-            this.downloadLogFiles();
-        });
-    }
+    // When using select, we don't need individual links; still keep keyboard support via Enter
+    document.getElementById('logs-export-format')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const fmt = e.target.value || 'json';
+        if (fmt === 'all') {this.exportLogs();} else {this.exportSpecific(fmt);}
+      }
+    });
 
-    async loadLogs() {
-        const logsLoading = document.getElementById('logs-loading');
-        const noLogs = document.getElementById('no-logs');
-        
-        try {
-            logsLoading.style.display = 'block';
-            noLogs.style.display = 'none';
+    document.getElementById('download-logs-btn')?.addEventListener('click', () => {
+      this.downloadLogFiles();
+    });
+  }
 
-            // Load UI logs from server
-            const response = await fetch('/api/logs/ui');
-            if (response.ok) {
-                const responseData = await response.json();
-                // Handle different response formats
-                if (Array.isArray(responseData)) {
-                    this.logs = responseData;
-                } else if (responseData && responseData.data && Array.isArray(responseData.data)) {
-                    this.logs = responseData.data;
-                } else if (responseData && responseData.logs && Array.isArray(responseData.logs)) {
-                    this.logs = responseData.logs;
-                } else {
-                    console.warn('⚠️ Unexpected logs response format:', responseData);
-                    this.logs = this.generateSampleLogs();
-                }
-            } else {
-                // Generate sample logs for demo
-                this.logs = this.generateSampleLogs();
-            }
-            
-            // Ensure this.logs is always an array
-            if (!Array.isArray(this.logs)) {
-                console.warn('⚠️ this.logs is not an array, resetting to empty array');
-                this.logs = [];
-            }
-            
-            logsLoading.style.display = 'none';
-            this.filterLogs();
-            this.updateStatistics();
-        } catch (error) {
-            console.error('❌ Error loading logs:', error);
-            logsLoading.style.display = 'none';
-            
-            // Generate sample logs for demo
-            this.logs = this.generateSampleLogs();
-            this.filterLogs();
-            this.updateStatistics();
+  async loadLogs() {
+    const logsLoading = document.getElementById('logs-loading');
+    const noLogs = document.getElementById('no-logs');
+
+    try {
+      logsLoading.style.display = 'block';
+      noLogs.style.display = 'none';
+
+      // Load UI logs from server
+      const response = await fetch('/api/logs/ui');
+      if (response.ok) {
+        const responseData = await response.json();
+        // Handle different response formats
+        if (Array.isArray(responseData)) {
+          this.logs = responseData;
+        } else if (responseData && responseData.data && Array.isArray(responseData.data)) {
+          this.logs = responseData.data;
+        } else if (responseData && responseData.logs && Array.isArray(responseData.logs)) {
+          this.logs = responseData.logs;
+        } else {
+          console.warn('⚠️ Unexpected logs response format:', responseData);
+          this.logs = this.generateSampleLogs();
         }
+      } else {
+        // Generate sample logs for demo
+        this.logs = this.generateSampleLogs();
+      }
+
+      // Ensure this.logs is always an array
+      if (!Array.isArray(this.logs)) {
+        console.warn('⚠️ this.logs is not an array, resetting to empty array');
+        this.logs = [];
+      }
+
+      logsLoading.style.display = 'none';
+      this.filterLogs();
+      this.updateStatistics();
+    } catch (error) {
+      console.error('❌ Error loading logs:', error);
+      logsLoading.style.display = 'none';
+
+      // Generate sample logs for demo
+      this.logs = this.generateSampleLogs();
+      this.filterLogs();
+      this.updateStatistics();
+    }
+  }
+
+  subscribeRealtime() {
+    try {
+      if (!window.realtimeClient || typeof window.realtimeClient.onMessage !== 'function') { return; }
+      // Stream individual log entries
+      window.realtimeClient.onMessage('logEntry', (entry) => {
+        if (!entry) { return; }
+        // Normalize and prepend
+        this.logs = Array.isArray(this.logs) ? this.logs : [];
+        this.logs.unshift(entry);
+        // Trim to a reasonable size
+        if (this.logs.length > 1000) { this.logs.length = 1000; }
+        this.filterLogs();
+      });
+      // Bulk updates or notifications
+      window.realtimeClient.onMessage('notification', (data) => {
+        if (data && data.logs && Array.isArray(data.logs)) {
+          this.logs = [...data.logs, ...(this.logs || [])].slice(0, 1000);
+          this.filterLogs();
+        }
+      });
+    } catch (_) { /* non-blocking */ }
+  }
+
+  generateSampleLogs() {
+    const levels = ['info', 'warn', 'error', 'debug'];
+    const sources = ['application', 'access', 'error', 'performance', 'debug', 'security', 'auth', 'network', 'system'];
+    const messages = [
+      'User authentication successful',
+      'Database connection established',
+      'API request processed',
+      'File upload completed',
+      'Cache cleared successfully',
+      'Configuration updated',
+      'Token validation failed',
+      'Network timeout occurred',
+      'Invalid request format',
+      'Service unavailable',
+      'Memory usage high',
+      'Disk space low'
+    ];
+
+    const logs = [];
+    const now = new Date();
+
+    for (let i = 0; i < 50; i++) {
+      const timestamp = new Date(now.getTime() - (i * 60000)); // 1 minute intervals
+      const level = levels[Math.floor(Math.random() * levels.length)];
+      const source = sources[Math.floor(Math.random() * sources.length)];
+      const message = messages[Math.floor(Math.random() * messages.length)];
+
+      logs.push({
+        id: i + 1,
+        timestamp: timestamp.toISOString(),
+        level,
+        source,
+        message,
+        details: `Additional details for log entry ${i + 1}`
+      });
     }
 
-    generateSampleLogs() {
-        const levels = ['info', 'warn', 'error', 'debug'];
-        const sources = ['application', 'access', 'error', 'performance'];
-        const messages = [
-            'User authentication successful',
-            'Database connection established',
-            'API request processed',
-            'File upload completed',
-            'Cache cleared successfully',
-            'Configuration updated',
-            'Token validation failed',
-            'Network timeout occurred',
-            'Invalid request format',
-            'Service unavailable',
-            'Memory usage high',
-            'Disk space low'
-        ];
+    return logs.reverse(); // Most recent first
+  }
 
-        const logs = [];
-        const now = new Date();
-
-        for (let i = 0; i < 50; i++) {
-            const timestamp = new Date(now.getTime() - (i * 60000)); // 1 minute intervals
-            const level = levels[Math.floor(Math.random() * levels.length)];
-            const source = sources[Math.floor(Math.random() * sources.length)];
-            const message = messages[Math.floor(Math.random() * messages.length)];
-            
-            logs.push({
-                id: i + 1,
-                timestamp: timestamp.toISOString(),
-                level,
-                source,
-                message,
-                details: `Additional details for log entry ${i + 1}`
-            });
-        }
-
-        return logs.reverse(); // Most recent first
+  filterLogs() {
+    // Ensure this.logs is an array before filtering
+    if (!Array.isArray(this.logs)) {
+      console.warn('⚠️ this.logs is not an array in filterLogs, resetting to empty array');
+      this.logs = [];
     }
 
-    filterLogs() {
-        // Ensure this.logs is an array before filtering
-        if (!Array.isArray(this.logs)) {
-            console.warn('⚠️ this.logs is not an array in filterLogs, resetting to empty array');
-            this.logs = [];
-        }
-        
-        const levelFilter = document.getElementById('log-level-filter')?.value || 'all';
-        const sourceFilter = document.getElementById('log-source')?.value || 'all';
-        
-        this.filteredLogs = this.logs.filter(log => {
-            const matchesLevel = levelFilter === 'all' || log.level === levelFilter;
-            const matchesSource = sourceFilter === 'all' || log.source === sourceFilter;
-            const matchesSearch = !this.searchTerm || 
-                log.message.toLowerCase().includes(this.searchTerm) ||
-                log.details.toLowerCase().includes(this.searchTerm);
-            
-            return matchesLevel && matchesSource && matchesSearch;
-        });
+    const levelFilter = document.getElementById('log-level-filter')?.value || 'all';
+    const sourceFilter = document.getElementById('log-source')?.value || 'all';
+    const fieldMode = (document.getElementById('search-fields')?.value || 'message');
+    const searchMode = (document.getElementById('search-mode')?.value || 'plain');
 
-        this.renderLogs();
+    this.filteredLogs = this.logs.filter(log => {
+      const matchesLevel = levelFilter === 'all' || log.level === levelFilter;
+      const matchesSource = sourceFilter === 'all' || log.source === sourceFilter;
+      let matchesSearch = true;
+      const term = this.searchTerm;
+      if (term) {
+        const candidateFields = [];
+        if (fieldMode.includes('message')) { candidateFields.push((log.message || '')); }
+        if (fieldMode.includes('details')) { candidateFields.push((log.details || '')); }
+
+        if (searchMode === 'regex') {
+          try {
+            const rx = new RegExp(term);
+            matchesSearch = candidateFields.some(f => rx.test(String(f)));
+          } catch (_) {
+            // Invalid regex: fallback to plain contains (case-sensitive)
+            matchesSearch = candidateFields.some(f => String(f).indexOf(term) !== -1);
+          }
+        } else {
+          // Plain: case-sensitive search
+          matchesSearch = candidateFields.some(f => String(f).indexOf(term) !== -1);
+        }
+      }
+
+      return matchesLevel && matchesSource && matchesSearch;
+    });
+
+    this.renderLogs();
+  }
+
+  renderLogs() {
+    const logsList = document.getElementById('logs-list');
+    const noLogs = document.getElementById('no-logs');
+    const logCountDisplay = document.getElementById('log-count-display');
+
+    if (this.filteredLogs.length === 0) {
+      logsList.innerHTML = '';
+      noLogs.style.display = 'block';
+      logCountDisplay.textContent = 'Showing 0 logs';
+      return;
     }
 
-    renderLogs() {
-        const logsList = document.getElementById('logs-list');
-        const noLogs = document.getElementById('no-logs');
-        const logCountDisplay = document.getElementById('log-count-display');
+    noLogs.style.display = 'none';
+    logCountDisplay.textContent = `Showing ${this.filteredLogs.length} logs`;
 
-        if (this.filteredLogs.length === 0) {
-            logsList.innerHTML = '';
-            noLogs.style.display = 'block';
-            logCountDisplay.textContent = 'Showing 0 logs';
-            return;
-        }
+    const iconFor = (level) => ({
+      error: '🔴',
+      warn: '🟡',
+      info: '🟢',
+      debug: '🔵',
+      verbose: '🟣',
+      silly: '⚪'
+    })[level] || '⚪';
 
-        noLogs.style.display = 'none';
-        logCountDisplay.textContent = `Showing ${this.filteredLogs.length} logs`;
+    const separator = '═'.repeat(80);
 
-        const iconFor = (level) => ({
-            error: '🔴',
-            warn: '🟡',
-            info: '🟢',
-            debug: '🔵',
-            verbose: '🟣',
-            silly: '⚪'
-        })[level] || '⚪';
-
-        const separator = '═'.repeat(80);
-
-        logsList.innerHTML = this.filteredLogs.map((log, idx) => {
-            const detailsStr = this.formatLogDetails(log);
-            return `
+    logsList.innerHTML = this.filteredLogs.map((log, idx) => {
+      const detailsStr = this.formatLogDetails(log);
+      return `
             <div class="log-separator" style="grid-column: 1 / -1; color:#9ca3af; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; margin: ${idx===0?'0 0 6px 0':'12px 0 6px 0'};">${separator}</div>
             <div class="log-entry log-${log.level}" data-log-id="${log.id}"
                  style="display:grid; grid-template-columns: 220px 140px 1fr auto; gap: 12px; align-items:center; padding:10px 12px;">
@@ -383,371 +452,396 @@ export class LogsPage {
                 </div>
                 <pre class="log-details" style="grid-column: 1 / -1; display: none; font-weight: 700; font-size: 0.95rem; margin-top: 6px; white-space: pre-wrap; background:#f9fafb; border:1px solid rgba(0,0,0,0.06); border-radius:8px; padding:8px 10px;">${detailsStr}</pre>
             </div>`;
-        }).join('');
+    }).join('');
 
-        // Add event listeners for detail toggles
-        const toggleButtons = logsList.querySelectorAll('.toggle-details-btn');
-        toggleButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.toggleLogDetails(e.target.closest('.log-entry'));
-            });
-        });
+    // Add event listeners for detail toggles
+    const toggleButtons = logsList.querySelectorAll('.toggle-details-btn');
+    toggleButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        this.toggleLogDetails(e.target.closest('.log-entry'));
+      });
+    });
+  }
+
+  formatLogDetails(log) {
+    // Prefer explicit details
+    if (typeof log?.details === 'string' && log.details.trim().length > 0) {return log.details;}
+    if (log?.details && typeof log.details === 'object') {
+      try { return JSON.stringify(log.details, null, 2); } catch {}
+    }
+    // Synthesize meaningful details from available fields
+    const synthesized = {
+      id: log?.id ?? null,
+      timestamp: log?.timestamp ? new Date(log.timestamp).toLocaleString() : null,
+      level: log?.level ?? null,
+      source: log?.source ?? null,
+      message: log?.message ?? null
+    };
+    return JSON.stringify(synthesized, null, 2);
+  }
+
+  toggleLogDetails(logEntry) {
+    const details = logEntry.querySelector('.log-details');
+    const toggleBtn = logEntry.querySelector('.toggle-details-btn');
+    const icon = toggleBtn.querySelector('i');
+
+    if (details.style.display === 'none') {
+      details.style.display = 'block';
+      icon.className = 'fas fa-chevron-up';
+      toggleBtn.innerHTML = '<i class="fas fa-chevron-up"></i> Hide Details';
+    } else {
+      details.style.display = 'none';
+      icon.className = 'fas fa-chevron-down';
+      toggleBtn.innerHTML = '<i class="fas fa-chevron-down"></i> Details';
+    }
+  }
+
+  updateStatistics() {
+    // Ensure this.logs is an array before using array methods
+    if (!Array.isArray(this.logs)) {
+      console.warn('⚠️ this.logs is not an array in updateStatistics, resetting to empty array');
+      this.logs = [];
     }
 
-    formatLogDetails(log) {
-        // Prefer explicit details
-        if (typeof log?.details === 'string' && log.details.trim().length > 0) return log.details;
-        if (log?.details && typeof log.details === 'object') {
-            try { return JSON.stringify(log.details, null, 2); } catch {}
-        }
-        // Synthesize meaningful details from available fields
-        const synthesized = {
-            id: log?.id ?? null,
-            timestamp: log?.timestamp ? new Date(log.timestamp).toLocaleString() : null,
-            level: log?.level ?? null,
-            source: log?.source ?? null,
-            message: log?.message ?? null
-        };
-        return JSON.stringify(synthesized, null, 2);
+    const totalLogs = this.logs.length;
+    const errorLogs = this.logs.filter(log => log.level === 'error').length;
+    const warningLogs = this.logs.filter(log => log.level === 'warn').length;
+    const infoLogs = this.logs.filter(log => log.level === 'info').length;
+
+    document.getElementById('total-logs').textContent = totalLogs;
+    document.getElementById('error-logs').textContent = errorLogs;
+    document.getElementById('warning-logs').textContent = warningLogs;
+    document.getElementById('info-logs').textContent = infoLogs;
+  }
+
+  toggleAutoRefresh(enabled) {
+    this.autoRefresh = enabled;
+
+    if (enabled) {
+      this.refreshInterval = setInterval(() => {
+        this.loadLogs();
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (this.refreshInterval) {
+        clearInterval(this.refreshInterval);
+        this.refreshInterval = null;
+      }
+    }
+  }
+
+  async clearLogs() {
+    // Replace browser confirm with in-app status bar prompt
+    if (this.app && this.app.showInfo) {
+      this.app.showInfo('Clearing all logs...');
     }
 
-    toggleLogDetails(logEntry) {
-        const details = logEntry.querySelector('.log-details');
-        const toggleBtn = logEntry.querySelector('.toggle-details-btn');
-        const icon = toggleBtn.querySelector('i');
+    try {
+      // Use CSRF-aware request helper if available; fallback to manual header
+      const doDelete = () => fetch('/api/logs', {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(window.csrfManager?.token ? { 'X-CSRF-Token': window.csrfManager.token } : {}) }
+      });
 
-        if (details.style.display === 'none') {
-            details.style.display = 'block';
-            icon.className = 'fas fa-chevron-up';
-            toggleBtn.innerHTML = '<i class="fas fa-chevron-up"></i> Hide Details';
-        } else {
-            details.style.display = 'none';
-            icon.className = 'fas fa-chevron-down';
-            toggleBtn.innerHTML = '<i class="fas fa-chevron-down"></i> Details';
-        }
-    }
-
-    updateStatistics() {
-        // Ensure this.logs is an array before using array methods
-        if (!Array.isArray(this.logs)) {
-            console.warn('⚠️ this.logs is not an array in updateStatistics, resetting to empty array');
-            this.logs = [];
-        }
-        
-        const totalLogs = this.logs.length;
-        const errorLogs = this.logs.filter(log => log.level === 'error').length;
-        const warningLogs = this.logs.filter(log => log.level === 'warn').length;
-        const infoLogs = this.logs.filter(log => log.level === 'info').length;
-
-        document.getElementById('total-logs').textContent = totalLogs;
-        document.getElementById('error-logs').textContent = errorLogs;
-        document.getElementById('warning-logs').textContent = warningLogs;
-        document.getElementById('info-logs').textContent = infoLogs;
-    }
-
-    toggleAutoRefresh(enabled) {
-        this.autoRefresh = enabled;
-        
-        if (enabled) {
-            this.refreshInterval = setInterval(() => {
-                this.loadLogs();
-            }, 30000); // Refresh every 30 seconds
-        } else {
-            if (this.refreshInterval) {
-                clearInterval(this.refreshInterval);
-                this.refreshInterval = null;
-            }
-        }
-    }
-
-    async clearLogs() {
-        // Replace browser confirm with in-app status bar prompt
-        if (this.app && this.app.showInfo) {
-            this.app.showInfo('Clearing all logs...');
-        }
-
+      let response;
+      if (window.csrfManager?.fetchWithCSRF) {
         try {
-            const response = await fetch('/api/logs', { method: 'DELETE' });
-            if (response.ok) {
-                this.logs = [];
-                this.filterLogs();
-                this.updateStatistics();
-                if (this.app && this.app.showSuccess) this.app.showSuccess('Logs cleared successfully');
-            } else {
-                throw new Error('Failed to clear logs');
-            }
-        } catch (error) {
-            console.error('❌ Error clearing logs:', error);
-            if (this.app && this.app.showError) this.app.showError('Error clearing logs. Please try again.');
+          // Ensure token exists
+          if (!window.csrfManager.token) { await window.csrfManager.refreshToken(); }
+        } catch (_) {}
+        response = await window.csrfManager.fetchWithCSRF('/api/logs', { method: 'DELETE', credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+      } else {
+        response = await doDelete();
+      }
+      if (!response.ok) {
+        throw new Error('Failed to clear logs');
+      }
+
+      // Success path
+      this.logs = [];
+      this.filteredLogs = [];
+      try { localStorage.removeItem('ui_logs_cache'); } catch (_) {}
+      this.filterLogs();
+      this.updateStatistics();
+      if (this.app && this.app.showSuccess) { this.app.showSuccess('Logs cleared successfully'); }
+    } catch (error) {
+      console.error('❌ Error clearing logs:', error);
+      // Fallback: clear UI cache even if server failed
+      this.logs = [];
+      this.filteredLogs = [];
+      try { localStorage.removeItem('ui_logs_cache'); } catch (_) {}
+      this.filterLogs();
+      this.updateStatistics();
+      if (this.app && this.app.showWarning) { this.app.showWarning('Server did not clear logs, cleared UI cache'); }
+    }
+  }
+
+  exportLogs() {
+    const logsToExport = this.filteredLogs.length > 0 ? this.filteredLogs : this.logs;
+
+    if (logsToExport.length === 0) {
+      if (this.app && this.app.showError) {
+        this.app.showError('No logs to export');
+      }
+      return;
+    }
+
+    // Export JSON file
+    const jsonBlob = new Blob([JSON.stringify(logsToExport, null, 2)], { type: 'application/json' });
+    this.triggerDownload(jsonBlob, `logs-export-${new Date().toISOString().split('T')[0]}.json`);
+
+    // Export CSV file for BI tools and spreadsheets
+    const csvContent = this.convertLogsToCSV(logsToExport);
+    const csvBlob = new Blob([csvContent], { type: 'text/csv' });
+    this.triggerDownload(csvBlob, `logs-export-${new Date().toISOString().split('T')[0]}.csv`);
+
+    // Export NDJSON for ingestion tools (Splunk, ELK) – one JSON per line
+    const ndjson = logsToExport.map(l => JSON.stringify(l)).join('\n');
+    const ndjsonBlob = new Blob([ndjson], { type: 'application/x-ndjson' });
+    this.triggerDownload(ndjsonBlob, `logs-export-${new Date().toISOString().split('T')[0]}.ndjson`);
+
+    // Additional default bulk: CEF, CLF, ELF, W3C, Windows Event XML
+    this.triggerDownload(new Blob([this.convertLogsToCEF(logsToExport)], { type: 'text/plain' }), `logs-export-${new Date().toISOString().split('T')[0]}.cef`);
+    this.triggerDownload(new Blob([this.convertLogsToCLF(logsToExport)], { type: 'text/plain' }), `logs-export-${new Date().toISOString().split('T')[0]}.log`);
+    this.triggerDownload(new Blob([this.convertLogsToELF(logsToExport)], { type: 'text/plain' }), `logs-export-${new Date().toISOString().split('T')[0]}.elf`);
+    this.triggerDownload(new Blob([this.convertLogsToW3C(logsToExport)], { type: 'text/plain' }), `logs-export-${new Date().toISOString().split('T')[0]}.w3c`);
+    this.triggerDownload(new Blob([this.convertLogsToWEVTXML(logsToExport)], { type: 'application/xml' }), `logs-export-${new Date().toISOString().split('T')[0]}.wevt.xml`);
+  }
+
+  exportSpecific(format) {
+    const logsToExport = this.filteredLogs.length > 0 ? this.filteredLogs : this.logs;
+    if (logsToExport.length === 0) {
+      this.app?.showError?.('No logs to export');
+      return;
+    }
+    const date = new Date().toISOString().split('T')[0];
+    if (format === 'json') {
+      const blob = new Blob([JSON.stringify(logsToExport, null, 2)], { type: 'application/json' });
+      this.triggerDownload(blob, `logs-export-${date}.json`);
+    } else if (format === 'csv') {
+      const csv = this.convertLogsToCSV(logsToExport);
+      const blob = new Blob([csv], { type: 'text/csv' });
+      this.triggerDownload(blob, `logs-export-${date}.csv`);
+    } else if (format === 'ndjson') {
+      const ndjson = logsToExport.map(l => JSON.stringify(l)).join('\n');
+      const blob = new Blob([ndjson], { type: 'application/x-ndjson' });
+      this.triggerDownload(blob, `logs-export-${date}.ndjson`);
+    } else if (format === 'xlsx') {
+      const tsv = this.convertLogsToTSV(logsToExport);
+      const blob = new Blob([tsv], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      this.triggerDownload(blob, `logs-export-${date}.xlsx`);
+    } else if (format === 'xml') {
+      const xml = this.convertLogsToXML(logsToExport);
+      const blob = new Blob([xml], { type: 'application/xml' });
+      this.triggerDownload(blob, `logs-export-${date}.xml`);
+    } else if (format === 'ldif') {
+      const ldif = this.convertLogsToLDIF(logsToExport);
+      const blob = new Blob([ldif], { type: 'text/plain' });
+      this.triggerDownload(blob, `logs-export-${date}.ldif`);
+    } else if (format === 'scim') {
+      const scim = JSON.stringify(this.convertLogsToSCIMBulk(logsToExport), null, 2);
+      const blob = new Blob([scim], { type: 'application/scim+json' });
+      this.triggerDownload(blob, `logs-export-${date}-bulk.json`);
+    } else if (format === 'cef') {
+      const blob = new Blob([this.convertLogsToCEF(logsToExport)], { type: 'text/plain' });
+      this.triggerDownload(blob, `logs-export-${date}.cef`);
+    } else if (format === 'clf') {
+      const blob = new Blob([this.convertLogsToCLF(logsToExport)], { type: 'text/plain' });
+      this.triggerDownload(blob, `logs-export-${date}.log`);
+    } else if (format === 'elf') {
+      const blob = new Blob([this.convertLogsToELF(logsToExport)], { type: 'text/plain' });
+      this.triggerDownload(blob, `logs-export-${date}.elf`);
+    } else if (format === 'w3c') {
+      const blob = new Blob([this.convertLogsToW3C(logsToExport)], { type: 'text/plain' });
+      this.triggerDownload(blob, `logs-export-${date}.w3c`);
+    } else if (format === 'wevt') {
+      const blob = new Blob([this.convertLogsToWEVTXML(logsToExport)], { type: 'application/xml' });
+      this.triggerDownload(blob, `logs-export-${date}.wevt.xml`);
+    }
+  }
+
+  triggerDownload(blob, filename) {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }
+
+  // --- Export converters (best-effort, simplified mappings) ---
+  convertLogsToCEF(logs) {
+    // CEF:Version|Device Vendor|Device Product|Device Version|Signature ID|Name|Severity|Extension
+    const vendor = 'PingIdentity';
+    const product = 'UserManagementApp';
+    const version = '7.2';
+    return logs.map((l, idx) => {
+      const sevMap = { error: '10', warn: '5', info: '3', debug: '1' };
+      const sev = sevMap[l.level] || '3';
+      const sig = l.id || idx + 1;
+      const name = (l.message || '').toString().replace(/\|/g, ' ');
+      const ts = l.timestamp ? new Date(l.timestamp).toISOString() : new Date().toISOString();
+      const ext = `end=${Date.now()} msg=${JSON.stringify(l.message || '')} src=${(l.source||'app')} cs1Label=timestamp cs1=${ts}`;
+      return `CEF:0|${vendor}|${product}|${version}|${sig}|${name}|${sev}|${ext}`;
+    }).join('\n');
+  }
+
+  convertLogsToCLF(logs) {
+    // CLF: host ident authuser [date] "request" status bytes
+    return logs.map(l => {
+      const host = '-'; const ident = '-'; const user = (l.user || '-');
+      const date = new Date(l.timestamp || Date.now()).toISOString();
+      const request = (l.message || 'GET / -');
+      const status = l.level === 'error' ? 500 : 200;
+      const bytes = 0;
+      return `${host} ${ident} ${user} [${date}] "${request}" ${status} ${bytes}`;
+    }).join('\n');
+  }
+
+  convertLogsToELF(logs) {
+    // ELF (IIS-style extended): use a header then space-separated fields
+    const header = '#Fields: date time level source message';
+    const rows = logs.map(l => {
+      const d = new Date(l.timestamp || Date.now());
+      const date = d.toISOString().split('T')[0];
+      const time = d.toISOString().split('T')[1].replace('Z','');
+      const level = l.level || 'info';
+      const source = l.source || 'application';
+      const msg = (l.message || '').toString().replace(/\s+/g, ' ');
+      return `${date} ${time} ${level} ${source} ${msg}`;
+    });
+    return [header, ...rows].join('\n');
+  }
+
+  convertLogsToW3C(logs) {
+    // W3C extended log format
+    const header = ['#Version: 1.0', '#Fields: date time c-level cs-source cs-message'].join('\n');
+    const rows = logs.map(l => {
+      const d = new Date(l.timestamp || Date.now());
+      const date = d.toISOString().split('T')[0];
+      const time = d.toISOString().split('T')[1].replace('Z','');
+      const level = l.level || 'info';
+      const source = l.source || 'application';
+      const msg = (l.message || '').toString().replace(/\s+/g, ' ');
+      return `${date} ${time} ${level} ${source} ${msg}`;
+    });
+    return [header, ...rows].join('\n');
+  }
+
+  convertLogsToWEVTXML(logs) {
+    // Windows Event Log XML Envelope (simplified)
+    const items = logs.map(l => `\n  <Event>\n    <System>\n      <Provider Name="PingIdentity"/>\n      <Level>${(l.level || 'info')}</Level>\n      <TimeCreated SystemTime="${new Date(l.timestamp || Date.now()).toISOString()}"/>\n      <EventID>${l.id || 0}</EventID>\n    </System>\n    <EventData>\n      <Data Name="source">${l.source || 'application'}</Data>\n      <Data Name="message">${(l.message || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</Data>\n    </EventData>\n  </Event>`).join('');
+    return `<?xml version="1.0" encoding="utf-8"?>\n<Events>${items}\n</Events>`;
+  }
+
+  convertLogsToCSV(logs) {
+    const headers = ['Timestamp', 'Level', 'Source', 'Message', 'Details'];
+    const csvRows = [headers.join(',')];
+
+    logs.forEach(log => {
+      const row = [
+        `"${new Date(log.timestamp).toLocaleString()}"`,
+        `"${log.level}"`,
+        `"${log.source}"`,
+        `"${String(log.message || '').replace(/"/g, '""')}"`,
+        `"${String(log.details || '').replace(/"/g, '""')}"`
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    return csvRows.join('\n');
+  }
+
+  convertLogsToTSV(logs) {
+    const headers = ['Timestamp', 'Level', 'Source', 'Message', 'Details'];
+    const rows = [headers.join('\t')];
+    logs.forEach(log => {
+      const row = [
+        new Date(log.timestamp).toLocaleString(),
+        String(log.level || ''),
+        String(log.source || ''),
+        String(log.message || '').replace(/\t/g, '  '),
+        String(typeof log.details === 'string' ? log.details : JSON.stringify(log.details || {})).replace(/\t/g, '  ')
+      ];
+      rows.push(row.join('\t'));
+    });
+    return rows.join('\n');
+  }
+
+  convertLogsToXML(logs) {
+    const escape = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&apos;');
+    const items = logs.map(l => {
+      const fields = [
+        `    <timestamp>${escape(l.timestamp || new Date().toISOString())}</timestamp>`,
+        `    <level>${escape(l.level || '')}</level>`,
+        `    <source>${escape(l.source || '')}</source>`,
+        `    <message>${escape(l.message || '')}</message>`,
+        `    <details>${escape(typeof l.details === 'string' ? l.details : JSON.stringify(l.details || {}))}</details>`
+      ].join('\n');
+      return `  <log>\n${fields}\n  </log>`;
+    }).join('\n');
+    return `<?xml version="1.0" encoding="utf-8"?>\n<logs>\n${items}\n</logs>`;
+  }
+
+  convertLogsToLDIF(logs) {
+    // Represent each log as an LDIF entry (best-effort mapping)
+    return logs.map((l, idx) => {
+      const id = l.id || idx + 1;
+      const dn = `cn=log-${id},ou=Logs,dc=example,dc=com`;
+      const lines = [
+        `dn: ${dn}`,
+        'objectClass: organizationalRole',
+        `cn: log-${id}`,
+        `description: ${String(l.message || '').replace(/\n/g, ' ')}`,
+        `ou: ${String(l.source || 'application')}`,
+        `labeledURI: ${new Date(l.timestamp || Date.now()).toISOString()}`
+      ];
+      return lines.join('\n');
+    }).join('\n\n');
+  }
+
+  convertLogsToSCIMBulk(logs) {
+    const Operations = logs.map((l, idx) => ({
+      method: 'POST',
+      path: '/Events',
+      bulkId: `log${idx+1}`,
+      data: {
+        schemas: ['urn:pingidentity:schemas:event:1.0'],
+        timestamp: l.timestamp || new Date().toISOString(),
+        level: l.level || 'info',
+        source: l.source || 'application',
+        message: l.message || '',
+        details: typeof l.details === 'string' ? l.details : (l.details || {})
+      }
+    }));
+    return {
+      schemas: ['urn:ietf:params:scim:api:messages:2.0:BulkRequest'],
+      Operations
+    };
+  }
+
+  async downloadLogFiles() {
+    try {
+      const response = await fetch('/api/logs/files');
+      if (response.ok) {
+        const files = await response.json();
+
+        if (files.length === 0) {
+          if (this.app && this.app.showError) {
+            this.app.showError('No log files available for download');
+          }
+          return;
         }
-    }
 
-    exportLogs() {
-        const logsToExport = this.filteredLogs.length > 0 ? this.filteredLogs : this.logs;
-        
-        if (logsToExport.length === 0) {
-            if (this.app && this.app.showError) {
-                this.app.showError('No logs to export');
-            }
-            return;
-        }
+        // Create a simple file list for download
+        const fileList = files.map(file =>
+          `<li><a href="/api/logs/download/${file.name}" target="_blank">${file.name} (${file.size})</a></li>`
+        ).join('');
 
-        // Export JSON file
-        const jsonBlob = new Blob([JSON.stringify(logsToExport, null, 2)], { type: 'application/json' });
-        this.triggerDownload(jsonBlob, `logs-export-${new Date().toISOString().split('T')[0]}.json`);
-
-        // Export CSV file for BI tools and spreadsheets
-        const csvContent = this.convertLogsToCSV(logsToExport);
-        const csvBlob = new Blob([csvContent], { type: 'text/csv' });
-        this.triggerDownload(csvBlob, `logs-export-${new Date().toISOString().split('T')[0]}.csv`);
-
-        // Export NDJSON for ingestion tools (Splunk, ELK) – one JSON per line
-        const ndjson = logsToExport.map(l => JSON.stringify(l)).join('\n');
-        const ndjsonBlob = new Blob([ndjson], { type: 'application/x-ndjson' });
-        this.triggerDownload(ndjsonBlob, `logs-export-${new Date().toISOString().split('T')[0]}.ndjson`);
-
-        // Additional default bulk: CEF, CLF, ELF, W3C, Windows Event XML
-        this.triggerDownload(new Blob([this.convertLogsToCEF(logsToExport)], { type: 'text/plain' }), `logs-export-${new Date().toISOString().split('T')[0]}.cef`);
-        this.triggerDownload(new Blob([this.convertLogsToCLF(logsToExport)], { type: 'text/plain' }), `logs-export-${new Date().toISOString().split('T')[0]}.log`);
-        this.triggerDownload(new Blob([this.convertLogsToELF(logsToExport)], { type: 'text/plain' }), `logs-export-${new Date().toISOString().split('T')[0]}.elf`);
-        this.triggerDownload(new Blob([this.convertLogsToW3C(logsToExport)], { type: 'text/plain' }), `logs-export-${new Date().toISOString().split('T')[0]}.w3c`);
-        this.triggerDownload(new Blob([this.convertLogsToWEVTXML(logsToExport)], { type: 'application/xml' }), `logs-export-${new Date().toISOString().split('T')[0]}.wevt.xml`);
-    }
-
-    exportSpecific(format) {
-        const logsToExport = this.filteredLogs.length > 0 ? this.filteredLogs : this.logs;
-        if (logsToExport.length === 0) {
-            this.app?.showError?.('No logs to export');
-            return;
-        }
-        const date = new Date().toISOString().split('T')[0];
-        if (format === 'json') {
-            const blob = new Blob([JSON.stringify(logsToExport, null, 2)], { type: 'application/json' });
-            this.triggerDownload(blob, `logs-export-${date}.json`);
-        } else if (format === 'csv') {
-            const csv = this.convertLogsToCSV(logsToExport);
-            const blob = new Blob([csv], { type: 'text/csv' });
-            this.triggerDownload(blob, `logs-export-${date}.csv`);
-        } else if (format === 'ndjson') {
-            const ndjson = logsToExport.map(l => JSON.stringify(l)).join('\n');
-            const blob = new Blob([ndjson], { type: 'application/x-ndjson' });
-            this.triggerDownload(blob, `logs-export-${date}.ndjson`);
-        } else if (format === 'xlsx') {
-            const tsv = this.convertLogsToTSV(logsToExport);
-            const blob = new Blob([tsv], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            this.triggerDownload(blob, `logs-export-${date}.xlsx`);
-        } else if (format === 'xml') {
-            const xml = this.convertLogsToXML(logsToExport);
-            const blob = new Blob([xml], { type: 'application/xml' });
-            this.triggerDownload(blob, `logs-export-${date}.xml`);
-        } else if (format === 'ldif') {
-            const ldif = this.convertLogsToLDIF(logsToExport);
-            const blob = new Blob([ldif], { type: 'text/plain' });
-            this.triggerDownload(blob, `logs-export-${date}.ldif`);
-        } else if (format === 'scim') {
-            const scim = JSON.stringify(this.convertLogsToSCIMBulk(logsToExport), null, 2);
-            const blob = new Blob([scim], { type: 'application/scim+json' });
-            this.triggerDownload(blob, `logs-export-${date}-bulk.json`);
-        } else if (format === 'cef') {
-            const blob = new Blob([this.convertLogsToCEF(logsToExport)], { type: 'text/plain' });
-            this.triggerDownload(blob, `logs-export-${date}.cef`);
-        } else if (format === 'clf') {
-            const blob = new Blob([this.convertLogsToCLF(logsToExport)], { type: 'text/plain' });
-            this.triggerDownload(blob, `logs-export-${date}.log`);
-        } else if (format === 'elf') {
-            const blob = new Blob([this.convertLogsToELF(logsToExport)], { type: 'text/plain' });
-            this.triggerDownload(blob, `logs-export-${date}.elf`);
-        } else if (format === 'w3c') {
-            const blob = new Blob([this.convertLogsToW3C(logsToExport)], { type: 'text/plain' });
-            this.triggerDownload(blob, `logs-export-${date}.w3c`);
-        } else if (format === 'wevt') {
-            const blob = new Blob([this.convertLogsToWEVTXML(logsToExport)], { type: 'application/xml' });
-            this.triggerDownload(blob, `logs-export-${date}.wevt.xml`);
-        }
-    }
-
-    triggerDownload(blob, filename) {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    }
-
-    // --- Export converters (best-effort, simplified mappings) ---
-    convertLogsToCEF(logs) {
-        // CEF:Version|Device Vendor|Device Product|Device Version|Signature ID|Name|Severity|Extension
-        const vendor = 'PingIdentity';
-        const product = 'UserManagementApp';
-        const version = '7.2';
-        return logs.map((l, idx) => {
-            const sevMap = { error: '10', warn: '5', info: '3', debug: '1' };
-            const sev = sevMap[l.level] || '3';
-            const sig = l.id || idx + 1;
-            const name = (l.message || '').toString().replace(/\|/g, ' ');
-            const ts = l.timestamp ? new Date(l.timestamp).toISOString() : new Date().toISOString();
-            const ext = `end=${Date.now()} msg=${JSON.stringify(l.message || '')} src=${(l.source||'app')} cs1Label=timestamp cs1=${ts}`;
-            return `CEF:0|${vendor}|${product}|${version}|${sig}|${name}|${sev}|${ext}`;
-        }).join('\n');
-    }
-
-    convertLogsToCLF(logs) {
-        // CLF: host ident authuser [date] "request" status bytes
-        return logs.map(l => {
-            const host = '-'; const ident = '-'; const user = (l.user || '-');
-            const date = new Date(l.timestamp || Date.now()).toISOString();
-            const request = (l.message || 'GET / -');
-            const status = l.level === 'error' ? 500 : 200;
-            const bytes = 0;
-            return `${host} ${ident} ${user} [${date}] "${request}" ${status} ${bytes}`;
-        }).join('\n');
-    }
-
-    convertLogsToELF(logs) {
-        // ELF (IIS-style extended): use a header then space-separated fields
-        const header = `#Fields: date time level source message`;
-        const rows = logs.map(l => {
-            const d = new Date(l.timestamp || Date.now());
-            const date = d.toISOString().split('T')[0];
-            const time = d.toISOString().split('T')[1].replace('Z','');
-            const level = l.level || 'info';
-            const source = l.source || 'application';
-            const msg = (l.message || '').toString().replace(/\s+/g, ' ');
-            return `${date} ${time} ${level} ${source} ${msg}`;
-        });
-        return [header, ...rows].join('\n');
-    }
-
-    convertLogsToW3C(logs) {
-        // W3C extended log format
-        const header = [`#Version: 1.0`, `#Fields: date time c-level cs-source cs-message`].join('\n');
-        const rows = logs.map(l => {
-            const d = new Date(l.timestamp || Date.now());
-            const date = d.toISOString().split('T')[0];
-            const time = d.toISOString().split('T')[1].replace('Z','');
-            const level = l.level || 'info';
-            const source = l.source || 'application';
-            const msg = (l.message || '').toString().replace(/\s+/g, ' ');
-            return `${date} ${time} ${level} ${source} ${msg}`;
-        });
-        return [header, ...rows].join('\n');
-    }
-
-    convertLogsToWEVTXML(logs) {
-        // Windows Event Log XML Envelope (simplified)
-        const items = logs.map(l => `\n  <Event>\n    <System>\n      <Provider Name="PingIdentity"/>\n      <Level>${(l.level || 'info')}</Level>\n      <TimeCreated SystemTime="${new Date(l.timestamp || Date.now()).toISOString()}"/>\n      <EventID>${l.id || 0}</EventID>\n    </System>\n    <EventData>\n      <Data Name="source">${l.source || 'application'}</Data>\n      <Data Name="message">${(l.message || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</Data>\n    </EventData>\n  </Event>`).join('');
-        return `<?xml version="1.0" encoding="utf-8"?>\n<Events>${items}\n</Events>`;
-    }
-
-    convertLogsToCSV(logs) {
-        const headers = ['Timestamp', 'Level', 'Source', 'Message', 'Details'];
-        const csvRows = [headers.join(',')];
-
-        logs.forEach(log => {
-            const row = [
-                `"${new Date(log.timestamp).toLocaleString()}"`,
-                `"${log.level}"`,
-                `"${log.source}"`,
-                `"${String(log.message || '').replace(/"/g, '""')}"`,
-                `"${String(log.details || '').replace(/"/g, '""')}"`
-            ];
-            csvRows.push(row.join(','));
-        });
-
-        return csvRows.join('\n');
-    }
-
-    convertLogsToTSV(logs) {
-        const headers = ['Timestamp', 'Level', 'Source', 'Message', 'Details'];
-        const rows = [headers.join('\t')];
-        logs.forEach(log => {
-            const row = [
-                new Date(log.timestamp).toLocaleString(),
-                String(log.level || ''),
-                String(log.source || ''),
-                String(log.message || '').replace(/\t/g, '  '),
-                String(typeof log.details === 'string' ? log.details : JSON.stringify(log.details || {})).replace(/\t/g, '  ')
-            ];
-            rows.push(row.join('\t'));
-        });
-        return rows.join('\n');
-    }
-
-    convertLogsToXML(logs) {
-        const escape = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&apos;');
-        const items = logs.map(l => {
-            const fields = [
-                `    <timestamp>${escape(l.timestamp || new Date().toISOString())}</timestamp>`,
-                `    <level>${escape(l.level || '')}</level>`,
-                `    <source>${escape(l.source || '')}</source>`,
-                `    <message>${escape(l.message || '')}</message>`,
-                `    <details>${escape(typeof l.details === 'string' ? l.details : JSON.stringify(l.details || {}))}</details>`
-            ].join('\n');
-            return `  <log>\n${fields}\n  </log>`;
-        }).join('\n');
-        return `<?xml version="1.0" encoding="utf-8"?>\n<logs>\n${items}\n</logs>`;
-    }
-
-    convertLogsToLDIF(logs) {
-        // Represent each log as an LDIF entry (best-effort mapping)
-        return logs.map((l, idx) => {
-            const id = l.id || idx + 1;
-            const dn = `cn=log-${id},ou=Logs,dc=example,dc=com`;
-            const lines = [
-                `dn: ${dn}`,
-                'objectClass: organizationalRole',
-                `cn: log-${id}`,
-                `description: ${String(l.message || '').replace(/\n/g, ' ')}`,
-                `ou: ${String(l.source || 'application')}`,
-                `labeledURI: ${new Date(l.timestamp || Date.now()).toISOString()}`
-            ];
-            return lines.join('\n');
-        }).join('\n\n');
-    }
-
-    convertLogsToSCIMBulk(logs) {
-        const Operations = logs.map((l, idx) => ({
-            method: 'POST',
-            path: '/Events',
-            bulkId: `log${idx+1}`,
-            data: {
-                schemas: ['urn:pingidentity:schemas:event:1.0'],
-                timestamp: l.timestamp || new Date().toISOString(),
-                level: l.level || 'info',
-                source: l.source || 'application',
-                message: l.message || '',
-                details: typeof l.details === 'string' ? l.details : (l.details || {})
-            }
-        }));
-        return {
-            schemas: ['urn:ietf:params:scim:api:messages:2.0:BulkRequest'],
-            Operations
-        };
-    }
-
-    async downloadLogFiles() {
-        try {
-            const response = await fetch('/api/logs/files');
-            if (response.ok) {
-                const files = await response.json();
-                
-                if (files.length === 0) {
-                    if (this.app && this.app.showError) {
-                        this.app.showError('No log files available for download');
-                    }
-                    return;
-                }
-
-                // Create a simple file list for download
-                const fileList = files.map(file => 
-                    `<li><a href="/api/logs/download/${file.name}" target="_blank">${file.name} (${file.size})</a></li>`
-                ).join('');
-
-                const popup = window.open('', '_blank', 'width=600,height=400');
-                popup.document.write(`
+        const popup = window.open('', '_blank', 'width=600,height=400');
+        popup.document.write(`
                     <html>
                         <head><title>Download Log Files</title></head>
                         <body>
@@ -757,32 +851,32 @@ export class LogsPage {
                         </body>
                     </html>
                 `);
-            } else {
-                throw new Error('Failed to fetch log files');
-            }
-        } catch (error) {
-            console.error('❌ Error downloading log files:', error);
-            if (this.app && this.app.showError) {
-                this.app.showError('Error accessing log files. Please try again.');
-            }
-        }
+      } else {
+        throw new Error('Failed to fetch log files');
+      }
+    } catch (error) {
+      console.error('❌ Error downloading log files:', error);
+      if (this.app && this.app.showError) {
+        this.app.showError('Error accessing log files. Please try again.');
+      }
     }
+  }
 
-    // Called when token status changes
-    onTokenStatusChange(tokenStatus) {
-        // Logs page doesn't require token validation
-    }
+  // Called when token status changes
+  onTokenStatusChange(tokenStatus) {
+    // Logs page doesn't require token validation
+  }
 
-    // Called when settings change
-    onSettingsChange(settings) {
-        // Logs page doesn't require settings
-    }
+  // Called when settings change
+  onSettingsChange(settings) {
+    // Logs page doesn't require settings
+  }
 
-    // Cleanup when page is unloaded
-    unload() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-            this.refreshInterval = null;
-        }
+  // Cleanup when page is unloaded
+  unload() {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
     }
+  }
 }

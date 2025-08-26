@@ -59,18 +59,18 @@ if (!fs.existsSync(testMocksDir)) {
 const testFixturesDir = path.join(testDir, 'fixtures');
 if (!fs.existsSync(testFixturesDir)) {
   fs.mkdirSync(testFixturesDir, { recursive: true });
-  
+
   // Create sample test data
   const sampleUsers = [
     { id: 'user1', username: 'testuser1@example.com', status: 'ENABLED' },
     { id: 'user2', username: 'testuser2@example.com', status: 'ENABLED' }
   ];
-  
+
   fs.writeFileSync(
     path.join(testFixturesDir, 'users.json'),
     JSON.stringify(sampleUsers, null, 2)
   );
-  
+
   console.log(chalk.green('✓ Created test fixtures directory with sample data'));
 }
 

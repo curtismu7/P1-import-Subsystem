@@ -6,7 +6,7 @@ const execAsync = promisify(exec);
 
 async function runTests() {
   console.log('🚀 Starting test suite...\n');
-  
+
   try {
     // 1. Run backend tests
     console.log('🔧 Running backend tests...');

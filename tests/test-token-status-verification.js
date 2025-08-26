@@ -1,6 +1,6 @@
 /**
  * Token Status Indicator Verification Script
- * 
+ *
  * Simple verification of the token status indicator implementation
  */
 
@@ -12,17 +12,17 @@ import fs from 'fs';
 import path from 'path';
 
 const filesToCheck = [
-    'public/js/modules/token-status-indicator.js',
-    'public/css/token-status-indicator.css',
-    'public/test-token-status.html',
-    'test-token-status-indicator.test.js',
-    'TOKEN-STATUS-INDICATOR-IMPLEMENTATION.md'
+  'public/js/modules/token-status-indicator.js',
+  'public/css/token-status-indicator.css',
+  'public/test-token-status.html',
+  'test-token-status-indicator.test.js',
+  'TOKEN-STATUS-INDICATOR-IMPLEMENTATION.md'
 ];
 
 console.log('\n📁 File Existence Check:');
 filesToCheck.forEach(file => {
-    const exists = fs.existsSync(file);
-    console.log(`${exists ? '✅' : '❌'} ${file}`);
+  const exists = fs.existsSync(file);
+  console.log(`${exists ? '✅' : '❌'} ${file}`);
 });
 
 // Test 2: Check HTML integration
@@ -110,26 +110,26 @@ console.log(`${hasTesting ? '✅' : '❌'} Has testing section`);
 console.log('\n📊 Summary:');
 const totalChecks = 25;
 const passedChecks = [
-    ...filesToCheck.map(() => true),
-    indexHasCss, indexHasJs, swaggerHasCss, swaggerHasJs,
-    hasClass, hasConstructor, hasInit, hasUpdateStatus, hasGetTokenInfo, hasGetNewToken,
-    hasMainClass, hasResponsive, hasDarkMode, hasAnimations, hasAccessibility,
-    hasInitializationTests, hasStatusTests, hasDisplayTests, hasEventTests, hasErrorTests,
-    hasOverview, hasFeatures, hasImplementation, hasUsage, hasTesting
+  ...filesToCheck.map(() => true),
+  indexHasCss, indexHasJs, swaggerHasCss, swaggerHasJs,
+  hasClass, hasConstructor, hasInit, hasUpdateStatus, hasGetTokenInfo, hasGetNewToken,
+  hasMainClass, hasResponsive, hasDarkMode, hasAnimations, hasAccessibility,
+  hasInitializationTests, hasStatusTests, hasDisplayTests, hasEventTests, hasErrorTests,
+  hasOverview, hasFeatures, hasImplementation, hasUsage, hasTesting
 ].filter(Boolean).length;
 
 console.log(`✅ ${passedChecks}/${totalChecks} checks passed`);
 console.log(`📈 ${Math.round((passedChecks / totalChecks) * 100)}% implementation complete`);
 
 if (passedChecks === totalChecks) {
-    console.log('\n🎉 Token Status Indicator implementation is complete and ready for use!');
-    console.log('\n📋 Next Steps:');
-    console.log('1. Start the server: npm start');
-    console.log('2. Visit http://localhost:4000 to see the indicator');
-    console.log('3. Test different scenarios at http://localhost:4000/test-token-status.html');
-    console.log('4. Check Swagger UI at http://localhost:4000/swagger/');
+  console.log('\n🎉 Token Status Indicator implementation is complete and ready for use!');
+  console.log('\n📋 Next Steps:');
+  console.log('1. Start the server: npm start');
+  console.log('2. Visit http://localhost:4000 to see the indicator');
+  console.log('3. Test different scenarios at http://localhost:4000/test-token-status.html');
+  console.log('4. Check Swagger UI at http://localhost:4000/swagger/');
 } else {
-    console.log('\n⚠️  Some checks failed. Please review the implementation.');
+  console.log('\n⚠️  Some checks failed. Please review the implementation.');
 }
 
-console.log('\n✨ Token Status Indicator verification complete!'); 
+console.log('\n✨ Token Status Indicator verification complete!');

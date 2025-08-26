@@ -1,9 +1,9 @@
 /**
- * @fileoverview Route Coverage Testing
- * 
+ * @file Route Coverage Testing
+ *
  * Tests that all expected routes exist and respond with appropriate status codes.
  * This ensures complete API coverage and helps identify missing or broken endpoints.
- * 
+ *
  * @author PingOne Import Tool
  * @version 4.9
  */
@@ -21,19 +21,19 @@ let app;
 const expectedRoutes = [
   // Health and status routes
   { method: 'GET', path: '/api/health', expectedStatus: 200 },
-  
+
   // Feature flags routes
   { method: 'GET', path: '/api/feature-flags', expectedStatus: 200 },
   { method: 'POST', path: '/api/feature-flags/A', expectedStatus: 200 },
   { method: 'POST', path: '/api/feature-flags/B', expectedStatus: 200 },
   { method: 'POST', path: '/api/feature-flags/C', expectedStatus: 200 },
   { method: 'POST', path: '/api/feature-flags/reset', expectedStatus: 200 },
-  
+
   // Settings routes
   { method: 'GET', path: '/api/settings', expectedStatus: 200 },
   { method: 'POST', path: '/api/settings', expectedStatus: 200 },
   { method: 'PUT', path: '/api/settings', expectedStatus: 200 },
-  
+
   // Logs routes
   { method: 'GET', path: '/api/logs', expectedStatus: 200 },
   { method: 'POST', path: '/api/logs', expectedStatus: 200 },
@@ -45,29 +45,29 @@ const expectedRoutes = [
   { method: 'DELETE', path: '/api/logs/ui', expectedStatus: 200 },
   { method: 'POST', path: '/api/logs/disk', expectedStatus: 200 },
   { method: 'POST', path: '/api/logs/legacy', expectedStatus: 200 },
-  
+
   // Import routes
   { method: 'POST', path: '/api/import', expectedStatus: 200 },
   { method: 'GET', path: '/api/import/progress/test-session', expectedStatus: 200 },
-  
+
   // Export routes
   { method: 'POST', path: '/api/export-users', expectedStatus: 200 },
-  
+
   // Queue routes
   { method: 'GET', path: '/api/queue/status', expectedStatus: 200 },
   { method: 'GET', path: '/api/queue/health', expectedStatus: 200 },
-  
+
   // PingOne connection routes
   { method: 'POST', path: '/api/pingone/test-connection', expectedStatus: 200 },
   { method: 'POST', path: '/api/pingone/get-token', expectedStatus: 200 },
-  
+
   // PingOne data routes
   { method: 'GET', path: '/api/pingone/populations', expectedStatus: 200 },
   { method: 'GET', path: '/api/pingone/users', expectedStatus: 200 },
-  
+
   // Modify routes
   { method: 'POST', path: '/api/modify', expectedStatus: 200 },
-  
+
   // Import resolution routes
   { method: 'POST', path: '/api/import/resolve-invalid-population', expectedStatus: 400 },
 ];
@@ -76,23 +76,23 @@ const expectedRoutes = [
  * Route Coverage Testing
  */
 describe('Route Coverage Testing', () => {
-  
+
   beforeAll(async () => {
     // Import and setup the server using absolute path
     const serverPath = path.resolve(process.cwd(), 'server.js');
     const serverModule = await import(serverPath);
     app = serverModule.default || serverModule.app;
-    
+
     // Mock token manager
     app.set('tokenManager', {
       getAccessToken: jest.fn().mockResolvedValue('test-access-token'),
       refreshToken: jest.fn().mockResolvedValue('new-access-token'),
       isTokenValid: jest.fn().mockReturnValue(true),
     });
-    
+
     // Mock import sessions
     app.set('importSessions', new Map());
-    
+
     // Mock feature flags
     app.set('featureFlags', {
       isFeatureEnabled: jest.fn().mockReturnValue(false),
@@ -234,14 +234,14 @@ describe('Route Coverage Testing', () => {
   describe('Response Time', () => {
     it('should respond within reasonable time', async () => {
       const startTime = Date.now();
-      
+
       await request(app)
         .get('/api/health')
         .expect(200);
 
       const endTime = Date.now();
       const responseTime = endTime - startTime;
-      
+
       expect(responseTime).toBeLessThan(1000); // Should respond within 1 second
     });
   });
@@ -304,7 +304,7 @@ describe('Route Coverage Testing', () => {
     it('should reject files that are too large', async () => {
       // Create a large buffer (over 10MB)
       const largeBuffer = Buffer.alloc(11 * 1024 * 1024); // 11MB
-      
+
       const response = await request(app)
         .post('/api/import')
         .attach('file', largeBuffer, 'large.csv')
@@ -313,4 +313,4 @@ describe('Route Coverage Testing', () => {
       expect(response.body).toHaveProperty('error');
     });
   });
-}); 
+});

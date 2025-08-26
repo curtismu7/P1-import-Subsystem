@@ -1,6 +1,6 @@
 /**
  * Enhanced Real-time Communication Manager
- * 
+ *
  * Provides reliable, consistent real-time communication between frontend and backend:
  * - Message queuing for offline clients
  * - Delivery confirmation and retry logic
@@ -32,7 +32,7 @@ class EnhancedConnection {
       ip: socket.handshake.address,
       connectedAt: new Date().toISOString()
     };
-    
+
     this.setupEventHandlers();
   }
 
@@ -46,9 +46,9 @@ class EnhancedConnection {
     // Heartbeat for connection health
     this.socket.on('heartbeat', () => {
       this.lastHeartbeat = Date.now();
-      this.sendSystemMessage('heartbeat-ack', { 
+      this.sendSystemMessage('heartbeat-ack', {
         timestamp: Date.now(),
-        connectionId: this.id 
+        connectionId: this.id
       });
     });
 
@@ -145,7 +145,7 @@ class EnhancedConnection {
    * Send system message (no ack required)
    */
   sendSystemMessage(type, data) {
-    if (!this.isConnected) return false;
+    if (!this.isConnected) {return false;}
 
     this.socket.emit('system-message', {
       type,
@@ -177,7 +177,7 @@ class EnhancedConnection {
   subscribe(channel) {
     this.subscriptions.add(channel);
     this.socket.join(channel);
-    
+
     this.manager.logger.debug('Client subscribed to channel', {
       channel,
       connectionId: this.id,
@@ -191,7 +191,7 @@ class EnhancedConnection {
   unsubscribe(channel) {
     this.subscriptions.delete(channel);
     this.socket.leave(channel);
-    
+
     this.manager.logger.debug('Client unsubscribed from channel', {
       channel,
       connectionId: this.id,
@@ -233,7 +233,7 @@ class MessageQueue {
     this.queues = new Map(); // sessionId -> messages[]
     this.maxSize = maxSize;
     this.maxAge = maxAge;
-    
+
     // Cleanup old messages periodically
     setInterval(() => this.cleanup(), 300000); // 5 minutes
   }
@@ -244,14 +244,14 @@ class MessageQueue {
     }
 
     const queue = this.queues.get(sessionId);
-    
+
     // Add queued timestamp
     const queuedMessage = {
       ...message,
       queuedAt: new Date().toISOString(),
       queuedTimestamp: Date.now()
     };
-    
+
     queue.push(queuedMessage);
 
     // Limit queue size (remove oldest messages)
@@ -280,22 +280,22 @@ class MessageQueue {
   cleanup() {
     const now = Date.now();
     let totalCleaned = 0;
-    
+
     for (const [sessionId, queue] of this.queues.entries()) {
-      const validMessages = queue.filter(msg => 
+      const validMessages = queue.filter(msg =>
         now - msg.queuedTimestamp < this.maxAge
       );
-      
+
       const cleanedCount = queue.length - validMessages.length;
       totalCleaned += cleanedCount;
-      
+
       if (validMessages.length === 0) {
         this.queues.delete(sessionId);
       } else if (cleanedCount > 0) {
         this.queues.set(sessionId, validMessages);
       }
     }
-    
+
     if (totalCleaned > 0) {
       console.log(`Cleaned ${totalCleaned} expired messages from queue`);
     }
@@ -304,12 +304,12 @@ class MessageQueue {
   getStats() {
     let totalMessages = 0;
     const queueSizes = [];
-    
+
     for (const queue of this.queues.values()) {
       totalMessages += queue.length;
       queueSizes.push(queue.length);
     }
-    
+
     return {
       totalQueues: this.queues.size,
       totalMessages,
@@ -341,7 +341,7 @@ export class EnhancedRealtimeManager extends EventEmitter {
       reconnections: 0,
       errors: 0
     };
-    
+
     this.setupIOHandlers();
     this.startHealthCheck();
     this.startRetryProcessor();
@@ -359,7 +359,7 @@ export class EnhancedRealtimeManager extends EventEmitter {
     this.connections.set(connection.id, connection);
     this.stats.totalConnections++;
     this.stats.activeConnections++;
-    
+
     this.logger.info('New real-time connection established', {
       connectionId: connection.id,
       userAgent: connection.metadata.userAgent,
@@ -373,7 +373,7 @@ export class EnhancedRealtimeManager extends EventEmitter {
   handleDisconnection(connection, reason) {
     this.connections.delete(connection.id);
     this.stats.activeConnections--;
-    
+
     // Remove from session mapping
     if (connection.sessionId) {
       const sessionConnections = this.sessionConnections.get(connection.sessionId);
@@ -384,7 +384,7 @@ export class EnhancedRealtimeManager extends EventEmitter {
         }
       }
     }
-    
+
     // Remove from channel subscriptions
     for (const channel of connection.subscriptions) {
       const channelConnections = this.channels.get(channel);
@@ -395,7 +395,7 @@ export class EnhancedRealtimeManager extends EventEmitter {
         }
       }
     }
-    
+
     this.logger.info('Real-time connection disconnected', {
       connectionId: connection.id,
       sessionId: connection.sessionId,
@@ -428,7 +428,7 @@ export class EnhancedRealtimeManager extends EventEmitter {
 
     // Deliver queued messages
     this.deliverQueuedMessages(sessionId, connection);
-    
+
     this.logger.info('Session associated with connection', {
       connectionId: connection.id,
       sessionId,
@@ -438,14 +438,14 @@ export class EnhancedRealtimeManager extends EventEmitter {
 
   async deliverQueuedMessages(sessionId, connection) {
     const queuedMessages = this.messageQueue.dequeue(sessionId);
-    
+
     if (queuedMessages.length > 0) {
       this.logger.info('Delivering queued messages', {
         sessionId,
         connectionId: connection.id,
         messageCount: queuedMessages.length
       });
-      
+
       for (const message of queuedMessages) {
         try {
           await connection.sendMessage(message.type, message.data, {
@@ -480,13 +480,13 @@ export class EnhancedRealtimeManager extends EventEmitter {
     };
 
     const sessionConnections = this.sessionConnections.get(sessionId);
-    
+
     if (!sessionConnections || sessionConnections.size === 0) {
       // Queue message for offline session
       if (options.queue !== false) {
         this.messageQueue.enqueue(sessionId, message);
         this.stats.messagesQueued++;
-        
+
         this.logger.debug('Message queued for offline session', {
           sessionId,
           type,
@@ -500,7 +500,7 @@ export class EnhancedRealtimeManager extends EventEmitter {
     // Send to all connections for this session
     let delivered = 0;
     const errors = [];
-    
+
     for (const connectionId of sessionConnections) {
       const connection = this.connections.get(connectionId);
       if (connection && connection.isConnected) {
@@ -527,10 +527,10 @@ export class EnhancedRealtimeManager extends EventEmitter {
       });
     }
 
-    return { 
-      delivered: delivered > 0, 
+    return {
+      delivered: delivered > 0,
       connectionCount: delivered,
-      errors: errors.length 
+      errors: errors.length
     };
   }
 
@@ -548,7 +548,7 @@ export class EnhancedRealtimeManager extends EventEmitter {
 
     let delivered = 0;
     const errors = [];
-    
+
     for (const connection of this.connections.values()) {
       if (connection.isConnected) {
         try {
@@ -580,7 +580,7 @@ export class EnhancedRealtimeManager extends EventEmitter {
    */
   async sendToChannel(channel, type, data, options = {}) {
     const channelConnections = this.channels.get(channel);
-    
+
     if (!channelConnections || channelConnections.size === 0) {
       this.logger.debug('No connections subscribed to channel', { channel });
       return { delivered: 0, errors: 0 };
@@ -588,7 +588,7 @@ export class EnhancedRealtimeManager extends EventEmitter {
 
     let delivered = 0;
     const errors = [];
-    
+
     for (const connectionId of channelConnections) {
       const connection = this.connections.get(connectionId);
       if (connection && connection.isConnected) {
@@ -623,13 +623,13 @@ export class EnhancedRealtimeManager extends EventEmitter {
   startHealthCheck() {
     setInterval(() => {
       const unhealthyConnections = [];
-      
+
       for (const connection of this.connections.values()) {
         if (!connection.isHealthy()) {
           unhealthyConnections.push(connection);
         }
       }
-      
+
       // Disconnect unhealthy connections
       for (const connection of unhealthyConnections) {
         this.logger.warn('Disconnecting unhealthy connection', {
@@ -638,10 +638,10 @@ export class EnhancedRealtimeManager extends EventEmitter {
           lastHeartbeat: connection.lastHeartbeat,
           timeSinceHeartbeat: Date.now() - connection.lastHeartbeat
         });
-        
+
         connection.socket.disconnect(true);
       }
-      
+
     }, 30000); // Check every 30 seconds
   }
 
@@ -652,7 +652,7 @@ export class EnhancedRealtimeManager extends EventEmitter {
     setInterval(() => {
       const now = Date.now();
       const retryTimeout = 5000; // 5 seconds
-      
+
       for (const connection of this.connections.values()) {
         for (const [messageId, pendingMessage] of connection.pendingMessages.entries()) {
           if (now - pendingMessage.sentAt > retryTimeout) {
@@ -661,7 +661,7 @@ export class EnhancedRealtimeManager extends EventEmitter {
               pendingMessage.retries++;
               pendingMessage.sentAt = now;
               pendingMessage.message.retryCount = pendingMessage.retries;
-              
+
               connection.socket.emit('realtime-message', {
                 success: true,
                 message: 'Real-time message (retry)',
@@ -672,7 +672,7 @@ export class EnhancedRealtimeManager extends EventEmitter {
                   retry: pendingMessage.retries
                 }
               });
-              
+
               this.logger.debug('Retrying message delivery', {
                 messageId,
                 retries: pendingMessage.retries,
@@ -682,14 +682,14 @@ export class EnhancedRealtimeManager extends EventEmitter {
             } else {
               // Give up on message
               connection.pendingMessages.delete(messageId);
-              
+
               this.logger.warn('Message delivery failed after max retries', {
                 messageId,
                 maxRetries: pendingMessage.message.maxRetries,
                 connectionId: connection.id,
                 sessionId: connection.sessionId
               });
-              
+
               this.stats.errors++;
             }
           }
@@ -714,7 +714,7 @@ export class EnhancedRealtimeManager extends EventEmitter {
   getStats() {
     const queueStats = this.messageQueue.getStats();
     const connectionStats = Array.from(this.connections.values()).map(conn => conn.getStats());
-    
+
     return {
       ...this.stats,
       messageQueue: queueStats,
@@ -724,8 +724,8 @@ export class EnhancedRealtimeManager extends EventEmitter {
       },
       sessions: {
         total: this.sessionConnections.size,
-        averageConnectionsPerSession: this.sessionConnections.size > 0 
-          ? this.stats.activeConnections / this.sessionConnections.size 
+        averageConnectionsPerSession: this.sessionConnections.size > 0
+          ? this.stats.activeConnections / this.sessionConnections.size
           : 0
       },
       connections: {
@@ -767,12 +767,12 @@ export class EnhancedRealtimeManager extends EventEmitter {
     for (const connection of this.connections.values()) {
       connection.socket.disconnect(true);
     }
-    
+
     this.connections.clear();
     this.sessionConnections.clear();
     this.channels.clear();
     this.removeAllListeners();
-    
+
     this.logger.info('Enhanced real-time manager destroyed');
   }
 }

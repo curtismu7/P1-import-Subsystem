@@ -265,17 +265,17 @@ function expectFetchToHaveBeenCalledWithEndpoint(fetchMock, endpoints, optionsMa
 describe('Comprehensive UI Tests', () => {
   let uiManager;
   let mockLogger;
-  
+
   beforeEach(() => {
     // Reset DOM
     document.body.innerHTML = dom.serialize();
-    
+
     // Reset mocks
     jest.clearAllMocks();
     fetch.mockClear();
     localStorageMock.getItem.mockClear();
     localStorageMock.setItem.mockClear();
-    
+
     // Create mock logger
     mockLogger = {
       info: jest.fn(),
@@ -283,7 +283,7 @@ describe('Comprehensive UI Tests', () => {
       error: jest.fn(),
       debug: jest.fn()
     };
-    
+
     // Mock successful API responses
     fetch.mockImplementation((url, options) => {
       if (url.includes('/api/health')) {
@@ -297,7 +297,7 @@ describe('Comprehensive UI Tests', () => {
           })
         });
       }
-      
+
       if (url.includes('/api/settings')) {
         if (options?.method === 'GET') {
           return Promise.resolve({
@@ -311,7 +311,7 @@ describe('Comprehensive UI Tests', () => {
             })
           });
         }
-        
+
         if (options?.method === 'PUT') {
           return Promise.resolve({
             ok: true,
@@ -323,7 +323,7 @@ describe('Comprehensive UI Tests', () => {
           });
         }
       }
-      
+
       if (url.includes('/api/pingone/populations')) {
         return Promise.resolve({
           ok: true,
@@ -334,7 +334,7 @@ describe('Comprehensive UI Tests', () => {
           ])
         });
       }
-      
+
       if (url.includes('/api/logs')) {
         return Promise.resolve({
           ok: true,
@@ -352,14 +352,14 @@ describe('Comprehensive UI Tests', () => {
           })
         });
       }
-      
+
       return Promise.resolve({
         ok: true,
         status: 200,
         json: () => Promise.resolve({})
       });
     });
-    
+
     // Mock file save dialog
     global.showSaveFilePicker.mockResolvedValue({
       createWritable: () => ({
@@ -368,46 +368,46 @@ describe('Comprehensive UI Tests', () => {
       })
     });
   });
-  
+
   describe('UIManager Initialization', () => {
     test('Should initialize with default state', () => {
       // Import UIManager dynamically to avoid ESM issues
       const { UIManager } = require('../../public/js/modules/ui-manager.js');
-      
+
       uiManager = new UIManager(mockLogger);
-      
+
       expect(uiManager.currentView).toBe('import');
       expect(uiManager.lastRunStatus).toBeDefined();
       expect(uiManager.views).toBeDefined();
       expect(uiManager.navItems).toBeDefined();
     });
-    
+
     test('Should load persisted status from localStorage', () => {
       const mockStatus = {
         import: { operation: 'Import', status: 'Completed', timestamp: Date.now() }
       };
-      
+
       localStorageMock.getItem.mockReturnValue(JSON.stringify(mockStatus));
-      
+
       const { UIManager } = require('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
-      
+
       expect(localStorageMock.getItem).toHaveBeenCalledWith('pingone-import-last-status');
     });
   });
-  
+
   describe('Navigation', () => {
     beforeEach(() => {
       const { UIManager } = require('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
-    
+
     test('Should switch between views when nav items are clicked', () => {
       const navItems = document.querySelectorAll('.nav-item');
-      
+
       // Initially, import view should be active
       expect(document.getElementById('import-view').classList.contains('active')).toBe(true);
-      
+
       // Click each nav item
       navItems.forEach((item) => {
         const viewName = item.getAttribute('data-view');
@@ -415,7 +415,7 @@ describe('Comprehensive UI Tests', () => {
           // Create proper event
           const clickEvent = new dom.window.Event('click', { bubbles: true });
           item.dispatchEvent(clickEvent);
-          
+
           // Check that the correct view is active
           const expectedView = document.getElementById(`${viewName}-view`);
           if (expectedView) {
@@ -424,29 +424,29 @@ describe('Comprehensive UI Tests', () => {
         }
       });
     });
-    
+
     test('Should handle non-existent views gracefully', async () => {
       // Try to show a non-existent view
       await uiManager.showView('nonexistent');
-      
+
       // Should not throw an error and should remain on current view
       expect(uiManager.currentView).toBe('import');
     });
   });
-  
+
   describe('Settings View', () => {
     beforeEach(() => {
       const { UIManager } = require('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
-    
+
     test('Should load and display current settings', async () => {
       const settingsForm = document.getElementById('settings-form');
       const environmentIdInput = document.getElementById('environmentId');
       const regionSelect = document.getElementById('region');
       const apiClientIdInput = document.getElementById('apiClientId');
       const rateLimitInput = document.getElementById('rateLimit');
-      
+
       // Mock settings data
       const mockSettings = {
         environmentId: 'test-env',
@@ -454,37 +454,37 @@ describe('Comprehensive UI Tests', () => {
         apiClientId: 'test-client',
         rateLimit: 50
       };
-      
+
       // Update form with settings
       uiManager.updateSettingsForm(mockSettings);
-      
+
       expect(environmentIdInput.value).toBe('test-env');
       expect(regionSelect.value).toBe('NorthAmerica');
       expect(apiClientIdInput.value).toBe('test-client');
       expect(rateLimitInput.value).toBe('50');
     });
-    
+
     test('Should save settings when form is submitted', async () => {
       const settingsForm = document.getElementById('settings-form');
       const environmentIdInput = document.getElementById('environmentId');
-      
+
       // Fill form
       environmentIdInput.value = 'new-env-id';
-      
+
       // Submit form with proper event
       const submitEvent = new dom.window.Event('submit', { bubbles: true });
       settingsForm.dispatchEvent(submitEvent);
-      
+
       // Wait for async operation
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Check that fetch was called with correct data
       expectFetchToHaveBeenCalledWithEndpoint(fetch, ['/api/settings', '/api/settings/'], opts => opts.method === 'PUT' || opts.method === 'POST');
     });
-    
+
     test('Should test connection when button is clicked', async () => {
       const testButton = document.getElementById('test-connection');
-      
+
       // Mock test connection response
       fetch.mockImplementationOnce(() => Promise.resolve({
         ok: true,
@@ -494,135 +494,135 @@ describe('Comprehensive UI Tests', () => {
           message: 'Connection successful'
         })
       }));
-      
+
       // Click test button with proper event
       const clickEvent = new dom.window.Event('click', { bubbles: true });
       testButton.dispatchEvent(clickEvent);
-      
+
       // Wait for async operation
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Check that fetch was called
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/pingone/test-connection'),
         expect.any(Object)
       );
     });
-    
+
     test('Should update connection status', () => {
       uiManager.updateConnectionStatus('connected', 'Successfully connected to PingOne');
-      
+
       const statusElement = document.getElementById('connection-status');
       expect(statusElement.textContent).toContain('Successfully connected');
     });
   });
-  
+
   describe('Import View', () => {
     beforeEach(() => {
       const { UIManager } = require('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
-    
+
     test('Should handle file selection', () => {
       const fileInput = document.getElementById('csvFile');
       const file = new File(['test,data'], 'test.csv', { type: 'text/csv' });
-      
+
       // Create a mock file list
       const fileList = {
         0: file,
         length: 1,
         item: (index) => fileList[index]
       };
-      
+
       // Simulate file selection
       Object.defineProperty(fileInput, 'files', {
         value: fileList,
         writable: false
       });
-      
+
       // Dispatch proper change event
       const changeEvent = new dom.window.Event('change', { bubbles: true });
       fileInput.dispatchEvent(changeEvent);
-      
+
       expect(fileInput.files.length).toBe(1);
       expect(fileInput.files[0].name).toBe('test.csv');
     });
-    
+
     test('Should update import button state', () => {
       const importButton = document.getElementById('import-button');
-      
+
       // Test disabled state
       uiManager.setImportButtonState(false, 'Processing...');
       expect(importButton.disabled).toBe(true);
       expect(importButton.textContent).toBe('Processing...');
-      
+
       // Test enabled state
       uiManager.setImportButtonState(true, 'Import Users');
       expect(importButton.disabled).toBe(false);
       expect(importButton.textContent).toBe('Import Users');
     });
-    
+
     test('Should show import progress', () => {
       const progressContainer = document.getElementById('import-progress');
       const progressFill = document.querySelector('.progress-fill');
       const progressText = document.querySelector('.progress-text');
-      
+
       // Initially progress should be hidden
       expect(progressContainer.style.display).toBe('none');
-      
+
       // Show progress
       uiManager.updateImportProgress(5, 10, 'Processing user 5 of 10', { success: 4, failed: 1 });
-      
+
       // Progress should be visible
       expect(progressContainer.style.display).not.toBe('none');
       expect(progressText.textContent).toContain('Processing user 5 of 10');
     });
   });
-  
+
   describe('Export View', () => {
     beforeEach(() => {
       const { UIManager } = require('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
-    
+
     test('Should handle export form submission', async () => {
       const exportForm = document.getElementById('export-form');
       const manualInput = document.getElementById('manualPopulationId');
       const includeAllFieldsCheckbox = document.getElementById('includeAllFields');
-      
+
       // Fill form
       manualInput.value = 'test-pop-id';
       includeAllFieldsCheckbox.checked = true;
-      
+
       // Submit form with proper event
       const submitEvent = new dom.window.Event('submit', { bubbles: true });
       exportForm.dispatchEvent(submitEvent);
-      
+
       // Wait for async operation
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Check that fetch was called
       expectFetchToHaveBeenCalledWithEndpoint(fetch, ['/api/export-users', '/api/export-users/'], opts => opts.method === 'POST');
     });
-    
+
     test('Should show export status', () => {
       uiManager.showExportStatus();
-      
+
       const exportStatus = document.getElementById('export-status');
       expect(exportStatus.textContent).toContain('Export');
     });
   });
-  
+
   describe('Logs View', () => {
     beforeEach(() => {
       const { UIManager } = require('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
-    
+
     test('Should load and display logs', async () => {
       const logsContainer = document.getElementById('log-entries');
       const refreshButton = document.getElementById('refresh-logs');
-      
+
       // Mock logs response
       fetch.mockImplementationOnce(() => Promise.resolve({
         ok: true,
@@ -639,20 +639,20 @@ describe('Comprehensive UI Tests', () => {
           total: 1
         })
       }));
-      
+
       // Load logs
       await uiManager.loadAndDisplayLogs();
-      
+
       // Check that fetch was called
       expectFetchToHaveBeenCalledWithEndpoint(fetch, ['/api/logs', '/api/logs/', '/api/logs/ui']);
-      
+
       // Check that logs are displayed
       expect(logsContainer.children.length).toBeGreaterThan(0);
     });
-    
+
     test('Should clear logs when clear button is clicked', async () => {
       const clearButton = document.getElementById('clear-logs');
-      
+
       // Mock clear logs response
       fetch.mockImplementationOnce(() => Promise.resolve({
         ok: true,
@@ -662,14 +662,14 @@ describe('Comprehensive UI Tests', () => {
           message: 'Logs cleared'
         })
       }));
-      
+
       // Click clear button with proper event
       const clickEvent = new dom.window.Event('click', { bubbles: true });
       clearButton.dispatchEvent(clickEvent);
-      
+
       // Wait for async operation
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Check that fetch was called
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/logs'),
@@ -678,42 +678,42 @@ describe('Comprehensive UI Tests', () => {
         })
       );
     });
-    
+
     test('Should handle log navigation', () => {
       const scrollTopButton = document.getElementById('scroll-logs-top');
       const scrollUpButton = document.getElementById('scroll-logs-up');
       const scrollDownButton = document.getElementById('scroll-logs-down');
       const scrollBottomButton = document.getElementById('scroll-logs-bottom');
-      
+
       // Test scroll to top
       const clickEvent = new dom.window.Event('click', { bubbles: true });
       scrollTopButton.dispatchEvent(clickEvent);
       expect(mockLogger.info).toHaveBeenCalledWith('Log navigation: scrollToTop');
-      
+
       // Test scroll up
       scrollUpButton.dispatchEvent(clickEvent);
       expect(mockLogger.info).toHaveBeenCalledWith('Log navigation: scrollUp');
-      
+
       // Test scroll down
       scrollDownButton.dispatchEvent(clickEvent);
       expect(mockLogger.info).toHaveBeenCalledWith('Log navigation: scrollDown');
-      
+
       // Test scroll to bottom
       scrollBottomButton.dispatchEvent(clickEvent);
       expect(mockLogger.info).toHaveBeenCalledWith('Log navigation: scrollToBottom');
     });
   });
-  
+
   describe('Delete CSV View', () => {
     beforeEach(() => {
       const { UIManager } = require('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
-    
+
     test('Should handle delete CSV form submission', async () => {
       const deleteForm = document.getElementById('delete-csv-form');
       const fileInput = document.getElementById('deleteCsvFile');
-      
+
       // Create mock file
       const file = new File(['username,email\ntest,test@example.com'], 'delete.csv', { type: 'text/csv' });
       const fileList = {
@@ -721,48 +721,48 @@ describe('Comprehensive UI Tests', () => {
         length: 1,
         item: (index) => fileList[index]
       };
-      
+
       Object.defineProperty(fileInput, 'files', {
         value: fileList,
         writable: false
       });
-      
+
       // Submit form with proper event
       const submitEvent = new dom.window.Event('submit', { bubbles: true });
       deleteForm.dispatchEvent(submitEvent);
-      
+
       // Wait for async operation
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Check that form submission was handled
       expect(fileInput.files.length).toBe(1);
     });
-    
+
     test('Should update delete CSV button state', () => {
       const deleteButton = document.getElementById('delete-csv-button');
-      
+
       // Test disabled state
       uiManager.setDeleteCsvButtonState(false, 'Processing...');
       expect(deleteButton.disabled).toBe(true);
       expect(deleteButton.textContent).toBe('Processing...');
-      
+
       // Test enabled state
       uiManager.setDeleteCsvButtonState(true, 'Delete Users');
       expect(deleteButton.disabled).toBe(false);
       expect(deleteButton.textContent).toBe('Delete Users');
     });
   });
-  
+
   describe('Modify View', () => {
     beforeEach(() => {
       const { UIManager } = require('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
-    
+
     test('Should handle modify form submission', async () => {
       const modifyForm = document.getElementById('modify-form');
       const fileInput = document.getElementById('modifyCsvFile');
-      
+
       // Create mock file
       const file = new File(['username,email\ntest,test@example.com'], 'modify.csv', { type: 'text/csv' });
       const fileList = {
@@ -770,79 +770,79 @@ describe('Comprehensive UI Tests', () => {
         length: 1,
         item: (index) => fileList[index]
       };
-      
+
       Object.defineProperty(fileInput, 'files', {
         value: fileList,
         writable: false
       });
-      
+
       // Submit form with proper event
       const submitEvent = new dom.window.Event('submit', { bubbles: true });
       modifyForm.dispatchEvent(submitEvent);
-      
+
       // Wait for async operation
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Check that form submission was handled
       expect(fileInput.files.length).toBe(1);
     });
-    
+
     test('Should update modify button state', () => {
       const modifyButton = document.getElementById('modify-button');
-      
+
       // Test disabled state
       uiManager.setModifyCsvButtonState(false, 'Processing...');
       expect(modifyButton.disabled).toBe(true);
       expect(modifyButton.textContent).toBe('Processing...');
-      
+
       // Test enabled state
       uiManager.setModifyCsvButtonState(true, 'Modify Users');
       expect(modifyButton.disabled).toBe(false);
       expect(modifyButton.textContent).toBe('Modify Users');
     });
   });
-  
+
   describe('Notifications and Alerts', () => {
     beforeEach(() => {
       const { UIManager } = require('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
-    
+
     test('Should show success notifications', () => {
       uiManager.showSuccess('Operation completed successfully');
-      
+
       // Check that notification was shown
       expect(mockLogger.info).toHaveBeenCalledWith('Success notification: Operation completed successfully');
     });
-    
+
     test('Should show warning notifications', () => {
       uiManager.showWarning('This is a warning message');
-      
+
       // Check that warning was shown
       expect(mockLogger.warn).toHaveBeenCalledWith('Warning notification: This is a warning message');
     });
-    
+
     test('Should show error notifications', () => {
       uiManager.showError('An error occurred');
-      
+
       // Check that error was shown
       expect(mockLogger.error).toHaveBeenCalledWith('Error notification: An error occurred');
     });
-    
+
     test('Should show rate limit warnings', () => {
       uiManager.showRateLimitWarning('Rate limit exceeded', { retryAttempt: 1, maxRetries: 3 });
-      
+
       // Check that rate limit warning was shown
       expect(mockLogger.warn).toHaveBeenCalledWith('Rate limit warning: Rate limit exceeded');
     });
   });
-  
+
   describe('Error Handling', () => {
     beforeEach(() => {
       const { UIManager } = require('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
-    
+
     test('Should handle API errors gracefully', async () => {
       // Mock API error
       fetch.mockImplementationOnce(() => Promise.resolve({
@@ -850,37 +850,37 @@ describe('Comprehensive UI Tests', () => {
         status: 500,
         statusText: 'Internal Server Error'
       }));
-      
+
       const settingsForm = document.getElementById('settings-form');
-      
+
       // Submit form with proper event
       const submitEvent = new dom.window.Event('submit', { bubbles: true });
       settingsForm.dispatchEvent(submitEvent);
-      
+
       // Wait for async operation
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Should handle the error gracefully
       expect(fetch).toHaveBeenCalled();
     });
-    
+
     test('Should handle network errors', async () => {
       // Mock network error
       fetch.mockImplementationOnce(() => Promise.reject(new Error('Network error')));
-      
+
       const settingsForm = document.getElementById('settings-form');
-      
+
       // Submit form with proper event
       const submitEvent = new dom.window.Event('submit', { bubbles: true });
       settingsForm.dispatchEvent(submitEvent);
-      
+
       // Wait for async operation
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Should handle the error gracefully
       expect(fetch).toHaveBeenCalled();
     });
-    
+
     test('Should handle rate limit errors', async () => {
       // Mock rate limit response
       fetch.mockImplementationOnce(() => Promise.resolve({
@@ -888,121 +888,121 @@ describe('Comprehensive UI Tests', () => {
         status: 429,
         statusText: 'Too Many Requests'
       }));
-      
+
       const settingsForm = document.getElementById('settings-form');
-      
+
       // Submit form with proper event
       const submitEvent = new dom.window.Event('submit', { bubbles: true });
       settingsForm.dispatchEvent(submitEvent);
-      
+
       // Wait for async operation
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Should handle rate limiting gracefully
       expect(fetch).toHaveBeenCalled();
     });
   });
-  
+
   describe('Progress Tracking', () => {
     beforeEach(() => {
       const { UIManager } = require('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
-    
+
     test('Should add progress log entries', () => {
       uiManager.addProgressLogEntry('Test progress message', 'info', { success: 5, failed: 1 }, 'import');
-      
+
       // Check that progress log was updated
       expect(uiManager.progressLog.length).toBeGreaterThan(0);
       expect(uiManager.progressLog[0].message).toBe('Test progress message');
     });
-    
+
     test('Should update progress log display', () => {
       // Add some progress entries
       uiManager.addProgressLogEntry('Entry 1', 'info', null, 'import');
       uiManager.addProgressLogEntry('Entry 2', 'success', { success: 1 }, 'import');
-      
+
       // Update display
       uiManager.updateProgressLogDisplay('import');
-      
+
       // Check that display was updated
       expect(mockLogger.debug).toHaveBeenCalled();
     });
-    
+
     test('Should clear progress log', () => {
       // Add some entries
       uiManager.addProgressLogEntry('Entry 1', 'info', null, 'import');
       uiManager.addProgressLogEntry('Entry 2', 'success', { success: 1 }, 'import');
-      
+
       // Clear log
       uiManager.clearProgressLog('import');
-      
+
       // Check that log was cleared
       expect(uiManager.progressLog.length).toBe(0);
     });
   });
-  
+
   describe('Status Management', () => {
     beforeEach(() => {
       const { UIManager } = require('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
-    
+
     test('Should update last run status', () => {
       uiManager.updateLastRunStatus('import', 'Import', 'Completed', { success: 10, failed: 0 }, { total: 10, success: 10 });
-      
+
       expect(uiManager.lastRunStatus.import.operation).toBe('Import');
       expect(uiManager.lastRunStatus.import.status).toBe('Completed');
       expect(uiManager.lastRunStatus.import.details).toEqual({ success: 10, failed: 0 });
     });
-    
+
     test('Should display last run status', () => {
       // Set up some status
       uiManager.updateLastRunStatus('import', 'Import', 'Completed', { success: 10, failed: 0 });
-      
+
       // Display status
       uiManager.displayLastRunStatus('import');
-      
+
       // Check that status was displayed
       expect(mockLogger.debug).toHaveBeenCalled();
     });
-    
+
     test('Should save and load persisted status', () => {
       // Update status
       uiManager.updateLastRunStatus('import', 'Import', 'Completed');
-      
+
       // Save status
       uiManager.savePersistedStatus();
-      
+
       // Check that localStorage was called
       expect(localStorageMock.setItem).toHaveBeenCalledWith('pingone-import-last-status', expect.any(String));
     });
   });
-  
+
   describe('Form Management', () => {
     beforeEach(() => {
       const { UIManager } = require('../../public/js/modules/ui-manager.js');
       uiManager = new UIManager(mockLogger);
     });
-    
+
     test('Should add form handlers', () => {
       const mockOnSuccess = jest.fn();
       const mockOnError = jest.fn();
-      
+
       uiManager.addForm('settings-form', '/api/settings', mockOnSuccess, mockOnError);
-      
+
       // Check that form was added
       expect(uiManager.forms).toBeDefined();
     });
-    
+
     test('Should update element content', () => {
       const testElement = document.createElement('div');
       testElement.id = 'test-element';
       document.body.appendChild(testElement);
-      
+
       uiManager.updateElementContent('test-element', '<p>Updated content</p>');
-      
+
       expect(testElement.innerHTML).toBe('<p>Updated content</p>');
     });
   });
-}); 
+});

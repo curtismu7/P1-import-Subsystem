@@ -1,9 +1,9 @@
 /**
- * @fileoverview Modern Swagger/OpenAPI configuration for PingOne Import Tool API
- * 
+ * @file Modern Swagger/OpenAPI configuration for PingOne Import Tool API
+ *
  * This file configures a modern, logical Swagger documentation interface
  * with proper endpoint ordering, improved UI styling, and developer-friendly features.
- * 
+ *
  * @author PingOne Import Tool
  * @version 6.5.1.3
  */
@@ -186,7 +186,7 @@ const swaggerOptions = {
           },
           required: ['success', 'error'],
         },
-        
+
         // Authentication schemas
         TokenResponse: {
           type: 'object',
@@ -263,7 +263,7 @@ const swaggerOptions = {
             },
           },
         },
-        
+
         // Settings schemas
         Settings: {
           type: 'object',
@@ -349,7 +349,7 @@ const swaggerOptions = {
             },
           },
         },
-        
+
         // Population schemas
         Population: {
           type: 'object',
@@ -403,7 +403,7 @@ const swaggerOptions = {
             },
           },
         },
-        
+
         // Import schemas
         ImportRequest: {
           type: 'object',
@@ -512,7 +512,7 @@ const swaggerOptions = {
             },
           },
         },
-        
+
         // Export schemas
         ExportRequest: {
           type: 'object',
@@ -587,7 +587,7 @@ const swaggerOptions = {
             },
           },
         },
-        
+
         // User Management schemas
         DeleteRequest: {
           type: 'object',
@@ -697,7 +697,7 @@ const swaggerOptions = {
             },
           },
         },
-        
+
         // History schemas
         HistoryEntry: {
           type: 'object',
@@ -771,7 +771,7 @@ const swaggerOptions = {
             },
           },
         },
-        
+
         // Health schemas
         HealthResponse: {
           type: 'object',

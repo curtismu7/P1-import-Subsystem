@@ -1051,6 +1051,24 @@ select {
   transform: translateY(0) !important;
 }
 
+/* Prevent overlap - ensure only one status bar is visible at a time */
+.status-message-bar.visible ~ .top-status-bar,
+.status-message-bar.show ~ .top-status-bar {
+  top: 120px !important;
+}
+
+/* When message header is visible, adjust status message bar position */
+.message-header.visible ~ .status-message-bar,
+.message-header.show ~ .status-message-bar {
+  top: 80px !important;
+}
+
+/* When both are visible, adjust top status bar further */
+.message-header.visible ~ .status-message-bar.visible ~ .top-status-bar,
+.message-header.show ~ .status-message-bar.show ~ .top-status-bar {
+  top: 160px !important;
+}
+
 /* Status Message Bar - For system info (token status, UI version, date/time) */
 .status-message-bar {
   position: fixed !important;
@@ -1065,13 +1083,32 @@ select {
   justify-content: center !important;
   font-size: 14px !important;
   font-weight: 500 !important;
-  z-index: 3000 !important;
+  z-index: 2999 !important;
   height: 40px !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
   margin: 0 !important;
   border: none !important;
   transform: translateY(-100%) !important;
   transition: transform 0.3s ease-in-out !important;
+  /* Ensure it's hidden by default */
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+
+
+/* Ensure proper spacing when visible */
+.status-message-bar.visible,
+.status-message-bar.show {
+  transform: translateY(0) !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* When status message bar is visible, adjust top status bar position */
+.status-message-bar.visible ~ .top-status-bar,
+.status-message-bar.show ~ .top-status-bar {
+  top: 120px !important;
 }
 
 /* Layout: place token buttons next to each other, larger sizing */
@@ -1383,9 +1420,15 @@ select.form-control:not([multiple]) {
   height: var(--status-bar-height);
   background: var(--nav-bg);
   color: white;
-  z-index: 999;
+  z-index: 998;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin-top: 0;
+}
+
+/* Ensure proper spacing when status bars are visible */
+.status-message-bar.visible + .top-status-bar,
+.status-message-bar.show + .top-status-bar {
+  top: 120px !important;
 }
 
 .status-content {
@@ -11493,22 +11536,9 @@ select.field-error:focus {
 }
 
 /* Import Results Styling */
-.results-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
+.results-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
 
-.result-card {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 1.5rem;
-    border-radius: 8px;
-    background: white;
-    border: 1px solid var(--ping-border);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
+.result-card { display: flex; align-items: flex-start; gap: .75rem; padding: 1rem; border-radius: 8px; background: #fff; border: 1px solid var(--ping-border); box-shadow: 0 1px 4px rgba(0,0,0,.06); max-width: 640px; }
 
 .result-card.success {
     border-left: 4px solid var(--ping-success);
@@ -11537,22 +11567,9 @@ select.field-error:focus {
     font-weight: 600;
 }
 
-.result-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
-}
+.result-stats { display: grid; grid-template-columns: repeat(2, minmax(160px, 1fr)); gap: .5rem .75rem; margin-top: .5rem; }
 
-.stat-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.7);
-    border-radius: 6px;
-    border: 1px solid var(--ping-border-light);
-}
+.stat-item { display: flex; justify-content: space-between; align-items: center; padding: .5rem .6rem; background: rgba(255,255,255,.7); border-radius: 6px; border: 1px solid var(--ping-border-light); }
 
 .stat-label {
     font-weight: 500;
@@ -11574,12 +11591,7 @@ select.field-error:focus {
     color: var(--ping-error);
 }
 
-.result-details {
-    background: var(--ping-background-light);
-    padding: 1.5rem;
-    border-radius: 8px;
-    border: 1px solid var(--ping-border);
-}
+.result-details { background: var(--ping-background-light); padding: 1rem; border-radius: 8px; border: 1px solid var(--ping-border); max-width: 640px; overflow: hidden; }
 .result-details h4 {
     margin: 0 0 1rem 0;
     color: var(--ping-text-primary);

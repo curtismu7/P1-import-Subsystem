@@ -15,7 +15,7 @@ const projectRoot = path.resolve(__dirname, '../');
  */
 function createPopulationDropdownFix() {
   console.log('Creating population dropdown fix script...');
-  
+
   const scriptContent = `
 /**
  * Population Dropdown Fix
@@ -176,9 +176,9 @@ function createPopulationDropdownFix() {
   // Write the script to the public/js directory
   const outputPath = path.join(projectRoot, 'public', 'js', 'population-dropdown-fix.js');
   fs.writeFileSync(outputPath, scriptContent);
-  
+
   console.log(`Population dropdown fix script created at: ${outputPath}`);
-  
+
   return outputPath;
 }
 
@@ -187,32 +187,32 @@ function createPopulationDropdownFix() {
  */
 function updateIndexHtml(scriptPath) {
   const indexPath = path.join(projectRoot, 'public', 'index.html');
-  let indexContent = fs.readFileSync(indexPath, 'utf8');
-  
+  const indexContent = fs.readFileSync(indexPath, 'utf8');
+
   // Check if the script is already included
   if (indexContent.includes('population-dropdown-fix.js')) {
     console.log('Script already included in index.html');
     return;
   }
-  
+
   // Find the position to insert the script tag (before the closing body tag)
   const insertPosition = indexContent.lastIndexOf('</body>');
   if (insertPosition === -1) {
     throw new Error('Could not find </body> tag in index.html');
   }
-  
+
   // Create the script tag
   const scriptTag = `
     <!-- Population Dropdown Fix Script -->
     <script src="/js/population-dropdown-fix.js"></script>
 `;
-  
+
   // Insert the script tag
   const updatedContent = indexContent.slice(0, insertPosition) + scriptTag + indexContent.slice(insertPosition);
-  
+
   // Write the updated content back to index.html
   fs.writeFileSync(indexPath, updatedContent);
-  
+
   console.log('Updated index.html to include the population dropdown fix script');
 }
 
@@ -222,15 +222,15 @@ function updateIndexHtml(scriptPath) {
 async function main() {
   try {
     console.log('Starting population dropdown fix...');
-    
+
     // Create the population dropdown fix script
     const scriptPath = createPopulationDropdownFix();
-    
+
     // Update index.html to include the script
     updateIndexHtml(scriptPath);
-    
+
     console.log('Population dropdown fix completed successfully!');
-    
+
   } catch (error) {
     console.error('Error fixing population dropdown:', error);
   }

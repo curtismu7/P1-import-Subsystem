@@ -1,9 +1,9 @@
 /**
  * Request Correlation Middleware
- * 
+ *
  * Adds correlation IDs to all requests for better traceability across
  * the application. This helps with debugging, monitoring, and log analysis.
- * 
+ *
  * Features:
  * - Automatic correlation ID generation
  * - Header-based correlation ID propagation
@@ -35,14 +35,14 @@ function extractCorrelationId(req) {
     'correlation-id',
     'request-id'
   ];
-  
+
   for (const header of headers) {
     const value = req.get(header);
     if (value && typeof value === 'string' && value.trim()) {
       return value.trim();
     }
   }
-  
+
   return null;
 }
 
@@ -50,8 +50,8 @@ function extractCorrelationId(req) {
  * Validate correlation ID format
  */
 function isValidCorrelationId(id) {
-  if (!id || typeof id !== 'string') return false;
-  
+  if (!id || typeof id !== 'string') {return false;}
+
   // Allow alphanumeric, hyphens, and underscores, 8-64 characters
   const pattern = /^[a-zA-Z0-9_-]{8,64}$/;
   return pattern.test(id);
@@ -62,42 +62,42 @@ function isValidCorrelationId(id) {
  */
 export function correlationMiddleware(req, res, next) {
   const startTime = process.hrtime.bigint();
-  
+
   // Extract or generate correlation ID
   let correlationId = extractCorrelationId(req);
-  
+
   if (!correlationId || !isValidCorrelationId(correlationId)) {
     correlationId = generateCorrelationId();
   }
-  
+
   // Attach correlation ID to request
   req.correlationId = correlationId;
-  
+
   // Set response header
   res.set('X-Correlation-ID', correlationId);
-  
+
   // Log request with correlation ID
   if (configManager.get('debug.enableDebugMode')) {
     apiLogger.request(req, correlationId);
   }
-  
+
   // Start performance timer
   const perfTimer = perfMonitor.start(`${req.method} ${req.route?.path || req.path}`, DEBUG_CATEGORIES.PERFORMANCE);
-  
+
   // Override res.end to capture response details
   const originalEnd = res.end;
   res.end = function(chunk, encoding) {
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1000000; // Convert to milliseconds
-    
+
     // End performance timer
     perfTimer.end();
-    
+
     // Log response with correlation ID
     if (configManager.get('debug.enableDebugMode')) {
       apiLogger.response(req, res, correlationId, duration);
     }
-    
+
     // Log performance metrics
     debugLog.debug('Request completed', {
       correlationId,
@@ -107,11 +107,11 @@ export function correlationMiddleware(req, res, next) {
       duration: `${duration.toFixed(2)}ms`,
       contentLength: res.get('content-length') || 'unknown'
     }, DEBUG_CATEGORIES.PERFORMANCE);
-    
+
     // Call original end method
     originalEnd.call(res, chunk, encoding);
   };
-  
+
   // Add correlation context to request for use in other middleware/routes
   req.getCorrelationContext = () => ({
     correlationId,
@@ -121,7 +121,7 @@ export function correlationMiddleware(req, res, next) {
     userAgent: req.get('user-agent'),
     ip: req.ip
   });
-  
+
   next();
 }
 
@@ -130,7 +130,7 @@ export function correlationMiddleware(req, res, next) {
  */
 export function enhancedLoggingMiddleware(req, res, next) {
   const context = req.getCorrelationContext?.() || {};
-  
+
   // Log request details
   debugLog.info('Incoming request', {
     ...context,
@@ -138,21 +138,21 @@ export function enhancedLoggingMiddleware(req, res, next) {
     query: req.query,
     body: sanitizeBody(req.body)
   }, DEBUG_CATEGORIES.API);
-  
+
   // Monitor memory usage for long-running requests
   const memoryCheckInterval = setInterval(() => {
     perfMonitor.memory(`request-${context.correlationId}`);
   }, 5000);
-  
+
   // Clear interval when request completes
   res.on('finish', () => {
     clearInterval(memoryCheckInterval);
   });
-  
+
   res.on('close', () => {
     clearInterval(memoryCheckInterval);
   });
-  
+
   next();
 }
 
@@ -161,7 +161,7 @@ export function enhancedLoggingMiddleware(req, res, next) {
  */
 export function securityLoggingMiddleware(req, res, next) {
   const context = req.getCorrelationContext?.() || {};
-  
+
   // Check for suspicious patterns
   const suspiciousPatterns = [
     /\.\.\//,  // Path traversal
@@ -171,11 +171,11 @@ export function securityLoggingMiddleware(req, res, next) {
     /eval\(/i, // Code injection
     /exec\(/i  // Command injection
   ];
-  
+
   const checkString = `${req.url} ${JSON.stringify(req.query)} ${JSON.stringify(req.body)}`;
-  
+
   const suspiciousActivity = suspiciousPatterns.some(pattern => pattern.test(checkString));
-  
+
   if (suspiciousActivity) {
     debugLog.warn('Suspicious request detected', {
       ...context,
@@ -184,7 +184,7 @@ export function securityLoggingMiddleware(req, res, next) {
       referer: req.get('referer')
     }, DEBUG_CATEGORIES.SECURITY);
   }
-  
+
   // Log failed authentication attempts
   res.on('finish', () => {
     if (res.statusCode === 401 || res.statusCode === 403) {
@@ -195,7 +195,7 @@ export function securityLoggingMiddleware(req, res, next) {
       }, DEBUG_CATEGORIES.SECURITY);
     }
   });
-  
+
   next();
 }
 
@@ -211,19 +211,19 @@ function sanitizeHeaders(headers) {
     'x-auth-token',
     'x-access-token'
   ];
-  
+
   sensitiveHeaders.forEach(header => {
     if (sanitized[header]) {
       sanitized[header] = '[REDACTED]';
     }
   });
-  
+
   return sanitized;
 }
 
 function sanitizeBody(body) {
-  if (!body || typeof body !== 'object') return body;
-  
+  if (!body || typeof body !== 'object') {return body;}
+
   const sanitized = { ...body };
   const sensitiveFields = [
     'password',
@@ -233,13 +233,13 @@ function sanitizeBody(body) {
     'clientSecret',
     'apiSecret'
   ];
-  
+
   sensitiveFields.forEach(field => {
     if (sanitized[field]) {
       sanitized[field] = '[REDACTED]';
     }
   });
-  
+
   return sanitized;
 }
 
@@ -248,17 +248,17 @@ function sanitizeBody(body) {
  */
 export function websocketCorrelationMiddleware(socket, next) {
   const correlationId = socket.handshake.headers['x-correlation-id'] || generateCorrelationId();
-  
+
   socket.correlationId = correlationId;
   socket.emit('correlation-id', correlationId);
-  
+
   debugLog.debug('WebSocket connection established', {
     correlationId,
     socketId: socket.id,
     userAgent: socket.handshake.headers['user-agent'],
     ip: socket.handshake.address
   }, DEBUG_CATEGORIES.WEBSOCKET);
-  
+
   next();
 }
 

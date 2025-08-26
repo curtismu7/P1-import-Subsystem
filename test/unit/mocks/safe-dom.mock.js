@@ -8,15 +8,15 @@ export const safeDOMInstance = {
   updateElement: jest.fn((selector, text, className) => {
     const element = document.querySelector(selector);
     if (element) {
-      if (text !== undefined) element.textContent = text;
-      if (className !== undefined) element.className = className;
+      if (text !== undefined) {element.textContent = text;}
+      if (className !== undefined) {element.className = className;}
     }
     return element;
   }),
   createElement: jest.fn((tagName, className, html) => {
     const element = document.createElement(tagName);
-    if (className) element.className = className;
-    if (html) element.innerHTML = html;
+    if (className) {element.className = className;}
+    if (html) {element.innerHTML = html;}
     return element;
   }),
   append: jest.fn((parent, child) => {

@@ -1,6 +1,6 @@
 /**
  * Example Page - User Management
- * 
+ *
  * Demonstrates how to create pages using the new structure
  * Uses consolidated services and components
  */
@@ -16,44 +16,44 @@ export class UserManagementPage {
     this.users = [];
     this.userCards = new Map();
     this.container = null;
-    
+
     // Use consolidated utilities
     this.logger = CoreUtils.createLogger('UserManagementPage');
     this.eventManager = CoreUtils.getEventManager();
-    
+
     // Subscribe to state changes
     this.setupStateSubscriptions();
   }
-  
+
   /**
    * Initialize the page
    */
   async init(container) {
     this.container = container;
-    
+
     try {
       // Show loading state
       actions.setLoading(true);
-      
+
       // Load users
       await this.loadUsers();
-      
+
       // Render page
       this.render();
-      
+
       // Setup event listeners
       this.setupEventListeners();
-      
+
       actions.setLoading(false);
       this.logger.info('User management page initialized');
-      
+
     } catch (error) {
       this.logger.error('Failed to initialize page:', error);
       actions.addError('Failed to load user management page');
       actions.setLoading(false);
     }
   }
-  
+
   /**
    * Setup state subscriptions
    */
@@ -65,13 +65,13 @@ export class UserManagementPage {
         this.refreshUserList();
       }
     });
-    
+
     // Subscribe to loading state
     appState.subscribe('loading', (state) => {
       this.updateLoadingState(state.loading);
     });
   }
-  
+
   /**
    * Load users from API
    */
@@ -80,7 +80,7 @@ export class UserManagementPage {
       showLoading: false, // We're handling loading ourselves
       showErrors: true
     });
-    
+
     if (response.isSuccess()) {
       this.users = response.getData();
       actions.setUsers(this.users);
@@ -88,13 +88,13 @@ export class UserManagementPage {
       throw new Error(response.getError().message);
     }
   }
-  
+
   /**
    * Render the page
    */
   render() {
-    if (!this.container) return;
-    
+    if (!this.container) {return;}
+
     this.container.innerHTML = `
       <div class="user-management-page">
         <div class="page-header">
@@ -130,38 +130,38 @@ export class UserManagementPage {
         </div>
       </div>
     `;
-    
+
     this.renderUserCards();
   }
-  
+
   /**
    * Render user cards
    */
   renderUserCards() {
     const grid = this.container.querySelector('#users-grid');
-    if (!grid) return;
-    
+    if (!grid) {return;}
+
     // Clear existing cards
     this.userCards.clear();
     grid.innerHTML = '';
-    
+
     if (this.users.length === 0) {
       this.showEmptyState();
       return;
     }
-    
+
     // Create user cards
     this.users.forEach(user => {
       const userCard = new UserCard(user);
       const cardElement = userCard.render();
-      
+
       grid.appendChild(cardElement);
       this.userCards.set(user.id, userCard);
     });
-    
+
     this.hideEmptyState();
   }
-  
+
   /**
    * Setup event listeners
    */
@@ -171,14 +171,14 @@ export class UserManagementPage {
     if (addUserBtn) {
       addUserBtn.addEventListener('click', () => this.showAddUserModal());
     }
-    
+
     // Refresh button
     const refreshBtn = this.container.querySelector('#refresh-btn');
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => this.refreshUsers());
     }
   }
-  
+
   /**
    * Show add user modal
    */
@@ -186,7 +186,7 @@ export class UserManagementPage {
     try {
       const { ModalManager } = await import('../services/ui-management.js');
       const modal = new ModalManager();
-      
+
       const userData = await modal.showAddUserModal();
       if (userData) {
         await this.createUser(userData);
@@ -196,7 +196,7 @@ export class UserManagementPage {
       actions.addError('Failed to open add user dialog');
     }
   }
-  
+
   /**
    * Create new user
    */
@@ -206,7 +206,7 @@ export class UserManagementPage {
         showLoading: true,
         showErrors: true
       });
-      
+
       if (response.isSuccess()) {
         const newUser = response.getData();
         this.users.push(newUser);
@@ -218,7 +218,7 @@ export class UserManagementPage {
       actions.addError('Failed to create user');
     }
   }
-  
+
   /**
    * Refresh users
    */
@@ -231,52 +231,52 @@ export class UserManagementPage {
       actions.addError('Failed to refresh users');
     }
   }
-  
+
   /**
    * Refresh user list
    */
   refreshUserList() {
     this.renderUserCards();
   }
-  
+
   /**
    * Update loading state
    */
   updateLoadingState(loading) {
     const loadingState = this.container?.querySelector('#loading-state');
     const usersGrid = this.container?.querySelector('#users-grid');
-    
+
     if (loadingState) {
       loadingState.style.display = loading ? 'block' : 'none';
     }
-    
+
     if (usersGrid) {
       usersGrid.style.display = loading ? 'none' : 'block';
     }
   }
-  
+
   /**
    * Show empty state
    */
   showEmptyState() {
     const emptyState = this.container?.querySelector('#empty-state');
     const usersGrid = this.container?.querySelector('#users-grid');
-    
-    if (emptyState) emptyState.style.display = 'block';
-    if (usersGrid) usersGrid.style.display = 'none';
+
+    if (emptyState) {emptyState.style.display = 'block';}
+    if (usersGrid) {usersGrid.style.display = 'none';}
   }
-  
+
   /**
    * Hide empty state
    */
   hideEmptyState() {
     const emptyState = this.container?.querySelector('#empty-state');
     const usersGrid = this.container?.querySelector('#users-grid');
-    
-    if (emptyState) emptyState.style.display = 'none';
-    if (usersGrid) usersGrid.style.display = 'block';
+
+    if (emptyState) {emptyState.style.display = 'none';}
+    if (usersGrid) {usersGrid.style.display = 'block';}
   }
-  
+
   /**
    * Destroy the page
    */
@@ -284,10 +284,10 @@ export class UserManagementPage {
     // Clean up user cards
     this.userCards.forEach(card => card.destroy());
     this.userCards.clear();
-    
+
     // Clean up event listeners
     this.eventManager.removeAllListeners('UserManagementPage');
-    
+
     this.container = null;
     this.logger.info('User management page destroyed');
   }

@@ -1,8 +1,8 @@
 /**
- * @fileoverview Import API Tests
- * 
+ * @file Import API Tests
+ *
  * Tests for the import API endpoints and functionality
- * 
+ *
  * @author PingOne Import Tool
  * @version 4.9
  */
@@ -120,7 +120,7 @@ describe('Import API Tests', () => {
   describe('GET /api/import/progress/:sessionId', () => {
     it('should establish SSE connection', async () => {
       const sessionId = uuidv4();
-      
+
       const response = await request(app)
         .get(`/api/import/progress/${sessionId}`)
         .set('Accept', 'text/event-stream')

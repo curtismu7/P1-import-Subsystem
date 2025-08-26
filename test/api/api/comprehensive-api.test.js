@@ -1,9 +1,9 @@
 /**
- * @fileoverview Comprehensive API route testing suite
- * 
+ * @file Comprehensive API route testing suite
+ *
  * Tests all REST API routes with valid/invalid inputs, authentication scenarios,
  * edge cases, and error handling. Uses Jest + Supertest for reliable testing.
- * 
+ *
  * @author PingOne Import Tool
  * @version 4.9
  */
@@ -26,22 +26,22 @@ let server;
  * Test suite for comprehensive API route testing
  */
 describe('API Routes - Comprehensive Testing', () => {
-  
+
   beforeAll(async () => {
     // Import and setup the server
     const serverModule = await import('../../server.js');
     app = serverModule.default || serverModule.app;
-    
+
     // Mock token manager
     app.set('tokenManager', {
       getAccessToken: jest.fn().mockResolvedValue('test-access-token'),
       refreshToken: jest.fn().mockResolvedValue('new-access-token'),
       isTokenValid: jest.fn().mockReturnValue(true),
     });
-    
+
     // Mock import sessions
     app.set('importSessions', new Map());
-    
+
     // Mock feature flags
     app.set('featureFlags', {
       isFeatureEnabled: jest.fn().mockReturnValue(false),
@@ -71,7 +71,7 @@ describe('API Routes - Comprehensive Testing', () => {
   // ============================================================================
 
   describe('Health Check Routes', () => {
-    
+
     it('GET /api/health - should return healthy status', async () => {
       const response = await request(app)
         .get('/api/health')
@@ -89,13 +89,13 @@ describe('API Routes - Comprehensive Testing', () => {
 
     it('GET /api/health - should handle rate limiting', async () => {
       // Make multiple requests to trigger rate limiting
-      const requests = Array(210).fill().map(() => 
+      const requests = Array(210).fill().map(() =>
         request(app).get('/api/health')
       );
-      
+
       const responses = await Promise.all(requests);
       const rateLimited = responses.filter(r => r.status === 429);
-      
+
       expect(rateLimited.length).toBeGreaterThan(0);
     });
   });
@@ -105,7 +105,7 @@ describe('API Routes - Comprehensive Testing', () => {
   // ============================================================================
 
   describe('Feature Flags Routes', () => {
-    
+
     it('GET /api/feature-flags - should return all feature flags', async () => {
       const response = await request(app)
         .get('/api/feature-flags')
@@ -160,10 +160,10 @@ describe('API Routes - Comprehensive Testing', () => {
   // ============================================================================
 
   describe('Import Routes', () => {
-    
+
     it('POST /api/import - should handle valid CSV file upload', async () => {
       const csvContent = 'username,email,firstname,lastname\ntest@example.com,test@example.com,Test,User';
-      
+
       const response = await request(app)
         .post('/api/import')
         .attach('file', Buffer.from(csvContent), 'test.csv')
@@ -189,7 +189,7 @@ describe('API Routes - Comprehensive Testing', () => {
 
     it('POST /api/import - should handle invalid CSV format', async () => {
       const invalidContent = 'invalid,csv,format\nno,proper,structure';
-      
+
       const response = await request(app)
         .post('/api/import')
         .attach('file', Buffer.from(invalidContent), 'invalid.csv')
@@ -203,7 +203,7 @@ describe('API Routes - Comprehensive Testing', () => {
 
     it('POST /api/import - should handle large file size', async () => {
       const largeContent = 'username,email\n' + 'test@example.com,test@example.com\n'.repeat(10000);
-      
+
       const response = await request(app)
         .post('/api/import')
         .attach('file', Buffer.from(largeContent), 'large.csv')
@@ -224,7 +224,7 @@ describe('API Routes - Comprehensive Testing', () => {
         .field('populationName', 'Test Population');
 
       const sessionId = importResponse.body.sessionId;
-      
+
       const response = await request(app)
         .get(`/api/import/progress/${sessionId}`)
         .expect(200);
@@ -261,7 +261,7 @@ describe('API Routes - Comprehensive Testing', () => {
   // ============================================================================
 
   describe('Export Routes', () => {
-    
+
     it('POST /api/export-users - should export users with valid parameters', async () => {
       const response = await request(app)
         .post('/api/export-users')
@@ -309,10 +309,10 @@ describe('API Routes - Comprehensive Testing', () => {
   // ============================================================================
 
   describe('Modify Routes', () => {
-    
+
     it('POST /api/modify - should handle valid modification file', async () => {
       const csvContent = 'username,email,action\ntest@example.com,test@example.com,update';
-      
+
       const response = await request(app)
         .post('/api/modify')
         .attach('file', Buffer.from(csvContent), 'modify.csv')
@@ -335,7 +335,7 @@ describe('API Routes - Comprehensive Testing', () => {
 
     it('POST /api/modify - should handle invalid modification format', async () => {
       const invalidContent = 'invalid,modification,format';
-      
+
       const response = await request(app)
         .post('/api/modify')
         .attach('file', Buffer.from(invalidContent), 'invalid.csv')
@@ -352,7 +352,7 @@ describe('API Routes - Comprehensive Testing', () => {
   // ============================================================================
 
   describe('PingOne API Routes', () => {
-    
+
     it('GET /api/pingone/populations - should return populations list', async () => {
       const response = await request(app)
         .get('/api/pingone/populations')
@@ -398,7 +398,7 @@ describe('API Routes - Comprehensive Testing', () => {
   // ============================================================================
 
   describe('Settings Routes', () => {
-    
+
     it('GET /api/settings - should return current settings', async () => {
       const response = await request(app)
         .get('/api/settings')
@@ -463,7 +463,7 @@ describe('API Routes - Comprehensive Testing', () => {
   // ============================================================================
 
   describe('Logs Routes', () => {
-    
+
     it('GET /api/logs - should return logs', async () => {
       const response = await request(app)
         .get('/api/logs')
@@ -574,7 +574,7 @@ describe('API Routes - Comprehensive Testing', () => {
   // ============================================================================
 
   describe('Authentication & Security', () => {
-    
+
     it('should handle missing authentication gracefully', async () => {
       const response = await request(app)
         .get('/api/settings')
@@ -593,13 +593,13 @@ describe('API Routes - Comprehensive Testing', () => {
     });
 
     it('should handle rate limiting on repeated requests', async () => {
-      const requests = Array(160).fill().map(() => 
+      const requests = Array(160).fill().map(() =>
         request(app).get('/api/health')
       );
-      
+
       const responses = await Promise.all(requests);
       const rateLimited = responses.filter(r => r.status === 429);
-      
+
       expect(rateLimited.length).toBeGreaterThan(0);
     });
   });
@@ -609,7 +609,7 @@ describe('API Routes - Comprehensive Testing', () => {
   // ============================================================================
 
   describe('Error Handling', () => {
-    
+
     it('should handle 404 for non-existent routes', async () => {
       const response = await request(app)
         .get('/api/non-existent-route')
@@ -656,17 +656,17 @@ describe('API Routes - Comprehensive Testing', () => {
   // ============================================================================
 
   describe('Performance & Load Tests', () => {
-    
+
     it('should handle concurrent requests efficiently', async () => {
       const concurrentRequests = 10;
-      const requests = Array(concurrentRequests).fill().map(() => 
+      const requests = Array(concurrentRequests).fill().map(() =>
         request(app).get('/api/health')
       );
-      
+
       const startTime = Date.now();
       const responses = await Promise.all(requests);
       const endTime = Date.now();
-      
+
       expect(responses.every(r => r.status === 200)).toBe(true);
       expect(endTime - startTime).toBeLessThan(5000); // Should complete within 5 seconds
     });
@@ -685,4 +685,4 @@ describe('API Routes - Comprehensive Testing', () => {
       expect(response.body).toHaveProperty('success', true);
     });
   });
-}); 
+});

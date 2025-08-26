@@ -1,6 +1,6 @@
 /**
  * Utility Loader
- * 
+ *
  * Initializes and exposes debug-friendly utilities globally
  * Must be loaded before main application code
  */
@@ -18,30 +18,30 @@ const errorHandler = new ErrorHandler(logger);
 
 // Expose utilities globally
 if (typeof window !== 'undefined') {
-    window.logger = logger;
-    window.safeDOM = safeDOM;
-    window.errorHandler = errorHandler;
-    
-    // Expose configuration constants
-    window.API_CONFIG = API_CONFIG;
-    window.UI_CONFIG = UI_CONFIG;
-    window.MESSAGES = MESSAGES;
-    window.BUSINESS_CONFIG = BUSINESS_CONFIG;
-    
-    // Initialize logger
-    logger.info('Debug utilities loaded', {
-        utilities: ['CentralizedLogger', 'SafeDOM', 'ErrorHandler', 'ConfigConstants'],
-        timestamp: new Date().toISOString()
-    });
+  window.logger = logger;
+  window.safeDOM = safeDOM;
+  window.errorHandler = errorHandler;
+
+  // Expose configuration constants
+  window.API_CONFIG = API_CONFIG;
+  window.UI_CONFIG = UI_CONFIG;
+  window.MESSAGES = MESSAGES;
+  window.BUSINESS_CONFIG = BUSINESS_CONFIG;
+
+  // Initialize logger
+  logger.info('Debug utilities loaded', {
+    utilities: ['CentralizedLogger', 'SafeDOM', 'ErrorHandler', 'ConfigConstants'],
+    timestamp: new Date().toISOString()
+  });
 }
 
 // Export for module systems
 export {
-    logger,
-    safeDOM,
-    errorHandler,
-    API_CONFIG,
-    UI_CONFIG,
-    MESSAGES,
-    BUSINESS_CONFIG
+  logger,
+  safeDOM,
+  errorHandler,
+  API_CONFIG,
+  UI_CONFIG,
+  MESSAGES,
+  BUSINESS_CONFIG
 };

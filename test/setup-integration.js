@@ -12,13 +12,13 @@ jest.setTimeout(30000);
 global.testUtils = {
   // Helper to wait for async operations
   wait: (ms) => new Promise(resolve => setTimeout(resolve, ms)),
-  
+
   // Helper to generate unique test identifiers
   generateTestId: () => `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-  
+
   // Helper to validate email format
   isValidEmail: (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
-  
+
   // Helper to log test progress
   logTestProgress: (message, data = null) => {
     const timestamp = new Date().toISOString();

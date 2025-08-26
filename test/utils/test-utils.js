@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
  */
 export const generateTestUsers = (count = 5) => {
   const users = [];
-  
+
   for (let i = 0; i < count; i++) {
     users.push({
       id: uuidv4(),
@@ -21,7 +21,7 @@ export const generateTestUsers = (count = 5) => {
       updatedAt: new Date()
     });
   }
-  
+
   return users;
 };
 
@@ -74,7 +74,7 @@ export const mockRequest = (overrides = {}) => ({
  */
 export const mockResponse = () => {
   const res = {};
-  
+
   res.status = jest.fn().mockReturnValue(res);
   res.json = jest.fn().mockReturnValue(res);
   res.send = jest.fn().mockReturnValue(res);
@@ -82,13 +82,13 @@ export const mockResponse = () => {
   res.set = jest.fn().mockReturnValue(res);
   res.cookie = jest.fn().mockReturnValue(res);
   res.clearCookie = jest.fn().mockReturnValue(res);
-  
+
   return res;
 };
 
 /**
  * Mock Express next function
- * @returns {function} Mock next function
+ * @returns {Function} Mock next function
  */
 export const mockNext = () => jest.fn();
 
@@ -101,7 +101,7 @@ export const mockNext = () => jest.fn();
 export const waitForPromise = (promise, timeout = 5000) => {
   return Promise.race([
     promise,
-    new Promise((_, reject) => 
+    new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Promise timeout')), timeout)
     )
   ]);

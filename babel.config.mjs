@@ -2,7 +2,7 @@
  * Babel configuration as an ES module
  * Configured to properly support ESM in both Node.js and Jest environments
  * Version: 7.0.2.4
- * 
+ *
  * This configuration provides bulletproof ESM support for Jest testing
  */
 export default {

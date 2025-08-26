@@ -22,7 +22,7 @@ async function getSettings() {
     const settingsPath = path.resolve(process.cwd(), 'data/settings.json');
     const settingsFile = await fs.readFile(settingsPath, 'utf8');
     const settings = JSON.parse(settingsFile);
-    
+
     return {
       environmentId: settings.environmentId,
       clientId: settings.apiClientId,
@@ -36,12 +36,12 @@ async function getSettings() {
 
 async function testPingOneAuth() {
   console.log('🔍 Testing PingOne API Authentication...');
-  
+
   try {
     // Get settings
     const settings = await getSettings();
     console.log('✅ Loaded credentials from:', process.env.PINGONE_ENVIRONMENT_ID ? 'environment variables' : 'settings file');
-    
+
     // Get auth domain based on region
     const getAuthDomain = (region) => {
       const domainMap = {
@@ -59,20 +59,20 @@ async function testPingOneAuth() {
 
     const authDomain = getAuthDomain(settings.region);
     const tokenUrl = `https://${authDomain}/${settings.environmentId}/as/token.oauth2`;
-    
+
     console.log('\n🔑 Authentication Details:');
     console.log(`- Environment ID: ${settings.environmentId}`);
     console.log(`- Client ID: ${settings.clientId}`);
     console.log(`- Region: ${settings.region}`);
     console.log(`- Auth Domain: ${authDomain}`);
     console.log(`- Token URL: ${tokenUrl}`);
-    
+
     // Prepare token request
     const params = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
     params.append('client_id', settings.clientId);
     params.append('client_secret', settings.clientSecret);
-    
+
     console.log('\n🔍 Sending token request...');
     const response = await fetch(tokenUrl, {
       method: 'POST',
@@ -82,23 +82,23 @@ async function testPingOneAuth() {
       },
       body: params.toString()
     });
-    
+
     const responseText = await response.text();
     let responseData;
-    
+
     try {
       responseData = JSON.parse(responseText);
     } catch (e) {
       console.error('❌ Failed to parse response as JSON:', responseText);
       throw new Error('Invalid JSON response from server');
     }
-    
+
     console.log('\n📡 Response Status:', response.status, response.statusText);
     console.log('📦 Response Headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
-    
+
     if (!response.ok) {
       console.error('❌ Authentication failed with error:', responseData);
-      
+
       if (response.status === 403) {
         console.error('\n🔒 403 Forbidden: The credentials are invalid or the client application is not properly configured.');
         console.error('Please check the following:');
@@ -112,19 +112,19 @@ async function testPingOneAuth() {
         console.error('1. The Client ID and Secret are correctly formatted');
         console.error('2. The environment ID is correctly formatted');
       }
-      
+
       process.exit(1);
     }
-    
+
     console.log('\n✅ Authentication successful!');
     console.log('🔑 Access Token:', responseData.access_token ? '***REDACTED***' : 'Not found');
     console.log('⏱️  Expires In:', responseData.expires_in ? `${responseData.expires_in} seconds` : 'Not specified');
     console.log('🔄 Token Type:', responseData.token_type || 'Not specified');
-    
+
     return responseData;
   } catch (error) {
     console.error('\n❌ Error during authentication test:', error.message);
-    
+
     if (error.code === 'ENOTFOUND') {
       console.error('\n🔍 DNS Lookup Failed: Could not resolve the authentication domain.');
       console.error('Please check your internet connection and verify the region is correct.');
@@ -132,7 +132,7 @@ async function testPingOneAuth() {
       console.error('\n🔌 Connection Refused: Could not connect to the authentication server.');
       console.error('Please check if the authentication URL is correct and the service is available.');
     }
-    
+
     process.exit(1);
   }
 }

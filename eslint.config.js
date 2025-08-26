@@ -36,6 +36,28 @@ export default [
         confirm: 'readonly',
         performance: 'readonly',
         icon: 'readonly',
+        // Additional browser globals
+        indexedDB: 'readonly',
+        caches: 'readonly',
+        TextEncoder: 'readonly',
+        TextDecoder: 'readonly',
+        AbortController: 'readonly',
+        File: 'readonly',
+        HTMLScriptElement: 'readonly',
+        DataTransfer: 'readonly',
+        // Node.js globals
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        global: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+        // WebSocket globals
+        WebSocket: 'readonly',
+        // Event globals
+        Event: 'readonly',
+        CustomEvent: 'readonly',
       },
     },
     rules: {
@@ -70,6 +92,71 @@ export default [
       'semi': ['warn', 'always'],
       'no-empty': 'warn',
       'no-dupe-class-members': 'error',
+    },
+  },
+  {
+    files: ['**/*.test.js', '**/*.spec.js', '**/test-*.js', '**/tests/**/*.js'],
+    languageOptions: {
+      globals: {
+        // Jest globals
+        describe: 'readonly',
+        test: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        beforeAll: 'readonly',
+        beforeEach: 'readonly',
+        afterAll: 'readonly',
+        afterEach: 'readonly',
+        jest: 'readonly',
+        fail: 'readonly',
+        // Node.js globals for tests
+        process: 'readonly',
+        console: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        global: 'readonly',
+        require: 'readonly',
+        module: 'readonly',
+      },
+    },
+  },
+  {
+    files: ['**/*.cy.js', 'cypress/**/*.js'],
+    languageOptions: {
+      globals: {
+        // Cypress globals
+        cy: 'readonly',
+        Cypress: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        before: 'readonly',
+        beforeEach: 'readonly',
+        after: 'readonly',
+        afterEach: 'readonly',
+        // Node.js globals for tests
+        process: 'readonly',
+        console: 'readonly',
+      },
+    },
+  },
+  {
+    files: ['**/*.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        // CommonJS globals
+        require: 'readonly',
+        module: 'readonly',
+        exports: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        // Node.js globals
+        process: 'readonly',
+        console: 'readonly',
+        Buffer: 'readonly',
+        global: 'readonly',
+      },
     },
   },
   {

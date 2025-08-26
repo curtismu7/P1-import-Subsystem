@@ -1,6 +1,6 @@
 /**
- * @fileoverview Tests for modern API Testing Dashboard with subsystem integration
- * 
+ * @file Tests for modern API Testing Dashboard with subsystem integration
+ *
  * Tests the APITestingDashboard class and its integration with:
  * - Subsystem status monitoring
  * - Real-time API testing
@@ -85,14 +85,14 @@ describe('API Testing Dashboard with Subsystem Integration', () => {
         const statusElement = document.getElementById('overall-status');
         const indicator = statusElement.querySelector('.status-indicator');
         const textElement = statusElement.querySelector('span:last-child');
-        
+
         indicator.className = `status-indicator status-${type}`;
         textElement.textContent = message;
       }
 
       async loadSubsystemStatus() {
         const subsystemContainer = document.getElementById('subsystem-status');
-        
+
         const subsystems = [
           { name: 'Authentication', endpoint: '/api/token', icon: '🔐' },
           { name: 'Settings', endpoint: '/api/settings', icon: '⚙️' },
@@ -124,7 +124,7 @@ describe('API Testing Dashboard with Subsystem Integration', () => {
           const response = await fetch(subsystem.endpoint);
           const indicator = card.querySelector('.status-indicator');
           const status = card.querySelector('span');
-          
+
           if (response.ok) {
             indicator.className = 'status-indicator status-success';
             status.textContent = 'Online';
@@ -137,7 +137,7 @@ describe('API Testing Dashboard with Subsystem Integration', () => {
         } catch (error) {
           const indicator = card.querySelector('.status-indicator');
           const status = card.querySelector('span');
-          
+
           indicator.className = 'status-indicator status-error';
           status.textContent = 'Offline';
           this.subsystems.set(subsystem.name, { status: 'offline', error });
@@ -158,7 +158,7 @@ describe('API Testing Dashboard with Subsystem Integration', () => {
 
       displayEndpoints(paths) {
         const container = document.getElementById('endpoint-list');
-        
+
         Object.entries(paths).forEach(([path, methods]) => {
           Object.entries(methods).forEach(([method, details]) => {
             const card = document.createElement('div');
@@ -181,7 +181,7 @@ describe('API Testing Dashboard with Subsystem Integration', () => {
         window.addEventListener('subsystem-status-updated', (event) => {
           this.handleSubsystemUpdate(event.detail);
         });
-        
+
         window.addEventListener('api-test-completed', (event) => {
           this.handleTestResult(event.detail);
         });
@@ -211,9 +211,9 @@ describe('API Testing Dashboard with Subsystem Integration', () => {
           const response = await fetch(endpoint);
           const endTime = Date.now();
           const data = await response.json();
-          
+
           const duration = endTime - startTime;
-          
+
           if (response.ok) {
             container.className = 'result-container result-success';
             container.innerHTML = `
@@ -229,11 +229,11 @@ describe('API Testing Dashboard with Subsystem Integration', () => {
               <p><strong>Duration:</strong> ${duration}ms</p>
             `;
           }
-          
+
           window.dispatchEvent(new window.CustomEvent('api-test-completed', {
             detail: { test: testName, result: { success: response.ok, status: response.status, duration } }
           }));
-          
+
         } catch (error) {
           container.className = 'result-container result-error';
           container.innerHTML = `
@@ -293,7 +293,7 @@ describe('API Testing Dashboard with Subsystem Integration', () => {
 
           const allSuccess = results.every(r => r.success);
           container.className = `result-container ${allSuccess ? 'result-success' : 'result-warning'}`;
-          
+
           let html = `<h4>${allSuccess ? '✅' : '⚠️'} Swagger Integration Validation</h4>`;
           results.forEach(result => {
             html += `
@@ -305,9 +305,9 @@ describe('API Testing Dashboard with Subsystem Integration', () => {
               </p>
             `;
           });
-          
+
           container.innerHTML = html;
-          
+
         } catch (error) {
           container.className = 'result-container result-error';
           container.innerHTML = `
@@ -357,12 +357,12 @@ describe('API Testing Dashboard with Subsystem Integration', () => {
 
     test('should update overall status correctly', () => {
       const dashboard = new APITestingDashboard();
-      
+
       dashboard.updateOverallStatus('success', 'All systems operational');
-      
+
       const indicator = document.querySelector('.status-indicator');
       const textElement = document.querySelector('#overall-status span:last-child');
-      
+
       expect(indicator.className).toBe('status-indicator status-success');
       expect(textElement.textContent).toBe('All systems operational');
     });
@@ -372,9 +372,9 @@ describe('API Testing Dashboard with Subsystem Integration', () => {
     test('should create subsystem cards correctly', () => {
       const dashboard = new APITestingDashboard();
       const subsystem = { name: 'Authentication', endpoint: '/api/token', icon: '🔐' };
-      
+
       const card = dashboard.createSubsystemCard(subsystem);
-      
+
       expect(card.className).toBe('subsystem-card');
       expect(card.innerHTML).toContain('Authentication');
       expect(card.innerHTML).toContain('🔐');
@@ -391,12 +391,12 @@ describe('API Testing Dashboard with Subsystem Integration', () => {
       const dashboard = new APITestingDashboard();
       const subsystem = { name: 'Health', endpoint: '/api/health', icon: '🏥' };
       const card = dashboard.createSubsystemCard(subsystem);
-      
+
       await dashboard.testSubsystemStatus(subsystem, card);
-      
+
       const indicator = card.querySelector('.status-indicator');
       const status = card.querySelector('span');
-      
+
       expect(indicator.className).toBe('status-indicator status-success');
       expect(status.textContent).toBe('Online');
       expect(dashboard.subsystems.get('Health').status).toBe('online');
@@ -408,12 +408,12 @@ describe('API Testing Dashboard with Subsystem Integration', () => {
       const dashboard = new APITestingDashboard();
       const subsystem = { name: 'Settings', endpoint: '/api/settings', icon: '⚙️' };
       const card = dashboard.createSubsystemCard(subsystem);
-      
+
       await dashboard.testSubsystemStatus(subsystem, card);
-      
+
       const indicator = card.querySelector('.status-indicator');
       const status = card.querySelector('span');
-      
+
       expect(indicator.className).toBe('status-indicator status-error');
       expect(status.textContent).toBe('Offline');
       expect(dashboard.subsystems.get('Settings').status).toBe('offline');
@@ -579,7 +579,7 @@ describe('API Testing Dashboard with Subsystem Integration', () => {
 
       const container = document.getElementById('endpoint-list');
       const endpointCards = container.querySelectorAll('.endpoint-card');
-      
+
       expect(endpointCards.length).toBe(3); // 1 GET + 1 GET + 1 POST
       expect(container.innerHTML).toContain('/api/health');
       expect(container.innerHTML).toContain('/api/settings');

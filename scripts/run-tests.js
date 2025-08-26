@@ -78,10 +78,10 @@ function formatDuration(ms) {
   const hours = Math.floor(ms / (1000 * 60 * 60));
 
   const parts = [];
-  if (hours > 0) parts.push(`${hours}h`);
-  if (minutes > 0) parts.push(`${minutes}m`);
+  if (hours > 0) {parts.push(`${hours}h`);}
+  if (minutes > 0) {parts.push(`${minutes}m`);}
   parts.push(`${seconds}s`);
-  
+
   return parts.join(' ');
 }
 
@@ -91,7 +91,7 @@ function formatDuration(ms) {
 async function runTestSuite(suiteName, config) {
   const startTime = Date.now();
   const outputDir = path.join(rootDir, 'test-results', suiteName);
-  
+
   try {
     console.log(colors.info(`\n${'='.repeat(80)}`));
     console.log(colors.info.bold(`🚀  ${config.name.toUpperCase()}`));
@@ -128,9 +128,9 @@ async function runTestSuite(suiteName, config) {
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
-    
+
     console.log(colors.info(`🚀 Running: npx jest ${args.join(' ')}`));
-    
+
     return new Promise((resolve, reject) => {
       const child = spawn('npx', ['jest', ...args], {
         stdio: ['inherit', 'pipe', 'pipe'],
@@ -143,10 +143,10 @@ async function runTestSuite(suiteName, config) {
         },
         cwd: rootDir
       });
-      
+
       let stdoutData = '';
       let stderrData = '';
-      
+
       if (child.stdout) {
         child.stdout.on('data', (data) => {
           const str = data.toString();
@@ -154,7 +154,7 @@ async function runTestSuite(suiteName, config) {
           stdoutData += str;
         });
       }
-      
+
       if (child.stderr) {
         child.stderr.on('data', (data) => {
           const str = data.toString();
@@ -162,7 +162,7 @@ async function runTestSuite(suiteName, config) {
           stderrData += str;
         });
       }
-      
+
       child.on('error', (error) => {
         console.error(colors.error('Failed to start test process:'), error);
         resolve({
@@ -173,11 +173,11 @@ async function runTestSuite(suiteName, config) {
           stderr: stderrData
         });
       });
-      
+
       child.on('close', (code, signal) => {
         const duration = Date.now() - startTime;
         const passed = code === 0;
-        
+
         try {
           const result = {
             success: passed,
@@ -188,11 +188,11 @@ async function runTestSuite(suiteName, config) {
             stderr: stderrData,
             output: passed ? 'Tests completed successfully' : `Tests failed with code ${code}`
           };
-          
+
           // Save test results
           const resultFile = path.join(outputDir, 'test-results.json');
           fs.writeFileSync(resultFile, JSON.stringify(result, null, 2));
-          
+
           // Log test results
           console.log(colors.info('\n' + '─'.repeat(80)));
           if (passed) {
@@ -201,12 +201,12 @@ async function runTestSuite(suiteName, config) {
             console.log(colors.error.bold(`❌  ${config.name} FAILED`));
           }
           console.log(colors.info(`⏱  Duration: ${formatDuration(duration)}`));
-          
+
           if (!passed) {
             console.log(colors.error('\nTest output:'));
             console.log(colors.error(stderrData || 'No error output'));
           }
-          
+
           resolve(result);
         } catch (error) {
           console.error('Error processing test results:', error);
@@ -218,7 +218,7 @@ async function runTestSuite(suiteName, config) {
     const duration = Date.now() - startTime;
     console.error(colors.error.bold(`\n❌  ${config.name} FAILED AFTER ${formatDuration(duration)}`));
     console.error(colors.error(error.stack || error.message));
-    
+
     // Save error details
     const errorResult = {
       success: false,
@@ -227,10 +227,10 @@ async function runTestSuite(suiteName, config) {
       duration: `${formatDuration(duration)}`,
       timestamp: new Date().toISOString()
     };
-    
+
     const errorFile = path.join(outputDir, 'error.json');
     fs.writeFileSync(errorFile, JSON.stringify(errorResult, null, 2));
-    
+
     throw error;
   }
 }
@@ -241,22 +241,22 @@ async function runTestSuite(suiteName, config) {
 async function runAllTests() {
   try {
     console.log(colors.highlight.bold('\n🚀 Starting Test Runner\n'));
-    
+
     // Create test-results directory if it doesn't exist
     const resultsDir = path.join(rootDir, 'test-results');
     if (!fs.existsSync(resultsDir)) {
       fs.mkdirSync(resultsDir, { recursive: true });
     }
-    
+
     // Run each test suite
     const results = [];
     let hasFailures = false;
-    
+
     for (const [suiteName, config] of Object.entries(testConfig)) {
       try {
         const result = await runTestSuite(suiteName, config);
         results.push({ suiteName, ...result });
-        
+
         if (!result.success) {
           hasFailures = true;
         }
@@ -271,15 +271,15 @@ async function runAllTests() {
         hasFailures = true;
       }
     }
-    
+
     // Print summary
     console.log(colors.highlight.bold('\n📊 Test Suite Summary\n'));
-    
+
     results.forEach(({ suiteName, success, duration = 0 }) => {
       const status = success ? colors.success('PASS') : colors.error('FAIL');
       console.log(`${status} ${suiteName.padEnd(20)} ${formatDuration(duration).padStart(10)}`);
     });
-    
+
     // Exit with appropriate code
     if (hasFailures) {
       console.error(colors.error.bold('\n❌ Some tests failed'));

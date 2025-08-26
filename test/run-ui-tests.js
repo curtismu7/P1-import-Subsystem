@@ -1,6 +1,6 @@
 /**
  * Run UI Tests
- * 
+ *
  * This script runs all UI tests for the subsystems.
  */
 
@@ -28,9 +28,9 @@ const config = {
 function runTest(testFile) {
   const testPath = path.join(config.testDir, testFile);
   console.log(`\n\n========== Running ${testPath} ==========\n`);
-  
+
   try {
-    execSync(`npx jest --config=${config.configFile} ${testPath}`, { 
+    execSync(`npx jest --config=${config.configFile} ${testPath}`, {
       stdio: 'inherit',
       env: { ...process.env }
     });
@@ -45,10 +45,10 @@ function runTest(testFile) {
 // Run all tests
 function runAllTests() {
   console.log('\n===== RUNNING ALL UI SUBSYSTEM TESTS =====\n');
-  
+
   let passed = 0;
   let failed = 0;
-  
+
   for (const testFile of config.testFiles) {
     const success = runTest(testFile);
     if (success) {
@@ -57,12 +57,12 @@ function runAllTests() {
       failed++;
     }
   }
-  
+
   console.log('\n===== TEST SUMMARY =====');
   console.log(`Total: ${passed + failed}`);
   console.log(`Passed: ${passed}`);
   console.log(`Failed: ${failed}`);
-  
+
   return failed === 0;
 }
 

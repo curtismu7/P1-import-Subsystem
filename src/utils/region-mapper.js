@@ -1,10 +1,10 @@
 /**
  * Region Mapper Utility
- * 
+ *
  * Provides consistent mapping between user-friendly region names and API region codes
  * - UI Display: Shows user-friendly names like "North America" or "Canada"
  * - API Calls: Uses standardized 2-letter codes like "NA" or "CA"
- * 
+ *
  * @version 1.0.0
  */
 
@@ -39,30 +39,30 @@ const REGION_MAPPING = {
  * @returns {string} - Standardized API code (NA, EU, CA, AP)
  */
 export function toApiCode(region) {
-  if (!region) return 'NA'; // Default to NA if no region provided
-  
+  if (!region) {return 'NA';} // Default to NA if no region provided
+
   // If it's already a standard code, return it
   if (REGION_MAPPING[region]) {
     return region;
   }
-  
+
   // Normalize input for case-insensitive comparison
   const normalizedRegion = region.toLowerCase().replace(/[^a-z]/g, '');
-  
+
   // Search through all mappings
   for (const [code, details] of Object.entries(REGION_MAPPING)) {
     // Check if it matches the display name
     if (details.displayName.toLowerCase().replace(/[^a-z]/g, '') === normalizedRegion) {
       return code;
     }
-    
+
     // Check if it matches any legacy names
-    if (details.legacyNames.some(name => 
+    if (details.legacyNames.some(name =>
       name.toLowerCase().replace(/[^a-z]/g, '') === normalizedRegion)) {
       return code;
     }
   }
-  
+
   // If no match found, return default
   console.warn(`⚠️ Unknown region "${region}" - defaulting to NA`);
   return 'NA';

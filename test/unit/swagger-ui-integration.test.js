@@ -1,6 +1,6 @@
 /**
- * @fileoverview Tests for modernized Swagger UI integration with subsystem architecture
- * 
+ * @file Tests for modernized Swagger UI integration with subsystem architecture
+ *
  * Tests the new SwaggerUIManager class and its integration with:
  * - AuthManagementSubsystem for authentication
  * - SettingsSubsystem for configuration
@@ -137,7 +137,7 @@ describe('Swagger UI Integration with Subsystems', () => {
         window.addEventListener('auth-token-updated', (event) => {
           this.authToken = event.detail.token;
         });
-        
+
         window.addEventListener('settings-updated', (event) => {
           this.settings = event.detail.settings;
         });
@@ -171,7 +171,7 @@ describe('Swagger UI Integration with Subsystems', () => {
             </ul>
           </div>
         `;
-        
+
         const swaggerContainer = document.getElementById('swagger-ui');
         if (swaggerContainer) {
           swaggerContainer.insertBefore(statusDiv, swaggerContainer.firstChild);
@@ -362,7 +362,7 @@ describe('Swagger UI Integration with Subsystems', () => {
 
       const styleElements = document.querySelectorAll('style');
       expect(styleElements.length).toBeGreaterThan(0);
-      
+
       const lastStyle = styleElements[styleElements.length - 1];
       expect(lastStyle.textContent).toContain('.swagger-ui .topbar');
       expect(lastStyle.textContent).toContain('linear-gradient');
@@ -372,7 +372,7 @@ describe('Swagger UI Integration with Subsystems', () => {
       const manager = new SwaggerUIManager();
       manager.authToken = 'test-token';
       manager.settings = { environmentId: 'test-env' };
-      
+
       manager.showInitializationStatus();
 
       const statusDiv = document.getElementById('swagger-status');
@@ -416,7 +416,7 @@ describe('Swagger UI Integration with Subsystems', () => {
     test('should handle population selection events', () => {
       const selector = document.getElementById('population-selector');
       const detailsEl = document.getElementById('selected-population-details');
-      
+
       // Add population options
       const option1 = document.createElement('option');
       option1.value = 'pop1';

@@ -20,32 +20,32 @@ const testContent = fs.readFileSync(testFilePath, 'utf8');
 
 // Expected test implementations that should now exist
 const expectedTests = [
-    'should handle JSON file processing',
-    'should show success notification', 
-    'should show modal',
-    'should toggle theme',
-    'should test error handling integration',
-    'should handle file validation'
+  'should handle JSON file processing',
+  'should show success notification',
+  'should show modal',
+  'should toggle theme',
+  'should test error handling integration',
+  'should handle file validation'
 ];
 
 console.log('✅ Checking for missing test implementations:\n');
 
 let allTestsFound = true;
 expectedTests.forEach(testName => {
-    const found = testContent.includes(`test('${testName}'`);
-    const status = found ? '✅' : '❌';
-    console.log(`${status} ${testName}`);
-    if (!found) {
-        allTestsFound = false;
-    }
+  const found = testContent.includes(`test('${testName}'`);
+  const status = found ? '✅' : '❌';
+  console.log(`${status} ${testName}`);
+  if (!found) {
+    allTestsFound = false;
+  }
 });
 
 console.log('\n📊 Summary:');
 if (allTestsFound) {
-    console.log('✅ All missing test implementations have been added!');
-    console.log('🎯 The test failures should now be resolved.');
+  console.log('✅ All missing test implementations have been added!');
+  console.log('🎯 The test failures should now be resolved.');
 } else {
-    console.log('❌ Some test implementations are still missing.');
+  console.log('❌ Some test implementations are still missing.');
 }
 
 // Count total test implementations

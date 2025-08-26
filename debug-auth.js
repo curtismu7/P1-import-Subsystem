@@ -11,7 +11,7 @@ dotenv.config();
 
 async function testPingOneAuth() {
   console.log('🔍 Testing PingOne API Authentication...');
-  
+
   // Explicitly get credentials from environment
   const credentials = {
     environmentId: process.env.PINGONE_ENVIRONMENT_ID || 'b9817c16-9910-4415-b67e-4ac687da74d9',
@@ -40,7 +40,7 @@ async function testPingOneAuth() {
 
   const authDomain = getAuthDomain(credentials.region);
   const tokenUrl = `https://${authDomain}/${credentials.environmentId}/as/token.oauth2`;
-  
+
   console.log('\n🌐 Using Token URL:', tokenUrl);
 
   // Prepare the request body
@@ -63,7 +63,7 @@ async function testPingOneAuth() {
   });
 
   console.log('\n🔍 Sending token request...');
-  
+
   try {
     const startTime = Date.now();
     const response = await fetch(tokenUrl, {
@@ -82,18 +82,18 @@ async function testPingOneAuth() {
       // Add timeout
       timeout: 10000 // 10 seconds
     });
-    
+
     const responseTime = Date.now() - startTime;
     const responseText = await response.text();
-    
+
     console.log('\n📡 Response Status:', response.status, response.statusText);
     console.log('⏱️  Response Time:', responseTime, 'ms');
     console.log('📦 Response Headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
-    
+
     try {
       const responseData = JSON.parse(responseText);
       console.log('📄 Response Body:', JSON.stringify(responseData, null, 2));
-      
+
       if (response.ok) {
         console.log('\n✅ Authentication successful!');
         console.log('🔑 Access Token:', responseData.access_token ? '***REDACTED***' : 'Not found');
@@ -108,10 +108,10 @@ async function testPingOneAuth() {
     }
   } catch (error) {
     console.error('\n❌ Request failed:', error.message);
-    
-    if (error.code) console.error('Error Code:', error.code);
-    if (error.type) console.error('Error Type:', error.type);
-    
+
+    if (error.code) {console.error('Error Code:', error.code);}
+    if (error.type) {console.error('Error Type:', error.type);}
+
     // Log additional info for common error types
     if (error.code === 'ETIMEDOUT') {
       console.error('\n🔌 Connection timed out. Check your network connection and try again.');
@@ -122,7 +122,7 @@ async function testPingOneAuth() {
     } else if (error.code === 'CERT_HAS_EXPIRED' || error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE') {
       console.error('\n⚠️  SSL Certificate error. There may be an issue with the server\'s SSL certificate.');
     }
-    
+
     // Log the full error for debugging
     console.error('\n🔍 Full Error:', error);
   }

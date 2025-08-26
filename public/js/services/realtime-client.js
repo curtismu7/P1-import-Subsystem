@@ -1,6 +1,6 @@
 /**
  * Real-time Client
- * 
+ *
  * Provides consistent real-time communication with the enhanced backend:
  * - Automatic reconnection
  * - Message acknowledgment
@@ -163,7 +163,7 @@ export class RealtimeClient {
    * Setup socket event handlers
    */
   setupEventHandlers() {
-    if (!this.socket) return;
+    if (!this.socket) {return;}
 
     // Connection events
     this.socket.on('connect', () => {
@@ -178,9 +178,9 @@ export class RealtimeClient {
       this.isConnected = false;
       this.connectionId = null;
       actions.setConnectionStatus('disconnected');
-      
+
       this.stopHeartbeat();
-      
+
       // Schedule reconnection for unexpected disconnections
       if (reason !== 'io client disconnect') {
         this.scheduleReconnection();
@@ -221,9 +221,9 @@ export class RealtimeClient {
 
       const messageData = response.data;
       const message = new RealtimeMessage(messageData);
-      
+
       this.stats.messagesReceived++;
-      
+
       console.debug('Received real-time message:', {
         type: message.type,
         id: message.id,
@@ -294,7 +294,7 @@ export class RealtimeClient {
       this.socket.disconnect();
       this.socket = null;
     }
-    
+
     this.isConnected = false;
     this.isConnecting = false;
     this.connectionId = null;
@@ -307,7 +307,7 @@ export class RealtimeClient {
    */
   associateSession(sessionId) {
     this.sessionId = sessionId;
-    
+
     if (this.socket && this.isConnected) {
       this.socket.emit('associate-session', { sessionId });
       console.log('Associated with session:', sessionId);
@@ -319,7 +319,7 @@ export class RealtimeClient {
    */
   subscribe(channel) {
     this.subscriptions.add(channel);
-    
+
     if (this.socket && this.isConnected) {
       this.socket.emit('subscribe', { channel });
       console.log('Subscribed to channel:', channel);
@@ -331,7 +331,7 @@ export class RealtimeClient {
    */
   unsubscribe(channel) {
     this.subscriptions.delete(channel);
-    
+
     if (this.socket && this.isConnected) {
       this.socket.emit('unsubscribe', { channel });
       console.log('Unsubscribed from channel:', channel);
@@ -390,7 +390,7 @@ export class RealtimeClient {
    */
   startHeartbeat() {
     this.stopHeartbeat(); // Clear any existing heartbeat
-    
+
     this.heartbeatInterval = setInterval(() => {
       if (this.socket && this.isConnected) {
         this.socket.emit('heartbeat');
@@ -420,7 +420,7 @@ export class RealtimeClient {
 
     this.reconnectAttempts++;
     const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000);
-    
+
     console.log(`Scheduling reconnection attempt ${this.reconnectAttempts} in ${delay}ms`);
     actions.setConnectionStatus('reconnecting');
 
@@ -461,7 +461,7 @@ export const realtimeClient = new RealtimeClient();
 
 // Setup default message handlers (optional app-state integration)
 realtimeClient.onMessage('progress', (data) => {
-  try { if (actions && typeof actions.updateProgress === 'function') actions.updateProgress(data); } catch {}
+  try { if (actions && typeof actions.updateProgress === 'function') {actions.updateProgress(data);} } catch {}
 });
 
 realtimeClient.onMessage('notification', (data) => {
@@ -473,12 +473,12 @@ realtimeClient.onMessage('notification', (data) => {
 });
 
 realtimeClient.onMessage('error', (data) => {
-  try { if (actions && typeof actions.addError === 'function') actions.addError(data.message); } catch {}
+  try { if (actions && typeof actions.addError === 'function') {actions.addError(data.message);} } catch {}
 });
 
 realtimeClient.onSystem('heartbeat-ack', (data) => {
   // Connection is healthy
-  try { if (actions && typeof actions.setConnectionStatus === 'function') actions.setConnectionStatus('connected'); } catch {}
+  try { if (actions && typeof actions.setConnectionStatus === 'function') {actions.setConnectionStatus('connected');} } catch {}
 });
 
 // Log explicit session association acknowledgments from the server

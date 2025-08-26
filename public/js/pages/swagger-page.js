@@ -7,9 +7,9 @@ export class SwaggerPage {
   }
 
   async load() {
-    if (this.isLoaded) return;
+    if (this.isLoaded) {return;}
     const container = document.getElementById('swagger-page');
-    if (!container) return;
+    if (!container) {return;}
 
     container.innerHTML = `
       <div class="page-header">

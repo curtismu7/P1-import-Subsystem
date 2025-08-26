@@ -1,6 +1,6 @@
 /**
  * Centralized Server Logger
- * 
+ *
  * This module provides a unified logging system for server-side operations,
  * ensuring consistent formatting, color coding, and token status tracking.
  */

@@ -15,14 +15,14 @@ const projectRoot = path.resolve(__dirname, '../');
  */
 async function fixProgressSubsystem() {
   console.log('🔧 Fixing progress subsystem...');
-  
+
   try {
     // Update the enhanced progress subsystem initialization in app.js
     const appPath = path.join(projectRoot, 'src', 'client', 'app.js');
-    
+
     // Read the current file
     const appContent = fs.readFileSync(appPath, 'utf8');
-    
+
     // Check if the file already has our fix
     if (appContent.includes('// Fixed progress subsystem initialization')) {
       console.log('✅ Progress subsystem fix already applied to app.js');
@@ -30,12 +30,12 @@ async function fixProgressSubsystem() {
       // Find the enhanced progress subsystem initialization
       const progressInitRegex = /this\.enhancedProgressSubsystem = new EnhancedProgressSubsystem\([^;]*;/s;
       const progressInitMatch = appContent.match(progressInitRegex);
-      
+
       if (!progressInitMatch) {
         console.error('❌ Could not find enhanced progress subsystem initialization in app.js');
         return false;
       }
-      
+
       // Create the updated initialization with proper parameters
       const updatedInit = `// Fixed progress subsystem initialization
         this.enhancedProgressSubsystem = new EnhancedProgressSubsystem(
@@ -44,19 +44,19 @@ async function fixProgressSubsystem() {
             this.eventBus,
             this.subsystems.realtimeManager
         );`;
-      
+
       // Replace the initialization in the file
       const updatedAppContent = appContent.replace(progressInitRegex, updatedInit);
-      
+
       // Write the updated file
       fs.writeFileSync(appPath, updatedAppContent);
-      
+
       console.log('✅ Updated app.js with fixed progress subsystem initialization');
     }
-    
+
     // Now create a CSS file for the enhanced progress UI
     const cssPath = path.join(projectRoot, 'public', 'css', 'enhanced-progress.css');
-    
+
     // Create the CSS content
     const cssContent = `/**
  * Enhanced Progress UI Styles
@@ -340,42 +340,42 @@ async function fixProgressSubsystem() {
         display: none;
     }
 }`;
-    
+
     // Write the CSS file
     fs.writeFileSync(cssPath, cssContent);
-    
+
     console.log('✅ Created enhanced-progress.css');
-    
+
     // Update the index.html to include the new CSS file
     const indexPath = path.join(projectRoot, 'public', 'index.html');
     const indexContent = fs.readFileSync(indexPath, 'utf8');
-    
+
     // Check if the CSS is already included
     if (indexContent.includes('enhanced-progress.css')) {
       console.log('✅ Enhanced progress CSS already included in index.html');
     } else {
       // Find the position to insert the CSS link
       const insertPosition = indexContent.indexOf('<!-- Progress UI CSS -->');
-      
+
       if (insertPosition === -1) {
         console.error('❌ Could not find position to insert CSS link in index.html');
         return false;
       }
-      
+
       // Create the updated content with the new CSS link
-      const updatedIndexContent = indexContent.slice(0, insertPosition + 23) + 
-        '\n    <link rel="stylesheet" href="/css/enhanced-progress.css">' + 
+      const updatedIndexContent = indexContent.slice(0, insertPosition + 23) +
+        '\n    <link rel="stylesheet" href="/css/enhanced-progress.css">' +
         indexContent.slice(insertPosition + 23);
-      
+
       // Write the updated file
       fs.writeFileSync(indexPath, updatedIndexContent);
-      
+
       console.log('✅ Updated index.html to include enhanced-progress.css');
     }
-    
+
     console.log('✅ Progress subsystem fix applied successfully');
     return true;
-    
+
   } catch (error) {
     console.error('❌ Error fixing progress subsystem:', error);
     return false;

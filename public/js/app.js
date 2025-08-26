@@ -199,6 +199,7 @@ class PingOneApp {
         pingone_population_id: injected.pingone_population_id || '',
         populations: injected.populations || injected.populationCache || [],
         showDisclaimerModal: injected.showDisclaimerModal !== false,
+        showDisclaimerOnStartup: true, // Always show on startup, controlled by 24-hour interval
         showCredentialsModal: true,
         showSwaggerPage: injected.showSwaggerPage === true,
         rateLimit: injected.rateLimit || 100,
@@ -399,12 +400,31 @@ class PingOneApp {
         if (this.tokenStatus.isValid) {
           this.showSuccess('Token refreshed successfully');
           console.log('✅ Token refreshed successfully with CSRF protection');
+          // Record token history
+          try {
+            const history = JSON.parse(localStorage.getItem('token_history') || '[]');
+            history.unshift({ id: Date.now(), timestamp: new Date().toISOString(), message: 'Token refreshed successfully', type: 'success' });
+            if (history.length > 50) { history.length = 50; }
+            localStorage.setItem('token_history', JSON.stringify(history));
+            window.dispatchEvent(new CustomEvent('token-history:updated'));
+          } catch (_) {}
+          // Emit analytics events
+          try { window.eventBus?.emit('tokenRefreshed', { source: 'app' }); window.eventBus?.emit('tokenObtained', { source: 'app' }); } catch (_) {}
         }
 
         return true;
       }
       console.error('❌ Token refresh failed:', result);
       this.showError(`Token refresh failed: ${result.error || 'Unknown error'}`);
+      try { window.eventBus?.emit('tokenRefreshFailed', { source: 'app', error: result?.error || result?.message }); } catch (_) {}
+      try {
+        const history = JSON.parse(localStorage.getItem('token_history') || '[]');
+        const msg = (result && (result.error || result.message)) ? String(result.error || result.message) : 'Unknown error';
+        history.unshift({ id: Date.now(), timestamp: new Date().toISOString(), message: `Token refresh failed: ${msg}` , type: 'error' });
+        if (history.length > 50) { history.length = 50; }
+        localStorage.setItem('token_history', JSON.stringify(history));
+        window.dispatchEvent(new CustomEvent('token-history:updated'));
+      } catch (_) {}
 
       return false;
     } catch (error) {
@@ -481,7 +501,22 @@ class PingOneApp {
   }
 
   setupEventListeners() {
-    document.addEventListener('click', this.handleNavigation.bind(this));
+    document.addEventListener('click', (event) => {
+      this.handleNavigation(event);
+      // Details modal controls
+      if (event.target.closest('#details-close')) {
+        const modal = document.getElementById('details-modal');
+        if (modal) { modal.style.display = 'none'; }
+        return;
+      }
+      if (event.target.closest('#details-copy')) {
+        const content = document.getElementById('details-modal-content');
+        if (content) {
+          try { navigator.clipboard.writeText(content.textContent || ''); } catch (_) {}
+        }
+        return;
+      }
+    });
     this.setupModalEventListeners();
     window.addEventListener('resize', this.handleResize.bind(this));
 
@@ -518,9 +553,9 @@ class PingOneApp {
   }
 
   setupModalEventListeners() {
-    const disclaimerAccept = document.getElementById('disclaimer-accept');
-    const disclaimerQuit = document.getElementById('disclaimer-quit');
-    const disclaimerAgree = document.getElementById('disclaimer-agree');
+    const disclaimerAccept = null;
+    const disclaimerQuit = null;
+    const disclaimerAgree = null;
     const credentialsSkip = document.getElementById('credentials-skip');
     const credentialsSettings = document.getElementById('credentials-settings');
     const credentialsSave = document.getElementById('credentials-save');
@@ -535,6 +570,8 @@ class PingOneApp {
         disclaimerAccept.disabled = !e.target.checked;
       });
     }
+
+
     if (credentialsSkip) { credentialsSkip.addEventListener('click', this.handleCredentialsSkip.bind(this)); }
     if (credentialsSettings) { credentialsSettings.addEventListener('click', this.handleCredentialsSettings.bind(this)); }
     if (credentialsSave) { credentialsSave.addEventListener('click', this.handleCredentialsSave.bind(this)); }
@@ -567,9 +604,9 @@ class PingOneApp {
     // Add a small delay to ensure smooth startup
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    if (this.settings.showDisclaimerModal) {
+    // Check if disclaimer should be shown based on 24-hour interval
+    if (this.shouldShowDisclaimer()) {
       this.showDisclaimerModal();
-
       return;
     }
 
@@ -616,7 +653,7 @@ class PingOneApp {
 
   // Modal handlers
   showDisclaimerModal() {
-    const modal = document.getElementById('disclaimer-modal');
+    const modal = null;
 
     if (modal) {
       modal.style.display = 'flex';
@@ -625,7 +662,7 @@ class PingOneApp {
   }
 
   hideDisclaimerModal() {
-    const modal = document.getElementById('disclaimer-modal');
+    const modal = null;
 
     if (modal) {
       modal.style.display = 'none';
@@ -634,6 +671,52 @@ class PingOneApp {
         this.setScreenInteraction(true);
         this.ensureInteractionIntegrity();
       }
+    }
+  }
+
+  /**
+   * Check if disclaimer should be shown based on 24-hour interval
+   */
+  shouldShowDisclaimer() {
+    const lastAgreed = localStorage.getItem('disclaimerLastAgreedAt');
+    if (!lastAgreed) return true;
+    
+    const lastAgreedTime = new Date(lastAgreed).getTime();
+    const currentTime = new Date().getTime();
+    const hoursSinceLastAgreement = (currentTime - lastAgreedTime) / (1000 * 60 * 60);
+    
+    return hoursSinceLastAgreement >= 24;
+  }
+
+  /**
+   * Save disclaimer agreement timestamp
+   */
+  saveDisclaimerAgreement() {
+    const now = new Date().toISOString();
+    localStorage.setItem('disclaimerLastAgreedAt', now);
+    
+    // Update app-config.json if possible
+    this.updateAppConfigDisclaimerAgreement(now);
+  }
+
+  /**
+   * Update app-config.json with disclaimer agreement timestamp
+   */
+  async updateAppConfigDisclaimerAgreement(timestamp) {
+    try {
+      const response = await fetch('/api/app-config/disclaimer-agreement', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ lastAgreedAt: timestamp })
+      });
+      
+      if (response.ok) {
+        console.log('✅ Disclaimer agreement timestamp updated in app-config.json');
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not update app-config.json:', error);
     }
   }
 
@@ -863,33 +946,13 @@ class PingOneApp {
 
   // Event handlers
   async handleDisclaimerAccept() {
-    this.hideDisclaimerModal();
-    this.settings.showDisclaimerModal = false;
-    try {
-      await this.saveSettings({ showDisclaimerModal: false });
-    } catch (err) {
-      // Non-blocking: show a friendly prompt instead of surfacing errors
-      this.showInfo('Please enter credentials for your PingOne Environment');
-    }
-    if (this.shouldShowCredentialsModal()) {
-      this.showCredentialsModal();
-    } else {
-      this.checkTokenStatus();
-    }
+    // Disclaimer removed – no-op
+    this.checkTokenStatus();
   }
 
   handleDisclaimerQuit() {
-    const confirmed = confirm('Are you sure you want to quit the application?');
-
-    if (!confirmed) { return; }
-    // Keep user on the disclaimer: reset and ensure it stays visible
-    const checkbox = document.getElementById('disclaimer-agree');
-    const acceptBtn = document.getElementById('disclaimer-accept');
-
-    if (checkbox) { checkbox.checked = false; }
-    if (acceptBtn) { acceptBtn.disabled = true; }
-    this.showDisclaimerModal();
-    this.showWarning('You must accept the disclaimer to continue');
+    // Disclaimer removed – route to home
+    this.showPage('home');
   }
 
   handleCredentialsSkip() {
@@ -1058,6 +1121,8 @@ class PingOneApp {
     if (targetPage) {
       targetPage.style.display = 'block';
       this.currentPage = pageName;
+      // Always take the user to the top on navigation
+      try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { window.scrollTo(0, 0); }
       this.loadPageContent(pageName);
       // Lifecycle: notify new page we are shown (after a tick to allow load to render DOM)
       setTimeout(() => {
@@ -1092,13 +1157,20 @@ class PingOneApp {
   async loadPageContent(pageName) {
     // Load specific page content using page modules
     console.log('📄 Loading page:', pageName);
+    // Always show spinner during content loads
+    this.showLoading(`Loading ${pageName}...`);
 
     const page = this.pages[pageName];
 
     if (page && typeof page.load === 'function') {
-      await page.load();
+      try {
+        await page.load();
+      } finally {
+        this.hideLoading();
+      }
     } else {
       console.warn('⚠️ Page module not found for:', pageName);
+      this.hideLoading();
     }
   }
 
@@ -1243,7 +1315,13 @@ class PingOneApp {
       return;
     }
 
-    const state = this.tokenStatus.isRefreshing ? 'refreshing' : (this.tokenStatus.isValid ? 'valid' : 'invalid');
+    const minutesLeft = (this.tokenStatus && this.tokenStatus.timeLeft != null)
+      ? Math.floor(this.tokenStatus.timeLeft / 60)
+      : null;
+    const isWarning = this.tokenStatus.isValid && minutesLeft != null && minutesLeft < 5;
+    const state = this.tokenStatus.isRefreshing
+      ? 'refreshing'
+      : (this.tokenStatus.isValid ? (isWarning ? 'warning' : 'valid') : 'invalid');
 
     if (headerTokenIndicator) {
       const newClass = `status-indicator ${state}`;
@@ -1343,7 +1421,13 @@ class PingOneApp {
     const headerRefreshBtn = document.getElementById('header-token-refresh-btn');
     const headerRefreshIcon = document.getElementById('header-token-refresh-icon');
 
-    const state = this.tokenStatus.isRefreshing ? 'refreshing' : (this.tokenStatus.isValid ? 'valid' : 'invalid');
+    const minutesLeft = (this.tokenStatus && this.tokenStatus.timeLeft != null)
+      ? Math.floor(this.tokenStatus.timeLeft / 60)
+      : null;
+    const isWarning = this.tokenStatus.isValid && minutesLeft != null && minutesLeft < 5;
+    const state = this.tokenStatus.isRefreshing
+      ? 'refreshing'
+      : (this.tokenStatus.isValid ? (isWarning ? 'warning' : 'valid') : 'invalid');
 
     if (headerTokenIndicator) { headerTokenIndicator.className = `status-indicator ${state}`; }
     if (headerTokenText) { headerTokenText.textContent = this.tokenStatus.isRefreshing ? 'Token: Refreshing' : (this.tokenStatus.isValid ? 'Token: Valid' : 'Token: Invalid'); }
@@ -1418,10 +1502,15 @@ class PingOneApp {
     serverStatusText.textContent = statusText || 'Server Started';
 
     // Update indicator coloring
-    if (statusText === 'Server Started') {
-      serverStatusIndicator.className = 'status-indicator valid';
+    // Map common statuses to green/yellow/red
+    const text = (statusText || '').toLowerCase();
+    serverStatusIndicator.className = 'status-indicator';
+    if (text.includes('ok') || text.includes('started') || text.includes('running') || text.includes('connected')) {
+      serverStatusIndicator.classList.add('valid');
+    } else if (text.includes('checking') || text.includes('degraded') || text.includes('warning')) {
+      serverStatusIndicator.classList.add('warning');
     } else {
-      serverStatusIndicator.className = 'status-indicator';
+      serverStatusIndicator.classList.add('invalid');
     }
   }
 
@@ -1462,18 +1551,37 @@ class PingOneApp {
     }, 1000);
   }
 
-  updateVersionDisplay() {
-    const versionElements = document.querySelectorAll('#version-info, #footer-version');
+  async updateVersionDisplay() {
+    try {
+      // Prefer server version for accuracy
+      const r = await fetch('/api/version').catch(() => null);
+      let label = `v${this.version}`;
+      if (r && r.ok) {
+        const j = await r.json().catch(() => ({}));
+        const data = j?.data || {};
+        const ver = data?.appVersion || data?.version || this.version;
+        const ts = data?.buildTime || j?.timestamp || new Date().toISOString();
+        const time = new Date(ts).toLocaleString();
+        label = `v${ver} • ${time}`;
+      }
+      const versionElements = document.querySelectorAll('#version-info, #footer-version, #nav-ui-version');
+      versionElements.forEach((el) => { if (el) { el.textContent = label; } });
 
-    versionElements.forEach((element) => element.textContent = `v${this.version}`);
-
-    // Update navigation status box version
-    this.updateNavigationStatusBox();
-    
-    // Update UI version in navigation
-    const navUiVersion = document.getElementById('nav-ui-version');
-    if (navUiVersion) {
-      navUiVersion.textContent = `v${this.version}`;
+      // Also update any UI cache-bust labels
+      const uiVersion = `UI: v${Date.now()}`;
+      document.querySelectorAll('.ui-version-info').forEach((el) => {
+        try {
+          el.textContent = uiVersion;
+          el.setAttribute('title', 'UI Version - Cache Busted');
+        } catch (_) {}
+      });
+      this.updateNavigationStatusBox();
+    } catch (_) {
+      const versionElements = document.querySelectorAll('#version-info, #footer-version, #nav-ui-version');
+      versionElements.forEach((el) => { if (el) { el.textContent = `v${this.version}`; } });
+      document.querySelectorAll('.ui-version-info').forEach((el) => {
+        try { el.textContent = `UI: v${Date.now()}`; el.setAttribute('title', 'UI Version - Cache Busted'); } catch (_) {}
+      });
     }
   }
 
@@ -1615,6 +1723,15 @@ class PingOneApp {
           page.onSettingsChange(this.settings);
         }
       });
+
+      // Record token-history hint so users know to refresh token after settings save
+      try {
+        const history = JSON.parse(localStorage.getItem('token_history') || '[]');
+        history.unshift({ id: Date.now(), timestamp: new Date().toISOString(), message: 'Settings saved. Get New Token to authenticate.', type: 'info' });
+        if (history.length > 50) { history.length = 50; }
+        localStorage.setItem('token_history', JSON.stringify(history));
+        window.dispatchEvent(new CustomEvent('token-history:updated'));
+      } catch (_) {}
     } catch (error) {
       console.error('Failed to save settings:', error);
       this.showError(`Save failed: ${error.message}`);
@@ -1954,21 +2071,48 @@ class PingOneApp {
   showLoading(message = 'Loading...') {
     const overlay = document.getElementById('loading-overlay');
     const text = document.getElementById('loading-text');
-
+    this._loadingShownAt = Date.now();
     if (overlay) { overlay.style.display = 'flex'; }
     if (text) { text.textContent = message; }
   }
 
   hideLoading() {
     const overlay = document.getElementById('loading-overlay');
+    const minMs = 2000;
+    const elapsed = Date.now() - (this._loadingShownAt || 0);
+    const delay = Math.max(0, minMs - elapsed);
+    if (!overlay) { return; }
+    if (delay <= 0) { overlay.style.display = 'none'; return; }
+    setTimeout(() => { try { overlay.style.display = 'none'; } catch (_) {} }, delay);
+  }
 
-    if (overlay) { overlay.style.display = 'none'; }
+  // Provide a consistent inline loading state for primary buttons
+  setButtonLoading(btn, isLoading) {
+    if (!btn) { return; }
+    if (isLoading) {
+      btn.classList.add('is-loading');
+      btn.disabled = true;
+    } else {
+      btn.classList.remove('is-loading');
+      btn.disabled = false;
+    }
   }
 
   showSuccess(message) { this.showStatusMessage(message, 'success'); }
   showError(message) { this.showStatusMessage(message, 'error'); }
   showWarning(message) { this.showStatusMessage(message, 'warning'); }
   showInfo(message) { this.showStatusMessage(message, 'info'); }
+  // Client log helper to feed winston client.log via server
+  logClient(event, data = {}) {
+    try {
+      fetch('/api/logs/client', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ event, data, ts: new Date().toISOString() })
+      }).catch(() => {});
+    } catch (_) {}
+  }
   // Optional floating toast
   showToast(message, type = 'info', timeoutMs = 3000) {
     let container = document.getElementById('toast-container');
@@ -2046,8 +2190,7 @@ class PingOneApp {
       }
 
       // Show the status bar with stronger color per type
-      statusBar.style.display = 'flex';
-      statusBar.className = `status-message-bar ${type}`;
+      statusBar.className = `status-message-bar ${type} visible`;
       // Additionally, show a floating toast for emphasis
       this.showToast(message, type, 3000);
 
@@ -2119,8 +2262,7 @@ class PingOneApp {
     actionBtn.textContent = actionText;
 
     // Show bar
-    statusBar.style.display = 'flex';
-    statusBar.className = `status-message-bar ${type}`;
+    statusBar.className = `status-message-bar ${type} visible`;
 
     const cleanup = () => {
       if (actionBtn && actionBtn.parentElement) {
@@ -2217,8 +2359,8 @@ class PingOneApp {
    */
   setupDraggableTokenInfo() {
     const tokenInfo = document.getElementById('token-info');
-    
-    if (!tokenInfo) return;
+
+    if (!tokenInfo) {return;}
 
     let isDragging = false;
     let startX, startY, startLeft, startTop;
@@ -2234,21 +2376,21 @@ class PingOneApp {
       isDragging = true;
       startX = e.clientX;
       startY = e.clientY;
-      
+
       const rect = tokenInfo.getBoundingClientRect();
       startLeft = rect.left;
       startTop = rect.top;
-      
+
       tokenInfo.style.cursor = 'grabbing';
       e.preventDefault();
     });
 
     document.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      
+      if (!isDragging) {return;}
+
       const deltaX = e.clientX - startX;
       const deltaY = e.clientY - startY;
-      
+
       tokenInfo.style.left = `${startLeft + deltaX}px`;
       tokenInfo.style.top = `${startTop + deltaY}px`;
       tokenInfo.style.position = 'fixed';
@@ -2258,7 +2400,7 @@ class PingOneApp {
       if (isDragging) {
         isDragging = false;
         tokenInfo.style.cursor = 'grab';
-        
+
         // Save position to localStorage for persistence
         const rect = tokenInfo.getBoundingClientRect();
         localStorage.setItem('tokenInfoPosition', JSON.stringify({

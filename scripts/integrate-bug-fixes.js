@@ -2,7 +2,7 @@
 
 /**
  * Integration Script for Critical Bug Fixes
- * 
+ *
  * This script integrates all the bug fixes into the main application bundle
  * and ensures proper loading order and initialization.
  */
@@ -16,11 +16,11 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
 async function integrateBugFixes() {
-    console.log('🔧 Integrating Critical Bug Fixes into Application...\n');
+  console.log('🔧 Integrating Critical Bug Fixes into Application...\n');
 
-    try {
-        // 1. Create a loader script that initializes all bug fixes
-        const loaderScript = `
+  try {
+    // 1. Create a loader script that initializes all bug fixes
+    const loaderScript = `
 /**
  * Bug Fix Loader - Initializes all critical bug fixes before main app
  * 
@@ -106,40 +106,40 @@ async function integrateBugFixes() {
 })();
 `;
 
-        // Write the loader script
-        const loaderPath = path.join(projectRoot, 'public/js/bug-fix-loader.js');
-        await fs.writeFile(loaderPath, loaderScript);
-        console.log('✅ Created bug fix loader script');
+    // Write the loader script
+    const loaderPath = path.join(projectRoot, 'public/js/bug-fix-loader.js');
+    await fs.writeFile(loaderPath, loaderScript);
+    console.log('✅ Created bug fix loader script');
 
-        // 2. Update index.html to include the loader before the main bundle
-        const indexPath = path.join(projectRoot, 'public/index.html');
-        let indexContent = await fs.readFile(indexPath, 'utf8');
-        
-        // Check if loader is already included
-        if (!indexContent.includes('bug-fix-loader.js')) {
-            // Find the main bundle script tag
-            const bundleRegex = /<script[^>]*src=["']js\/bundle[^"']*\.js["'][^>]*><\/script>/;
-            
-            if (bundleRegex.test(indexContent)) {
-                // Insert loader before the main bundle
-                indexContent = indexContent.replace(bundleRegex, (match) => {
-                    return `    <script src="js/bug-fix-loader.js"></script>\n    ${match}`;
-                });
-            } else {
-                // Fallback: add before closing body tag
-                indexContent = indexContent.replace('</body>', 
-                    '    <script src="js/bug-fix-loader.js"></script>\n    <script src="js/bundle.js"></script>\n</body>'
-                );
-            }
-            
-            await fs.writeFile(indexPath, indexContent);
-            console.log('✅ Updated index.html with bug fix loader');
-        } else {
-            console.log('ℹ️  Bug fix loader already included in index.html');
-        }
+    // 2. Update index.html to include the loader before the main bundle
+    const indexPath = path.join(projectRoot, 'public/index.html');
+    let indexContent = await fs.readFile(indexPath, 'utf8');
 
-        // 3. Create a status checker for debugging
-        const statusCheckerCode = `
+    // Check if loader is already included
+    if (!indexContent.includes('bug-fix-loader.js')) {
+      // Find the main bundle script tag
+      const bundleRegex = /<script[^>]*src=["']js\/bundle[^"']*\.js["'][^>]*><\/script>/;
+
+      if (bundleRegex.test(indexContent)) {
+        // Insert loader before the main bundle
+        indexContent = indexContent.replace(bundleRegex, (match) => {
+          return `    <script src="js/bug-fix-loader.js"></script>\n    ${match}`;
+        });
+      } else {
+        // Fallback: add before closing body tag
+        indexContent = indexContent.replace('</body>',
+          '    <script src="js/bug-fix-loader.js"></script>\n    <script src="js/bundle.js"></script>\n</body>'
+        );
+      }
+
+      await fs.writeFile(indexPath, indexContent);
+      console.log('✅ Updated index.html with bug fix loader');
+    } else {
+      console.log('ℹ️  Bug fix loader already included in index.html');
+    }
+
+    // 3. Create a status checker for debugging
+    const statusCheckerCode = `
 /**
  * Bug Fix Status Checker
  * 
@@ -212,12 +212,12 @@ window.bugFixStatus = new BugFixStatus();
 window.checkBugFixes = () => window.bugFixStatus.printStatus();
 `;
 
-        const statusCheckerPath = path.join(projectRoot, 'public/js/modules/bug-fix-status.js');
-        await fs.writeFile(statusCheckerPath, statusCheckerCode);
-        console.log('✅ Created bug fix status checker');
+    const statusCheckerPath = path.join(projectRoot, 'public/js/modules/bug-fix-status.js');
+    await fs.writeFile(statusCheckerPath, statusCheckerCode);
+    console.log('✅ Created bug fix status checker');
 
-        // 4. Create CSS for error notifications
-        const errorNotificationCSS = `
+    // 4. Create CSS for error notifications
+    const errorNotificationCSS = `
 /* Error Notification Styles for Bug Fix System */
 .error-notification {
     position: fixed;
@@ -273,21 +273,21 @@ window.checkBugFixes = () => window.bugFixStatus.printStatus();
 }
 `;
 
-        const cssPath = path.join(projectRoot, 'public/css/bug-fix-notifications.css');
-        await fs.writeFile(cssPath, errorNotificationCSS);
-        console.log('✅ Created error notification CSS');
+    const cssPath = path.join(projectRoot, 'public/css/bug-fix-notifications.css');
+    await fs.writeFile(cssPath, errorNotificationCSS);
+    console.log('✅ Created error notification CSS');
 
-        // 5. Update index.html to include the CSS
-        if (!indexContent.includes('bug-fix-notifications.css')) {
-            indexContent = indexContent.replace('</head>', 
-                '    <link rel="stylesheet" href="css/bug-fix-notifications.css">\n</head>'
-            );
-            await fs.writeFile(indexPath, indexContent);
-            console.log('✅ Added bug fix CSS to index.html');
-        }
+    // 5. Update index.html to include the CSS
+    if (!indexContent.includes('bug-fix-notifications.css')) {
+      indexContent = indexContent.replace('</head>',
+        '    <link rel="stylesheet" href="css/bug-fix-notifications.css">\n</head>'
+      );
+      await fs.writeFile(indexPath, indexContent);
+      console.log('✅ Added bug fix CSS to index.html');
+    }
 
-        // 6. Create a comprehensive test script
-        const testScript = `
+    // 6. Create a comprehensive test script
+    const testScript = `
 /**
  * Bug Fix Test Suite
  * 
@@ -425,29 +425,29 @@ window.bugFixTester = new BugFixTester();
 window.testBugFixes = () => window.bugFixTester.runAllTests();
 `;
 
-        const testScriptPath = path.join(projectRoot, 'public/js/modules/bug-fix-tester.js');
-        await fs.writeFile(testScriptPath, testScript);
-        console.log('✅ Created bug fix test suite');
+    const testScriptPath = path.join(projectRoot, 'public/js/modules/bug-fix-tester.js');
+    await fs.writeFile(testScriptPath, testScript);
+    console.log('✅ Created bug fix test suite');
 
-        console.log('\n🎉 Bug Fix Integration Complete!');
-        console.log('\n📋 What was integrated:');
-        console.log('1. ✅ Bug fix loader script (loads before main app)');
-        console.log('2. ✅ Updated index.html with proper load order');
-        console.log('3. ✅ Status checker for debugging');
-        console.log('4. ✅ Error notification CSS styling');
-        console.log('5. ✅ Comprehensive test suite');
-        
-        console.log('\n🔍 To test the fixes:');
-        console.log('1. Open browser console');
-        console.log('2. Run: checkBugFixes()');
-        console.log('3. Run: testBugFixes()');
-        
-        console.log('\n🚀 Ready to start the server and test!');
+    console.log('\n🎉 Bug Fix Integration Complete!');
+    console.log('\n📋 What was integrated:');
+    console.log('1. ✅ Bug fix loader script (loads before main app)');
+    console.log('2. ✅ Updated index.html with proper load order');
+    console.log('3. ✅ Status checker for debugging');
+    console.log('4. ✅ Error notification CSS styling');
+    console.log('5. ✅ Comprehensive test suite');
 
-    } catch (error) {
-        console.error('❌ Integration failed:', error.message);
-        process.exit(1);
-    }
+    console.log('\n🔍 To test the fixes:');
+    console.log('1. Open browser console');
+    console.log('2. Run: checkBugFixes()');
+    console.log('3. Run: testBugFixes()');
+
+    console.log('\n🚀 Ready to start the server and test!');
+
+  } catch (error) {
+    console.error('❌ Integration failed:', error.message);
+    process.exit(1);
+  }
 }
 
 // Run integration

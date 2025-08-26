@@ -1,10 +1,10 @@
 /**
  * API Client Subsystem - Base Client
- * 
+ *
  * Provides a foundation for making API requests with consistent error handling,
  * retry logic, and authentication. This base client handles common concerns like
  * request formatting, response parsing, and error handling.
- * 
+ *
  * Features:
  * - Automatic token management
  * - Configurable retry logic
@@ -23,581 +23,583 @@ import { importLogger, logSeparator } from '../server/winston-config.js';
 
 /**
  * Base API Client
- * 
+ *
  * Core class for making API requests with consistent behavior.
  */
 class BaseApiClient {
-    /**
-     * Create a new BaseApiClient
-     * @param {Object} options - Configuration options
-     * @param {Object} options.logger - Logger instance
-     * @param {TokenManager} options.tokenManager - Token manager instance
-     * @param {Object} options.config - Client configuration
-     */
-    constructor(options = {}) {
-        const { logger, tokenManager, config = {} } = options;
-        
-        // Initialize dependencies
-        this.logger = logger || console;
-        this.tokenManager = tokenManager || new TokenManager(logger);
-        
-        // Configuration with defaults
-        this.config = {
-            baseUrl: '',
-            timeout: 30000, // 30 seconds
-            retries: 2,
-            retryDelay: 1000, // 1 second
-            cacheEnabled: false,
-            cacheTTL: 60000, // 1 minute
-            ...config
-        };
-        
-        // Request interceptors
-        this.requestInterceptors = [];
-        
-        // Response interceptors
-        this.responseInterceptors = [];
-        
-        // Response cache
-        this.cache = new Map();
-        
-        // Active requests for cancellation
-        this.activeRequests = new Map();
-        
-        // Rate limiting
-        this.rateLimiter = {
-            lastRequest: 0,
-            minInterval: 50, // 20 requests per second max
-        };
-        
-        // Bind methods
-        this.request = this.request.bind(this);
-        this.get = this.get.bind(this);
-        this.post = this.post.bind(this);
-        this.put = this.put.bind(this);
-        this.delete = this.delete.bind(this);
-        this.patch = this.patch.bind(this);
+  /**
+   * Create a new BaseApiClient
+   * @param {object} options - Configuration options
+   * @param {object} options.logger - Logger instance
+   * @param {TokenManager} options.tokenManager - Token manager instance
+   * @param {object} options.config - Client configuration
+   */
+  constructor(options = {}) {
+    const { logger, tokenManager, config = {} } = options;
 
-        // Winston-backed import log writer
-        this._importLogPath = path.join(process.cwd(), 'logs', 'import.log');
-        this._writeImportLog = (msg, meta) => {
-            try {
-                if (process.env.DEBUG_IMPORT_LOG !== '1') return;
-                const dir = path.dirname(this._importLogPath);
-                if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-                const ts = new Date().toISOString();
-                const level = /failed|error/i.test(msg)
-                    ? 'error'
-                    : (/warn|rate limited/i.test(msg) ? 'warn' : 'info');
-                importLogger.log(level, msg, {
-                    ...meta,
-                    timestamp: ts,
-                    separator: logSeparator('═', 80)
-                });
-            } catch (_) { /* no-op */ }
-        };
+    // Initialize dependencies
+    this.logger = logger || console;
+    this.tokenManager = tokenManager || new TokenManager(logger);
 
-        // Bind helpers
-        this._sanitizeAuthHeader = this._sanitizeAuthHeader.bind(this);
-    }
+    // Configuration with defaults
+    this.config = {
+      baseUrl: '',
+      timeout: 30000, // 30 seconds
+      retries: 2,
+      retryDelay: 1000, // 1 second
+      cacheEnabled: false,
+      cacheTTL: 60000, // 1 minute
+      ...config
+    };
 
-    /**
-     * Add a request interceptor
-     * @param {Function} interceptor - Function that receives and modifies request config
-     * @returns {number} Interceptor ID for removal
-     */
-    addRequestInterceptor(interceptor) {
-        this.requestInterceptors.push(interceptor);
-        return this.requestInterceptors.length - 1;
-    }
+    // Request interceptors
+    this.requestInterceptors = [];
 
-    /**
-     * Remove a request interceptor
-     * @param {number} id - Interceptor ID to remove
-     */
-    removeRequestInterceptor(id) {
-        this.requestInterceptors[id] = null;
-    }
+    // Response interceptors
+    this.responseInterceptors = [];
 
-    /**
-     * Add a response interceptor
-     * @param {Function} interceptor - Function that receives and modifies response
-     * @returns {number} Interceptor ID for removal
-     */
-    addResponseInterceptor(interceptor) {
-        this.responseInterceptors.push(interceptor);
-        return this.responseInterceptors.length - 1;
-    }
+    // Response cache
+    this.cache = new Map();
 
-    /**
-     * Remove a response interceptor
-     * @param {number} id - Interceptor ID to remove
-     */
-    removeResponseInterceptor(id) {
-        this.responseInterceptors[id] = null;
-    }
+    // Active requests for cancellation
+    this.activeRequests = new Map();
 
-    /**
-     * Check if we can make a request (rate limiting)
-     * @private
-     */
-    _checkRateLimit() {
-        const now = Date.now();
-        if (now - this.rateLimiter.lastRequest < this.rateLimiter.minInterval) {
-            return false;
-        }
-        this.rateLimiter.lastRequest = now;
-        return true;
-    }
+    // Rate limiting
+    this.rateLimiter = {
+      lastRequest: 0,
+      minInterval: 50, // 20 requests per second max
+    };
 
-    /**
-     * Generate a cache key for a request
-     * @param {string} url - Request URL
-     * @param {Object} options - Request options
-     * @returns {string} Cache key
-     * @private
-     */
-    _getCacheKey(url, options) {
-        const method = options.method || 'GET';
-        const body = options.body ? JSON.stringify(options.body) : '';
-        return `${method}:${url}:${body}`;
-    }
+    // Bind methods
+    this.request = this.request.bind(this);
+    this.get = this.get.bind(this);
+    this.post = this.post.bind(this);
+    this.put = this.put.bind(this);
+    this.delete = this.delete.bind(this);
+    this.patch = this.patch.bind(this);
 
-    /**
-     * Check cache for a matching request
-     * @param {string} url - Request URL
-     * @param {Object} options - Request options
-     * @returns {Object|null} Cached response or null
-     * @private
-     */
-    _checkCache(url, options) {
-        if (!this.config.cacheEnabled || options.method !== 'GET') {
-            return null;
-        }
-        
-        const cacheKey = this._getCacheKey(url, options);
-        const cached = this.cache.get(cacheKey);
-        
-        if (!cached) {
-            return null;
-        }
-        
-        // Check if cache is expired
-        if (Date.now() > cached.expires) {
-            this.cache.delete(cacheKey);
-            return null;
-        }
-        
-        this.logger.debug('Using cached response', { url });
-        return cached.response;
-    }
-
-    /**
-     * Store response in cache
-     * @param {string} url - Request URL
-     * @param {Object} options - Request options
-     * @param {Object} response - Response to cache
-     * @private
-     */
-    _storeInCache(url, options, response) {
-        if (!this.config.cacheEnabled || options.method !== 'GET') {
-            return;
-        }
-        
-        const cacheKey = this._getCacheKey(url, options);
-        const expires = Date.now() + this.config.cacheTTL;
-        
-        // Clone the response before storing
-        const clonedResponse = response.clone();
-        
-        // Store in cache
-        this.cache.set(cacheKey, {
-            response: clonedResponse,
-            expires
+    // Winston-backed import log writer
+    this._importLogPath = path.join(process.cwd(), 'logs', 'import.log');
+    this._writeImportLog = (msg, meta) => {
+      try {
+        if (process.env.DEBUG_IMPORT_LOG !== '1') {return;}
+        const dir = path.dirname(this._importLogPath);
+        if (!fs.existsSync(dir)) {fs.mkdirSync(dir, { recursive: true });}
+        const ts = new Date().toISOString();
+        const level = /failed|error/i.test(msg)
+          ? 'error'
+          : (/warn|rate limited/i.test(msg) ? 'warn' : 'info');
+        importLogger.log(level, msg, {
+          ...meta,
+          timestamp: ts,
+          separator: logSeparator('═', 80)
         });
-        
-        this.logger.debug('Stored response in cache', { url, expires });
+      } catch { /* no-op */ }
+    };
+
+    // Bind helpers
+    this._sanitizeAuthHeader = this._sanitizeAuthHeader.bind(this);
+  }
+
+  /**
+   * Add a request interceptor
+   * @param {Function} interceptor - Function that receives and modifies request config
+   * @returns {number} Interceptor ID for removal
+   */
+  addRequestInterceptor(interceptor) {
+    this.requestInterceptors.push(interceptor);
+    return this.requestInterceptors.length - 1;
+  }
+
+  /**
+   * Remove a request interceptor
+   * @param {number} id - Interceptor ID to remove
+   */
+  removeRequestInterceptor(id) {
+    this.requestInterceptors[id] = null;
+  }
+
+  /**
+   * Add a response interceptor
+   * @param {Function} interceptor - Function that receives and modifies response
+   * @returns {number} Interceptor ID for removal
+   */
+  addResponseInterceptor(interceptor) {
+    this.responseInterceptors.push(interceptor);
+    return this.responseInterceptors.length - 1;
+  }
+
+  /**
+   * Remove a response interceptor
+   * @param {number} id - Interceptor ID to remove
+   */
+  removeResponseInterceptor(id) {
+    this.responseInterceptors[id] = null;
+  }
+
+  /**
+   * Check if we can make a request (rate limiting)
+   * @private
+   */
+  _checkRateLimit() {
+    const now = Date.now();
+    if (now - this.rateLimiter.lastRequest < this.rateLimiter.minInterval) {
+      return false;
+    }
+    this.rateLimiter.lastRequest = now;
+    return true;
+  }
+
+  /**
+   * Generate a cache key for a request
+   * @param {string} url - Request URL
+   * @param {object} options - Request options
+   * @returns {string} Cache key
+   * @private
+   */
+  _getCacheKey(url, options) {
+    const method = options.method || 'GET';
+    const body = options.body ? JSON.stringify(options.body) : '';
+    return `${method}:${url}:${body}`;
+  }
+
+  /**
+   * Check cache for a matching request
+   * @param {string} url - Request URL
+   * @param {object} options - Request options
+   * @returns {object | null} Cached response or null
+   * @private
+   */
+  _checkCache(url, options) {
+    if (!this.config.cacheEnabled || options.method !== 'GET') {
+      return null;
     }
 
-    /**
-     * Apply request interceptors
-     * @param {Object} config - Request configuration
-     * @returns {Object} Modified request configuration
-     * @private
-     */
-    _applyRequestInterceptors(config) {
-        let result = { ...config };
-        
-        for (const interceptor of this.requestInterceptors) {
-            if (interceptor) {
-                result = interceptor(result) || result;
-            }
-        }
-        
-        return result;
+    const cacheKey = this._getCacheKey(url, options);
+    const cached = this.cache.get(cacheKey);
+
+    if (!cached) {
+      return null;
     }
 
-    /**
-     * Apply response interceptors
-     * @param {Object} response - Response object
-     * @param {Object} config - Request configuration
-     * @returns {Object} Modified response
-     * @private
-     */
-    async _applyResponseInterceptors(response, config) {
-        let result = response;
-        
-        for (const interceptor of this.responseInterceptors) {
-            if (interceptor) {
-                result = await interceptor(result, config) || result;
-            }
-        }
-        
-        return result;
+    // Check if cache is expired
+    if (Date.now() > cached.expires) {
+      this.cache.delete(cacheKey);
+      return null;
     }
 
-    /**
-     * Make an API request with automatic token handling and retries
-     * @param {string} url - Request URL (can be relative to baseUrl)
-     * @param {Object} options - Request options
-     * @returns {Promise<Response>} Fetch response
-     */
-    async request(url, options = {}) {
-        // Apply request interceptors
-        const config = this._applyRequestInterceptors({
-            url,
-            ...options
-        });
-        
-        // Resolve URL (relative or absolute)
-        const resolvedUrl = config.url.startsWith('http') 
-            ? config.url 
-            : `${this.config.baseUrl}${config.url}`;
-        
-        // Check cache
-        const cachedResponse = this._checkCache(resolvedUrl, config);
-        if (cachedResponse) {
-            return cachedResponse;
+    this.logger.debug('Using cached response', { url });
+    return cached.response;
+  }
+
+  /**
+   * Store response in cache
+   * @param {string} url - Request URL
+   * @param {object} options - Request options
+   * @param {object} response - Response to cache
+   * @private
+   */
+  _storeInCache(url, options, response) {
+    if (!this.config.cacheEnabled || options.method !== 'GET') {
+      return;
+    }
+
+    const cacheKey = this._getCacheKey(url, options);
+    const expires = Date.now() + this.config.cacheTTL;
+
+    // Clone the response before storing
+    const clonedResponse = response.clone();
+
+    // Store in cache
+    this.cache.set(cacheKey, {
+      response: clonedResponse,
+      expires
+    });
+
+    this.logger.debug('Stored response in cache', { url, expires });
+  }
+
+  /**
+   * Apply request interceptors
+   * @param {object} config - Request configuration
+   * @returns {object} Modified request configuration
+   * @private
+   */
+  _applyRequestInterceptors(config) {
+    let result = { ...config };
+
+    for (const interceptor of this.requestInterceptors) {
+      if (interceptor) {
+        result = interceptor(result) || result;
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Apply response interceptors
+   * @param {object} response - Response object
+   * @param {object} config - Request configuration
+   * @returns {object} Modified response
+   * @private
+   */
+  async _applyResponseInterceptors(response, config) {
+    let result = response;
+
+    for (const interceptor of this.responseInterceptors) {
+      if (interceptor) {
+        result = await interceptor(result, config) || result;
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Make an API request with automatic token handling and retries
+   * @param {string} url - Request URL (can be relative to baseUrl)
+   * @param {object} options - Request options
+   * @returns {Promise<Response>} Fetch response
+   */
+  async request(url, options = {}) {
+    // Apply request interceptors
+    const config = this._applyRequestInterceptors({
+      url,
+      ...options
+    });
+
+    // Resolve URL (relative or absolute)
+    const resolvedUrl = config.url.startsWith('http')
+      ? config.url
+      : `${this.config.baseUrl}${config.url}`;
+
+    // Check cache
+    const cachedResponse = this._checkCache(resolvedUrl, config);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
+    // Check rate limiting
+    if (!this._checkRateLimit()) {
+      await new Promise(resolve => setTimeout(resolve, this.rateLimiter.minInterval));
+    }
+
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    // Set timeout
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, this.config.timeout);
+
+    // Store active request
+    const requestId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+    this.activeRequests.set(requestId, controller);
+
+    try {
+      // Get token if needed
+      let headers = { ...config.headers };
+
+      if (config.authenticated !== false) {
+        let token = await this.tokenManager.getAccessToken();
+        // Defensive check: token should look like a JWT (contain at least one '.')
+        if (token && !String(token).includes('.')) {
+          this.logger.warn('Suspicious access token format (no dot). Forcing refresh.');
+          this.tokenManager.clearToken();
+          token = await this.tokenManager.getAccessToken();
         }
-        
-        // Check rate limiting
-        if (!this._checkRateLimit()) {
-            await new Promise(resolve => setTimeout(resolve, this.rateLimiter.minInterval));
+        // Sanitize token (trim whitespace and quotes)
+        if (typeof token === 'string') {
+          token = token.trim().replace(/^"|"$/g, '');
         }
-        
-        // Create abort controller for timeout
-        const controller = new AbortController();
-        const { signal } = controller;
-        
-        // Set timeout
-        const timeoutId = setTimeout(() => {
-            controller.abort();
-        }, this.config.timeout);
-        
-        // Store active request
-        const requestId = Date.now().toString(36) + Math.random().toString(36).substr(2);
-        this.activeRequests.set(requestId, controller);
-        
+        {
+          const tokenStr = String(token).replace(/^Bearer\s+/i, '').trim();
+          headers = {
+            ...headers,
+            'Authorization': `Bearer ${tokenStr}`,
+            'Accept': 'application/json'
+          };
+        }
+        // Remember last token for fallback sanitization and log masked preview
+        this._lastAuthToken = token;
+        // Log safe preview of Authorization without exposing the token
         try {
-            // Get token if needed
-            let headers = { ...config.headers };
-            
-            if (config.authenticated !== false) {
-                let token = await this.tokenManager.getAccessToken();
-                // Defensive check: token should look like a JWT (contain at least one '.')
-                if (token && !String(token).includes('.')) {
-                    this.logger.warn('Suspicious access token format (no dot). Forcing refresh.');
-                    this.tokenManager.clearToken();
-                    token = await this.tokenManager.getAccessToken();
-                }
-                // Sanitize token (trim whitespace and quotes)
-                if (typeof token === 'string') {
-                    token = token.trim().replace(/^"|"$/g, '');
-                }
-                {
-                    const tokenStr = String(token).replace(/^Bearer\s+/i, '').trim();
-                    headers = {
-                        ...headers,
-                        'Authorization': `Bearer ${tokenStr}`,
-                        'Accept': 'application/json'
-                    };
-                }
-                // Remember last token for fallback sanitization and log masked preview
-                this._lastAuthToken = token;
-                // Log safe preview of Authorization without exposing the token
-                try {
-                    const preview = token ? `${String(token).slice(0, 12)}... (len=${String(token).length})` : 'null';
-                    this.logger.debug('Authorization header set', { scheme: 'Bearer', tokenPreview: preview });
-                    this._writeImportLog('Outbound request auth', { scheme: 'Bearer', tokenPreview: preview });
-                } catch (_) { /* ignore logging preview errors */ }
+          const preview = token ? `${String(token).slice(0, 12)}... (len=${String(token).length})` : 'null';
+          this.logger.debug('Authorization header set', { scheme: 'Bearer', tokenPreview: preview });
+          this._writeImportLog('Outbound request auth', { scheme: 'Bearer', tokenPreview: preview });
+        } catch { /* ignore logging preview errors */ }
+      }
+
+      // Make request
+      let response;
+      let retries = 0;
+
+      while (retries <= this.config.retries) {
+        try {
+          // Build sanitized headers and create a canonical Headers instance
+          const safeHeaders = { ...headers };
+          if (safeHeaders.Authorization) {
+            const val = String(safeHeaders.Authorization);
+            const masked = val.startsWith('Bearer ')
+              ? `Bearer ${val.slice(7, 19)}... (len=${val.length - 7})`
+              : `*** (len=${val.length})`;
+            safeHeaders.Authorization = masked;
+          }
+
+          const headersToSend = new FetchHeaders();
+          for (const [k, v] of Object.entries(this._sanitizeAuthHeader(headers))) {
+            if (v !== null && v !== '') {
+              headersToSend.set(k, v);
             }
-            
-            // Make request
-            let response;
-            let retries = 0;
-            
-            while (retries <= this.config.retries) {
-                try {
-                    // Build sanitized headers and create a canonical Headers instance
-                    const safeHeaders = { ...headers };
-                    if (safeHeaders.Authorization) {
-                        const val = String(safeHeaders.Authorization);
-                        const masked = val.startsWith('Bearer ')
-                            ? `Bearer ${val.slice(7, 19)}... (len=${val.length - 7})`
-                            : `*** (len=${val.length})`;
-                        safeHeaders.Authorization = masked;
-                    }
+          }
 
-                    const headersToSend = new FetchHeaders();
-                    for (const [k, v] of Object.entries(this._sanitizeAuthHeader(headers))) {
-                        if (v != null && v !== '') headersToSend.set(k, v);
-                    }
-
-                    // Prepare safe body preview if JSON
-                    let safeBody = undefined;
-                    const contentType = (headers['Content-Type'] || headers['content-type'] || '').toString();
-                    if (config.body && typeof config.body === 'string') {
-                        if (contentType.includes('application/json')) {
-                            try {
-                                safeBody = JSON.parse(config.body);
-                            } catch (_) {
-                                safeBody = String(config.body).slice(0, 500);
-                            }
-                        } else {
-                            // Non-JSON body: log only length
-                            safeBody = `{non-json body len=${String(config.body).length}}`;
-                        }
-                    }
-
-                    // Ensure there is exactly ONE clean Authorization header
-                    headers = this._sanitizeAuthHeader(headers);
-
-                    // Log outbound request with full details (sanitized)
-                    this._writeImportLog('Outbound request (full)', {
-                        method: (config.method || 'GET'),
-                        url: resolvedUrl,
-                        headers: safeHeaders,
-                        body: safeBody
-                    });
-
-                    response = await fetch(resolvedUrl, {
-                        ...config,
-                        headers: headersToSend,
-                        signal
-                    });
-                    
-                    // Check if token expired
-                    if (response.status === 401 && retries < this.config.retries) {
-                        this.logger.warn('Token expired, retrying with new token');
-                        this.tokenManager.clearToken();
-                        const newToken = await this.tokenManager.getAccessToken();
-                        const tokenStr = String(newToken).replace(/^Bearer\s+/i, '').trim();
-                        headers = {
-                            ...headers,
-                            'Authorization': `Bearer ${tokenStr}`
-                        };
-                        retries++;
-                        continue;
-                    }
-                    // Additional safeguard: if unauthorized/forbidden due to malformed Authorization (e.g., 403), try once to refresh
-                    if (response.status === 403 && retries < this.config.retries) {
-                        // Some PingOne edges reject if any stray characters slip into Authorization.
-                        // Force-generate a fresh token and rebuild headers completely.
-                        this.logger.warn('Received 403 Forbidden; regenerating Authorization header and retrying');
-                        this.tokenManager.clearToken();
-                        const newToken = await this.tokenManager.getAccessToken();
-                        headers = this._sanitizeAuthHeader({
-                            ...headers,
-                            Authorization: `Bearer ${String(newToken).replace(/^Bearer\s+/i, '').trim()}`
-                        });
-                        retries++;
-                        continue;
-                    }
-                    
-                    break;
-                } catch (error) {
-                    if (retries >= this.config.retries) {
-                        throw error;
-                    }
-                    
-                    this.logger.warn(`Request failed, retrying (${retries + 1}/${this.config.retries})`, {
-                        url: resolvedUrl,
-                        error: error.message
-                    });
-                    
-                    retries++;
-                    await new Promise(resolve => setTimeout(resolve, this.config.retryDelay));
-                }
+          // Prepare safe body preview if JSON
+          let safeBody = undefined;
+          const contentType = (headers['Content-Type'] || headers['content-type'] || '').toString();
+          if (config.body && typeof config.body === 'string') {
+            if (contentType.includes('application/json')) {
+              try {
+                safeBody = JSON.parse(config.body);
+              } catch {
+                safeBody = String(config.body).slice(0, 500);
+              }
+            } else {
+              // Non-JSON body: log only length
+              safeBody = `{non-json body len=${String(config.body).length}}`;
             }
-            
-            // Apply response interceptors
-            const processedResponse = await this._applyResponseInterceptors(response, config);
-            
-            // Store in cache if successful
-            if (response.ok) {
-                this._storeInCache(resolvedUrl, config, processedResponse);
-            }
-            
-            return processedResponse;
-        } catch (error) {
-            this.logger.error('Request failed', {
-                url: resolvedUrl,
-                error: error.message
+          }
+
+          // Ensure there is exactly ONE clean Authorization header
+          headers = this._sanitizeAuthHeader(headers);
+
+          // Log outbound request with full details (sanitized)
+          this._writeImportLog('Outbound request (full)', {
+            method: (config.method || 'GET'),
+            url: resolvedUrl,
+            headers: safeHeaders,
+            body: safeBody
+          });
+
+          response = await fetch(resolvedUrl, {
+            ...config,
+            headers: headersToSend,
+            signal
+          });
+
+          // Check if token expired
+          if (response.status === 401 && retries < this.config.retries) {
+            this.logger.warn('Token expired, retrying with new token');
+            this.tokenManager.clearToken();
+            const newToken = await this.tokenManager.getAccessToken();
+            const tokenStr = String(newToken).replace(/^Bearer\s+/i, '').trim();
+            headers = {
+              ...headers,
+              'Authorization': `Bearer ${tokenStr}`
+            };
+            retries++;
+            continue;
+          }
+          // Additional safeguard: if unauthorized/forbidden due to malformed Authorization (e.g., 403), try once to refresh
+          if (response.status === 403 && retries < this.config.retries) {
+            // Some PingOne edges reject if any stray characters slip into Authorization.
+            // Force-generate a fresh token and rebuild headers completely.
+            this.logger.warn('Received 403 Forbidden; regenerating Authorization header and retrying');
+            this.tokenManager.clearToken();
+            const newToken = await this.tokenManager.getAccessToken();
+            headers = this._sanitizeAuthHeader({
+              ...headers,
+              Authorization: `Bearer ${String(newToken).replace(/^Bearer\s+/i, '').trim()}`
             });
-            
+            retries++;
+            continue;
+          }
+
+          break;
+        } catch (error) {
+          if (retries >= this.config.retries) {
             throw error;
-        } finally {
-            // Clean up
-            clearTimeout(timeoutId);
-            this.activeRequests.delete(requestId);
+          }
+
+          this.logger.warn(`Request failed, retrying (${retries + 1}/${this.config.retries})`, {
+            url: resolvedUrl,
+            error: error.message
+          });
+
+          retries++;
+          await new Promise(resolve => setTimeout(resolve, this.config.retryDelay));
         }
+      }
+
+      // Apply response interceptors
+      const processedResponse = await this._applyResponseInterceptors(response, config);
+
+      // Store in cache if successful
+      if (response.ok) {
+        this._storeInCache(resolvedUrl, config, processedResponse);
+      }
+
+      return processedResponse;
+    } catch (error) {
+      this.logger.error('Request failed', {
+        url: resolvedUrl,
+        error: error.message
+      });
+
+      throw error;
+    } finally {
+      // Clean up
+      clearTimeout(timeoutId);
+      this.activeRequests.delete(requestId);
+    }
+  }
+
+  /**
+   * Ensure exactly one clean Authorization header is present and correctly formatted.
+   * Removes any duplicate or lowercase variants and strips unexpected comma fragments.
+   * @param {object} headers
+   * @returns {object}
+   */
+  _sanitizeAuthHeader(headers) {
+    if (!headers) {return headers;}
+    const sanitized = { ...headers };
+
+    // Consolidate any case variants
+    const keys = Object.keys(sanitized);
+    const authKeys = keys.filter(k => k.toLowerCase() === 'authorization');
+
+    let bearer = '';
+    for (const k of authKeys) {
+      const valRaw = sanitized[k];
+      if (typeof valRaw === 'string') {
+        // If comma-separated values exist, pick the first that starts with 'Bearer '
+        const parts = valRaw.split(',').map(p => p.trim());
+        const firstBearer = parts.find(p => /^Bearer\s+/i.test(p));
+        if (firstBearer) {bearer = firstBearer;} else if (!bearer) {bearer = parts[0] || '';}
+      }
+      // Remove all occurrences; we'll re-add one canonical header
+      delete sanitized[k];
     }
 
-    /**
-     * Ensure exactly one clean Authorization header is present and correctly formatted.
-     * Removes any duplicate or lowercase variants and strips unexpected comma fragments.
-     * @param {Object} headers
-     * @returns {Object}
-     */
-    _sanitizeAuthHeader(headers) {
-        if (!headers) return headers;
-        const sanitized = { ...headers };
-
-        // Consolidate any case variants
-        const keys = Object.keys(sanitized);
-        const authKeys = keys.filter(k => k.toLowerCase() === 'authorization');
-
-        let bearer = '';
-        for (const k of authKeys) {
-            const valRaw = sanitized[k];
-            if (typeof valRaw === 'string') {
-                // If comma-separated values exist, pick the first that starts with 'Bearer '
-                const parts = valRaw.split(',').map(p => p.trim());
-                const firstBearer = parts.find(p => /^Bearer\s+/i.test(p));
-                if (firstBearer) bearer = firstBearer; else if (!bearer) bearer = parts[0] || '';
-            }
-            // Remove all occurrences; we'll re-add one canonical header
-            delete sanitized[k];
-        }
-
-        // Normalize final Authorization
-        if (bearer) {
-            // Ensure correct prefix and no extra parameters
-            const token = bearer.replace(/^Bearer\s+/i, '').trim();
-            sanitized['Authorization'] = `Bearer ${token}`;
-        } else if (this._lastAuthToken) {
-            // Fallback: if no Bearer fragment was present, force-add the last known good token
-            sanitized['Authorization'] = `Bearer ${String(this._lastAuthToken).trim()}`;
-        }
-
-        // Never send Proxy-Authorization
-        for (const k of Object.keys(sanitized)) {
-            if (k.toLowerCase() === 'proxy-authorization') delete sanitized[k];
-        }
-
-        return sanitized;
+    // Normalize final Authorization
+    if (bearer) {
+      // Ensure correct prefix and no extra parameters
+      const token = bearer.replace(/^Bearer\s+/i, '').trim();
+      sanitized['Authorization'] = `Bearer ${token}`;
+    } else if (this._lastAuthToken) {
+      // Fallback: if no Bearer fragment was present, force-add the last known good token
+      sanitized['Authorization'] = `Bearer ${String(this._lastAuthToken).trim()}`;
     }
 
-    /**
-     * Make a GET request
-     * @param {string} url - Request URL
-     * @param {Object} options - Request options
-     * @returns {Promise<Response>} Fetch response
-     */
-    async get(url, options = {}) {
-        return this.request(url, {
-            ...options,
-            method: 'GET'
-        });
+    // Never send Proxy-Authorization
+    for (const k of Object.keys(sanitized)) {
+      if (k.toLowerCase() === 'proxy-authorization') {delete sanitized[k];}
     }
 
-    /**
-     * Make a POST request
-     * @param {string} url - Request URL
-     * @param {Object} data - Request body data
-     * @param {Object} options - Request options
-     * @returns {Promise<Response>} Fetch response
-     */
-    async post(url, data, options = {}) {
-        return this.request(url, {
-            ...options,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            body: JSON.stringify(data)
-        });
-    }
+    return sanitized;
+  }
 
-    /**
-     * Make a PUT request
-     * @param {string} url - Request URL
-     * @param {Object} data - Request body data
-     * @param {Object} options - Request options
-     * @returns {Promise<Response>} Fetch response
-     */
-    async put(url, data, options = {}) {
-        return this.request(url, {
-            ...options,
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            body: JSON.stringify(data)
-        });
-    }
+  /**
+   * Make a GET request
+   * @param {string} url - Request URL
+   * @param {object} options - Request options
+   * @returns {Promise<Response>} Fetch response
+   */
+  async get(url, options = {}) {
+    return this.request(url, {
+      ...options,
+      method: 'GET'
+    });
+  }
 
-    /**
-     * Make a DELETE request
-     * @param {string} url - Request URL
-     * @param {Object} options - Request options
-     * @returns {Promise<Response>} Fetch response
-     */
-    async delete(url, options = {}) {
-        return this.request(url, {
-            ...options,
-            method: 'DELETE'
-        });
-    }
+  /**
+   * Make a POST request
+   * @param {string} url - Request URL
+   * @param {object} data - Request body data
+   * @param {object} options - Request options
+   * @returns {Promise<Response>} Fetch response
+   */
+  async post(url, data, options = {}) {
+    return this.request(url, {
+      ...options,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      body: JSON.stringify(data)
+    });
+  }
 
-    /**
-     * Make a PATCH request
-     * @param {string} url - Request URL
-     * @param {Object} data - Request body data
-     * @param {Object} options - Request options
-     * @returns {Promise<Response>} Fetch response
-     */
-    async patch(url, data, options = {}) {
-        return this.request(url, {
-            ...options,
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            body: JSON.stringify(data)
-        });
-    }
+  /**
+   * Make a PUT request
+   * @param {string} url - Request URL
+   * @param {object} data - Request body data
+   * @param {object} options - Request options
+   * @returns {Promise<Response>} Fetch response
+   */
+  async put(url, data, options = {}) {
+    return this.request(url, {
+      ...options,
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      body: JSON.stringify(data)
+    });
+  }
 
-    /**
-     * Cancel all active requests
-     */
-    cancelAllRequests() {
-        for (const controller of this.activeRequests.values()) {
-            controller.abort();
-        }
-        this.activeRequests.clear();
-    }
+  /**
+   * Make a DELETE request
+   * @param {string} url - Request URL
+   * @param {object} options - Request options
+   * @returns {Promise<Response>} Fetch response
+   */
+  async delete(url, options = {}) {
+    return this.request(url, {
+      ...options,
+      method: 'DELETE'
+    });
+  }
 
-    /**
-     * Clear the response cache
-     */
-    clearCache() {
-        this.cache.clear();
-        this.logger.debug('Response cache cleared');
+  /**
+   * Make a PATCH request
+   * @param {string} url - Request URL
+   * @param {object} data - Request body data
+   * @param {object} options - Request options
+   * @returns {Promise<Response>} Fetch response
+   */
+  async patch(url, data, options = {}) {
+    return this.request(url, {
+      ...options,
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      body: JSON.stringify(data)
+    });
+  }
+
+  /**
+   * Cancel all active requests
+   */
+  cancelAllRequests() {
+    for (const controller of this.activeRequests.values()) {
+      controller.abort();
     }
+    this.activeRequests.clear();
+  }
+
+  /**
+   * Clear the response cache
+   */
+  clearCache() {
+    this.cache.clear();
+    this.logger.debug('Response cache cleared');
+  }
 }
 
 export default BaseApiClient;

@@ -1,6 +1,6 @@
 /**
  * Error Handling and Logging Subsystem Example
- * 
+ *
  * This file demonstrates how the Error Handling and Logging Subsystem would be used
  * in the PingOne Import Tool. It shows the key components and their interactions.
  */
@@ -21,13 +21,13 @@ import { DefaultLogFormatter } from './js/modules/error-handling/formatters/defa
 function initErrorHandlingSubsystem() {
   // Create log formatter
   const logFormatter = new DefaultLogFormatter();
-  
+
   // Create log destinations
   const consoleDestination = new ConsoleLogDestination({
     minLevel: 'debug',
     formatter: logFormatter
   });
-  
+
   const fileDestination = new FileLogDestination({
     minLevel: 'info',
     formatter: logFormatter,
@@ -35,20 +35,20 @@ function initErrorHandlingSubsystem() {
     maxSize: 10 * 1024 * 1024, // 10MB
     maxFiles: 5
   });
-  
+
   // Create logging service
   const loggingService = new LoggingService({
     minLevel: 'debug',
     includeTimestamp: true,
     destinations: [consoleDestination, fileDestination]
   });
-  
+
   // Create error reporter
   const errorReporter = new ErrorReporter(window.uiManager, {
     defaultDuration: 5000,
     defaultPosition: 'top-right'
   });
-  
+
   // Create error service
   const errorService = new ErrorService(loggingService, errorReporter, {
     captureUnhandledErrors: true,
@@ -60,15 +60,15 @@ function initErrorHandlingSubsystem() {
       url: window.location.href
     })
   });
-  
+
   // Create facade components
   const errorManager = new ErrorManager(errorService, loggingService);
   const logManager = new LogManager(loggingService);
-  
+
   // Expose the components globally for easy access
   window.errorManager = errorManager;
   window.logManager = logManager;
-  
+
   // Return the components
   return {
     errorManager,
@@ -87,38 +87,38 @@ class ImportManager {
     this.errorManager = errorManager;
     this.logger = logManager.getLogger('ImportManager');
   }
-  
+
   async importUsers(file, populationId) {
     this.logger.info('Starting import process', {
       fileName: file.name,
       fileSize: file.size,
       populationId
     });
-    
+
     try {
       // Validate inputs
       if (!file) {
         throw this.errorManager.createValidationError('No file selected', 'file');
       }
-      
+
       if (!populationId) {
         throw this.errorManager.createValidationError('No population selected', 'populationId');
       }
-      
+
       // Process the file
       this.logger.debug('Processing file', { fileName: file.name });
       const users = await this.parseFile(file);
-      
+
       // Import users
       this.logger.info(`Importing ${users.length} users to population ${populationId}`);
       await this.importUsersToPopulation(users, populationId);
-      
+
       // Log success
       this.logger.info('Import completed successfully', {
         usersImported: users.length,
         populationId
       });
-      
+
       return {
         success: true,
         usersImported: users.length
@@ -131,26 +131,26 @@ class ImportManager {
         fileName: file?.name,
         populationId
       });
-      
+
       return {
         success: false,
         error: error.message
       };
     }
   }
-  
+
   async parseFile(file) {
     this.logger.debug('Parsing file', { fileName: file.name });
-    
+
     try {
       // File parsing logic
       const content = await this.readFile(file);
       const users = this.parseCSV(content);
-      
+
       this.logger.debug(`Parsed ${users.length} users from file`, {
         fileName: file.name
       });
-      
+
       return users;
     } catch (error) {
       // Transform the error to provide more context
@@ -161,20 +161,20 @@ class ImportManager {
       );
     }
   }
-  
+
   async importUsersToPopulation(users, populationId) {
     this.logger.debug(`Importing ${users.length} users to population ${populationId}`);
-    
+
     try {
       // Import logic
       for (let i = 0; i < users.length; i++) {
         const user = users[i];
-        
+
         this.logger.debug(`Importing user ${i + 1}/${users.length}`, {
           email: user.email,
           populationId
         });
-        
+
         await this.importUser(user, populationId);
       }
     } catch (error) {
@@ -186,7 +186,7 @@ class ImportManager {
       );
     }
   }
-  
+
   // Simulated methods
   async readFile(file) {
     return new Promise((resolve, reject) => {
@@ -196,7 +196,7 @@ class ImportManager {
       reader.readAsText(file);
     });
   }
-  
+
   parseCSV(content) {
     // Simplified CSV parsing
     return content
@@ -207,8 +207,8 @@ class ImportManager {
         return { email, firstName, lastName };
       });
   }
-  
-  async importUser(user, populationId) {
+
+  async importUser(user) {
     // Simulated API call
     return new Promise((resolve, reject) => {
       setTimeout(() => {
@@ -228,32 +228,32 @@ class ImportManager {
 async function exampleUsage() {
   // Initialize the subsystem
   const { errorManager, logManager } = initErrorHandlingSubsystem();
-  
+
   // Create an instance of ImportManager
   const importManager = new ImportManager(errorManager, logManager);
-  
+
   // Get a logger for this module
   const logger = logManager.getLogger('ExampleUsage');
-  
+
   logger.info('Starting example usage');
-  
+
   // Simulate file selection
   const file = new File(['email,firstName,lastName\nuser1@example.com,User,One'], 'users.csv');
-  
+
   // Simulate population selection
   const populationId = 'population-123';
-  
+
   // Import users
   logger.info('Importing users', { fileName: file.name, populationId });
   const result = await importManager.importUsers(file, populationId);
-  
+
   // Log the result
   if (result.success) {
     logger.info('Import successful', { usersImported: result.usersImported });
   } else {
     logger.error('Import failed', { error: result.error });
   }
-  
+
   // Example of direct error handling
   try {
     // Some operation that might fail
@@ -264,7 +264,7 @@ async function exampleUsage() {
       operation: 'exampleOperation'
     });
   }
-  
+
   logger.info('Example usage completed');
 }
 

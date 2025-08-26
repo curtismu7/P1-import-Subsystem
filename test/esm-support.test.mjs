@@ -16,7 +16,7 @@ describe('ESM Support', () => {
     const obj = { a: { b: 42 } };
     const value = obj?.a?.b;
     expect(value).toBe(42);
-    
+
     // Test nullish coalescing
     const nullValue = null;
     const defaultValue = nullValue ?? 'default';

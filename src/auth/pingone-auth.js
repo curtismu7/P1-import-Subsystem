@@ -2,19 +2,19 @@ import { Buffer } from 'buffer';
 
 /**
  * PingOne Authentication Module
- * 
+ *
  * Provides a robust, reusable authentication service for PingOne API.
  * Implements token management, automatic refresh, and error handling.
  */
 class PingOneAuth {
   /**
    * Create a new PingOneAuth instance
-   * @param {Object} config - Configuration object
+   * @param {object} config - Configuration object
    * @param {string} config.environmentId - PingOne Environment ID
    * @param {string} config.clientId - PingOne Client ID
    * @param {string} config.clientSecret - PingOne Client Secret
    * @param {string} [config.region='NA'] - PingOne region
-   * @param {Object} [options] - Additional options
+   * @param {object} [options] - Additional options
    * @param {boolean} [options.autoRefresh=true] - Whether to automatically refresh tokens
    * @param {number} [options.refreshThreshold=300] - Seconds before expiry to refresh token
    */
@@ -37,7 +37,7 @@ class PingOneAuth {
     this.region = region;
     this.autoRefresh = autoRefresh;
     this.refreshThreshold = refreshThreshold;
-    
+
     this.tokenData = null;
     this.tokenExpiry = null;
     this.refreshTimeout = null;
@@ -82,7 +82,7 @@ class PingOneAuth {
    * @private
    */
   scheduleRefresh(expiresIn) {
-    if (!this.autoRefresh || !expiresIn || expiresIn <= 0) return;
+    if (!this.autoRefresh || !expiresIn || expiresIn <= 0) {return;}
 
     // Clear any existing timeout
     if (this.refreshTimeout) {
@@ -92,7 +92,7 @@ class PingOneAuth {
 
     // Calculate refresh time (refreshThreshold seconds before expiry)
     const refreshIn = Math.max(1000, (expiresIn - this.refreshThreshold) * 1000);
-    
+
     this.refreshTimeout = setTimeout(async () => {
       try {
         await this.refreshToken();
@@ -147,11 +147,11 @@ class PingOneAuth {
       }
 
       const tokenData = await response.json();
-      
+
       // Store token data
       this.tokenData = tokenData;
       this.tokenExpiry = Math.floor(Date.now() / 1000) + (tokenData.expires_in || 3600);
-      
+
       // Schedule refresh if needed
       if (this.autoRefresh) {
         this.scheduleRefresh(tokenData.expires_in || 3600);
@@ -171,7 +171,7 @@ class PingOneAuth {
   clearToken() {
     this.tokenData = null;
     this.tokenExpiry = null;
-    
+
     if (this.refreshTimeout) {
       clearTimeout(this.refreshTimeout);
       this.refreshTimeout = null;
@@ -182,14 +182,14 @@ class PingOneAuth {
    * Make an authenticated request to the PingOne API
    * @param {string} method - HTTP method
    * @param {string} path - API path (e.g., '/populations')
-   * @param {Object} [options] - Fetch options
-   * @returns {Promise<Object>} Response data
+   * @param {object} [options] - Fetch options
+   * @returns {Promise<object>} Response data
    */
   async apiRequest(method, path, options = {}) {
     const token = await this.getToken();
-    
+
     const apiUrl = `https://api.pingone.com/v1/environments/${this.environmentId}${path}`;
-    
+
     const response = await fetch(apiUrl, {
       method,
       headers: {
