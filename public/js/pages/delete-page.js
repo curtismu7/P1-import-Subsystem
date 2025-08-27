@@ -1,3 +1,4 @@
+import { updateBeerMug } from '../utils/beer-mug.js';
 /**
  * Delete Page Module
  *
@@ -237,9 +238,9 @@ export class DeletePage {
                         <div class="progress-container">
                             <div id="delete-progress-text-left" class="progress-text">0%</div>
                             <div class="progress-bar">
-                                <div id="delete-progress-bar" class="progress-fill" style="width: 0%;"></div>
+                                <div id="delete-progress-fill" class="progress-fill" style="width: 0%;"></div>
                             </div>
-                            <svg id="beer-mug-svg-delete" class="beer-mug" width="56" height="56" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
+                            <div class="beer-stage"><svg id="beer-mug-svg-delete" class="beer-mug" width="140" height="140" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
                                 <defs>
                                     <clipPath id="beer-clip-delete">
                                         <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z" />
@@ -250,7 +251,7 @@ export class DeletePage {
                                 <path d="M27 12 h2 a3 3 0 0 1 3 3 v6 a3 3 0 0 1-3 3 h-2" fill="none" stroke="#1f2937" stroke-width="1.5"/>
                                 <rect id="beer-fill-delete" x="9" y="26" width="16" height="0" fill="#f59e0b" clip-path="url(#beer-clip-delete)"/>
                                 <rect id="beer-foam-delete" x="9" y="26" width="16" height="0.001" fill="#ffffff" opacity="0.95" clip-path="url(#beer-clip-delete)"/>
-                            </svg>
+                            </svg></div>
                             <div id="progress-percentage" class="progress-text">0%</div>
                         </div>
                         
@@ -444,7 +445,11 @@ export class DeletePage {
       const confirmCb = modal.querySelector('#confirm-delete-warning');
       const proceedBtn = modal.querySelector('#proceed-delete-btn');
       confirmCb?.addEventListener('change', () => { if (proceedBtn) proceedBtn.disabled = !confirmCb.checked; });
-      proceedBtn?.addEventListener('click', () => { this.forceCloseDeleteModal(); this.clearAllOverlays(); this.startDelete(); });
+      proceedBtn?.addEventListener('click', () => {
+        if (proceedBtn.disabled) { return; }
+        proceedBtn.disabled = true;
+        this.forceCloseDeleteModal(); this.clearAllOverlays(); this.startDelete();
+      });
       modal.querySelector('#close-delete-modal')?.addEventListener('click', () => this.hideModalBackdrop());
       modal.querySelector('#cancel-delete-modal')?.addEventListener('click', () => this.hideModalBackdrop());
       // Always use a custom, draggable modal without any backdrop
@@ -455,6 +460,10 @@ export class DeletePage {
         modal.style.position = 'fixed';
         modal.style.inset = '0';
         modal.style.background = 'transparent';
+        // Accessibility
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-label', 'Delete Users Warning Dialog');
       } catch (_) { /* no-op */ }
     });
 
@@ -680,12 +689,22 @@ export class DeletePage {
       loadUsersBtn.disabled = !this.selectedPopulation;
     }
 
+    // Clear any stale selections when population changes
+    try {
+      if (this.selectedUserIds) { this.selectedUserIds.clear(); }
+      this.updateSelectedCount();
+    } catch (_) {}
+
     // Update delete button state based on available options
     this.updateDeleteButtonState();
 
-    // Automatically load users when population is selected
-    if (this.selectedPopulation) {
-      this.loadUsers();
+    // Automatically load users when population is selected, debounced
+    if (this.selectedPopulation && String(this.selectedPopulation).trim() !== '') {
+      clearTimeout(this._autoLoadTimer);
+      this._autoLoadTimer = setTimeout(() => {
+        try { this.app?.showLoading?.('Loading users...'); } catch (_) {}
+        this.loadUsers().finally(() => { try { this.app?.hideLoading?.(); } catch (_) {} });
+      }, 250);
     }
   }
 
@@ -835,6 +854,10 @@ export class DeletePage {
     if (!usersList || !userSelectionSection) {return;}
 
     try {
+      // Show global spinner as a fallback to ensure visibility in all flows
+      try { this.app?.showLoading?.('Loading users...'); } catch (_) {}
+      // Reset previous selections for a clean state
+      if (this.selectedUserIds) { this.selectedUserIds.clear(); }
       usersList.innerHTML = '<div class="text-center"><div class="spinner-border"></div><p>Loading users...</p></div>';
       userSelectionSection.style.display = 'block';
 
@@ -860,11 +883,24 @@ export class DeletePage {
           throw new Error('Invalid response format from server');
         }
       } else {
+        if (response.status === 401 || response.status === 403) {
+          try { await window.csrfManager?.refreshToken?.(); } catch (_) {}
+          const retry = await window.csrfManager.fetchWithCSRF('/api/export-users', {
+            method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ populationId: this.selectedPopulation, format: 'json', fields: 'basic' })
+          });
+          if (retry.ok) {
+            const users = await retry.json();
+            if (Array.isArray(users)) { this.renderUsers(users); return; }
+          }
+        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
       console.error('❌ Error loading users:', error);
       usersList.innerHTML = '<div class="alert alert-danger">Error loading users. Please try again.</div>';
+    }
+    finally {
+      try { this.app?.hideLoading?.(); } catch (_) {}
     }
   }
 
@@ -1002,7 +1038,7 @@ export class DeletePage {
       inlineBtn.addEventListener('click', () => {
         // Show inline spinner while the warning modal is being prepared
         try { this.app?.setButtonLoading?.(inlineBtn, true); } catch (_) { inlineBtn.classList.add('is-loading'); inlineBtn.disabled = true; }
-        openDeleteWarning();
+        this.showDeleteWarningModal();
         // Remove spinner shortly after modal opens
         setTimeout(() => {
           try { this.app?.setButtonLoading?.(inlineBtn, false); } catch (_) { inlineBtn.classList.remove('is-loading'); inlineBtn.disabled = false; }
@@ -1278,8 +1314,28 @@ export class DeletePage {
         throw new Error(result.message || 'Delete operation failed');
       }
 
+      // Mark row status in table
+      try {
+        const rowCb = document.getElementById(`user-${userId}`);
+        const row = rowCb ? rowCb.closest('tr') : null;
+        if (row) {
+          row.style.outline = '2px solid var(--bs-success, #198754)';
+          row.style.backgroundColor = 'rgba(25,135,84,0.08)';
+          setTimeout(() => { try { row.style.outline = ''; row.style.backgroundColor = ''; } catch (_) {} }, 1200);
+        }
+      } catch (_) {}
       return result;
     } catch (error) {
+      // Mark failure
+      try {
+        const rowCb = document.getElementById(`user-${userId}`);
+        const row = rowCb ? rowCb.closest('tr') : null;
+        if (row) {
+          row.style.outline = '2px solid var(--bs-danger, #dc3545)';
+          row.style.backgroundColor = 'rgba(220,53,69,0.08)';
+          setTimeout(() => { try { row.style.outline = ''; row.style.backgroundColor = ''; } catch (_) {} }, 1800);
+        }
+      } catch (_) {}
       throw new Error(`Population user deletion failed: ${error.message}`);
     }
   }
@@ -1298,7 +1354,7 @@ export class DeletePage {
   }
 
   updateDeleteProgress(processed, total, status) {
-    const progressBar = document.getElementById('delete-progress-bar');
+    const progressBar = document.getElementById('delete-progress-fill');
     const progressTextLeft = document.getElementById('delete-progress-text-left');
     const beerFill = document.getElementById('beer-fill-delete');
     const beerFoam = document.getElementById('beer-foam-delete');
@@ -1319,19 +1375,8 @@ export class DeletePage {
       progressTextLeft.textContent = `${percentage}%`;
     }
 
-    // Beer mug fill & foam positioning
-    if (beerFill) {
-      const fillHeight = Math.max(0, Math.min(16, (percentage / 100) * 16));
-      const yFill = 26 - fillHeight;
-      beerFill.setAttribute('y', String(yFill));
-      beerFill.setAttribute('height', String(fillHeight));
-    }
-    if (beerFoam) {
-      const foamHeight = percentage > 0 ? (percentage < 100 ? 3 : 4) : 0.001;
-      const yFoam = 26 - Math.max(0, Math.min(16, (percentage / 100) * 16)) - foamHeight;
-      beerFoam.setAttribute('y', String(yFoam));
-      beerFoam.setAttribute('height', String(foamHeight));
-    }
+    // Shared beer mug animation
+    try { updateBeerMug('delete', percentage); } catch (_) {}
 
     if (statusText) {statusText.textContent = status;}
     if (processedCount) {processedCount.textContent = processed;}
@@ -1489,78 +1534,68 @@ export class DeletePage {
 
   showDeleteWarningModal() {
     console.log('🔍 showDeleteWarningModal called');
-    const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
-    console.log('Selected checkboxes found:', selectedCheckboxes.length);
+    const modal = document.getElementById('delete-warning-modal');
+    if (!modal) { return; }
 
-    // Determine the source of users (file or population)
-    const hasFile = this.selectedFile !== null;
-    const hasPopulation = this.selectedPopulation !== null && this.selectedPopulation !== '';
+    const selectedCheckboxes = Array.from(document.querySelectorAll('.user-checkbox:checked'));
+    const populationSelect = document.getElementById('delete-population-select');
+    const popName = populationSelect ? populationSelect.options[populationSelect.selectedIndex]?.text : '-';
+    const usersHtml = selectedCheckboxes.slice(0, 50).map(cb => {
+      const row = cb.closest('tr');
+      const username = row?.querySelector('.col-username')?.innerText || 'User';
+      const email = row?.querySelector('.col-email')?.innerText || '';
+      return `<div class="mb-1"><strong>${username}</strong><br><small class="text-muted">${email}</small></div>`;
+    }).join('');
 
-    let sourceName = 'Unknown Source';
-    if (hasFile && hasPopulation) {
-      sourceName = 'CSV File + Population';
-    } else if (hasFile) {
-      sourceName = 'CSV File';
-    } else if (hasPopulation) {
-      const populationSelect = document.getElementById('delete-population-select');
-      sourceName = populationSelect ? populationSelect.options[populationSelect.selectedIndex]?.text : 'Unknown Population';
-    }
+    modal.innerHTML = `
+      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="mdi mdi-alert"></i> Delete Users - Warning</h5>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="close-delete-modal">Close</button>
+          </div>
+          <div class="modal-body">
+            <div class="row" style="margin-bottom:8px;">
+              <div class="col-md-6"><h5 class="fw-bold">Selected Population</h5><p class="text-muted">${popName}</p></div>
+              <div class="col-md-6"><h5 class="fw-bold">Users to Delete</h5><p class="text-danger fw-bold">${this.selectedUserIds?.size || selectedCheckboxes.length}</p></div>
+            </div>
+            <div style="margin-bottom:8px;">
+              <h5 class="fw-bold">Selected Users</h5>
+              <div class="border rounded p-2" style="max-height: 200px; overflow-y:auto;">${usersHtml || '<p class="text-muted">No users selected</p>'}</div>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="confirm-delete-warning">
+              <label class="form-check-label text-danger fw-bold" for="confirm-delete-warning">I understand that this action will permanently delete the selected users and cannot be undone</label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancel-delete-modal">Cancel</button>
+            <button type="button" class="btn btn-outline-info" id="export-backup-btn">Export Backup First</button>
+            <button type="button" class="btn btn-danger" id="proceed-delete-btn" disabled style="background:#dc3545; color:#fff; border-color:#dc3545;">Proceed with Delete</button>
+          </div>
+        </div>
+      </div>`;
 
-    // Update modal content with actual data
-    const modalPopulationName = document.getElementById('modal-population-name');
-    const modalUserCount = document.getElementById('modal-user-count');
-    const userList = document.getElementById('modal-user-list');
+    // Hook dynamic events for this instance
+    modal.querySelector('#export-backup-btn')?.addEventListener('click', (e) => { e.preventDefault(); this.exportBackup(); });
+    const confirmCb = modal.querySelector('#confirm-delete-warning');
+    const proceedBtn = modal.querySelector('#proceed-delete-btn');
+    confirmCb?.addEventListener('change', () => { if (proceedBtn) proceedBtn.disabled = !confirmCb.checked; });
+    proceedBtn?.addEventListener('click', () => { this.forceCloseDeleteModal(); this.clearAllOverlays(); this.startDelete(); });
+    modal.querySelector('#close-delete-modal')?.addEventListener('click', () => this.hideModalBackdrop());
+    modal.querySelector('#cancel-delete-modal')?.addEventListener('click', () => this.hideModalBackdrop());
 
-    if (modalPopulationName) {
-      modalPopulationName.textContent = sourceName;
-    }
+    // Always use a custom, draggable modal without any backdrop
+    try {
+      modal.style.display = 'block';
+      modal.classList.add('show');
+      modal.style.position = 'fixed';
+      modal.style.inset = '0';
+      modal.style.background = 'transparent';
+    } catch (_) {}
 
-    if (modalUserCount) {
-      modalUserCount.textContent = selectedCheckboxes.length.toString();
-    }
-
-    // Build user list (shows empty state if none selected)
-    if (userList) {
-      const userItems = Array.from(selectedCheckboxes).map(checkbox => {
-        const label = checkbox.nextElementSibling;
-        const username = label.querySelector('strong')?.textContent || 'Unknown User';
-        const email = label.querySelector('small')?.textContent || '';
-        return `<div class="mb-1"><strong>${username}</strong><br><small class="text-muted">${email}</small></div>`;
-      }).join('');
-
-      userList.innerHTML = userItems || '<p class="text-muted">No users selected</p>';
-    }
-
-    // Reset confirmation checkbox
-    const confirmCheckbox = document.getElementById('confirm-delete-warning');
-    if (confirmCheckbox) {
-      confirmCheckbox.checked = false;
-    }
-
-    this.updateModalDeleteButton();
-
-    // Show modal
-    const modalElement = document.getElementById('delete-warning-modal');
-    if (modalElement) {
-      // Fallback modal without Bootstrap
-      try {
-        if (window.bootstrap && window.bootstrap.Modal) {
-          const modal = new bootstrap.Modal(modalElement, { backdrop: 'static', keyboard: false });
-      modal.show();
-        } else {
-          modalElement.style.display = 'block';
-          modalElement.classList.add('show');
-        }
-      } catch (_) {
-        modalElement.style.display = 'block';
-        modalElement.classList.add('show');
-      }
-
-      // Enable draggable behavior once visible
-      setTimeout(() => {
-        this.makeModalDraggable('delete-warning-modal');
-      }, 50);
-    }
+    // Enable draggable behavior once visible
+    setTimeout(() => { this.makeModalDraggable('delete-warning-modal'); }, 50);
   }
 
   updateModalDeleteButton() {

@@ -2,6 +2,7 @@
 // PingOne User Management Tool v7.3.0
 
 import { realtimeClient } from '../services/realtime-client.js';
+import { updateBeerMug } from '../utils/beer-mug.js';
 import csrfManager from '../utils/csrf-utils.js';
 
 export class ImportPage {
@@ -208,7 +209,7 @@ export class ImportPage {
                             <div class="progress-bar">
                                 <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
                             </div>
-                            <div class="beer-stage"><svg id="beer-mug-svg-import" class="beer-mug" width="112" height="112" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
+                            <div class="beer-stage"><svg id="beer-mug-svg-import" class="beer-mug" width="140" height="140" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
                                 <defs>
                                     <clipPath id="beer-clip-import">
                                         <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z" />
@@ -1157,49 +1158,8 @@ export class ImportPage {
       progressTextLeft.textContent = Math.round(percentage) + '%';
     }
 
-    // Beer mug fill & foam positioning
-    if (beerFill) {
-      const fillHeight = Math.max(0, Math.min(16, (percentage / 100) * 16));
-      const yFill = 26 - fillHeight;
-      beerFill.setAttribute('y', String(yFill));
-      beerFill.setAttribute('height', String(fillHeight));
-      // Make beer appear edge-to-edge by slightly widening and shifting fill
-      beerFill.setAttribute('x', '8.5');
-      beerFill.setAttribute('width', '17');
-    }
-    if (beerFoam) {
-      const fillH = Math.max(0, Math.min(16, (percentage / 100) * 16));
-      const crest = 26 - fillH; // top of liquid
-      const amplitude = percentage < 100 ? 0.6 : 0.2; // smaller ripple at the end
-      const wave = `M9 ${crest} C 13 ${crest - amplitude}, 21 ${crest + amplitude}, 25 ${crest} L25 ${crest + 3} L9 ${crest + 3} Z`;
-      beerFoam.setAttribute('d', wave);
-    }
-
-    // Foam overflow near completion
-    try {
-      const overflow = document.getElementById('beer-foam-overflow');
-      const drop = document.getElementById('beer-foam-drop');
-      if (overflow && drop) {
-        if (percentage >= 92) {
-          const extra = Math.min(4, (percentage - 92) / 8 * 4); // up to 4px overflow
-          overflow.style.display = 'block';
-          overflow.setAttribute('height', String(extra));
-          overflow.setAttribute('y', String(8));
-          // occasional falling drop
-          if (percentage >= 98) {
-            drop.style.display = 'block';
-            drop.classList.add('foam-drop-anim');
-            // reset animation so multiple passes can occur
-            setTimeout(() => { drop.classList.remove('foam-drop-anim'); }, 1300);
-          } else {
-            drop.style.display = 'none';
-          }
-        } else {
-          overflow.style.display = 'none';
-          drop.style.display = 'none';
-        }
-      }
-    } catch (_) { /* non-blocking */ }
+    // In progress update function (e.g., simulateImport or driveImportProgress)
+    updateBeerMug('import', percentage);
   }
 
   completeImport(finalData) {

@@ -1,0 +1,452 @@
+
+> pingone-import-cursor@7.7.0.0 test:routes
+> cross-env NODE_OPTIONS='--experimental-vm-modules' NODE_ENV=test jest test/integration/route-availability.test.mjs --config=jest.config.mjs --runInBand --detectOpenHandles --forceExit
+
+  console.log
+    🧪 Test setup completed
+
+      at Object.<anonymous> (test/setup-tests.cjs:64:9)
+
+  console.log
+    Settings file path: /Users/cmuir/P1Import-apps/P1-import-Subsystem/data/settings.json
+
+      at routes/api/settings.js:38:9
+
+[32m[2025-08-26T17:15:25.491Z] [pingone-import] [INFO] 🚀 API REQUEST: GET /api/health
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "method": "GET",
+  "url": "/api/health",
+  "ip": "::ffff:127.0.0.1",
+  "body": null,
+  "query": null,
+  "params": null,
+  "requestId": "req_1756228525490_l8rvixexb"
+}[0m
+[36m[2025-08-26 12:15:25.502] [pingone-import] [DEBUG] GET /api/health - Entry
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "requestId": "req_1756228525490_l8rvixexb"
+}[0m
+[32m[2025-08-26 12:15:25.505] [pingone-import] [INFO] GET /api/health - Health check completed successfully
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "requestId": "req_1756228525490_l8rvixexb",
+  "responseTime": "3ms"
+}[0m
+[32m[2025-08-26T17:15:25.510Z] [pingone-import] [INFO] ✅ API RESPONSE: GET /api/health [200]
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "requestId": "req_1756228525490_l8rvixexb",
+  "method": "GET",
+  "url": "/api/health",
+  "statusCode": 200,
+  "duration": "19ms",
+  "contentType": "application/json; charset=utf-8",
+  "contentLength": "518"
+}[0m
+[32m[2025-08-26T17:15:25.664Z] [pingone-import] [INFO] 🚀 API REQUEST: GET /api/auth/status
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "method": "GET",
+  "url": "/api/auth/status",
+  "ip": "::ffff:127.0.0.1",
+  "body": null,
+  "query": null,
+  "params": null,
+  "requestId": "req_1756228525664_4bntvle2l",
+  "subsystem": "credential-management",
+  "endpoint": "/status"
+}[0m
+[31m[2025-08-26T17:15:25.670Z] [pingone-import] [ERROR] ❌ API RESPONSE: GET /api/auth/status [503]
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "requestId": "req_1756228525664_4bntvle2l",
+  "method": "GET",
+  "url": "/api/auth/status",
+  "statusCode": 503,
+  "duration": "6ms",
+  "contentType": "application/json; charset=utf-8",
+  "contentLength": "258",
+  "subsystem": "credential-management",
+  "endpoint": "/status"
+}[0m
+[32m[2025-08-26T17:15:25.678Z] [pingone-import] [INFO] 🚀 API REQUEST: GET /api/auth/current-credentials
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "method": "GET",
+  "url": "/api/auth/current-credentials",
+  "ip": "::ffff:127.0.0.1",
+  "body": null,
+  "query": null,
+  "params": null,
+  "requestId": "req_1756228525678_p1jgfn8dm",
+  "subsystem": "credential-management",
+  "endpoint": "/current-credentials"
+}[0m
+[31m[2025-08-26T17:15:25.683Z] [pingone-import] [ERROR] ❌ API RESPONSE: GET /api/auth/current-credentials [503]
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "requestId": "req_1756228525678_p1jgfn8dm",
+  "method": "GET",
+  "url": "/api/auth/current-credentials",
+  "statusCode": 503,
+  "duration": "5ms",
+  "contentType": "application/json; charset=utf-8",
+  "contentLength": "258",
+  "subsystem": "credential-management",
+  "endpoint": "/current-credentials"
+}[0m
+[32m[2025-08-26T17:15:25.777Z] [pingone-import] [INFO] 🚀 API REQUEST: POST /api/auth/refresh-token
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "method": "POST",
+  "url": "/api/auth/refresh-token",
+  "ip": "::ffff:127.0.0.1",
+  "contentType": "application/json",
+  "contentLength": "2",
+  "body": null,
+  "query": null,
+  "params": null,
+  "requestId": "req_1756228525777_julqm2ygp",
+  "subsystem": "credential-management",
+  "endpoint": "/refresh-token"
+}[0m
+[31m[2025-08-26T17:15:25.782Z] [pingone-import] [ERROR] ❌ API RESPONSE: POST /api/auth/refresh-token [503]
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "requestId": "req_1756228525777_julqm2ygp",
+  "method": "POST",
+  "url": "/api/auth/refresh-token",
+  "statusCode": 503,
+  "duration": "5ms",
+  "contentType": "application/json; charset=utf-8",
+  "contentLength": "258",
+  "subsystem": "credential-management",
+  "endpoint": "/refresh-token"
+}[0m
+[32m
+════════════════════════════════════════════════════════════════════════════════
+[2025-08-26 12:15:25.794] [pingone-import] [INFO] >>> START EXPORT Export started
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "sessionId": "export_1756228525794",
+  "total": 0,
+  "population": null
+}[0m
+[32m[2025-08-26T17:15:25.805Z] [pingone-import] [INFO] 🚀 API REQUEST: GET /api/health
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "method": "GET",
+  "url": "/api/health",
+  "ip": "::ffff:127.0.0.1",
+  "body": null,
+  "query": null,
+  "params": null,
+  "requestId": "req_1756228525805_ngww1ttam"
+}[0m
+[36m[2025-08-26 12:15:25.810] [pingone-import] [DEBUG] GET /api/health - Entry
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "requestId": "req_1756228525805_ngww1ttam"
+}[0m
+[32m[2025-08-26 12:15:25.811] [pingone-import] [INFO] GET /api/health - Health check completed successfully
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "requestId": "req_1756228525805_ngww1ttam",
+  "responseTime": "1ms"
+}[0m
+[32m[2025-08-26T17:15:25.813Z] [pingone-import] [INFO] ✅ API RESPONSE: GET /api/health [200]
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "requestId": "req_1756228525805_ngww1ttam",
+  "method": "GET",
+  "url": "/api/health",
+  "statusCode": 200,
+  "duration": "8ms",
+  "contentType": "application/json; charset=utf-8",
+  "contentLength": "516"
+}[0m
+[32m[2025-08-26T17:15:25.954Z] [pingone-import] [INFO] 🚀 API REQUEST: GET /api/health
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "method": "GET",
+  "url": "/api/health",
+  "ip": "::ffff:127.0.0.1",
+  "body": null,
+  "query": null,
+  "params": null,
+  "requestId": "req_1756228525954_bwa63iu7r"
+}[0m
+[36m[2025-08-26 12:15:25.958] [pingone-import] [DEBUG] GET /api/health - Entry
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "requestId": "req_1756228525954_bwa63iu7r"
+}[0m
+[32m[2025-08-26 12:15:25.960] [pingone-import] [INFO] GET /api/health - Health check completed successfully
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "requestId": "req_1756228525954_bwa63iu7r",
+  "responseTime": "2ms"
+}[0m
+[32m[2025-08-26T17:15:25.961Z] [pingone-import] [INFO] ✅ API RESPONSE: GET /api/health [200]
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "requestId": "req_1756228525954_bwa63iu7r",
+  "method": "GET",
+  "url": "/api/health",
+  "statusCode": 200,
+  "duration": "7ms",
+  "contentType": "application/json; charset=utf-8",
+  "contentLength": "519"
+}[0m
+[32m[2025-08-26T17:15:26.095Z] [pingone-import] [INFO] 🚀 API REQUEST: GET /api/non-existent
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "method": "GET",
+  "url": "/api/non-existent",
+  "ip": "::ffff:127.0.0.1",
+  "body": null,
+  "query": null,
+  "params": null,
+  "requestId": "req_1756228526095_blaz5nug2"
+}[0m
+[31m[2025-08-26T17:15:26.101Z] [pingone-import] [ERROR] ❌ API RESPONSE: GET /api/non-existent [404]
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "requestId": "req_1756228526095_blaz5nug2",
+  "method": "GET",
+  "url": "/api/non-existent",
+  "statusCode": 404,
+  "duration": "6ms",
+  "contentType": "application/json; charset=utf-8",
+  "contentLength": "164"
+}[0m
+[32m[2025-08-26 12:15:26.108] [pingone-import-server] [INFO] 🔍 Starting Route Health Check...
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0"
+}[0m
+[31m[2025-08-26 12:15:26.110] [pingone-import-server] [ERROR] ❌ Route Health Check FAILED
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "duration": "2ms",
+  "totalRoutes": 21,
+  "criticalFound": 6,
+  "criticalMissing": 7,
+  "missingRoutes": [
+    "/api/logs",
+    "/api/logs/ui",
+    "/api/auth/status",
+    "/api/auth/current-credentials",
+    "/api/auth/refresh-token",
+    "/api/settings",
+    "/api/debug-log"
+  ],
+  "status": "unhealthy"
+}[0m
+  console.error
+    🚨 CRITICAL ROUTE HEALTH CHECK FAILURE:
+
+      174 |
+      175 |       // Write to stderr for immediate attention
+    > 176 |       console.error('🚨 CRITICAL ROUTE HEALTH CHECK FAILURE:');
+          |               ^
+      177 |       console.error('Missing critical routes:', validation.missingRoutes);
+      178 |     }
+      179 |
+
+      at performRouteHealthCheck (server/route-health-checker.js:176:15)
+      at Object.<anonymous> (test/integration/route-availability.test.mjs:135:20)
+
+  console.error
+    Missing critical routes: [
+      '/api/logs',
+      '/api/logs/ui',
+      '/api/auth/status',
+      '/api/auth/current-credentials',
+      '/api/auth/refresh-token',
+      '/api/settings',
+      '/api/debug-log'
+    ]
+
+      175 |       // Write to stderr for immediate attention
+      176 |       console.error('🚨 CRITICAL ROUTE HEALTH CHECK FAILURE:');
+    > 177 |       console.error('Missing critical routes:', validation.missingRoutes);
+          |               ^
+      178 |     }
+      179 |
+      180 |     // Log all registered routes for debugging
+
+      at performRouteHealthCheck (server/route-health-checker.js:177:15)
+      at Object.<anonymous> (test/integration/route-availability.test.mjs:135:20)
+
+[36m[2025-08-26 12:15:26.115] [pingone-import-server] [DEBUG] 📋 All Registered Routes:
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "routes": [
+    "get /api/status",
+    "get /api/health",
+    "get /api/feature-flags",
+    "post /api/feature-flags/:flag",
+    "post /api/feature-flags/reset",
+    "post /api/import",
+    "get /api/import/progress/:sessionId",
+    "get /api/history",
+    "get /api/populations",
+    "get /api/populations/cache-status",
+    "get /api/populations/:populationId/users",
+    "post /api/export-users",
+    "post /api/pingone/get-token",
+    "get /api/version",
+    "post /api/delete-users",
+    "post /api/test-connection",
+    "get /api/pingone/users",
+    "get /api/environment/info",
+    "get /api/module-info",
+    "get /api/csrf-token",
+    "get /health"
+  ],
+  "count": 21
+}[0m
+[32m[2025-08-26 12:15:26.116] [pingone-import-server] [INFO] 🔍 Starting Route Health Check...
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0"
+}[0m
+[31m[2025-08-26 12:15:26.117] [pingone-import-server] [ERROR] ❌ Route Health Check FAILED
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "duration": "1ms",
+  "totalRoutes": 21,
+  "criticalFound": 6,
+  "criticalMissing": 7,
+  "missingRoutes": [
+    "/api/logs",
+    "/api/logs/ui",
+    "/api/auth/status",
+    "/api/auth/current-credentials",
+    "/api/auth/refresh-token",
+    "/api/settings",
+    "/api/debug-log"
+  ],
+  "status": "unhealthy"
+}[0m
+  console.error
+    🚨 CRITICAL ROUTE HEALTH CHECK FAILURE:
+
+      174 |
+      175 |       // Write to stderr for immediate attention
+    > 176 |       console.error('🚨 CRITICAL ROUTE HEALTH CHECK FAILURE:');
+          |               ^
+      177 |       console.error('Missing critical routes:', validation.missingRoutes);
+      178 |     }
+      179 |
+
+      at performRouteHealthCheck (server/route-health-checker.js:176:15)
+      at generateRouteHealthReport (server/route-health-checker.js:249:18)
+      at Object.<anonymous> (test/integration/route-availability.test.mjs:145:20)
+
+  console.error
+    Missing critical routes: [
+      '/api/logs',
+      '/api/logs/ui',
+      '/api/auth/status',
+      '/api/auth/current-credentials',
+      '/api/auth/refresh-token',
+      '/api/settings',
+      '/api/debug-log'
+    ]
+
+      175 |       // Write to stderr for immediate attention
+      176 |       console.error('🚨 CRITICAL ROUTE HEALTH CHECK FAILURE:');
+    > 177 |       console.error('Missing critical routes:', validation.missingRoutes);
+          |               ^
+      178 |     }
+      179 |
+      180 |     // Log all registered routes for debugging
+
+      at performRouteHealthCheck (server/route-health-checker.js:177:15)
+      at generateRouteHealthReport (server/route-health-checker.js:249:18)
+      at Object.<anonymous> (test/integration/route-availability.test.mjs:145:20)
+
+[36m[2025-08-26 12:15:26.120] [pingone-import-server] [DEBUG] 📋 All Registered Routes:
+{
+  "env": "test",
+  "pid": 53238,
+  "version": "7.7.0.0",
+  "routes": [
+    "get /api/status",
+    "get /api/health",
+    "get /api/feature-flags",
+    "post /api/feature-flags/:flag",
+    "post /api/feature-flags/reset",
+    "post /api/import",
+    "get /api/import/progress/:sessionId",
+    "get /api/history",
+    "get /api/populations",
+    "get /api/populations/cache-status",
+    "get /api/populations/:populationId/users",
+    "post /api/export-users",
+    "post /api/pingone/get-token",
+    "get /api/version",
+    "post /api/delete-users",
+    "post /api/test-connection",
+    "get /api/pingone/users",
+    "get /api/environment/info",
+    "get /api/module-info",
+    "get /api/csrf-token",
+    "get /health"
+  ],
+  "count": 21
+}[0m

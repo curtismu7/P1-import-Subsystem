@@ -51,7 +51,7 @@ export class TokenManagementPage {
                             <div class="status-container">
                                 <span id="token-status-text">Checking...</span>
                                 <div class="status-indicator" id="token-status-indicator">
-                                    <i class="fas fa-question-circle"></i>
+                                    <i class="mdi mdi-help-circle"></i>
                                 </div>
                             </div>
                             
@@ -85,9 +85,9 @@ export class TokenManagementPage {
                         <div id="token-display" class="token-raw" style="display:none;"></div>
                         <textarea id="token-string" class="token-raw" placeholder="Paste your JWT token here or get a token using the 'Get Token' button"></textarea>
                         <div class="token-actions-row">
-                            <button id="get-token-btn" class="btn btn-outline-secondary btn-sm"><i class="fas fa-key"></i> Get Token</button>
-                            <button id="copy-token-btn" class="btn btn-outline-secondary btn-sm"><i class="fas fa-copy"></i> Copy Token</button>
-                            <button id="decode-token-btn" class="btn btn-outline-secondary btn-sm"><i class="fas fa-code"></i> Decode JWT</button>
+                            <button id="get-token-btn" class="btn btn-outline-secondary btn-sm"><i class="mdi mdi-key"></i> Get Token</button>
+                            <button id="copy-token-btn" class="btn btn-outline-secondary btn-sm"><i class="mdi mdi-content-copy"></i> Copy Token</button>
+                            <button id="decode-token-btn" class="btn btn-outline-secondary btn-sm"><i class="mdi mdi-code-braces"></i> Decode JWT</button>
                         </div>
                     </div>
                 </section>
@@ -132,19 +132,19 @@ export class TokenManagementPage {
                         <div class="token-actions">
                             <div class="action-group">
                                 <button id="refresh-token-btn" class="btn btn-danger">
-                                    <i class="fas fa-sync"></i> Refresh Token
+                                    <i class="mdi mdi-refresh"></i> Refresh Token
                                 </button>
                                 <button id="validate-token-btn" class="btn btn-danger">
-                                    <i class="fas fa-check-circle"></i> Validate Token
+                                    <i class="mdi mdi-check-circle"></i> Validate Token
                                 </button>
                                 <button id="test-connection-btn" class="btn btn-danger">
-                                    <i class="fas fa-plug"></i> Test Connection
+                                    <i class="mdi mdi-power-plug"></i> Test Connection
                                 </button>
                                 <button id="revoke-token-btn" class="btn btn-danger">
-                                    <i class="fas fa-ban"></i> Revoke Token
+                                    <i class="mdi mdi-cancel"></i> Revoke Token
                                 </button>
                                 <button id="clear-token-btn" class="btn btn-danger">
-                                    <i class="fas fa-trash"></i> Clear Token
+                                    <i class="mdi mdi-delete"></i> Clear Token
                                 </button>
                             </div>
                         </div>
@@ -166,7 +166,7 @@ export class TokenManagementPage {
                     <div class="section-header">
                         <h2 class="section-title">Token History</h2>
                         <button id="clear-history-btn" class="btn btn-outline-secondary btn-sm">
-                            <i class="fas fa-trash"></i> Clear History
+                            <i class="mdi mdi-delete"></i> Clear History
                         </button>
                     </div>
                     <div class="token-box">
@@ -223,7 +223,7 @@ export class TokenManagementPage {
                         
                         <div class="export-actions">
                             <button type="button" id="cancel-operation" class="btn btn-danger">
-                                <i class="fas fa-times"></i> Cancel Operation
+                                <i class="mdi mdi-close"></i> Cancel Operation
                             </button>
                         </div>
                     </div>
@@ -241,10 +241,10 @@ export class TokenManagementPage {
                         
                         <div class="export-actions">
                             <button type="button" id="download-log-btn" class="btn btn-danger">
-                                <i class="fas fa-download"></i> Download Log
+                                <i class="mdi mdi-download"></i> Download Log
                             </button>
                             <button type="button" id="new-operation-btn" class="btn btn-outline-primary">
-                                <i class="fas fa-refresh"></i> New Operation
+                                <i class="mdi mdi-refresh"></i> New Operation
                             </button>
                         </div>
                     </div>
@@ -547,7 +547,7 @@ export class TokenManagementPage {
       const isTokenValid = this.isTokenValid(storedToken);
 
       if (isTokenValid) {
-        statusIndicator.className = 'status-indicator status-valid';
+        statusIndicator.className = 'status-indicator valid';
         statusIndicator.innerHTML = '<i class="fas fa-check-circle"></i>';
         statusText.textContent = 'Valid';
         tokenType.textContent = 'Bearer';
@@ -572,7 +572,7 @@ export class TokenManagementPage {
           this.decodeJWT(storedToken.token);
         }
       } else {
-        statusIndicator.className = 'status-indicator status-invalid';
+        statusIndicator.className = 'status-indicator invalid';
         statusIndicator.innerHTML = '<i class="fas fa-times-circle"></i>';
         statusText.textContent = 'Expired';
         tokenType.textContent = 'Bearer';
@@ -593,7 +593,7 @@ export class TokenManagementPage {
       }
     } else {
       console.log('❌ No stored token found');
-      statusIndicator.className = 'status-indicator status-invalid';
+      statusIndicator.className = 'status-indicator invalid';
       statusIndicator.innerHTML = '<i class="fas fa-times-circle"></i>';
       statusText.textContent = 'No Token';
       tokenType.textContent = '-';
@@ -659,26 +659,30 @@ export class TokenManagementPage {
         const result = await response.json();
         console.log('🔍 Server token status response:', result);
 
-        if (result.success && result.data?.data) {
-          const tokenData = result.data.data;
+        // Support both shapes: { success, data: status } and { success, data: { data: status } }
+        const envelope = result && result.data ? result.data : {};
+        const tokenData = envelope && envelope.data ? envelope.data : envelope;
+
+        if (result.success && tokenData && (tokenData.hasToken !== undefined)) {
 
           if (tokenData.hasToken && tokenData.isValid) {
-            // Get the actual token from startup data
+            // Prefer direct token endpoint to retrieve the actual token value
             let actualToken = null;
             try {
-              const startupResponse = await window.csrfManager.fetchWithCSRF('/api/settings/startup-data', {
-                method: 'GET',
+              const tokenResp = await window.csrfManager.fetchWithCSRF('/api/pingone/token', {
+                method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' }
               });
-              if (startupResponse.ok) {
-                const startupResult = await startupResponse.json();
-                if (startupResult.success && startupResult.data?.startupData?.token?.token) {
-                  actualToken = startupResult.data.startupData.token.token;
-                }
+              if (tokenResp.ok) {
+                const tokenJson = await tokenResp.json().catch(() => ({}));
+                // Support res.success wrapper or plain payload
+                actualToken = tokenJson?.data?.access_token || tokenJson?.access_token || null;
+              } else {
+                console.warn('⚠️ /api/pingone/token returned non-OK status', tokenResp.status);
               }
             } catch (error) {
-              console.log('⚠️ Could not get actual token from startup data:', error.message);
+              console.log('⚠️ Could not fetch token from /api/pingone/token:', error.message);
             }
 
             // Create token info from server response
@@ -1466,14 +1470,43 @@ export class TokenManagementPage {
       testSection.style.display = 'block';
       testResults.innerHTML = '<div class="text-center"><div class="spinner-border"></div><p>Running connection tests...</p></div>';
 
-      const response = await fetch('/api/pingone/test-connection');
+      // Build credentials from app settings
+      const s = this.app?.settings || {};
+      const regionMap = {
+        'NA': 'NA', 'NORTHAMERICA': 'NA', 'NorthAmerica': 'NA', 'northamerica': 'NA',
+        'EU': 'EU', 'EUROPE': 'EU', 'Europe': 'EU', 'europe': 'EU',
+        'APAC': 'APAC', 'ASIAPACIFIC': 'APAC', 'AsiaPacific': 'APAC', 'asiapacific': 'APAC'
+      };
+      const rawRegion = s.pingone_region || s.region || 'NA';
+      const region = regionMap[String(rawRegion).toUpperCase()] || 'NA';
+      const payload = {
+        environmentId: s.pingone_environment_id || s.environmentId,
+        clientId: s.pingone_client_id || s.apiClientId || s.clientId,
+        clientSecret: s.pingone_client_secret || s.apiSecret || s.clientSecret,
+        region
+      };
+
+      // POST with CSRF
+      const response = await (window.csrfManager?.fetchWithCSRF
+        ? window.csrfManager.fetchWithCSRF('/api/pingone/test-connection', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        : fetch('/api/pingone/test-connection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }));
 
       if (response.ok) {
         const results = await response.json();
         this.displayConnectionTestResults(results);
         this.addToTokenHistory('Connection test completed', 'info');
       } else {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const text = await response.text().catch(() => '');
+        throw new Error(text || `HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
       console.error('❌ Error testing connection:', error);

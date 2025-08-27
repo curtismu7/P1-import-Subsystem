@@ -18,6 +18,8 @@ class PingOneApp {
     this.version = '...';
     this.currentPage = 'home';
     this.settings = {};
+    // Revert: do not inject global eventBus into app to avoid UI-wide changes
+    this.eventBus = window.eventBus || null;
     this.tokenStatus = { isValid: false, expiresAt: null, timeLeft: null, isRefreshing: false };
 
     // File state persistence across pages
@@ -2105,12 +2107,22 @@ class PingOneApp {
   // Client log helper to feed winston client.log via server
   logClient(event, data = {}) {
     try {
-      fetch('/api/logs/client', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ event, data, ts: new Date().toISOString() })
-      }).catch(() => {});
+      const payload = { event, data, ts: new Date().toISOString() };
+      if (window.csrfManager && typeof window.csrfManager.fetchWithCSRF === 'function') {
+        window.csrfManager.fetchWithCSRF('/api/logs/client', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        }).catch(() => {});
+      } else {
+        fetch('/api/logs/client', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        }).catch(() => {});
+      }
     } catch (_) {}
   }
   // Optional floating toast

@@ -3,6 +3,8 @@
  * Handles user export functionality from PingOne populations
  */
 
+import { updateBeerMug } from '../utils/beer-mug.js';
+
 export class ExportPage {
   constructor(app) {
     this.app = app;
@@ -300,7 +302,7 @@ export class ExportPage {
                             <div class="progress-bar">
                                 <div id="export-progress-bar" class="progress-fill" style="width: 0%;"></div>
                             </div>
-                            <svg id="beer-mug-svg-export" class="beer-mug" width="112" height="112" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
+                            <svg id="beer-mug-svg-export" class="beer-mug" width="140" height="140" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
                                 <defs>
                                     <clipPath id="beer-clip-export">
                                         <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z" />
@@ -337,6 +339,19 @@ export class ExportPage {
                             </div>
                         </div>
                         
+                        <h4>Sample Users (Every 50th)</h4>
+                        <table id="sample-users-table" class="table table-striped">
+                          <thead>
+                            <tr>
+                              <th>ID</th>
+                              <th>Username</th>
+                              <th>Email</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                          </tbody>
+                        </table>
+
                         <div class="export-actions">
                             <button type="button" id="cancel-export" class="btn btn-danger" style="display: none;">
                                 <i class="mdi mdi-close"></i> Cancel Export
@@ -453,35 +468,9 @@ export class ExportPage {
     if (startBtn) {startBtn.addEventListener('click', async () => { this.app.setButtonLoading(startBtn, true); try { await this.handleStartExport(); } finally { this.app.setButtonLoading(startBtn, false); } });}
     if (directBtn) {
       directBtn.addEventListener('click', async () => {
-        if (!this.selectedPopulation) {
-          this.app?.showNotification?.('Please select a population first', 'warning');
-          return;
-        }
         this.app.setButtonLoading(directBtn, true);
         try {
-          const resp = await csrfManager.fetchWithCSRF('/api/export/download', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'text/csv' },
-            body: JSON.stringify({ populationId: this.selectedPopulation.id, populationName: this.selectedPopulation.name })
-          });
-          if (!resp.ok) {
-            const t = await resp.text();
-            throw new Error(`Export failed (${resp.status}): ${t}`);
-          }
-          const blob = await resp.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = this.generateFileName().replace(/\.\w+$/, '.csv');
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          this.app?.showNotification?.('CSV downloaded (all fields).', 'success');
-        } catch (e) {
-          console.error('Direct export failed:', e);
-          this.app?.showNotification?.('Direct export failed: ' + e.message, 'error');
+          await this.handleStartExport();
         } finally {
           this.app.setButtonLoading(directBtn, false);
         }
@@ -711,91 +700,14 @@ export class ExportPage {
     }
   }
 
-  generateSampleData() {
-    const format = this.exportOptions.format;
-
-    // Get checkbox states
-    const includeHeaders = document.getElementById('include-headers')?.checked ?? true;
-    const includeDisabled = document.getElementById('include-disabled')?.checked ?? false;
-    const includeMetadata = document.getElementById('include-metadata')?.checked ?? false;
-
-    // Get selected attributes from checkboxes
-    const selectedAttributes = this.getSelectedAttributes();
-
-    // Add metadata attributes if selected
-    if (includeMetadata) {
-      selectedAttributes.push('created_date', 'last_updated', 'last_login');
+  async generateSampleData() {
+    try {
+      const resp = await fetch('/api/export/preview?populationId=' + this.selectedPopulation.id);
+      const json = await resp.json();
+      return json.preview || 'No preview available';
+    } catch {
+      return 'Preview not available';
     }
-
-    if (format === 'csv' || format === 'xlsx') {
-      let csv = '';
-      if (includeHeaders) {
-        const headers = this.getProfileHeaders(selectedAttributes);
-        csv += headers.join(',') + '\n';
-      }
-
-      // Generate sample rows
-      const sampleUsers = [
-        { index: 1, status: 'Active' },
-        { index: 2, status: 'Active' },
-        { index: 3, status: 'Active' },
-        { index: 4, status: 'Disabled' },
-        { index: 5, status: 'Active' }
-      ];
-
-      sampleUsers.forEach(user => {
-        // Skip disabled users if not included
-        if (!includeDisabled && user.status === 'Disabled') {
-          return;
-        }
-
-        const transformed = this.applyProfileTransform(selectedAttributes, user.index, user.status);
-        const row = Object.values(transformed);
-        csv += row.join(format === 'xlsx' ? '\t' : ',') + '\n';
-      });
-
-      return csv;
-    } else if (format === 'json') {
-      const sampleUsers = [
-        { index: 1, status: 'Active' },
-        { index: 2, status: 'Active' },
-        { index: 3, status: 'Active' },
-        { index: 4, status: 'Disabled' },
-        { index: 5, status: 'Active' }
-      ];
-
-      const users = sampleUsers
-        .filter(user => includeDisabled || user.status !== 'Disabled')
-        .map(user => {
-          return this.applyProfileTransform(selectedAttributes, user.index, user.status);
-        });
-
-      return JSON.stringify(users, null, 2);
-    } else if (format === 'ndjson') {
-      const sampleUsers = [1,2,3,4,5]
-        .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
-        .filter(u => includeDisabled || u.status !== 'Disabled')
-        .map(u => JSON.stringify(u))
-        .join('\n');
-      return sampleUsers;
-    } else if (format === 'xml') {
-      const sampleUsers = [1,2,3,4,5]
-        .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
-        .filter(u => includeDisabled || u.status !== 'Disabled');
-      return this.convertUsersToXML(sampleUsers);
-    } else if (format === 'ldif') {
-      const sampleUsers = [1,2,3,4,5]
-        .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
-        .filter(u => includeDisabled || u.status !== 'Disabled');
-      return this.convertUsersToLDIF(sampleUsers);
-    } else if (format === 'scim') {
-      const sampleUsers = [1,2,3,4,5]
-        .map(i => this.applyProfileTransform(selectedAttributes, i, i % 10 === 0 ? 'Disabled' : 'Active'))
-        .filter(u => includeDisabled || u.status !== 'Disabled');
-      return JSON.stringify(this.convertUsersToSCIMBulk(sampleUsers), null, 2);
-    }
-
-    return 'Preview not available for this format.';
   }
 
   async handleStartExport() {
@@ -934,30 +846,17 @@ export class ExportPage {
         if (progressTextLeft) {progressTextLeft.textContent = `${pct}%`;}
         if (statusText) {statusText.textContent = data?.status ? `Status: ${data.status}` : 'Export in progress...';}
 
-        // Coffee cup visual
-        const beerFill = document.getElementById('beer-fill-export');
-        const beerFoam = document.getElementById('beer-foam-export');
-        if (beerFill) {
-          const maxHeight = 16;
-          const height = Math.max(0, Math.min(maxHeight, (pct / 100) * maxHeight));
-          const y = 26 - height;
-          beerFill.setAttribute('y', String(y));
-          beerFill.setAttribute('height', String(height));
-          beerFill.setAttribute('x', '8.5');
-          beerFill.setAttribute('width', '17');
-        }
-        if (beerFoam) {
-          const height = Math.max(0, Math.min(16, (pct / 100) * 16));
-          if (pct > 0) {
-            const foamHeight = pct < 100 ? 3 : 4;
-            const yFoam = 26 - height - foamHeight;
-            beerFoam.setAttribute('y', String(yFoam));
-            beerFoam.setAttribute('height', String(foamHeight));
-            beerFoam.setAttribute('opacity', '0.95');
-          } else {
-            beerFoam.setAttribute('height', '0.001');
-            beerFoam.setAttribute('opacity', '0');
-          }
+        updateBeerMug('export', pct);
+
+        const sampleTableBody = document.querySelector('#sample-users-table tbody');
+        if (sampleTableBody && Array.isArray(data.samples)) {
+          sampleTableBody.innerHTML = data.samples.map(s => 
+            `<tr>
+              <td>${s.id || ''}</td>
+              <td>${s.username || ''}</td>
+              <td>${s.email || ''}</td>
+            </tr>`
+          ).join('');
         }
 
         return { pct, processed, totalCount, ignored, status: data?.status };
@@ -988,17 +887,6 @@ export class ExportPage {
           clearInterval(this.exportInterval);
           this.exportInterval = null;
           if (cancelBtn) {cancelBtn.style.display = 'none';}
-
-          // Prepare downloadable blob now so the Download button works immediately
-          try {
-            const exportData = this.generateExportData();
-            const fileName = this.generateFileName();
-            const blob = new Blob([exportData.content], { type: this.getMimeType(this.exportOptions.format) });
-            const size = blob.size;
-            const createdAt = new Date();
-            const modifiedAt = createdAt;
-            this.lastExport = { blob, fileName, size, createdAt, modifiedAt, type: exportData.type };
-          } catch (_) {}
 
           // Slight delay for UX polish
           setTimeout(() => this.showExportResults(), 300);
@@ -1106,21 +994,22 @@ export class ExportPage {
     }
   }
 
-  handleDownloadExport() {
+  async handleDownloadExport() {
     if (!this.selectedPopulation) {
       this.app?.showNotification?.('No export data available. Please run an export first.', 'warning');
       return;
     }
 
     try {
-      // Generate the export data
-      const exportData = this.generateExportData();
-      const fileName = this.generateFileName();
-      const blob = this.lastExport?.blob || new Blob([exportData.content], { type: this.getMimeType(this.exportOptions.format) });
-      const size = blob.size;
-      const createdAt = new Date();
-      const modifiedAt = createdAt;
-      this.lastExport = { blob, fileName, size, createdAt, modifiedAt, type: exportData.type };
+      const resp = await csrfManager.fetchWithCSRF('/api/export/download', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'text/csv' },
+        body: JSON.stringify({ populationId: this.selectedPopulation.id, populationName: this.selectedPopulation.name })
+      });
+      if (!resp.ok) throw new Error('Export failed');
+      const blob = await resp.blob();
+      const fileName = this.generateFileName().replace(/\.\w+$/, '.csv');
 
       // Create a download link
       const downloadLink = document.createElement('a');
@@ -1142,101 +1031,6 @@ export class ExportPage {
       console.error('Error downloading export:', error);
       this.app?.showNotification?.('Failed to download export file: ' + error.message, 'error');
     }
-  }
-
-  generateExportData() {
-    const format = this.exportOptions.format;
-
-    // Get checkbox states
-    const includeHeaders = document.getElementById('include-headers')?.checked ?? true;
-    const includeDisabled = document.getElementById('include-disabled')?.checked ?? false;
-    const includeMetadata = document.getElementById('include-metadata')?.checked ?? false;
-
-    // Get selected attributes from checkboxes
-    const selectedAttributes = this.getSelectedAttributes();
-
-    // Add metadata attributes if selected
-    if (includeMetadata) {
-      selectedAttributes.push('created_date', 'last_updated', 'last_login');
-    }
-
-    if (format === 'csv' || format === 'xlsx') {
-      let csv = '';
-      if (includeHeaders) {
-        const headers = this.getProfileHeaders(selectedAttributes);
-        csv += headers.join(format === 'xlsx' ? '\t' : ',') + '\n';
-      }
-
-      // Generate sample data based on population size
-      const userCount = this.selectedPopulation.userCount || 100;
-      for (let i = 1; i <= userCount; i++) {
-        // Skip disabled users if not included
-        const userStatus = this.getAttributeValue('status', i);
-        if (!includeDisabled && userStatus === 'Disabled') {
-          continue;
-        }
-
-        const transformed = this.applyProfileTransform(selectedAttributes, i, userStatus);
-        const row = Object.values(transformed);
-        csv += row.join(format === 'xlsx' ? '\t' : ',') + '\n';
-      }
-
-      return { content: csv, type: format };
-
-    } else if (format === 'json') {
-      const userCount = this.selectedPopulation.userCount || 100;
-      const users = [];
-
-      for (let i = 1; i <= userCount; i++) {
-        // Skip disabled users if not included
-        const userStatus = this.getAttributeValue('status', i);
-        if (!includeDisabled && userStatus === 'Disabled') {
-          continue;
-        }
-
-        users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
-      }
-
-      return { content: JSON.stringify(users, null, 2), type: 'json' };
-    } else if (format === 'ndjson') {
-      const userCount = this.selectedPopulation.userCount || 100;
-      const lines = [];
-      for (let i = 1; i <= userCount; i++) {
-        const userStatus = this.getAttributeValue('status', i);
-        if (!includeDisabled && userStatus === 'Disabled') {continue;}
-        lines.push(JSON.stringify(this.applyProfileTransform(selectedAttributes, i, userStatus)));
-      }
-      return { content: lines.join('\n'), type: 'ndjson' };
-    } else if (format === 'xml') {
-      const userCount = this.selectedPopulation.userCount || 100;
-      const users = [];
-      for (let i = 1; i <= userCount; i++) {
-        const userStatus = this.getAttributeValue('status', i);
-        if (!includeDisabled && userStatus === 'Disabled') {continue;}
-        users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
-      }
-      return { content: this.convertUsersToXML(users), type: 'xml' };
-    } else if (format === 'ldif') {
-      const userCount = this.selectedPopulation.userCount || 100;
-      const users = [];
-      for (let i = 1; i <= userCount; i++) {
-        const userStatus = this.getAttributeValue('status', i);
-        if (!includeDisabled && userStatus === 'Disabled') {continue;}
-        users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
-      }
-      return { content: this.convertUsersToLDIF(users), type: 'ldif' };
-    } else if (format === 'scim') {
-      const userCount = this.selectedPopulation.userCount || 100;
-      const users = [];
-      for (let i = 1; i <= userCount; i++) {
-        const userStatus = this.getAttributeValue('status', i);
-        if (!includeDisabled && userStatus === 'Disabled') {continue;}
-        users.push(this.applyProfileTransform(selectedAttributes, i, userStatus));
-      }
-      return { content: JSON.stringify(this.convertUsersToSCIMBulk(users), null, 2), type: 'scim' };
-    }
-
-    return { content: 'Export data not available', type: 'txt' };
   }
 
   getProfileHeaders(selectedAttributes) {

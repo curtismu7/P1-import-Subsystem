@@ -956,6 +956,18 @@ body, html {
 .imports-table .table td { padding:10px 12px; border-bottom:1px solid var(--pingone-border); }
 .imports-table .table tr:last-child td { border-bottom:none; }
 
+/* Recent Imports: professional layout */
+.recent-imports-table { }
+
+/* Job name and file presentation */
+.import-job-name { display: inline-flex; align-items: center; gap: 8px; }
+.import-job-name i { color: inherit; font-size: inherit; line-height: inherit; }
+.import-job-name .job-name { }
+.import-job-name .job-file { }
+
+/* Import type pill */
+.import-type-badge { }
+
 /* Activity Table */
 .activity-table-container { overflow-x: auto; }
 .activity-table {
@@ -993,6 +1005,14 @@ body, html {
 .status-badge.status-info { background: #e8f1fb; color: #0b5ed7; border: 1px solid #cbdaf8; }
 .status-badge.status-warning { background: #fff7e6; color: #b58100; border: 1px solid #ffe1a3; }
 .status-badge.status-error { background: #fdecea; color: #b42318; border: 1px solid #f5c2c0; }
+
+/* Generic badge styles (used by imports table status renderer) */
+.badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1; }
+.badge-success { }
+.badge-warning { }
+.badge-danger  { }
+.badge-info    { }
+.badge-secondary { }
 
 /* Activity controls */
 .activity-controls { display:flex; gap:12px; align-items:center; }

@@ -1,3 +1,4 @@
+import { updateBeerMug } from '../utils/beer-mug.js';
 /**
  * Modify Users Page Module
  *
@@ -251,7 +252,7 @@ export class ModifyPage {
                             <div class="progress-bar">
                                 <div id="modify-progress-bar" class="progress-fill" style="width: 0%;"></div>
                             </div>
-                            <svg id="beer-mug-svg-modify" class="beer-mug" width="112" height="112" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
+                            <svg id="beer-mug-svg-modify" class="beer-mug" width="140" height="140" viewBox="0 0 36 36" aria-label="Beer mug progress icon" focusable="false">
                                 <defs>
                                     <clipPath id="beer-clip-modify">
                                         <path d="M9 8 h16 a2 2 0 0 1 2 2 v18 a2 2 0 0 1-2 2 h-16 a2 2 0 0 1-2-2 v-18 a2 2 0 0 1 2-2 z" />
@@ -667,11 +668,20 @@ export class ModifyPage {
     const value = type === 'boolean' ? document.getElementById('static-field-value-boolean')?.value : document.getElementById('static-field-value')?.value;
 
     if (!populationId || !fieldKey) { return; }
+    // Ensure button HTML backup is available to finally{} even if an early error occurs
+    let backupHtml = '';
     try {
       // Button spinner and disable during request
       const btn = document.getElementById('apply-static-update');
-      const backupHtml = btn ? btn.innerHTML : '';
+      backupHtml = btn ? btn.innerHTML : '';
       if (btn) { btn.disabled = true; btn.innerHTML = '<span class="inline-spinner"></span> Applying…'; }
+
+      // Show progress immediately and global spinner
+      this.showSection('modify-progress-section');
+      try { this.app?.showLoading?.('Applying update...'); } catch (_) {}
+      const statusEl = document.getElementById('status-text'); if (statusEl) statusEl.textContent = 'Starting';
+      const bar = document.getElementById('modify-progress-bar'); if (bar) bar.style.width = '0%';
+      const left = document.getElementById('modify-progress-text-left'); if (left) left.textContent = '0%';
 
       // Use CSRF-aware request to avoid 403
       const payload = { populationId, populationName, fieldKey, type, value };
@@ -695,7 +705,7 @@ export class ModifyPage {
       const data = await res.json();
       if (data?.success) {
         this.app?.showNotification?.(`Scheduled update: set ${fieldKey} to ${value} for ${populationName}`, 'success');
-        // Show progress section like Import page
+        // Ensure progress section is visible
         this.showSection('modify-progress-section');
         document.getElementById('status-text').textContent = 'Running';
         // Initialize counters
@@ -729,6 +739,7 @@ export class ModifyPage {
     } finally {
       const btn = document.getElementById('apply-static-update');
       if (btn) { btn.disabled = false; btn.innerHTML = backupHtml || '<i class="mdi mdi-pencil"></i> Apply to Population'; }
+      try { this.app?.hideLoading?.(); } catch (_) {}
     }
   }
 
@@ -1023,21 +1034,7 @@ export class ModifyPage {
       progressTextLeft.textContent = `${percentage}%`;
     }
 
-    // Beer mug fill & foam positioning
-    if (beerFill) {
-      const fillHeight = Math.max(0, Math.min(16, (percentage / 100) * 16));
-      const yFill = 26 - fillHeight;
-      beerFill.setAttribute('y', String(yFill));
-      beerFill.setAttribute('height', String(fillHeight));
-      beerFill.setAttribute('x', '8.5');
-      beerFill.setAttribute('width', '17');
-    }
-    if (beerFoam) {
-      const foamHeight = percentage > 0 ? (percentage < 100 ? 3 : 4) : 0.001;
-      const yFoam = 26 - Math.max(0, Math.min(16, (percentage / 100) * 16)) - foamHeight;
-      beerFoam.setAttribute('y', String(yFoam));
-      beerFoam.setAttribute('height', String(foamHeight));
-    }
+    try { updateBeerMug('modify', percentage); } catch (_) {}
 
     document.getElementById('status-text').textContent = status;
     document.getElementById('processed-count').textContent = processed;

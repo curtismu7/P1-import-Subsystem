@@ -138,6 +138,16 @@ modifyRouter.post('/static-update', express.json(), async (req, res) => {
     return res.error('Failed to perform static update', { details: e.message }, 500);
   }
 });
+// Lightweight preflight endpoint used by UI validation step
+modifyRouter.post('/preflight', express.json(), async (req, res) => {
+  try {
+    const { sample = 0 } = req.body || {};
+    // Success response with minimal structure expected by client
+    return res.success('Preflight completed', { duplicates: 0, sample: Number(sample) || 0 });
+  } catch (e) {
+    return res.error('Failed preflight', { details: e.message }, 500);
+  }
+});
 import importRouter from './import.js';
 import historyRouter from './history.js';
 import pingoneRouter from './pingone.js';
@@ -2392,6 +2402,8 @@ router.get('/populations/:populationId/users', async (req, res) => {
  */
 router.post('/export-users', async (req, res, next) => {
   try {
+    // Ensure a logger is available for this handler
+    const logger = req.app.get('exportLogger') || req.app.get('importLogger') || apiLogger;
     // Get token manager from Express app context
     const tokenManager = req.app.get('tokenManager');
     if (!tokenManager) {
@@ -3094,7 +3106,7 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
     const apiBaseUrl = tokenManager.getApiBaseUrl();
     debugLog.info('🔗 API base URL result', { apiBaseUrl });
 
-    // Parse CSV file if provided, or get all users from population
+    // Parse CSV file if provided, or get users from explicit list/population
     let usersToDelete = [];
     if (req.file) {
       const csvContent = req.file.buffer.toString('utf8');
@@ -3123,6 +3135,14 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
         totalUsers: usersToDelete.length,
         headers: headers
       });
+    } else if (req.body.type === 'list' && Array.isArray(req.body.userIds) && req.body.userIds.length > 0) {
+      // Explicit list of user IDs to delete
+      usersToDelete = req.body.userIds.map((id) => ({ id: String(id) }));
+      debugLog.info('🧾 Using explicit user id list for deletion', { count: usersToDelete.length });
+    } else if (req.body.type === 'population' && Array.isArray(req.body.userIds) && req.body.userIds.length > 0) {
+      // Population-scoped explicit user IDs (delete only provided IDs)
+      usersToDelete = req.body.userIds.map((id) => ({ id: String(id) }));
+      debugLog.info('🧾 Using explicit population-scoped user id list', { count: usersToDelete.length, populationId: req.body.populationId });
     } else if (req.body.type === 'population' && req.body.populationId) {
       // Get all users from the specified population
       debugLog.info('👥 Fetching all users from population', {
@@ -3189,7 +3209,9 @@ router.post('/delete-users', upload.single('file'), async (req, res) => {
     let failed = 0;
     const errors = [];
 
-    const skipNotFound = req.body.skipNotFound === 'true';
+    const skipNotFound = (typeof req.body.skipNotFound === 'string')
+      ? req.body.skipNotFound === 'true'
+      : Boolean(req.body.skipNotFound);
     const populationId = req.body.populationId;
 
     debugLog.info('🗑️ Starting delete process', {

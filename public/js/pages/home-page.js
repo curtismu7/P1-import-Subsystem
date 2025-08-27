@@ -201,14 +201,14 @@ export class HomePage {
                             <span>Import Users</span>
                         </button>
                         
-                        <button class="action-btn compact" onclick="window.location.hash='#import'">
-                            <i class="mdi mdi-shield"></i>
-                            <span>Import Apps</span>
+                        <button class="action-btn compact" onclick="window.location.hash='#delete'">
+                            <i class="mdi mdi-delete"></i>
+                            <span>Delete Users</span>
                         </button>
                         
-                        <button class="action-btn compact" onclick="window.location.hash='#import'">
-                            <i class="mdi mdi-database"></i>
-                            <span>Import Groups</span>
+                        <button class="action-btn compact" onclick="window.location.hash='#modify'">
+                            <i class="mdi mdi-account-edit"></i>
+                            <span>Modify Users</span>
                         </button>
                         
                         <button class="action-btn compact" onclick="window.location.hash='#history'">

@@ -799,7 +799,6 @@ select {
   border: 1px solid var(--ping-gray-200) !important;
   width: 100% !important;
 }
-
 .file-details {
   display: flex !important;
   align-items: center !important;
@@ -1596,7 +1595,6 @@ select.form-control:not([multiple]) {
   align-items: center;
   margin-bottom: 1rem;
 }
-
 /* Token Box - Main shadow container */
 .token-box {
   background-color: #fff;
@@ -2390,7 +2388,6 @@ select.form-control:not([multiple]) {
 .settings-box:hover {
   box-shadow: 0 0 12px rgba(0, 0, 0, 0.15);
 }
-
 /* File Upload Areas */
 .file-upload-area {
   border: 3px dashed #e2e8f0;
@@ -3192,7 +3189,6 @@ select.form-control:not([multiple]) {
   background: var(--ping-info-light);
   color: var(--ping-info);
 }
-
 /* Footer */
 .app-footer {
   position: fixed;
@@ -3992,7 +3988,6 @@ select {
     gap: 12px !important;
     margin-bottom: 20px !important;
 }
-
 .info-item {
   background: linear-gradient(135deg, var(--ping-gray-50) 0%, var(--ping-gray-100) 100%) !important;
   border: 1px solid var(--ping-gray-200) !important;
@@ -4793,7 +4788,6 @@ select {
   background: linear-gradient(90deg, transparent, var(--ping-gray-300), transparent);
   margin: var(--spacing-xl) 0;
 }
-
 .action-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -5594,7 +5588,6 @@ select {
   border: 1px solid var(--ping-border-light);
   transition: box-shadow 0.3s ease;
 }
-
 .import-box:hover,
 .delete-box:hover,
 .modify-box:hover,
@@ -6390,7 +6383,6 @@ select {
   flex: 1;
   justify-content: center;
 }
-
 .token-status-footer {
   display: flex;
   align-items: center;
@@ -7190,7 +7182,6 @@ select {
   margin-bottom: 1rem;
   font-size: 1.1rem;
 }
-
 .upload-requirements ul {
   list-style: none;
   padding: 0;
@@ -7991,7 +7982,6 @@ select {
     box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
   }
 }
-
 .warning-icon i {
   font-size: 32px;
   color: #d97706;
@@ -8787,7 +8777,6 @@ select {
   position: relative;
   transition: all 0.2s ease;
 }
-
 .log-entry::before {
   content: '';
   position: absolute;
@@ -9583,7 +9572,6 @@ select {
   color: var(--ping-blue-primary) !important;
   border-color: var(--ping-blue-primary) !important;
 }
-
 .btn-outline-primary:hover:not(:disabled) {
   background: var(--ping-blue-primary) !important;
   color: white !important;
@@ -10381,7 +10369,6 @@ select {
 .option-group {
     margin-bottom: 1.5rem;
 }
-
 .option-group:last-child {
     margin-bottom: 0;
 }
@@ -11181,11 +11168,6 @@ select.field-error:focus {
 .status-message.status-error {
     color: var(--ping-error);
 }
-
-.status-message.status-warning {
-    color: var(--ping-warning);
-}
-
 .status-message.status-info {
     color: var(--ping-info);
 }
@@ -11974,7 +11956,6 @@ select.field-error:focus {
   margin-top: 0 !important;
   padding-top: 0 !important;
 }
-
 /* Fix dashboard header content layout */
 .header-content {
   display: flex !important;
@@ -12018,3 +11999,75 @@ select.field-error:focus {
   transform: translateY(-1px) !important;
   box-shadow: var(--shadow-lg) !important;
 }
+
+/* Dashboard Typography - ensure readable minimums */
+#home-page,
+#home-page .home-container,
+#home-page .content-panel,
+#home-page .imports-table,
+#home-page .quick-actions-panel {
+  font-size: 14px !important; /* ~10.5pt+; meet >=10pt requirement */
+}
+
+/* Labels bold and minimum size */
+#home-page .status-label,
+#home-page .panel-title,
+#home-page .section-header h2,
+#home-page .table th,
+#home-page .results-table th,
+#home-page .content-title,
+#home-page .content-subtitle {
+  font-weight: 700 !important;
+}
+
+/* Explicit minimum for smaller label-like elements */
+#home-page .status-label,
+#home-page .table th,
+#home-page .results-table th {
+  font-size: 12px !important; /* >= 8pt; keep compact but bold */
+}
+
+/* Ensure status values and descriptions are comfortably readable */
+#home-page .status-value,
+#home-page .status-card-description,
+#home-page .status-card-value,
+#home-page .status-card p,
+#home-page .imports-table td,
+#home-page .table td {
+  font-size: 14px !important; /* >=10pt */
+}
+
+/* Quick actions and activity chips readable sizes */
+#home-page .quick-actions-grid .action-btn span {
+  font-size: 14px !important;
+}
+
+#home-page .activity-filters .chip,
+#home-page .activity-actions .btn {
+  font-size: 12px !important; /* compact controls, >=8pt */
+}
+
+/* Prominent time display readable */
+#home-page .time-display,
+#home-page .time-display .current-time,
+#home-page #current-time {
+  font-size: 14px !important;
+  font-weight: 700 !important; /* treat as a label/value */
+}
+
+@keyframes bubbleRise {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(-8px) translateX(-1px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-16px) translateX(1px);
+  }
+}
+
+// Add near other animations

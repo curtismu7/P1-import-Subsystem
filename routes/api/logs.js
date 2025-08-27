@@ -183,6 +183,19 @@ router.post('/', (req, res) => {
   }
 });
 
+// Lightweight endpoint to accept structured client log events without CSRF blocks
+router.post('/client', (req, res) => {
+  try {
+    const { event, data = {}, ts } = req.body || {};
+    const safeMsg = event ? `[CLIENT-EVENT] ${event}` : '[CLIENT-EVENT]';
+    logger.info(safeMsg, { ...data, ts: ts || new Date().toISOString() });
+    return res.json({ success: true });
+  } catch (e) {
+    logger.error('Failed to record client event', { error: e.message });
+    return res.status(500).json({ success: false, error: 'Failed to record client event' });
+  }
+});
+
 /**
  * @swagger
  * /api/logs/ui:

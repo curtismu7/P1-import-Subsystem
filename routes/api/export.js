@@ -8,7 +8,7 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import workerTokenManager from '../../auth/workerTokenManager.js';
-import { exportLogger, logSeparator, logTag } from '../../server/winston-config.js';
+import { apiLogger, apiLogHelpers, exportLogger, logSeparator, logTag } from '../../server/winston-config.js';
 const router = express.Router();
 
 // In-memory storage for export status (in production, use database)
@@ -216,7 +216,9 @@ router.get('/attributes', async (req, res) => {
       if (core) {
         attributes = flattenCoreAttributes(core);
       }
-    } catch (_) { /* ignored */ }
+    } catch (ignoredError) {
+      // Intentional ignore
+    }
 
     if (!attributes.length) {
       try {
@@ -224,7 +226,9 @@ router.get('/attributes', async (req, res) => {
         if (scim.list && scim.list.length) {
           attributes = flattenScimAttributes(scim.list);
         }
-      } catch (_) { /* fall back below */ }
+      } catch (ignoredError) {
+        // fall back below
+      }
     }
 
     // Fallback: sample user introspection (legacy)
@@ -576,8 +580,12 @@ router.post('/download', express.json(), async (req, res) => {
     };
 
     let attributeKeys = [];
-    try { const core = await fetchCoreUserSchema(); if (core) { attributeKeys = flattenCoreAttributes(core); } } catch {}
-    if (!attributeKeys.length) { try { const sc = await fetchScimUserSchema(); if (sc.list && sc.list.length) { attributeKeys = flattenScimAttributes(sc.list); } } catch {} }
+    try { const core = await fetchCoreUserSchema(); if (core) { attributeKeys = flattenCoreAttributes(core); } } catch {
+      // Intentional ignore
+    }
+    if (!attributeKeys.length) { try { const sc = await fetchScimUserSchema(); if (sc.list && sc.list.length) { attributeKeys = flattenScimAttributes(sc.list); } } catch {
+      // fall back below
+    } }
 
     // Ensure some sensible defaults
     const defaults = ['id','username','email','name.givenName','name.familyName','enabled','groups'];
@@ -668,7 +676,7 @@ router.post('/download', express.json(), async (req, res) => {
  */
 router.post('/', express.json(), async (req, res) => {
   try {
-    const { populationId, populationName, format = 'csv', includeDisabled = true, includeMetadata = true } = req.body;
+    const { populationId, populationName, format = 'csv' } = req.body;
 
     // Validate required parameters
     if (!populationId) {
@@ -697,79 +705,287 @@ router.post('/', express.json(), async (req, res) => {
       downloadUrl: null
     };
 
-    // For now, return a mock response since we need PingOne API integration
-    // TODO: Implement actual PingOne API call to fetch users
-    const mockUsers = [
-      {
-        id: '1',
-        username: 'user1@example.com',
-        email: 'user1@example.com',
-        givenName: 'John',
-        familyName: 'Doe',
-        enabled: true
-      },
-      {
-        id: '2',
-        username: 'user2@example.com',
-        email: 'user2@example.com',
-        givenName: 'Jane',
-        familyName: 'Smith',
-        enabled: true
-      }
-    ];
+    // Get access token and environment info for real PingOne API integration
+    let accessToken;
+    let environmentId;
+    let baseUrl;
 
-    // Convert to requested format
+    const tokenManager = req.app.get('tokenManager');
+    if (tokenManager) {
+      accessToken = await tokenManager.getAccessToken();
+      environmentId = await tokenManager.getEnvironmentId();
+      baseUrl = tokenManager.getApiBaseUrl();
+    } else {
+      // Fallback to workerTokenManager with environment variables
+      const region = process.env.PINGONE_REGION || 'NorthAmerica';
+      environmentId = process.env.PINGONE_ENVIRONMENT_ID;
+      if (!environmentId) {
+        exportStatus.status = 'failed';
+        exportStatus.endTime = Date.now();
+        return res.status(400).json({
+          success: false,
+          error: 'Environment ID not configured'
+        });
+      }
+      accessToken = await workerTokenManager.getAccessToken({
+        apiClientId: process.env.PINGONE_CLIENT_ID,
+        apiSecret: process.env.PINGONE_CLIENT_SECRET,
+        environmentId,
+        region
+      });
+      baseUrl = PINGONE_API_BASE_URLS[region] || PINGONE_API_BASE_URLS.default;
+    }
+
+    if (!accessToken) {
+      exportStatus.status = 'failed';
+      exportStatus.endTime = Date.now();
+      return res.status(401).json({
+        success: false,
+        error: 'Access token unavailable'
+      });
+    }
+    if (!environmentId || !baseUrl) {
+      exportStatus.status = 'failed';
+      exportStatus.endTime = Date.now();
+      return res.status(400).json({
+        success: false,
+        error: 'Missing environment configuration'
+      });
+    }
+
+    // Discover available user attributes from PingOne
+    let attributeKeys = [];
+
+    // Try core schema first
+    try {
+      const coreUrl = `${baseUrl}/v1/environments/${environmentId}/schemas/user`;
+      const coreResp = await fetch(coreUrl, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' }
+      });
+      if (coreResp.ok) {
+        const coreSchema = await coreResp.json();
+        if (coreSchema && Array.isArray(coreSchema.attributes)) {
+          const flattenCoreAttributes = (schema) => {
+            const out = [];
+            const seen = new Set();
+            const add = (key) => { if (key && !seen.has(key)) { seen.add(key); out.push(key); } };
+            const walk = (prefix, attr) => {
+              const path = prefix ? `${prefix}.${attr.name}` : attr.name;
+              add(path);
+              if (Array.isArray(attr.subAttributes)) {
+                for (const sub of attr.subAttributes) { walk(path, sub); }
+              }
+            };
+            try {
+              for (const a of schema.attributes) { walk('', a); }
+            } catch {}
+            return out;
+          };
+          attributeKeys = flattenCoreAttributes(coreSchema);
+        }
+      }
+    } catch (ignoredError) {
+      // Intentional ignore
+    }
+
+    // Fallback to SCIM schema if core schema failed
+    if (!attributeKeys.length) {
+      try {
+        const scimUrl = `${baseUrl}/v1/environments/${environmentId}/scim/v2/Schemas/urn:ietf:params:scim:schemas:core:2.0:User`;
+        const scimResp = await fetch(scimUrl, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/scim+json, application/json' }
+        });
+        if (scimResp.ok) {
+          const scimSchema = await scimResp.json();
+          if (scimSchema && Array.isArray(scimSchema.attributes)) {
+            const flattenScimAttributes = (schemas) => {
+              const out = [];
+              const seen = new Set();
+              const add = (key) => { if (key && !seen.has(key)) { seen.add(key); } };
+              const walk = (prefix, attr) => {
+                const path = prefix ? `${prefix}.${attr.name}` : attr.name;
+                add(path);
+                if (Array.isArray(attr.subAttributes)) {
+                  for (const sub of attr.subAttributes) { walk(path, sub); }
+                }
+              };
+              for (const a of scimSchema.attributes) { walk('', a); }
+              return out;
+            };
+            attributeKeys = flattenScimAttributes([scimSchema]);
+          }
+        }
+      } catch (ignoredError) {
+        // fall back below
+      }
+    }
+
+    // Ensure some sensible defaults
+    const defaults = ['id', 'username', 'email', 'name.givenName', 'name.familyName', 'enabled', 'groups'];
+    for (const k of defaults) {
+      if (!attributeKeys.includes(k)) {
+        attributeKeys.push(k);
+      }
+    }
+
+    // Fetch all users from the specified population via PingOne API
+    const users = [];
+    let nextHref = `${baseUrl}/v1/environments/${environmentId}/users?population.id=${encodeURIComponent(populationId)}&limit=200`;
+    const headers = { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' };
+
+    exportStatus.total = 0; // Will be updated when we get the first page
+
+    let samples = [];
+
+    for (let safety = 0; safety < 1000 && nextHref; safety++) {
+      const userResp = await fetch(nextHref, { method: 'GET', headers });
+      if (!userResp.ok) {
+        const text = await userResp.text();
+        exportStatus.status = 'failed';
+        exportStatus.endTime = Date.now();
+        return res.status(userResp.status).json({
+          success: false,
+          error: 'Failed fetching users',
+          details: text
+        });
+      }
+
+      const data = await userResp.json();
+      const pageUsers = data?._embedded?.users || data?.users || [];
+
+      // Update total count from first page
+      if (safety === 0) {
+        const total = data?.count || pageUsers.length;
+        exportStatus.total = total;
+      }
+
+      for (const u of pageUsers) {
+        users.push(u);
+        exportStatus.processed = users.length;
+
+        // Update progress percentage
+        if (exportStatus.total > 0) {
+          exportStatus.progress = Math.round((users.length / exportStatus.total) * 100);
+        }
+
+        if (users.length % 50 === 0) {
+          samples.push({
+            id: u.id,
+            username: u.username,
+            email: u.email
+          });
+        }
+      }
+
+      const next = data?._links?.next?.href;
+      nextHref = next ? (next.startsWith('http') ? next : `${baseUrl}${next}`) : null;
+      if (!nextHref) { break; }
+    }
+
+    if (samples.length === 0 && users.length > 0) {
+      const first = users[0];
+      samples.push({
+        id: first.id,
+        username: first.username,
+        email: first.email
+      });
+    }
+
+    exportStatus.samples = samples;
+
+    // Helper: safely get nested value with simple synonym support
+    const getValue = (obj, path) => {
+      try {
+        if (!obj || !path) { return ''; }
+        // synonyms for common fields
+        if (path === 'username' || path === 'userName') { return obj.username ?? obj.userName ?? obj.email ?? ''; }
+        if (path === 'email' || path === 'emails') {
+          if (obj.email) { return obj.email; }
+          if (Array.isArray(obj.emails) && obj.emails.length) { return obj.emails[0]?.value ?? ''; }
+          return '';
+        }
+        if (path === 'enabled' || path === 'active') { return (obj.enabled ?? obj.active ?? '') + ''; }
+        if (path === 'groups') {
+          const groups = Array.isArray(obj.groups) ? obj.groups : (obj._embedded?.groups || []);
+          if (Array.isArray(groups)) { return groups.map(g => g.name || g.id || '').filter(Boolean).join(';'); }
+          return '';
+        }
+        // walk dotted path with a few aliases
+        const parts = path.split('.');
+        let cur = obj;
+        for (let i = 0; i < parts.length; i++) {
+          const key = parts[i];
+          if (cur == null) { return ''; }
+          if (typeof cur !== 'object') { return cur; }
+          // name.givenName vs name.given
+          if (cur[key] === undefined && key === 'givenName' && cur['given'] !== undefined) { cur = cur['given']; continue; }
+          if (cur[key] === undefined && key === 'familyName' && cur['family'] !== undefined) { cur = cur['family']; continue; }
+          cur = cur[key];
+        }
+        if (Array.isArray(cur)) {
+          // stringify arrays of primitives or objects by common fields
+          const mapVal = (v) => (v && typeof v === 'object') ? (v.value ?? v.name ?? v.displayName ?? v.id ?? '') : v;
+          return cur.map(mapVal).filter(v => v !== undefined && v !== null).join(';');
+        }
+        if (cur && typeof cur === 'object') { return ''; }
+        return (cur === null || cur === undefined) ? '' : cur;
+      } catch { return ''; }
+    };
+
+    // Convert to requested format with real PingOne data
     let exportData;
     let filename;
 
     if (format === 'csv') {
-      // Convert to CSV
-      const headers = ['id', 'username', 'email', 'givenName', 'familyName', 'enabled', 'groups'];
-      const csvRows = [headers.join(',')];
+      // Build CSV with all discovered attributes
+      const csvHeaders = attributeKeys;
+      const escapeCsv = (value) => {
+        const str = (value === null || value === undefined) ? '' : String(value);
+        return (str.includes(',') || str.includes('\n') || str.includes('"')) ?
+          '"' + str.replace(/"/g, '""') + '"' : str;
+      };
 
-      mockUsers.forEach(user => {
-        const row = headers.map(header => {
-          let value = '';
-          if (header === 'groups') {
-            const groups = Array.isArray(user.groups) ? user.groups : (user._embedded?.groups || []);
-            value = Array.isArray(groups) ? groups.map(g => g.name || g.id || '').filter(Boolean).join(';') : '';
-          } else {
-            value = user[header] ?? '';
-          }
-          // Ensure placeholders for missing fields and escape commas/quotes
-          const str = (value === null || value === undefined) ? '' : String(value);
-          return (str.includes(',') || str.includes('"')) ? `"${str.replace(/"/g, '""')}"` : str;
-        });
+      const csvRows = [csvHeaders.join(',')];
+      for (const user of users) {
+        const row = csvHeaders.map(k => escapeCsv(getValue(user, k)));
         csvRows.push(row.join(','));
-      });
-
+      }
       exportData = csvRows.join('\n');
-      filename = `pingone-users-export-${new Date().toISOString().split('T')[0]}.csv`;
+      filename = `pingone-users-${(populationName || 'population')}-${new Date().toISOString().split('T')[0]}.csv`;
     } else {
       // JSON format
-      exportData = JSON.stringify(mockUsers, null, 2);
-      filename = `pingone-users-export-${new Date().toISOString().split('T')[0]}.json`;
+      const jsonUsers = users.map(user => {
+        const jsonUser = {};
+        for (const key of attributeKeys) {
+          jsonUser[key] = getValue(user, key);
+        }
+        return jsonUser;
+      });
+      exportData = JSON.stringify(jsonUsers, null, 2);
+      filename = `pingone-users-${(populationName || 'population')}-${new Date().toISOString().split('T')[0]}.json`;
     }
 
-    // Complete export operation
+    // Complete export operation with real data
     exportStatus.isRunning = false;
     exportStatus.endTime = Date.now();
     exportStatus.status = 'completed';
-    exportStatus.processed = mockUsers.length;
-    exportStatus.total = mockUsers.length;
-    // For mock flow, no users are disabled; if wiring real data, set this accordingly
+    exportStatus.processed = users.length;
+    exportStatus.total = users.length;
     exportStatus.ignoredUsers = 0;
     exportStatus.outputFile = filename;
 
     res.json({
       success: true,
-      message: 'Export completed successfully',
+      message: 'Export completed successfully with real PingOne data',
       data: exportData,
       filename: filename,
       format: format,
-      recordCount: mockUsers.length,
+      recordCount: users.length,
       ignoredUsers: exportStatus.ignoredUsers,
-      sessionId: sessionId
+      sessionId: sessionId,
+      attributes: attributeKeys
     });
 
   } catch (error) {
