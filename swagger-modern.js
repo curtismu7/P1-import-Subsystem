@@ -281,7 +281,7 @@ const swaggerOptions = {
             apiSecret: {
               type: 'string',
               description: 'PingOne client secret (encrypted)',
-              example: 'enc:***REMOVED-PINGONE-API-SECRET***',
+              example: 'enc:YOUR_PINGONE_API_SECRET',
             },
             populationId: {
               type: 'string',

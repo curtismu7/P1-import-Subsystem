@@ -11,7 +11,7 @@ async function testBasicAuth() {
   const credentials = {
     environmentId: process.env.PINGONE_ENVIRONMENT_ID || 'b9817c16-9910-4415-b67e-4ac687da74d9',
     clientId: process.env.PINGONE_CLIENT_ID || '26e7f07c-11a4-402a-b064-07b55aee189e',
-    clientSecret: process.env.PINGONE_CLIENT_SECRET || '***REMOVED-PINGONE-API-SECRET***',
+    clientSecret: process.env.PINGONE_CLIENT_SECRET || 'YOUR_PINGONE_API_SECRET',
     region: process.env.PINGONE_REGION || 'NorthAmerica'
   };
 

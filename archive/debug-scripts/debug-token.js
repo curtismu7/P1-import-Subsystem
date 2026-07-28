@@ -15,7 +15,7 @@ async function debugToken() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'Basic ' + Buffer.from('26e7f07c-11a4-402a-b064-07b55aee189e:***REMOVED-PINGONE-API-SECRET***').toString('base64')
+                'Authorization': 'Basic ' + Buffer.from('26e7f07c-11a4-402a-b064-07b55aee189e:YOUR_PINGONE_API_SECRET').toString('base64')
             },
             body: 'grant_type=client_credentials'
         });

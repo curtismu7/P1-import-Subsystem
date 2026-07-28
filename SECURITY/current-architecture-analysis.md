@@ -45,7 +45,7 @@ pingone-import/
 ```json
 // data/settings.json - PLAINTEXT STORAGE
 {
-  "pingone_client_secret": "***REMOVED-PINGONE-API-SECRET***",
+  "pingone_client_secret": "YOUR_PINGONE_API_SECRET",
   "pingone_client_id": "26e7f07c-11a4-402a-b064-07b55aee189e",
   "pingone_environment_id": "b9817c16-9910-4415-b67e-4ac687da74d9"
 }
